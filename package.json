@@ -1,0 +1,93 @@
+{
+  "name": "discord-music-rpc",
+  "version": "0.0.1",
+  "description": "Discord Music RPC Application",
+  "main": "main.js",
+  "keywords": [
+    "discord",
+    "electron",
+    "rpc",
+    "rich presence",
+    "extension",
+    "music",
+    "radio",
+    "server",
+    "tray"
+  ],
+  "author": "KanashiiDev",
+  "license": "MIT",
+  "engines": {
+    "node": ">=22.11.0"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "start:app": "electron .",
+    "build": "electron-builder --win --x64 --publish=never",
+    "build:chrome": "cross-env TARGET=chrome node scripts/buildExtensions.js",
+    "build:firefox": "cross-env TARGET=firefox node scripts/buildExtensions.js",
+    "build:extensions": "npm run build:chrome && npm run build:firefox",
+    "pack": "electron-builder --dir",
+    "pack:chrome": "node scripts/zip-chrome.js",
+    "pack:firefox": "node scripts/zip-firefox.js",
+    "pack:extensions": "npm run pack:chrome && npm run pack:firefox",
+    "build-and-pack": "npm run build:extensions && npm run pack:extensions",
+    "build-and-pack:chrome": "npm run build:chrome && npm run pack:chrome",
+    "build-and-pack:firefox": "npm run build:firefox && npm run pack:firefox",
+    "prepare-release": "npm run build && npm run build-and-pack && node scripts/release-builder.js"
+  },
+  "dependencies": {
+    "@xhayper/discord-rpc": "^1.2.2",
+    "cors": "^2.8.5",
+    "electron-log": "^5.4",
+    "electron-updater": "^6.6.2",
+    "express": "^5.1.0",
+    "semver": "^7.7.2"
+  },
+  "devDependencies": {
+    "archiver": "^7.0.1",
+    "cross-env": "^7.0.3",
+    "electron": "^36.4.0",
+    "electron-builder": "^26.0.12",
+    "fs-extra": "^11.3.0"
+  },
+  "build": {
+    "appId": "com.kanashiidev.discord.music.rpc",
+    "productName": "Discord Music RPC",
+    "copyright": "Copyright © 2025 KanashiiDev",
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "KanashiiDev",
+        "repo": "discord-music-rpc"
+      }
+    ],
+    "asar": true,
+    "compression": "maximum",
+    "win": {
+      "target": "nsis",
+      "icon": "assets/icon/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "perMachine": true,
+      "runAfterFinish": true
+    },
+    "files": [
+      "assets/**/*",
+      "main.js",
+      "server.js",
+      "logger.js",
+      "updater.js",
+      "package.json",
+      "node_modules/express/**",
+      "node_modules/cors/**",
+      "node_modules/@xhayper/discord-rpc/**",
+      "node_modules/electron-log/**",
+      "node_modules/electron-updater/**"
+    ],
+    "afterSign": "./scripts/cleanup.js"
+  }
+}
