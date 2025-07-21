@@ -5,13 +5,26 @@
     <title>Discord Music RPC</title>
     <link rel="stylesheet" href="popup.css" />
   </head>
+
   <body>
-    <h1>Discord Music RPC</h1>
+    <div class="header-container">
+      <h1 id="mainHeader">Discord Music RPC</h1>
+      <a id="historyToggle">
+        <svg width="16px" height="16px" ...></svg>
+      </a>
+    </div>
+    <div id="historyHeader" style="display: none">
+      <a id="clearHistoryBtn" class="button" style="cursor: pointer">Clear History</a><a id="cancelCleanBtn" class="button" style="display: none">Cancel</a>
+    </div>
+    <div id="historyPanel" data-lazy-container></div>
     <input type="text" id="searchBox" placeholder="Search..." />
     <div id="siteList" class="site-list"></div>
     <a id="openSelector" title="Add your own custom music rpc.">Add Music Parser</a>
     <footer><a href="https://github.com/KanashiiDev/discord-music-rpc" target="_blank" rel="noopener noreferrer">Github</a></footer>
+    <script src="../libs/lazysizes.js" async></script>
     <script src="../libs/browser-polyfill.js"></script>
+    <script src="../common/utils.js"></script>
+    <script src="../common/history.js"></script>
     <script src="popup.js"></script>
   </body>
 </html>

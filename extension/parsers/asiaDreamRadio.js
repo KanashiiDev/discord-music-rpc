@@ -45,33 +45,28 @@ registerParser({
           return null;
         }
       } catch (error) {
-        console.error("Fetch failed:", error.message);
+        logError("Fetch failed:", error.message);
         return null;
       }
     }
 
-    try {
-      const isPlaying = document.querySelector("#button_play_stop-1.active");
-      if (!isPlaying) {
-        return;
-      }
-      const data = await fetchSongInfo();
-      if (!data) {
-        return;
-      }
-      const durationText = data.duration?.trim();
-
-      return {
-        title: data.title,
-        artist: data.artist,
-        image: data.cover,
-        source: "Asia Dream Radio",
-        songUrl: location.href,
-        duration: durationText,
-      };
-    } catch (e) {
-      console.error("Asia Dream Radio parser error:", e);
-      return null;
+    const isPlaying = document.querySelector("#button_play_stop-1.active");
+    if (!isPlaying) {
+      return;
     }
+    const data = await fetchSongInfo();
+    if (!data) {
+      return;
+    }
+    const durationText = data.duration?.trim();
+
+    return {
+      title: data.title,
+      artist: data.artist,
+      image: data.cover,
+      source: "Asia Dream Radio",
+      songUrl: location.href,
+      duration: durationText,
+    };
   },
 });

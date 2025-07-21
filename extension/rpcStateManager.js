@@ -39,13 +39,12 @@ window.RPCStateManager = class {
     const changed = !!prev && !!newSong && ((newSong.title || "").trim() !== (prev.title || "").trim() || (newSong.artist || "").trim() !== (prev.artist || "").trim());
 
     if (!prev || changed) {
+      this.reset();
       if (this.hasOnlyDuration) {
-        this.resetDurationTimer();
         this.startDurationTimer();
       }
       return true;
     }
-
     return false;
   }
 

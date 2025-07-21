@@ -1,6 +1,6 @@
 const express = require("express");
 const cors = require("cors");
-const { Client } = require("@xhayper/discord-rpc");
+const { Client, StatusDisplayType } = require("@xhayper/discord-rpc");
 
 const app = express();
 const PORT = 3000;
@@ -9,6 +9,7 @@ const RETRY_DELAY = 10000; // 10 seconds
 const CLIENT_TIMEOUT = 20000; // 20 seconds
 const STUCK_TIMEOUT = 60000; // 60 seconds
 const STUCK_THRESHOLD = 90000; // 90 seconds
+const logSongUpdate = false;
 
 console.log("\n=== Server Initialization ===");
 console.log("Port:", PORT);
@@ -96,24 +97,22 @@ async function connectRPC() {
 
 // Health check timer
 function startHealthCheckTimer() {
-  if (healthCheckTimeout) {
-    clearTimeout(healthCheckTimeout);
-    healthCheckTimeout = null;
-  }
+  if (healthCheckTimeout) clearTimeout(healthCheckTimeout);
 
-  if (currentActivity) {
-    healthCheckTimeout = setTimeout(async () => {
-      if (isRpcConnected) {
-        try {
-          await rpcClient.user?.clearActivity();
+  healthCheckTimeout = setTimeout(() => {
+    if (isRpcConnected && currentActivity) {
+      rpcClient.user
+        ?.clearActivity()
+        .then(() => {
+          if (logSongUpdate) {
+            console.log("RPC cleared due to health timeout.");
+          }
           currentActivity = null;
-          console.log("No health check in 30s. Activity cleared.");
-        } catch (err) {
-          console.error("Error clearing RPC:", err);
-        }
-      }
-    }, CLIENT_TIMEOUT);
-  }
+        })
+        .catch(console.error);
+    }
+    lastActiveClient = null;
+  }, CLIENT_TIMEOUT);
 }
 
 // Middleware
@@ -135,17 +134,64 @@ function isSameActivityIgnore(a, b) {
 
 function truncate(str, maxLength = 128, { prefix = "", fallback = "Unknown", minLength = 2 } = {}) {
   if (!str) str = "";
-  const cleanRegex = /[\[(]\s*(free\s+(download|song|now)|download\s+(free|now))\s*[\])]/gi;
-  str = str.replace(cleanRegex, "").trim();
+
+  const keywordGroup = [
+    "free\\s+(download|dl|song|now)",
+    "download\\s+(free|now)",
+    "official(\\s+(video|music\\s+video|audio|lyric\\s+video|visualizer))?",
+    "lyric\\s+video|lyrics?|music\\s+video|out\\s+now",
+    "hd|hq|4k|1080p|720p|mp3|mp4|320kbps|flac",
+    "extended\\s+remix|radio\\s+edit|club\\s+mix|party\\s+mix|mixed\\s+by\\s+dj|live(\\s+performance)?",
+    "cover|karaoke|instrumental|backing\\s+track|vocals\\s+only",
+    "teaser|trailer|promo|bootleg|mashup",
+    "now\\s+available|full\\s+song|full\\s+version|complete\\s+version|original\\s+version|radio\\s+version",
+    "explicit|clean\\s+version|copyright\\s+free|royalty\\s+free|no\\s+copyright|creative\\s+commons|cc",
+    "official\\s+trailer|official\\s+teaser|[\\w\\s'’\\-]+\\s+premiere",
+  ].join("|");
+
+  const cleanRegex = new RegExp(`([\\[\\(]\\s*(${keywordGroup})\\s*[\\]\\)])|(\\s*-\\s*(${keywordGroup})\\s*$)`, "gi");
+  str = str.replace(cleanRegex, "").replace(/\s+/g, " ").trim();
+
   let result = str.length > maxLength ? str.slice(0, maxLength - 3) + "..." : str;
   if (result.length < minLength) result = prefix + fallback;
   return result;
 }
 
-function cleanTitle(song, artist) {
-  const escapedArtist = artist.replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&");
-  const regex = new RegExp(`^\\s*${escapedArtist}\\s*[-–:|]?\\s*`, "i");
-  return song.replace(regex, "").trim();
+function cleanTitle(title, artist) {
+  const trimmedTitle = title.trim();
+  const trimmedArtist = artist.trim();
+
+  if (trimmedTitle.toLowerCase() === trimmedArtist.toLowerCase()) {
+    return trimmedTitle;
+  }
+
+  const artistListRaw = trimmedArtist
+    .split(/,|&|feat\.?|featuring/gi)
+    .map((a) => a.trim())
+    .filter((a) => a.length >= 3);
+
+  if (artistListRaw.length === 0) return trimmedTitle;
+
+  const artistList = artistListRaw.map((a) => a.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+  const pattern = new RegExp(`^(${artistList.join("|")})(\\s*[&+,xX]\\s*(${artistList.join("|")}))*\\s*[-–:|.]?\\s*`, "i");
+  const cleaned = trimmedTitle.replace(pattern, "").trim();
+
+  return cleaned.length > 0 ? cleaned : trimmedTitle;
+}
+
+function extractArtistFromTitle(title, originalArtist) {
+  const pattern = /^(.+?)\s*-\s*/;
+  const match = title.match(pattern);
+  if (match) {
+    const extracted = match[1].trim();
+    const origLower = originalArtist.toLowerCase();
+    const extractedLower = extracted.toLowerCase();
+
+    if (extractedLower !== origLower && (extractedLower.includes(origLower) || origLower.includes(extractedLower)) && extracted.length > originalArtist.length) {
+      return extracted;
+    }
+  }
+  return originalArtist;
 }
 
 // RPC update endpoint
@@ -179,11 +225,34 @@ app.post("/update-rpc", async (req, res) => {
       return res.json({ success: true, action: "cleared" });
     }
 
-    let dataTitle = truncate(data?.title, 128, { prefix: "Title: ", fallback: "Unknown Song" });
-    let dataArtist = truncate(data?.artist, 128, { prefix: "Artist: ", fallback: "Unknown Artist" });
+    let dataTitle = data?.title || "";
+    let dataArtist = data?.artist || "";
+    let settings = data?.settings;
 
     if (dataTitle && dataArtist) {
+      dataArtist = extractArtistFromTitle(dataTitle, dataArtist);
       dataTitle = cleanTitle(dataTitle, dataArtist);
+    }
+
+    dataTitle = truncate(dataTitle, 128, { prefix: "Title: ", fallback: "Unknown Song" });
+    dataArtist = truncate(dataArtist, 128, { prefix: "Artist: ", fallback: "Unknown Artist" });
+
+    const defaultSettings = {
+      showFavIcon: false,
+      showCover: true,
+      showSource: true,
+      customCover: false,
+      customCoverUrl: null,
+      showButtons: true,
+      showTimeLeft: true,
+    };
+
+    const activitySettings = { ...defaultSettings, ...(settings || {}) };
+
+    if (activitySettings.showFavIcon) {
+      showSmallIcon = true;
+    } else {
+      showSmallIcon = false;
     }
 
     let favIcon = null;
@@ -197,20 +266,33 @@ app.post("/update-rpc", async (req, res) => {
       details: dataTitle,
       state: dataArtist,
       type: data?.watching ? 3 : 2,
-      largeImageKey: data.image || "",
-      largeImageText: truncate(data?.source, 32, { prefix: "Source: ", fallback: "Unknown Source" }),
-      smallImageKey: favIcon ? favIcon : data?.watching ? "watch" : "listen",
-      smallImageText: favIcon ? truncate(data?.source, 32, { prefix: "Source: ", fallback: "Unknown Source" }) : data?.watching ? "Watching" : "Listening",
-      ...(duration > 0 && {
-        startTimestamp: Math.floor(startTime / 1000),
-        endTimestamp: Math.floor(endTime / 1000),
-      }),
-      buttons: data.songUrl ? [{ label: truncate(`Open on ${data.source}`, 32), url: data.songUrl }] : undefined,
+      largeImageKey: activitySettings.customCover && activitySettings.customCoverUrl ? activitySettings.customCoverUrl : activitySettings.showCover ? data.image || "" : undefined,
+      largeImageText: activitySettings.showSource ? truncate(data?.source, 32, { prefix: "Source: ", fallback: "Unknown Source" }) : undefined,
+      smallImageKey: showSmallIcon ? favIcon || (data?.watching ? "watch" : "listen") : undefined,
+      smallImageText: showSmallIcon ? truncate(data?.source, 32, { prefix: "Source: ", fallback: "Unknown Source" }) : data?.watching ? "Watching" : "Listening",
       instance: false,
+      statusDisplayType: StatusDisplayType.STATE,
     };
 
+    if (activitySettings.showButtons && data.songUrl) {
+      activity.buttons = [
+        {
+          label: truncate(`Open on ${data.source}`, 32),
+          url: data.songUrl,
+        },
+      ];
+      activity.detailsUrl = data.songUrl;
+    }
+
+    if (duration > 0) {
+      activity.startTimestamp = Math.floor(startTime / 1000);
+      if (activitySettings.showTimeLeft) {
+        activity.endTimestamp = Math.floor(endTime / 1000);
+      }
+    }
+
     if (!isSameActivity(activity, currentActivity)) {
-      if (!isSameActivityIgnore(activity, currentActivity)) {
+      if (!isSameActivityIgnore(activity, currentActivity) && logSongUpdate) {
         console.log(`RPC Updated: ${activity.details} by ${activity.state} - ${getCurrentTime()}`);
       }
       await rpcClient.user?.setActivity(activity);
@@ -246,7 +328,7 @@ app.post("/clear-rpc", express.json(), async (req, res) => {
       await rpcClient.user?.clearActivity();
       currentActivity = null;
       if (lastActiveClient?.clientId === clientId) lastActiveClient = null;
-      console.log(`RPC Cleared`);
+      if (logSongUpdate) console.log(`RPC Cleared`);
     }
 
     res.json({ success: true });

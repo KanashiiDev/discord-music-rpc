@@ -20,7 +20,6 @@ fs.readdirSync(distDir)
     const src = path.join(distDir, file);
     const dest = path.join(releaseDir, file);
     fs.copyFileSync(src, dest);
-    console.log(`Copied EXE: ${file}`);
   });
 
 // Copy the .zip files
@@ -30,7 +29,6 @@ fs.readdirSync(extensionBuildsDir)
     const src = path.join(extensionBuildsDir, file);
     const dest = path.join(releaseDir, file);
     fs.copyFileSync(src, dest);
-    console.log(`Copied ZIP: ${file}`);
   });
 
-console.log(`✅ All release files copied to: ${path.relative(projectRoot, releaseDir)} folder.`);
+console.log(`All release files copied to: ${path.relative(projectRoot, releaseDir)} folder.`);

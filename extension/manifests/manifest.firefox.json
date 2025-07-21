@@ -39,7 +39,7 @@
   "browser_specific_settings": {
     "gecko": {
       "id": "discord-rpc@kanashiidev.local",
-      "strict_min_version": "56.0"
+      "strict_min_version": "106.0"
     }
   }
 }

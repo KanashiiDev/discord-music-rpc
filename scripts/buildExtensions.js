@@ -1,5 +1,6 @@
 const fs = require("fs-extra");
 const path = require("path");
+const acorn = require("acorn");
 const ROOT_DIR = path.join(__dirname, "..");
 const TARGET = process.env.TARGET || "chrome";
 const EXTENSION_DIR = path.join(ROOT_DIR, "extension");
@@ -93,9 +94,67 @@ if (fs.existsSync(configPath)) {
   });
 }
 
+// 6.6 Inline selected utils into specific files
+function extractFunctionsFromFile(sourceFilePath, functionNames) {
+  const code = fs.readFileSync(sourceFilePath, "utf8");
+
+  const ast = acorn.parse(code, {
+    ecmaVersion: "latest",
+    sourceType: "module",
+    locations: true,
+  });
+
+  const extracted = [];
+
+  for (const node of ast.body) {
+    if (node.type === "FunctionDeclaration" && functionNames.includes(node.id.name)) {
+      const fnCode = code.slice(node.start, node.end);
+      extracted.push(fnCode);
+    }
+
+    if (node.type === "VariableDeclaration" && node.declarations.length > 0) {
+      for (const decl of node.declarations) {
+        if (decl.id.type === "Identifier" && functionNames.includes(decl.id.name)) {
+          const fnCode = code.slice(node.start, node.end);
+          extracted.push(fnCode);
+        }
+      }
+    }
+  }
+
+  return extracted;
+}
+
+function inlineUtilsFunctions(targetFileName, sourceUtilsFile, functionsToInclude) {
+  const sourcePath = path.join(EXTENSION_DIR, sourceUtilsFile);
+  const targetPath = path.join(DIST_DIR, targetFileName);
+  const extractedFunctions = extractFunctionsFromFile(sourcePath, functionsToInclude);
+  let targetContent = fs.readFileSync(targetPath, "utf8");
+  const inlineTag = `// === BEGIN INLINE UTILS (${functionsToInclude.join(", ")}) ===`;
+  const inlinedCode = `${inlineTag}\n${extractedFunctions.join("\n\n")}\n// === END INLINE UTILS ===\n\n`;
+  targetContent = inlinedCode + targetContent;
+  fs.writeFileSync(targetPath, targetContent, "utf8");
+}
+
+inlineUtilsFunctions("main.js", "common/utils.js", ["delay", "logInfo", "logWarn", "logError", "applyOverrides", "applyOverridesLoop"]);
+inlineUtilsFunctions("background.js", "common/utils.js", ["logInfo", "logWarn", "logError", "delay", "parseUrlPattern", "normalizeHost", "normalize", "getCurrentTime"]);
+inlineUtilsFunctions("background.js", "common/history.js", ["HISTORY_KEY", "MAX_HISTORY", "loadHistory", "addToHistory", "saveHistory", "cleanTitle", "truncate"]);
+inlineUtilsFunctions("mainParser.js", "common/utils.js", [
+  "extractTimeParts",
+  "parseTime",
+  "formatTime",
+  "getTimestamps",
+  "processPlaybackInfo",
+  "getText",
+  "getImage",
+  "hashFromPatternStrings",
+  "getText",
+  "parseUrlPattern",
+]);
+
 // 7. Write the manifest in the dist folder
 fs.writeJsonSync(path.join(DIST_DIR, "manifest.json"), manifest, {
-  spaces: 2, // Format for readability
+  spaces: 2,
 });
 
 console.log(`✅ ${TARGET} build completed: ${DIST_DIR}`);

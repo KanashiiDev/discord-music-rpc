@@ -31,7 +31,5 @@ module.exports = async function (context) {
         tryRemove(path.join("locales", file));
       }
     });
-  } else {
-    console.log("The Locales folder was not found, skipping.");
   }
 };

@@ -1,5 +1,5 @@
 async function getIconAsDataUrl() {
-  const iconUrl = chrome.runtime.getURL("icons/128x128.png");
+  const iconUrl = browser.runtime.getURL("icons/128x128.png");
   const response = await fetch(iconUrl);
   const blob = await response.blob();
 
@@ -372,60 +372,168 @@ async function injectSelectorUI() {
     return capitalized.replace(/([A-Z])/g, " $1").trim();
   }
 
+  const placeholderMap = {
+    name: "text (" + hostname + ")",
+    regex: "regex.* or [/regex.*/]",
+    source: "text or selector (#class, .class)",
+    link: "url or selector (#class, .class)",
+    image: "url or selector (#class, .class)",
+    default: "selector (#class, .class)",
+  };
+
+  const fields = ["name", "title", "artist", "timePassed", "duration", "image", "link", "source", "regex"];
+
   const root = document.createElement("div");
   root.id = "userRpc-selectorRoot";
-  root.innerHTML = `
-    <h3 class="userRpc-h3">Discord Music RPC - User Add</h3>
-    <div class="userRpc-listItems">
-      ${["name", "title", "artist", "timePassed", "duration", "image", "link", "source", "regex"]
-        .map(
-          (f) => `
-      <label>${formatLabel(f)}</label>
-      <input type="text" id="${f}Selector" class="userRpc-select" placeholder="${((p) => p[f] || p.default)({
-            name: "text (" + hostname + ")",
-            regex: "regex.* or [/regex.*/]",
-            source: "text or selector (#class, .class)",
-            link: "url or selector (#class, .class)",
-            image: "url or selector (#class, .class)",
-            default: "selector (#class, .class)",
-          })}"/>
-      <a data-field="${f}" class="userRpc-selectBtn ${f === "name" ? "hidden" : f === "regex" ? "hidden" : ""}" title="Select with mouse click">+</a><br>`
-        )
-        .join("")}
-    </div>
-    <div class="userRpc-listItemOptions">
-      <a class="userRpc-optionButtons" id="saveSelectors">Save</a>
-      <a class="userRpc-optionButtons" id="closeSelectorUI">Exit</a>
-    </div>
-    <div id="selectorStatus" style="margin-top: 10px; color: green"></div>
-    <div class="rpc-preview">
-      <h3>Preview</h3>
-      <div class="card">
-        <div class="header">Listening to</div>
-        <div class="body">
-          <div class="imageContainer">
-            <img src="${chrome.runtime.getURL("icons/128x128.png")}" alt="Image" />
-          </div>
-          <div class="details">
-            <h2 class="title">Title</h2>
-            <div class="artist">Artist</div>
-            <div class="source">Source</div>
-            <div class="progress-container">
-              <span class="timePassed">00:00</span>
-              <div class="progress-bar">
-                <div class="progress"></div>
-              </div>
-              <span class="duration">00:00</span>
-            </div>
-            <div class="link-container">
-              <a class="link">Open on Source</a>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-  `;
+
+  // Title
+  const heading = document.createElement("h3");
+  heading.className = "userRpc-h3";
+  heading.textContent = "Discord Music RPC - User Add";
+  root.appendChild(heading);
+
+  // The fields
+  const listItems = document.createElement("div");
+  listItems.className = "userRpc-listItems";
+
+  fields.forEach((f) => {
+    const label = document.createElement("label");
+    label.textContent = formatLabel(f);
+
+    const input = document.createElement("input");
+    input.type = "text";
+    input.id = `${f}Selector`;
+    input.className = "userRpc-select";
+    input.placeholder = placeholderMap[f] || placeholderMap.default;
+
+    const button = document.createElement("a");
+    button.setAttribute("data-field", f);
+    button.className = `userRpc-selectBtn ${f === "name" || f === "regex" ? "hidden" : ""}`;
+    button.title = "Select with mouse click";
+    button.textContent = "+";
+
+    listItems.appendChild(label);
+    listItems.appendChild(input);
+    listItems.appendChild(button);
+    listItems.appendChild(document.createElement("br"));
+  });
+
+  root.appendChild(listItems);
+
+  // Save / Exit buttons
+  const optionsDiv = document.createElement("div");
+  optionsDiv.className = "userRpc-listItemOptions";
+
+  const saveBtn = document.createElement("a");
+  saveBtn.className = "userRpc-optionButtons";
+  saveBtn.id = "saveSelectors";
+  saveBtn.textContent = "Save";
+
+  const exitBtn = document.createElement("a");
+  exitBtn.className = "userRpc-optionButtons";
+  exitBtn.id = "closeSelectorUI";
+  exitBtn.textContent = "Exit";
+
+  optionsDiv.appendChild(saveBtn);
+  optionsDiv.appendChild(exitBtn);
+  root.appendChild(optionsDiv);
+
+  // Status message
+  const statusDiv = document.createElement("div");
+  statusDiv.id = "selectorStatus";
+  statusDiv.style.marginTop = "10px";
+  statusDiv.style.color = "green";
+  root.appendChild(statusDiv);
+
+  // Preview section
+  const preview = document.createElement("div");
+  preview.className = "rpc-preview";
+
+  const previewHeader = document.createElement("h3");
+  previewHeader.textContent = "Preview";
+
+  const card = document.createElement("div");
+  card.className = "card";
+
+  const header = document.createElement("div");
+  header.className = "header";
+  header.textContent = "Listening to";
+
+  const body = document.createElement("div");
+  body.className = "body";
+
+  const imageContainer = document.createElement("div");
+  imageContainer.className = "imageContainer";
+
+  const img = document.createElement("img");
+  img.src = browser.runtime.getURL("icons/128x128.png");
+  img.alt = "Image";
+
+  imageContainer.appendChild(img);
+
+  const details = document.createElement("div");
+  details.className = "details";
+
+  const titleEl = document.createElement("h2");
+  titleEl.className = "title";
+  titleEl.textContent = "Title";
+
+  const artist = document.createElement("div");
+  artist.className = "artist";
+  artist.textContent = "Artist";
+
+  const source = document.createElement("div");
+  source.className = "source";
+  source.textContent = "Source";
+
+  const progressContainer = document.createElement("div");
+  progressContainer.className = "progress-container";
+
+  const timePassed = document.createElement("span");
+  timePassed.className = "timePassed";
+  timePassed.textContent = "00:00";
+
+  const progressBar = document.createElement("div");
+  progressBar.className = "progress-bar";
+
+  const progress = document.createElement("div");
+  progress.className = "progress";
+
+  progressBar.appendChild(progress);
+
+  const duration = document.createElement("span");
+  duration.className = "duration";
+  duration.textContent = "00:00";
+
+  progressContainer.appendChild(timePassed);
+  progressContainer.appendChild(progressBar);
+  progressContainer.appendChild(duration);
+
+  const linkContainer = document.createElement("div");
+  linkContainer.className = "link-container";
+
+  const link = document.createElement("a");
+  link.className = "link";
+  link.textContent = "Open on Source";
+
+  linkContainer.appendChild(link);
+
+  details.appendChild(titleEl);
+  details.appendChild(artist);
+  details.appendChild(source);
+  details.appendChild(progressContainer);
+  details.appendChild(linkContainer);
+
+  body.appendChild(imageContainer);
+  body.appendChild(details);
+
+  card.appendChild(header);
+  card.appendChild(body);
+
+  preview.appendChild(previewHeader);
+  preview.appendChild(card);
+
+  root.appendChild(preview);
 
   shadow.appendChild(style);
   shadow.appendChild(root);
@@ -464,7 +572,7 @@ async function injectSelectorUI() {
   const matchedParser = userParsers.find((parser) => parser.patterns?.some((regex) => regex.test(pathname)));
 
   if (matchedParser) {
-    const settings = await browser.storage.sync.get("userParserSelectors");
+    const settings = await browser.storage.local.get("userParserSelectors");
     const parserArray = Array.isArray(settings.userParserSelectors) ? settings.userParserSelectors : [];
 
     const current = parserArray.find((p) => p.id === matchedParser.id);
@@ -524,7 +632,7 @@ async function injectSelectorUI() {
       selectors,
     };
 
-    const settings = await browser.storage.sync.get("userParserSelectors");
+    const settings = await browser.storage.local.get("userParserSelectors");
     let parserArray = Array.isArray(settings.userParserSelectors) ? settings.userParserSelectors : [];
 
     const existingIndex = parserArray.findIndex((p) => p.id === id);
@@ -534,7 +642,7 @@ async function injectSelectorUI() {
       parserArray.push(newEntry);
     }
 
-    await browser.storage.sync.set({ userParserSelectors: parserArray });
+    await browser.storage.local.set({ userParserSelectors: parserArray });
 
     shadowDoc.getElementById("selectorStatus").textContent = "Saved! Please refresh the page.";
   });
@@ -585,14 +693,61 @@ async function injectSelectorUI() {
     };
 
     const cleanStr = (str) => {
-      const pattern = /[\[(]\s*(free\s+(download|song|now)|download\s+(free|now))\s*[\])]/gi;
-      return str?.replace(pattern, "").trim();
+      if (!str) str = "";
+
+      const keywordGroup = [
+        "free\\s+(download|dl|song|now)",
+        "download\\s+(free|now)",
+        "official(\\s+(video|music\\s+video|audio|lyric\\s+video|visualizer))?",
+        "lyric\\s+video|lyrics?|music\\s+video|out\\s+now",
+        "hd|hq|4k|1080p|720p|mp3|mp4|320kbps|flac",
+        "extended\\s+remix|radio\\s+edit|club\\s+mix|party\\s+mix|mixed\\s+by\\s+dj|live(\\s+performance)?",
+        "cover|karaoke|instrumental|backing\\s+track|vocals\\s+only",
+        "teaser|trailer|promo|bootleg|mashup",
+        "now\\s+available|full\\s+song|full\\s+version|complete\\s+version|original\\s+version|radio\\s+version",
+        "explicit|clean\\s+version|copyright\\s+free|royalty\\s+free|no\\s+copyright|creative\\s+commons|cc",
+        "official\\s+trailer|official\\s+teaser|[\\w\\s'’\\-]+\\s+premiere",
+      ].join("|");
+
+      const cleanRegex = new RegExp(`([\\[\\(]\\s*(${keywordGroup})\\s*[\\]\\)])|(\\s*-\\s*(${keywordGroup})\\s*$)`, "gi");
+      return str.replace(cleanRegex, "").replace(/\s+/g, " ").trim();
     };
 
-    function cleanTitle(song, artist) {
-      const escapedArtist = artist.replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&");
-      const regex = new RegExp(`^\\s*${escapedArtist}\\s*[-–:|]?\\s*`, "i");
-      return song.replace(regex, "").trim();
+    function cleanTitle(title, artist) {
+      const trimmedTitle = title.trim();
+      const trimmedArtist = artist.trim();
+
+      if (trimmedTitle.toLowerCase() === trimmedArtist.toLowerCase()) {
+        return trimmedTitle;
+      }
+
+      const artistListRaw = trimmedArtist
+        .split(/,|&|feat\.?|featuring/gi)
+        .map((a) => a.trim())
+        .filter((a) => a.length >= 3);
+
+      if (artistListRaw.length === 0) return trimmedTitle;
+
+      const artistList = artistListRaw.map((a) => a.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+      const pattern = new RegExp(`^(${artistList.join("|")})(\\s*[&+,xX]\\s*(${artistList.join("|")}))*\\s*[-–:|.]?\\s*`, "i");
+      const cleaned = trimmedTitle.replace(pattern, "").trim();
+
+      return cleaned.length > 0 ? cleaned : trimmedTitle;
+    }
+
+    function extractArtistFromTitle(title, originalArtist) {
+      const pattern = /^(.+?)\s*-\s*/;
+      const match = title.match(pattern);
+      if (match) {
+        const extracted = match[1].trim();
+        const origLower = originalArtist.toLowerCase();
+        const extractedLower = extracted.toLowerCase();
+
+        if (extractedLower !== origLower && (extractedLower.includes(origLower) || origLower.includes(extractedLower)) && extracted.length > originalArtist.length) {
+          return extracted;
+        }
+      }
+      return originalArtist;
     }
 
     // Get selectors
@@ -632,14 +787,15 @@ async function injectSelectorUI() {
     // Trim texts
     texts = Object.fromEntries(Object.entries(texts).map(([key, value]) => [key, typeof value === "string" ? value.trim() : value]));
 
-    // Clean Title
-    if (texts.title) {
-      cleanStr(texts.title);
-    }
-
     // If artist name contains title, clean it
     if (texts.title && texts.artist) {
+      texts.artist = extractArtistFromTitle(texts.title, texts.artist);
       texts.title = cleanTitle(texts.title, texts.artist);
+    }
+
+    // Clean Title
+    if (texts.title) {
+      texts.title = cleanStr(texts.title);
     }
 
     // If "5:47 / 6:57" style string is found, split into both
@@ -669,7 +825,7 @@ async function injectSelectorUI() {
 
     const setImage = () => {
       const img = previewRoot.querySelector(".imageContainer img");
-      const imageSrc = getImageSrc(elements.image) || chrome.runtime.getURL("icons/128x128.png");
+      const imageSrc = getImageSrc(elements.image) || browser.runtime.getURL("icons/128x128.png");
       const prevImg = img.getAttribute("data-prev-image");
 
       if (imageSrc !== prevImg) {
@@ -690,6 +846,18 @@ async function injectSelectorUI() {
     const regexSelector = shadowDoc.getElementById("regexSelector");
     const regexMark = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M5 13L9 17L19 7" stroke="green" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
     const regexCross = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 6L18 18M6 18L18 6" stroke="red" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+    function setSvgStatusEl(container, svgString) {
+      container.textContent = "";
+
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(svgString, "image/svg+xml");
+
+      const svg = doc.documentElement;
+      if (svg && svg.tagName.toLowerCase() === "svg") {
+        container.appendChild(svg);
+      }
+    }
+
     // If the next element is a remove <a>
     if (regexSelector.nextElementSibling && regexSelector.nextElementSibling.tagName === "A") {
       regexSelector.nextElementSibling.remove();
@@ -723,7 +891,7 @@ async function injectSelectorUI() {
         // If same, don't update
         if (matchStr !== prevMatch) {
           regexStatus.setAttribute("data-prev-match", matchStr);
-          regexStatus.innerHTML = isMatch ? regexMark : regexCross;
+          setSvgStatusEl(regexStatus, isMatch ? regexMark : regexCross);
         }
       } else {
         regexStatus.textContent = "";
@@ -1125,26 +1293,38 @@ function startSelectorMode(field, shadowDoc) {
     const root = shadowDoc.getElementById("userRpc-selectorRoot");
     const container = document.createElement("div");
     container.id = "userRpc-selectorChooser-container";
-    container.innerHTML = `<div style="margin-bottom: 6px;">Choose the most stable selector:</div>`;
+
+    const title = document.createElement("div");
+    title.style.marginBottom = "6px";
+    title.textContent = "Choose the most stable selector:";
+    container.appendChild(title);
 
     const containerList = document.createElement("div");
     containerList.id = "userRpc-selectorChooser-container-list";
 
-    // Sort the options and show
     scoredOptions.forEach(({ sel, score }) => {
       const btn = document.createElement("button");
       btn.id = "userRpc-selectorChooser-button";
       btn.className = "userRpc-optionButtons";
 
-      // Color Coding
-      const color = score >= 80 ? "#4CAF50" : score >= 50 ? "#FFC107" : "#F44336";
+      const wrapper = document.createElement("div");
+      wrapper.style.display = "flex";
+      wrapper.style.justifyContent = "space-between";
+      wrapper.style.alignItems = "center";
 
-      btn.innerHTML = `
-      <div style="display: flex; justify-content: space-between; align-items: center;">
-        <span style="word-break: break-all;">${sel}</span>
-        <span style="margin-left: 8px; font-size: 12px; color: ${color};">(${score})</span>
-      </div>
-    `;
+      const selSpan = document.createElement("span");
+      selSpan.style.wordBreak = "break-all";
+      selSpan.textContent = sel;
+
+      const scoreSpan = document.createElement("span");
+      scoreSpan.style.marginLeft = "8px";
+      scoreSpan.style.fontSize = "12px";
+      scoreSpan.style.color = score >= 80 ? "#4CAF50" : score >= 50 ? "#FFC107" : "#F44336";
+      scoreSpan.textContent = `(${score})`;
+
+      wrapper.appendChild(selSpan);
+      wrapper.appendChild(scoreSpan);
+      btn.appendChild(wrapper);
 
       btn.onclick = () => {
         const input = shadowDoc.getElementById(`${field}Selector`);
