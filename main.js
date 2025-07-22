@@ -1,9 +1,9 @@
 const { app, Tray, Menu, nativeImage, dialog, shell } = require("electron");
+const { autoUpdater } = require("electron-updater");
 const path = require("path");
 const { fork } = require("child_process");
 const log = require("./logger");
 const fs = require("fs");
-const { checkAndUpdate, startAutoUpdate } = require("./updater");
 
 const config = {
   server: {
@@ -30,12 +30,14 @@ app.commandLine.appendSwitch("lang", "en-US");
 app.whenReady().then(() => {
   try {
     initializeApp();
-
-    // Schedule periodic update checks
-    startAutoUpdate();
-
-    // Initial update check
-    checkAndUpdate();
+    autoUpdater.autoDownload = true;
+    autoUpdater.autoInstallOnAppQuit = true;
+    autoUpdater.on("update-downloaded", () => {
+      autoUpdater.quitAndInstall(true, true);
+    });
+    autoUpdater.checkForUpdates().catch((err) => {
+      log.error("Update check failed:", err);
+    });
   } catch (err) {
     handleCriticalError("App initialization failed", err);
   }
@@ -241,41 +243,40 @@ function updateTrayMenu() {
     },
     {
       label: "Check for Updates",
-      click: () => {
-        log.info("Manual update check triggered by user");
-        checkAndUpdate()
-          .then((result) => {
-            if (result?.updateInfo?.version && result.updateInfo.version !== app.getVersion()) {
-              dialog.showMessageBox({
-                type: "info",
-                buttons: ["OK"],
-                title: "Discord Music RPC - Update Available",
-                message: `A new version (${result.updateInfo.version}) is available.`,
-                detail: "The update will download and install in the background.",
-                icon: path.join(__dirname, "assets", "icon", "icon.ico"),
-              });
-            } else {
-              dialog.showMessageBox({
-                type: "info",
-                buttons: ["OK"],
-                title: "Discord Music RPC - Up to Date",
-                message: "You're using the latest version.",
-                detail: `Version: ${app.getVersion()}`,
-                icon: path.join(__dirname, "assets", "icon", "icon.ico"),
-              });
-            }
-          })
-          .catch((err) => {
-            log.error("Manual update check failed:", err);
+      click: async () => {
+        try {
+          log.info("Manual update check triggered by user");
+          const result = await autoUpdater.checkForUpdates();
+          if (result?.updateInfo?.version && result.updateInfo.version !== app.getVersion()) {
             dialog.showMessageBox({
-              type: "error",
+              type: "info",
               buttons: ["OK"],
-              title: "Discord Music RPC - Update Check Failed",
-              message: "Could not check for updates.",
-              detail: err.message,
+              title: "Discord Music RPC - Update Available",
+              message: `A new version (${result.updateInfo.version}) is available.`,
+              detail: "The update will download and install in the background.",
               icon: path.join(__dirname, "assets", "icon", "icon.ico"),
             });
+          } else {
+            dialog.showMessageBox({
+              type: "info",
+              buttons: ["OK"],
+              title: "Discord Music RPC - Up to Date",
+              message: "You're using the latest version.",
+              detail: `Version: ${app.getVersion()}`,
+              icon: path.join(__dirname, "assets", "icon", "icon.ico"),
+            });
+          }
+        } catch (err) {
+          log.error("Manual update check failed:", err);
+          dialog.showMessageBox({
+            type: "error",
+            buttons: ["OK"],
+            title: "Discord Music RPC - Update Check Failed",
+            message: "Could not check for updates.",
+            detail: err.message,
+            icon: path.join(__dirname, "assets", "icon", "icon.ico"),
           });
+        }
       },
     },
     {

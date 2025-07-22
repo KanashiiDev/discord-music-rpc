@@ -13,9 +13,9 @@ if (fs.existsSync(releaseDir)) {
 }
 fs.mkdirSync(releaseDir);
 
-// Copy the .exe files
+// Copy the .exe file and latest.yml
 fs.readdirSync(distDir)
-  .filter((file) => file.endsWith(".exe"))
+  .filter((file) => file.endsWith(".exe") || file === "latest.yml")
   .forEach((file) => {
     const src = path.join(distDir, file);
     const dest = path.join(releaseDir, file);
