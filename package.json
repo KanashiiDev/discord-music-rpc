@@ -1,6 +1,6 @@
 {
   "name": "discord-music-rpc",
-  "version": "0.0.5",
+  "version": "0.1.0",
   "description": "Discord Music RPC Application",
   "main": "main.js",
   "keywords": [
@@ -46,7 +46,7 @@
   "devDependencies": {
     "archiver": "^7.0.1",
     "cross-env": "^7.0.3",
-    "electron": "^37.2.3",
+    "electron": "^37.2.4",
     "electron-builder": "^26.0.18",
     "fs-extra": "^11.3.0"
   },
