@@ -7,6 +7,10 @@ body {
   color: #e0e0e0;
 }
 
+body.setup-dialog-open {
+  min-height: 360px;
+}
+
 .header-container {
   display: flex;
   align-items: center;
@@ -275,4 +279,63 @@ body.cleaning-mode .history-checkbox {
 .history-info strong {
   display: block;
   font-size: 13px;
+}
+
+.setup-dialog {
+  position: absolute;
+  top: 0;
+  left: 0;
+  background-color: #2c2c2c;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5);
+  z-index: 1000;
+  margin: 15px;
+  margin-top: 60px;
+}
+
+.setup-dialog-content {
+  text-align: center;
+}
+
+.setup-dialog h2 {
+  margin-top: 0;
+  color: #e0e0e0;
+}
+.setup-dialog p {
+  color: #ccc;
+}
+.setup-dialog button {
+  background-color: #00545e;
+  color: #fff;
+  border: none;
+  padding: 10px 15px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+.setup-dialog button:hover {
+  background-color: #004a54;
+}
+
+.setup-dialog .setup-link {
+  display: inline-block;
+  color: #81b7e2;
+  text-decoration: none;
+  font-weight: bold;
+  width: 100%;
+  margin-top: 10px;
+}
+
+.setup-dialog .setup-link:hover {
+  color: #6fa0b8;
+}
+.setup-dialog .setup-note {
+  font-size: 10px;
+  color: #aaa;
+  margin-bottom: 30px;
+}
+
+.setup-dialog .setup-note-link {
+margin-bottom: 10px;
 }

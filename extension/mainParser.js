@@ -100,7 +100,7 @@ function scheduleParserListSave() {
   parserListSaveTimeout = setTimeout(async () => {
     try {
       const validList = (window.parserMeta || []).filter((p) => p.domain && p.title && p.urlPatterns);
-      if (validList.length > 0 && browser?.storage?.sync) {
+      if (validList.length > 0 && browser?.storage?.local) {
         await browser.storage.local.set({ parserList: validList });
       }
     } catch (error) {

@@ -15,7 +15,6 @@ const logError = (...a) => {
     .toLowerCase();
 
   const ignorePatterns = [/extension context invalidated/, /could not establish connection/];
-
   const isIgnorable = ignorePatterns.some((re) => re.test(errorString));
 
   if (!isIgnorable) {
@@ -33,6 +32,7 @@ const dateYesterday = new Date();
 dateYesterday.setDate(dateToday.getDate() - 1);
 const isSameDay = (d1, d2) => d1.getFullYear() === d2.getFullYear() && d1.getMonth() === d2.getMonth() && d1.getDate() === d2.getDate();
 
+// Date formatting
 const dateHourMinute = (time) =>
   time.toLocaleTimeString("en-EN", {
     hour: "2-digit",
@@ -57,6 +57,7 @@ const normalizeHost = (url) => {
   }
 };
 
+// Normalize URL string
 function normalize(str) {
   return str.replace(/^https?:\/\/|^www\./g, "").toLowerCase();
 }
@@ -408,4 +409,144 @@ function hashFromPatternStrings(patterns) {
   return btoa(patterns.join("|"))
     .replace(/[^a-zA-Z0-9]/g, "")
     .slice(0, 10);
+}
+
+// Show initial setup dialog
+function showInitialSetupDialog() {
+  const dialog = document.createElement("div");
+  dialog.className = "setup-dialog";
+
+  const content = document.createElement("div");
+  content.className = "setup-dialog-content";
+
+  const contentHeader = document.createElement("h2");
+  contentHeader.textContent = "Installation Required";
+  content.appendChild(contentHeader);
+
+  const contentText = document.createElement("p");
+  contentText.textContent = "This extension requires a companion windows application to function properly. Please install the required application to continue.";
+  content.appendChild(contentText);
+
+  const contentLink = document.createElement("a");
+  contentLink.href = "https://github.com/KanashiiDev/discord-music-rpc/releases/latest/download/Discord.Music.RPC.Setup.zip";
+  contentLink.textContent = "Download Application";
+  contentLink.target = "_blank";
+  contentLink.rel = "noopener noreferrer";
+  contentLink.classList.add("setup-link");
+  content.appendChild(contentLink);
+
+  const contentNote = document.createElement("p");
+  contentNote.textContent = "The installer is provided via the latest GitHub release.";
+  contentNote.classList.add("setup-note");
+  content.appendChild(contentNote);
+
+  const contentNote2 = document.createElement("p");
+  const noteText = document.createTextNode("Link not working?");
+  const noteLink = document.createElement("a");
+  noteLink.href = "https://github.com/KanashiiDev/discord-music-rpc/releases/latest";
+  noteLink.target = "_blank";
+  noteLink.rel = "noopener noreferrer";
+  noteLink.textContent = "GitHub Releases";
+  noteLink.classList.add("setup-link");
+  noteLink.classList.add("setup-note-link");
+
+  contentNote2.appendChild(noteText);
+  contentNote2.appendChild(noteLink);
+  content.appendChild(contentNote2);
+
+  const confirmButton = document.createElement("button");
+  confirmButton.id = "confirmSetup";
+  confirmButton.textContent = "I have installed the application";
+  content.appendChild(confirmButton);
+
+  dialog.appendChild(content);
+  document.body.appendChild(dialog);
+  document.body.classList.add("setup-dialog-open");
+
+  let confirmed = false;
+  document.getElementById("confirmSetup").addEventListener("click", async () => {
+    if (confirmed) return;
+    confirmed = true;
+    await browser.storage.local.set({ initialSetupDone: true });
+    document.body.removeChild(dialog);
+    document.body.classList.remove("setup-dialog-open");
+    location.reload();
+  });
+}
+
+// Truncate string with options
+/**
+ * Truncates a string to a specified length, removing common keywords and adding an ellipsis if necessary.
+ * @param {string} str - The string to truncate.
+ *  @param {number} [maxLength=128] - The maximum length of the string.
+ * @param {object} [options] - Options for truncation.
+ * @param {string} [options.prefix=""] - A prefix to add to the truncated string.
+ * @param {string} [options.fallback="Unknown"] - A fallback string if the result is empty.
+ * @param {number} [options.minLength=2] - The minimum length of the string before applying the fallback.
+ * @return {string} The truncated string.
+ */
+function truncate(str, maxLength = 128, { prefix = "", fallback = "Unknown", minLength = 2 } = {}) {
+  if (!str) str = "";
+
+  const keywordGroup = [
+    "free\\s+(download|dl|song|now)",
+    "download\\s+(free|now)",
+    "official(\\s+(video|music\\s+video|audio|lyric\\s+video|visualizer))?",
+    "lyric\\s+video|lyrics?|music\\s+video|out\\s+now",
+    "hd|hq|4k|1080p|720p|mp3|mp4|320kbps|flac",
+    "extended\\s+remix|radio\\s+edit|club\\s+mix|party\\s+mix|mixed\\s+by\\s+dj|live(\\s+performance)?",
+    "cover|karaoke|instrumental|backing\\s+track|vocals\\s+only",
+    "teaser|trailer|promo|bootleg|mashup",
+    "now\\s+available|full\\s+song|full\\s+version|complete\\s+version|original\\s+version|radio\\s+version",
+    "explicit|clean\\s+version|copyright\\s+free|royalty\\s+free|no\\s+copyright|creative\\s+commons|cc",
+    "official\\s+trailer|official\\s+teaser|[\\w\\s'’\\-]+\\s+premiere",
+  ].join("|");
+
+  const cleanRegex = new RegExp(`([\\[\\(]\\s*(${keywordGroup})\\s*[\\]\\)])|(\\s*-\\s*(${keywordGroup})\\s*$)`, "gi");
+  str = str.replace(cleanRegex, "").replace(/\s+/g, " ").trim();
+
+  let result = str.length > maxLength ? str.slice(0, maxLength - 3) + "..." : str;
+  if (result.length < minLength) result = prefix + fallback;
+  return result;
+}
+
+// Clean title function
+// This function normalizes the title based on the artist and removes common keywords.
+function cleanTitle(title, artist) {
+  const trimmedTitle = title.trim();
+  const trimmedArtist = artist.trim();
+
+  if (trimmedTitle.toLowerCase() === trimmedArtist.toLowerCase()) {
+    return trimmedTitle;
+  }
+
+  const artistListRaw = trimmedArtist
+    .split(/,|&|feat\.?|featuring/gi)
+    .map((a) => a.trim())
+    .filter((a) => a.length >= 3);
+
+  if (artistListRaw.length === 0) return trimmedTitle;
+
+  const artistList = artistListRaw.map((a) => a.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+  const pattern = new RegExp(`^(${artistList.join("|")})(\\s*[&+,xX]\\s*(${artistList.join("|")}))*\\s*[-–:|.]?\\s*`, "i");
+  const cleaned = trimmedTitle.replace(pattern, "").trim();
+
+  return cleaned.length > 0 ? cleaned : trimmedTitle;
+}
+
+// Extract artist from title
+// This function extracts the artist from the title if it matches the original artist.
+function extractArtistFromTitle(title, originalArtist) {
+  const pattern = /^(.+?)\s*-\s*/;
+  const match = title.match(pattern);
+  if (match) {
+    const extracted = match[1].trim();
+    const origLower = originalArtist.toLowerCase();
+    const extractedLower = extracted.toLowerCase();
+
+    if (extractedLower !== origLower && (extractedLower.includes(origLower) || origLower.includes(extractedLower)) && extracted.length > originalArtist.length) {
+      return extracted;
+    }
+  }
+  return originalArtist;
 }

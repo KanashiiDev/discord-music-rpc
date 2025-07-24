@@ -1,5 +1,11 @@
 document.addEventListener("DOMContentLoaded", async () => {
   try {
+    const setup = await browser.storage.local.get("initialSetupDone");
+
+    if (!setup.initialSetupDone) {
+      showInitialSetupDialog();
+      return;
+    }
     const container = document.getElementById("siteList");
     const searchBox = document.getElementById("searchBox");
     const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
@@ -177,7 +183,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         window.close();
       } catch (e) {
         const button = document.getElementById("openSelector");
-        button.textContent = "You can't add this page.";
+        button.textContent = "This page is not supported or not loaded yet.";
         setTimeout(() => {
           button.textContent = "Add Music Parser";
         }, 3000);

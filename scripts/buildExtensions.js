@@ -136,9 +136,10 @@ function inlineUtilsFunctions(targetFileName, sourceUtilsFile, functionsToInclud
   fs.writeFileSync(targetPath, targetContent, "utf8");
 }
 
+inlineUtilsFunctions("common/history.js", "common/utils.js", ["truncate", "cleanTitle", "extractArtistFromTitle"]);
 inlineUtilsFunctions("main.js", "common/utils.js", ["delay", "logInfo", "logWarn", "logError", "applyOverrides", "applyOverridesLoop"]);
-inlineUtilsFunctions("background.js", "common/utils.js", ["logInfo", "logWarn", "logError", "delay", "parseUrlPattern", "normalizeHost", "normalize", "getCurrentTime"]);
-inlineUtilsFunctions("background.js", "common/history.js", ["HISTORY_KEY", "MAX_HISTORY", "loadHistory", "addToHistory", "saveHistory", "cleanTitle", "truncate"]);
+inlineUtilsFunctions("background.js", "common/utils.js", ["logInfo", "logWarn", "logError", "delay", "parseUrlPattern", "normalizeHost", "normalize", "getCurrentTime", "cleanTitle", "truncate", "extractArtistFromTitle"]);
+inlineUtilsFunctions("background.js", "common/history.js", ["HISTORY_KEY", "MAX_HISTORY", "loadHistory", "addToHistory", "saveHistory"]);
 inlineUtilsFunctions("mainParser.js", "common/utils.js", [
   "extractTimeParts",
   "parseTime",

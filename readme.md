@@ -54,7 +54,6 @@ What sets it apart is its **customizable selector system** — no coding require
 
 2. **Install the Application** <br>
    [Download the latest release](https://github.com/KanashiiDev/discord-music-rpc/releases) for Windows. Run the app — it will appear in your system tray.
-   Then make sure you have installed the application and that the server is running (tray menu - right click).
 
 3. **Play Music** <br>
    Go to a supported music site (like YouTube Music, Deezer, Soundcloud, etc.) and start playing music.
