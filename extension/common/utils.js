@@ -25,6 +25,15 @@ const logError = (...a) => {
 // Delay
 const delay = (ms) => new Promise((res) => setTimeout(res, ms));
 
+// Debounce
+function debounce(func, wait = 200) {
+  let timeout;
+  return function (...args) {
+    clearTimeout(timeout);
+    timeout = setTimeout(() => func.apply(this, args), wait);
+  };
+}
+
 // Time
 const getCurrentTime = () => new Date().toLocaleTimeString("en-GB", { hour12: false });
 const dateToday = new Date();
@@ -33,15 +42,17 @@ dateYesterday.setDate(dateToday.getDate() - 1);
 const isSameDay = (d1, d2) => d1.getFullYear() === d2.getFullYear() && d1.getMonth() === d2.getMonth() && d1.getDate() === d2.getDate();
 
 // Date formatting
+const userLocale = navigator.languages?.[0] || navigator.language || "en-US";
+
 const dateHourMinute = (time) =>
-  time.toLocaleTimeString("en-EN", {
+  time.toLocaleTimeString(userLocale, {
     hour: "2-digit",
     minute: "2-digit",
-    hour12: false,
+    hour12: undefined,
   });
 
 const dateFull = (time) =>
-  time.toLocaleDateString("en-EN", {
+  time.toLocaleDateString(userLocale, {
     weekday: "long",
     day: "2-digit",
     month: "long",
@@ -128,6 +139,7 @@ function applyOverrides() {
   } catch (e) {
     logInfo("Event blocking override error:", e);
   }
+  logInfo("RPC Keep Alive Overrides Applied");
 }
 
 // Keep Alive Tab - Overrides Loop
@@ -210,6 +222,8 @@ function applyOverridesLoop() {
 
   const keyboardEvent = new KeyboardEvent("keydown", { bubbles: true, key: "Shift" });
   document.dispatchEvent(keyboardEvent);
+
+  logInfo("RPC Keep Alive Overrides Loop Applied");
 }
 
 // Create SVG

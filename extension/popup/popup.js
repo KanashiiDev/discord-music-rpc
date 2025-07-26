@@ -168,18 +168,23 @@ document.addEventListener("DOMContentLoaded", async () => {
     await renderList();
 
     // SearchBox
-    searchBox.addEventListener("input", async () => {
+    const debouncedSearch = debounce(async () => {
       const query = searchBox.value.toLowerCase();
       const list = await getFreshParserList();
       const filtered = list.filter(({ domain, title }) => domain.toLowerCase().includes(query) || (title && title.toLowerCase().includes(query)));
       await renderList(filtered);
-    });
+    }, 200);
+
+    searchBox.addEventListener("input", debouncedSearch);
 
     // Open Element Selector
-    document.getElementById("openSelector").addEventListener("click", async () => {
+    document.getElementById("openSelector").addEventListener("click", async function () {
       try {
+        let t = this.textContent;
+        let isEdit = t.includes("Edit");
+
         const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
-        await browser.tabs.sendMessage(tab.id, { action: "startSelectorUI" });
+        await browser.tabs.sendMessage(tab.id, { action: "startSelectorUI", editMode: isEdit });
         window.close();
       } catch (e) {
         const button = document.getElementById("openSelector");
@@ -205,13 +210,48 @@ document.addEventListener("DOMContentLoaded", async () => {
       document.querySelector("#siteList").style.display = isOpen ? "flex" : "none";
       document.querySelector("#searchBox").style.display = isOpen ? "block" : "none";
       document.querySelector("#openSelector").style.display = isOpen ? "flex" : "none";
+      document.getElementById("historySearchBox").style.display = isOpen ? "none" : "block";
       const mainHeader = document.querySelector("#mainHeader");
       mainHeader.textContent = isOpen ? "Discord Music RPC" : "History";
       mainHeader.appendChild(toggleBtn);
       toggleBtn.innerHTML = "";
       toggleBtn.appendChild(!isOpen ? createSVG(svg_paths.backIconPaths) : createSVG(svg_paths.historyIconPaths));
-      if (!isOpen) await renderHistory();
+      if (!isOpen) {
+        await renderHistory();
+      }
     });
+
+    function filterRenderedHistory(query) {
+      const entries = document.querySelectorAll(".history-entry");
+
+      entries.forEach((entry) => {
+        const textContent = entry.innerText.toLowerCase();
+        entry.style.display = textContent.includes(query) ? "" : "none";
+      });
+
+      // Hide headers if no visible entries
+      const headers = document.querySelectorAll("#historyPanel h3");
+      headers.forEach((header) => {
+        // Check if any sibling entries are visible
+        let sibling = header.nextElementSibling;
+        let hasVisible = false;
+        while (sibling && !sibling.matches("h3")) {
+          if (sibling.style.display !== "none") {
+            hasVisible = true;
+            break;
+          }
+          sibling = sibling.nextElementSibling;
+        }
+        header.style.display = hasVisible ? "" : "none";
+      });
+    }
+
+    const historySearchInput = document.getElementById("historySearchBox");
+    const debouncedHistorySearch = debounce(() => {
+      const query = historySearchInput.value.toLowerCase();
+      filterRenderedHistory(query);
+    }, 200);
+    historySearchInput.addEventListener("input", debouncedHistorySearch);
 
     // Clear History
     let cleaningMode = false;
@@ -223,16 +263,14 @@ document.addEventListener("DOMContentLoaded", async () => {
       if (!cleaningMode) {
         cleaningMode = true;
         document.body.classList.add("cleaning-mode");
-        clearBtn.textContent = selectedIndexes.length ? "Delete Selected" : "Delete All";
+        clearBtn.textContent = selectedIndexes.length ? `Delete Selected (${selectedIndexes.length})` : "Delete All";
         cancelCleanBtn.style.display = "inline-block";
         return;
       }
-
-      const confirmMsg = selectedIndexes.length ? `Should the selected ${selectedIndexes.length} history be deleted?` : "Should all history be erased?";
+      let history = await loadHistory();
+      const confirmMsg = selectedIndexes.length ? `Should the selected ${selectedIndexes.length} history be deleted?` : `Should all history (${history.length}) be erased?`;
 
       if (!confirm(confirmMsg)) return;
-
-      let history = await loadHistory();
 
       if (selectedIndexes.length) {
         history = history.filter((_, i) => !selectedIndexes.includes(i));
@@ -258,7 +296,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 
     async function renderHistory() {
-      const history = (await loadHistory()).slice(0, 50);
+      const history = (await loadHistory()).slice(0, MAX_HISTORY);
       panel.innerHTML = "";
 
       if (!history.length) {
@@ -302,14 +340,14 @@ document.addEventListener("DOMContentLoaded", async () => {
           const selectedIndexes = Array.from(checkboxes)
             .filter((cb) => cb.checked)
             .map((cb) => parseInt(cb.dataset.index, 10));
-          clearBtn.textContent = selectedIndexes.length ? "Delete Selected" : "Delete All";
+          clearBtn.textContent = selectedIndexes.length ? `Delete Selected (${selectedIndexes.length})` : "Delete All";
         });
 
         const img = document.createElement("img");
         img.width = 36;
         img.height = 36;
         img.className = "lazyload";
-        img.dataset.src = entry.image ||  browser.runtime.getURL("icons/48x48.png");
+        img.dataset.src = entry.image || browser.runtime.getURL("icons/48x48.png");
 
         const info = document.createElement("div");
         info.className = "history-info";
@@ -326,6 +364,9 @@ document.addEventListener("DOMContentLoaded", async () => {
         info.append(` ${entry.artist}`, br, small);
         div.append(checkbox, img, info);
         panel.appendChild(div);
+        if (document.getElementById("historySearchBox")) {
+          document.getElementById("historySearchBox").value = "";
+        }
       });
     }
   } catch (error) {

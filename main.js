@@ -218,6 +218,10 @@ function updateTrayMenu() {
       label: `Status: ${state.isServerRunning ? "Running" : "Stopped"}`,
       enabled: false,
     },
+    {
+      label: `Version: ${app.getVersion()}`,
+      enabled: false,
+    },
     { type: "separator" },
     {
       label: "Restart Server",

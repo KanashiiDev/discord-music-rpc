@@ -192,7 +192,52 @@ function querySelectorDeep(selector, root = document) {
             }
           }
 
-          const link = get("link")?.href ?? "";
+          // Validate URL function
+          const isValidUrl = (url) => {
+            try {
+              const parsed = new URL(url, location.origin);
+              return parsed.protocol === "https:" || parsed.protocol === "http:";
+            } catch (_) {
+              return false;
+            }
+          };
+
+          // Helper function to safely get text content
+          const getSafeText = (getFn, key, fallback) => {
+            try {
+              const el = getFn(key);
+              return el?.textContent?.trim() || fallback || null;
+            } catch (_) {
+              return fallback || null;
+            }
+          };
+
+          // Helper function to safely get href
+          const getSafeHref = (getFn, key, fallback) => {
+            try {
+              const el = getFn(key);
+              let raw = el?.getAttribute?.("href") ?? fallback;
+
+              try {
+                raw = new URL(raw, location.origin).href;
+              } catch (_) {
+                // If URL parsing fails, fallback to the original href
+              }
+
+              return isValidUrl(raw) ? raw : null;
+            } catch (_) {
+              try {
+                fallback = new URL(fallback, location.origin).href;
+              } catch (_) {}
+              return isValidUrl(fallback) ? fallback : null;
+            }
+          };
+
+          const link = getSafeHref(get, "link", data.link || location.href);
+          const buttonLink = getSafeHref(get, "buttonLink", data.selectors.buttonLink);
+          const buttonText = getSafeText(get, "buttonText", data.selectors.buttonText);
+          const buttonLink2 = getSafeHref(get, "buttonLink2", data.selectors.buttonLink2);
+          const buttonText2 = getSafeText(get, "buttonText2", data.selectors.buttonText2);
 
           const { currentPosition, totalDuration, currentProgress, timestamps } = window.processPlaybackInfo?.(timePassed, duration) ?? {};
 
@@ -205,6 +250,20 @@ function querySelectorDeep(selector, root = document) {
             position: currentPosition,
             duration: totalDuration,
             progress: currentProgress,
+            buttons: [
+              buttonLink && buttonText
+                ? {
+                    link: buttonLink,
+                    text: buttonText,
+                  }
+                : null,
+              buttonLink2 && buttonText2
+                ? {
+                    link: buttonLink2,
+                    text: buttonText2,
+                  }
+                : null,
+            ].filter(Boolean),
             ...timestamps,
           };
         } catch (e) {

@@ -64,6 +64,7 @@
     "asar": true,
     "compression": "maximum",
     "win": {
+      "artifactName": "Discord-Music-RPC-Setup-${version}.exe",
       "target": "nsis",
       "icon": "assets/icon/icon.ico"
     },

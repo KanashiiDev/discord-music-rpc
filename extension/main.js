@@ -211,7 +211,6 @@ function rtcKeepAliveTab() {
   // Apply again every 5 seconds
   setInterval(applyOverridesLoop, 5000);
   window._rpcKeepActiveInjected = true;
-  logInfo("RPC Keep Alive Activated");
 }
 
 init();

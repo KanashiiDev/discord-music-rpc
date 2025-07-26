@@ -13,12 +13,13 @@
         <svg width="16px" height="16px" ...></svg>
       </a>
     </div>
-    <div id="historyHeader" style="display: none">
-      <a id="clearHistoryBtn" class="button" style="cursor: pointer">Clear History</a><a id="cancelCleanBtn" class="button" style="display: none">Cancel</a>
-    </div>
+    <input type="text" id="historySearchBox" placeholder="Search history..." style="display: none" />
     <div id="historyPanel" data-lazy-container></div>
-    <input type="text" id="searchBox" placeholder="Search..." />
+    <input type="text" id="searchBox" placeholder="Search parser..." />
     <div id="siteList" class="site-list"></div>
+    <div id="historyHeader" style="display: none">
+      <a id="clearHistoryBtn" class="button" style="cursor: pointer; width: 100%;">Clear History</a><a id="cancelCleanBtn" class="button" style="display: none">Cancel</a>
+    </div>
     <a id="openSelector" title="Add your own custom music rpc.">Add Music Parser</a>
     <footer><a href="https://github.com/KanashiiDev/discord-music-rpc" target="_blank" rel="noopener noreferrer">Github</a></footer>
     <script src="../libs/lazysizes.js" async></script>

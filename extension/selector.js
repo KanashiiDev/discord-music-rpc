@@ -41,13 +41,13 @@ function parseRegexArray(input) {
 // User Add RPC - Add Selector UI to the page
 browser.runtime.onMessage.addListener((msg) => {
   if (msg.action === "startSelectorUI") {
-    injectSelectorUI();
+    injectSelectorUI(msg.editMode);
   }
 });
 
 let previewInterval = null;
 
-async function injectSelectorUI() {
+async function injectSelectorUI(editMode = false) {
   const hostname = location.hostname.replace(/^https?:\/\/|^www\./g, "");
   if (document.getElementById("userRpc-selectorContainer")) return;
 
@@ -73,6 +73,18 @@ async function injectSelectorUI() {
       all: initial;
       position: relative;
       z-index: 2147483647;
+    }
+
+    .rpc-preview .card,
+    label,
+    h3,
+    h4,
+    br,
+    a {
+      -webkit-user-select: none;
+         -moz-user-select: none;
+          -ms-user-select: none;
+              user-select: none;
     }
 
     #userRpc-selectorRoot {
@@ -114,8 +126,15 @@ async function injectSelectorUI() {
 
     .userRpc-h3 {
       font-size: 18px !important;
-      margin-bottom: 12px !important;
+      margin-bottom: 6px !important;
       text-align: center !important;
+      color: #e1e1e1 !important;
+    }
+
+    .userRpc-h4 {
+      text-align: center;
+      margin-top: 0;
+      font-weight: 400;
       color: #e1e1e1 !important;
     }
 
@@ -127,12 +146,27 @@ async function injectSelectorUI() {
       align-items: center;
     }
 
+    label[id*="buttonText"],
+    input[id*="buttonText"],
+    a[id*="buttonText"],
+    br[id*="buttonText"],
+    label[id*="buttonLink"],
+    input[id*="buttonLink"],
+    a[id*="buttonLink"],
+    br[id*="buttonLink"] {
+      display:none;
+    }
+
     .userRpc-listItemOptions {
       display: -ms-grid;
       display: grid;
       -ms-grid-columns: 1fr 1fr;
       grid-template-columns: 1fr 1fr;
       margin-top: 10px;
+    }
+
+    .addButtonsToggle {
+      grid-column: 1 / -1;
     }
 
     .userRpc-selectBtn,
@@ -316,7 +350,8 @@ async function injectSelectorUI() {
       margin-top: 12px;
     }
 
-    .rpc-preview .link {
+    .rpc-preview .link,
+    .rpc-preview .custom-button {
       background-color: #494a52;
       border: none;
       color: white;
@@ -332,8 +367,14 @@ async function injectSelectorUI() {
       text-decoration: none;
     }
 
-    .rpc-preview .link:hover {
+    .rpc-preview .link:hover,
+    .rpc-preview .custom-button:hover {
       background-color: #50515a;
+    }
+  
+    .rpc-preview .custom-button {
+      margin-top: 5px;
+      display: none;
     }
   `;
   const style = document.createElement("style");
@@ -369,7 +410,7 @@ async function injectSelectorUI() {
   // User Add RPC - Main
   function formatLabel(name) {
     const capitalized = name.charAt(0).toUpperCase() + name.slice(1);
-    return capitalized.replace(/([A-Z])/g, " $1").trim();
+    return capitalized.replace(/([A-Z0-9])/g, " $1").trim();
   }
 
   const placeholderMap = {
@@ -379,9 +420,13 @@ async function injectSelectorUI() {
     link: "url or selector (#class, .class)",
     image: "url or selector (#class, .class)",
     default: "selector (#class, .class)",
+    buttonLink: "url or selector (#class, .class)",
+    buttonText: "text or selector (#class, .class)",
+    buttonText2: "text or selector (#class, .class)",
+    buttonLink2: "url or selector (#class, .class)",
   };
 
-  const fields = ["name", "title", "artist", "timePassed", "duration", "image", "link", "source", "regex"];
+  const fields = ["name", "title", "artist", "timePassed", "duration", "image", "link", "source", "buttonText", "buttonLink", "buttonText2", "buttonLink2", "regex"];
 
   const root = document.createElement("div");
   root.id = "userRpc-selectorRoot";
@@ -389,8 +434,14 @@ async function injectSelectorUI() {
   // Title
   const heading = document.createElement("h3");
   heading.className = "userRpc-h3";
-  heading.textContent = "Discord Music RPC - User Add";
+  heading.textContent = "Discord Music RPC";
   root.appendChild(heading);
+
+  // User Add RPC - Edit Mode
+  const editTitle = document.createElement("h4");
+  editTitle.className = "userRpc-h4";
+  editTitle.textContent = editMode ? `Edit Current Parser` : "Add New Parser";
+  root.appendChild(editTitle);
 
   // The fields
   const listItems = document.createElement("div");
@@ -398,6 +449,8 @@ async function injectSelectorUI() {
 
   fields.forEach((f) => {
     const label = document.createElement("label");
+    label.className = "userRpc-label";
+    label.id = `${f}Label`;
     label.textContent = formatLabel(f);
 
     const input = document.createElement("input");
@@ -410,17 +463,20 @@ async function injectSelectorUI() {
     button.setAttribute("data-field", f);
     button.className = `userRpc-selectBtn ${f === "name" || f === "regex" ? "hidden" : ""}`;
     button.title = "Select with mouse click";
+    button.id = `${f}Button`;
     button.textContent = "+";
+
+    const br = document.createElement("br");
+    br.id = `${f}Br`;
 
     listItems.appendChild(label);
     listItems.appendChild(input);
     listItems.appendChild(button);
-    listItems.appendChild(document.createElement("br"));
+    listItems.appendChild(br);
   });
-
   root.appendChild(listItems);
 
-  // Save / Exit buttons
+  // Add Buttons / Save / Exit buttons
   const optionsDiv = document.createElement("div");
   optionsDiv.className = "userRpc-listItemOptions";
 
@@ -434,6 +490,23 @@ async function injectSelectorUI() {
   exitBtn.id = "closeSelectorUI";
   exitBtn.textContent = "Exit";
 
+  const addButtonsToggle = document.createElement("a");
+  addButtonsToggle.className = "userRpc-optionButtons addButtonsToggle";
+  addButtonsToggle.textContent = "Add Buttons";
+  addButtonsToggle.addEventListener("click", () => {
+    shadow.querySelectorAll('[id*="buttonText"], [id*="buttonLink"]').forEach((el) => {
+      if (el.tagName === "BR") {
+        el.style.display = "inline";
+      } else if (el.tagName === "INPUT") {
+        el.style.display = "inline-block";
+      } else {
+        el.style.display = "block";
+      }
+    });
+    addButtonsToggle.remove();
+  });
+
+  optionsDiv.appendChild(addButtonsToggle);
   optionsDiv.appendChild(saveBtn);
   optionsDiv.appendChild(exitBtn);
   root.appendChild(optionsDiv);
@@ -516,7 +589,19 @@ async function injectSelectorUI() {
   link.className = "link";
   link.textContent = "Open on Source";
 
+  const customButton = document.createElement("a");
+  customButton.className = "custom-button";
+  customButton.id = "customButton";
+  customButton.textContent = "Custom Action";
+
+  const customButton2 = document.createElement("a");
+  customButton2.className = "custom-button";
+  customButton2.id = "customButton2";
+  customButton2.textContent = "Custom Action";
+
   linkContainer.appendChild(link);
+  linkContainer.appendChild(customButton);
+  linkContainer.appendChild(customButton2);
 
   details.appendChild(titleEl);
   details.appendChild(artist);
@@ -549,19 +634,44 @@ async function injectSelectorUI() {
     isDragging = true;
     offsetX = e.clientX - root.offsetLeft;
     offsetY = e.clientY - root.offsetTop;
-    root.style.zIndex = 1000;
   });
 
   document.addEventListener("mousemove", function (e) {
     if (isDragging) {
-      root.style.left = e.clientX - offsetX + "px";
-      root.style.top = e.clientY - offsetY + "px";
+      moveWithinBounds(e.clientX - offsetX, e.clientY - offsetY);
     }
   });
 
   document.addEventListener("mouseup", function () {
     isDragging = false;
   });
+
+  window.addEventListener("resize", function () {
+    keepInsideViewport();
+  });
+
+  function moveWithinBounds(left, top) {
+    const maxLeft = window.innerWidth - root.offsetWidth;
+    const maxTop = window.innerHeight - root.offsetHeight;
+
+    const newLeft = Math.max(0, Math.min(left, maxLeft));
+    const newTop = Math.max(0, Math.min(top, maxTop));
+
+    root.style.left = newLeft + "px";
+    root.style.top = newTop + "px";
+  }
+
+  function keepInsideViewport() {
+    const currentLeft = parseInt(root.style.left || 0);
+    const currentTop = parseInt(root.style.top || 0);
+
+    moveWithinBounds(currentLeft, currentTop);
+  }
+
+  const rect = root.getBoundingClientRect();
+  root.style.left = window.innerWidth - rect.width - 15 + "px";
+  root.style.top = "15px";
+  root.style.right = "";
 
   const pathname = location.pathname;
 
@@ -585,7 +695,7 @@ async function injectSelectorUI() {
     }
   }
 
-  // Add startSectoMode to the selection buttons.
+  // Add startSelectorMode to the selection buttons.
   shadowDoc.querySelectorAll(".userRpc-selectBtn").forEach((btn) => {
     btn.addEventListener("click", () => {
       const field = btn.dataset.field;
@@ -609,7 +719,7 @@ async function injectSelectorUI() {
 
   // Save User Add RPC
   shadowDoc.getElementById("saveSelectors").addEventListener("click", async () => {
-    const fields = ["name", "title", "artist", "timePassed", "duration", "image", "link", "source", "regex"];
+    const fields = ["name", "title", "artist", "timePassed", "duration", "image", "link", "source", "buttonText", "buttonLink", "buttonText2", "buttonLink2", "regex"];
     const selectors = {};
     fields.forEach((f) => {
       const val = shadowDoc.getElementById(`${f}Selector`).value.trim();
@@ -759,6 +869,10 @@ async function injectSelectorUI() {
       timePassed: getValue("timePassedSelector"),
       duration: getValue("durationSelector"),
       link: getValue("linkSelector"),
+      buttonText: getValue("buttonTextSelector"),
+      buttonLink: getValue("buttonLinkSelector"),
+      buttonText2: getValue("buttonText2Selector"),
+      buttonLink2: getValue("buttonLink2Selector"),
       source: getValue("sourceSelector"),
       regex: getValue("regexSelector"),
     };
@@ -772,6 +886,10 @@ async function injectSelectorUI() {
       timePassed: getElement(selectors.timePassed),
       duration: getElement(selectors.duration),
       link: getElement(selectors.link),
+      buttonText: getElement(selectors.buttonText),
+      buttonLink: getElement(selectors.buttonLink),
+      buttonText2: getElement(selectors.buttonText2),
+      buttonLink2: getElement(selectors.buttonLink2),
       source: getElement(selectors.source),
     };
 
@@ -782,6 +900,8 @@ async function injectSelectorUI() {
       source: elements.source?.textContent || selectors.source || "source",
       timePassed: elements.timePassed?.textContent,
       duration: elements.duration?.textContent.replace("-", ""),
+      buttonText: elements.buttonText?.textContent || selectors.buttonText || "Custom Action",
+      buttonText2: elements.buttonText2?.textContent || selectors.buttonText2 || "Custom Action",
     };
 
     // Trim texts
@@ -843,6 +963,35 @@ async function injectSelectorUI() {
         if (el.textContent !== linkText) el.textContent = linkText;
       }
     };
+
+    const setButtons = ({ linkElement, fallbackUrl, buttonText, buttonSelector = "#customButton" }) => {
+      const el = details.querySelector(buttonSelector);
+      const href = linkElement?.href || (isValidUrl(fallbackUrl) ? fallbackUrl : "");
+
+      if (el) {
+        if (el.href !== href) el.href = href;
+        if (el.textContent !== buttonText) el.textContent = buttonText;
+        if (el.textContent !== "Custom Action" && el.href) {
+          el.style.display = "block";
+        } else {
+          el.style.display = "none";
+        }
+      }
+      const buttons = details.querySelectorAll(".custom-button");
+      const link = details.querySelector(".link");
+
+      if (buttons) {
+        const bothHaveHrefAndText = Array.from(buttons).every((btn) => btn.href && btn.textContent.trim() !== "" && btn.textContent.trim() !== "Custom Action");
+        if (link) link.style.display = bothHaveHrefAndText ? "none" : "block";
+      } else {
+        if (link) link.style.display = "block";
+      }
+
+      if (shadowDoc.querySelector(".custom-button[style='display: block;']") && shadowDoc.querySelector(".addButtonsToggle")) {
+        shadowDoc.querySelector(".addButtonsToggle").click();
+      }
+    };
+
     const regexSelector = shadowDoc.getElementById("regexSelector");
     const regexMark = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M5 13L9 17L19 7" stroke="green" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
     const regexCross = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 6L18 18M6 18L18 6" stroke="red" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
@@ -873,7 +1022,7 @@ async function injectSelectorUI() {
 
     const regexStatus = shadowDoc.getElementById("regexStatus");
     const currentInput = regexSelector.value.trim();
-    const prevInput = regexSelector.getAttribute("data-prev-regex");
+    const prevInput = regexSelector.getAttribute("data-prev-regex") || "";
 
     // If the input value is the same as before, do nothing
     if (currentInput !== prevInput) {
@@ -953,8 +1102,26 @@ async function injectSelectorUI() {
     setText(".source", texts.source);
     setText(".title", texts.title);
     setText(".artist", texts.artist);
+    if (editMode) {
+      if (shadowDoc.querySelector(".userRpc-h4").textContent !== texts.name) {
+        shadowDoc.querySelector(".userRpc-h4").textContent = texts.name;
+      }
+    }
     setImage();
     setLink();
+    setButtons({
+      linkElement: elements.buttonLink,
+      fallbackUrl: selectors.buttonLink,
+      buttonText: texts.buttonText,
+      buttonSelector: "#customButton",
+    });
+
+    setButtons({
+      linkElement: elements.buttonLink2,
+      fallbackUrl: selectors.buttonLink2,
+      buttonText: texts.buttonText2,
+      buttonSelector: "#customButton2",
+    });
     updateProgress();
   }
 

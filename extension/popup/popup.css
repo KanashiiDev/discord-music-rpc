@@ -115,6 +115,7 @@ footer {
   color: #777;
 }
 
+#historySearchBox,
 #searchBox {
   width: calc(100% - 24px);
   padding: 8px 10px;
@@ -131,13 +132,20 @@ footer {
   color: #888;
 }
 
+#historySearchBox::-webkit-input-placeholder,
+#historySearchBox::-moz-placeholder,
+#historySearchBox:-ms-input-placeholder,
+#historySearchBox::-ms-input-placeholder,
+#historySearchBox::placeholder,
 #searchBox::-webkit-input-placeholder,
-#searchBox::-moz-placeholder #searchBox:-ms-input-placeholder,
+#searchBox::-moz-placeholder,
+#searchBox:-ms-input-placeholder,
 #searchBox::-ms-input-placeholder,
 #searchBox::placeholder {
   color: #888;
 }
 
+#historySearchBox:focus,
 #searchBox:focus {
   outline: none;
   background-color: #333;
@@ -233,8 +241,8 @@ footer {
 #historyPanel {
   display: none;
   margin-top: 8px;
-  max-height: 440px;
-  padding-right: 5px;
+  max-height: 380px;
+  padding: 0 5px;
   overflow-y: auto;
 }
 
@@ -268,6 +276,7 @@ body.cleaning-mode .history-checkbox {
   display: flex;
   justify-content: center;
   gap: 10px;
+  margin-top: 10px;
   width: calc(100% - 5px);
   text-align: end;
 }
@@ -337,5 +346,5 @@ body.cleaning-mode .history-checkbox {
 }
 
 .setup-dialog .setup-note-link {
-margin-bottom: 10px;
+  margin-bottom: 10px;
 }

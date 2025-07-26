@@ -194,6 +194,15 @@ function extractArtistFromTitle(title, originalArtist) {
   return originalArtist;
 }
 
+const isValidUrl = (url) => {
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === "https:" || parsed.protocol === "http:";
+  } catch (_) {
+    return false;
+  }
+};
+
 // RPC update endpoint
 app.post("/update-rpc", async (req, res) => {
   try {
@@ -274,13 +283,35 @@ app.post("/update-rpc", async (req, res) => {
       statusDisplayType: StatusDisplayType.STATE,
     };
 
-    if (activitySettings.showButtons && data.songUrl) {
-      activity.buttons = [
-        {
-          label: truncate(`Open on ${data.source}`, 32),
-          url: data.songUrl,
-        },
-      ];
+    if (activitySettings.showButtons) {
+      const buttonsRaw = (data.buttons || []).filter((btn) => btn?.text?.trim() && isValidUrl(btn.link));
+
+      const buttons = buttonsRaw.slice(0, 2).map((btn) => ({
+        label: truncate(btn.text, 32),
+        url: btn.link,
+      }));
+
+      if (buttons.length === 2) {
+        activity.buttons = buttons;
+      } else if (buttons.length === 1 && isValidUrl(data.songUrl)) {
+        activity.buttons = [
+          buttons[0],
+          {
+            label: truncate(`Open on ${data.source}`, 32),
+            url: data.songUrl,
+          },
+        ];
+      } else if (isValidUrl(data.songUrl)) {
+        activity.buttons = [
+          {
+            label: truncate(`Open on ${data.source}`, 32),
+            url: data.songUrl,
+          },
+        ];
+      } else {
+        delete activity.buttons;
+      }
+
       activity.detailsUrl = data.songUrl;
     }
 

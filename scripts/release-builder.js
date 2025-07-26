@@ -31,7 +31,7 @@ fs.readdirSync(distDir).forEach((file) => {
 
 // Zip the .exe
 if (exeFilePath) {
-  const zipPath = path.join(releaseDir, "Discord.Music.RPC.Setup.zip");
+  const zipPath = path.join(releaseDir, "Discord-Music-RPC-Setup.zip");
   const output = fs.createWriteStream(zipPath);
   const archive = archiver("zip", { zlib: { level: 9 } });
 
@@ -44,7 +44,7 @@ if (exeFilePath) {
   });
 
   archive.pipe(output);
-  archive.file(exeFilePath, { name: "Discord.Music.RPC.Setup.exe" });
+  archive.file(exeFilePath, { name: "Discord-Music-RPC-Setup.exe" });
   archive.finalize();
 } else {
   console.warn("⚠️ No .exe file found in dist/. ZIP will not be created.");

@@ -141,6 +141,12 @@ registerParser({
       duration: getText(".time-display-total"), // Total duration (optional)
       source: "Example", // Source label
       songUrl: "example.com", // Link to song/station (optional)
+      buttons: [ // Buttons (max 2) (optional)
+        {
+          link: "Example Button Link",
+          text: "Example Button Text",
+        },
+      ],
     };
   },
 });
