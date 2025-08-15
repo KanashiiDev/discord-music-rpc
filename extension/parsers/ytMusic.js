@@ -4,10 +4,19 @@ registerParser({
   urlPatterns: [/.*/],
   fn: async function () {
     const songLink = document.querySelector("#movie_player .ytp-title a")?.href;
-    const title = getText(".ytmusic-player-bar yt-formatted-string:nth-of-type(1)");
-    const artist = getText(
-      "ytmusic-app > ytmusic-app-layout#layout > ytmusic-player-bar > div:nth-of-type(2).middle-controls > div:nth-of-type(2).content-info-wrapper > span > span:nth-of-type(2) > yt-formatted-string > a"
-    );
+    const title = getText(".ytmusic-player-bar yt-formatted-string:first-child");
+    let artist = "";
+    const artistSelector = document.querySelector("ytmusic-player-bar yt-formatted-string.byline");
+    if (artistSelector) {
+      const artistNames = [];
+      for (let node of artistSelector.childNodes) {
+        if (node.textContent.includes("•")) break;
+        if (node.nodeType === Node.ELEMENT_NODE && node.tagName === "A") {
+          artistNames.push(node.textContent.trim());
+        }
+      }
+      artist = artistNames.join(" & ");
+    }
     const video = document.querySelector("video");
     let timePassed = getText("#left-controls .time-info") || "";
     let duration = getText("#left-controls .time-info") || "";
