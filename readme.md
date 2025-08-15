@@ -109,7 +109,8 @@ You can add a parser in **two ways**:
 5. Click **"Save"** and refresh the page.
 
 **Notes**
-
+- If either the  **“Artist”** or **“Title”** is missing, you can select the same selector for both.
+- If the song **“Artist”** and **“Title”** are combined, you can add the same selector to both sections. The application will automatically separate them.
 - If only **“Duration”** is available, you can still add it. The app will calculate playback time starting from when the song changes until the full duration is reached.
 - If **“Time Passed”** and **“Duration”** are combined (e.g., `0:12 / 2:20`), you can use the same selector for both.
 - You can add any link you want in the **“Link”** field, or leave it blank. If left blank, the current site’s address will be used automatically.
@@ -134,12 +135,12 @@ registerParser({
   fn: function () {
     // You can define and use helper functions here if needed
     return {
-      title: getText(".now-playing-title"), // Song title
-      artist: getText(".now-playing-artist"), // Artist name
-      image: getImage("img.album_art"), // Album image
+      title: getText(".now-playing-title"), // Song title (required)
+      artist: getText(".now-playing-artist"), // Artist name (required)
+      image: getImage("img.album_art"), // Album image (optional)
       timePassed: getText(".time-display-played"), // Played time (optional)
       duration: getText(".time-display-total"), // Total duration (optional)
-      source: "Example", // Source label
+      source: "Example", // Source label (optional)
       songUrl: "example.com", // Link to song/station (optional)
       buttons: [ // Buttons (max 2) (optional)
         {

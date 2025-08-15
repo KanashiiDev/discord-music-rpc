@@ -76,6 +76,7 @@ window.registerParser = function ({ title, domain, urlPatterns, fn, userAdd = fa
 
       return {
         ...rest,
+        source: rest.artist === rest.source ? title : rest.source,
         timePassed: currentPosition,
         position: currentPosition,
         duration: totalDuration,
@@ -175,6 +176,7 @@ function querySelectorDeep(selector, root = document) {
         try {
           const title = get("title")?.textContent?.trim() ?? "";
           const artist = get("artist")?.textContent?.trim() ?? "";
+          let source = get("source")?.textContent?.trim() ?? isNotElementText(data.selectors["source"]) ?? "";
           const timePassed = get("timePassed")?.textContent ?? "";
           const duration = get("duration")?.textContent ?? "";
           const imageElement = get("image");
@@ -240,12 +242,11 @@ function querySelectorDeep(selector, root = document) {
           const buttonText2 = getSafeText(get, "buttonText2", data.selectors.buttonText2);
 
           const { currentPosition, totalDuration, currentProgress, timestamps } = window.processPlaybackInfo?.(timePassed, duration) ?? {};
-
           return {
             title,
             artist,
             image,
-            source: data.title || document.title,
+            source: artist === source ? data.title : source || location.hostname,
             songUrl: link || location.href,
             position: currentPosition,
             duration: totalDuration,

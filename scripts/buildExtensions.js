@@ -136,9 +136,23 @@ function inlineUtilsFunctions(targetFileName, sourceUtilsFile, functionsToInclud
   fs.writeFileSync(targetPath, targetContent, "utf8");
 }
 
-inlineUtilsFunctions("common/history.js", "common/utils.js", ["truncate", "cleanTitle", "extractArtistFromTitle"]);
+inlineUtilsFunctions("common/history.js", "common/utils.js", ["truncate", "cleanTitle", "extractArtistFromTitle", "normalizeTitleAndArtist"]);
 inlineUtilsFunctions("main.js", "common/utils.js", ["delay", "logInfo", "logWarn", "logError", "applyOverrides", "applyOverridesLoop"]);
-inlineUtilsFunctions("background.js", "common/utils.js", ["logInfo", "logWarn", "logError", "delay", "parseUrlPattern", "normalizeHost", "normalize", "getCurrentTime", "cleanTitle", "truncate", "extractArtistFromTitle"]);
+inlineUtilsFunctions("selector.js", "common/utils.js", ["cleanTitle", "extractArtistFromTitle", "normalizeTitleAndArtist", "isElementText", "isNotElementText"]);
+inlineUtilsFunctions("background.js", "common/utils.js", [
+  "logInfo",
+  "logWarn",
+  "logError",
+  "delay",
+  "parseUrlPattern",
+  "normalizeHost",
+  "normalize",
+  "getCurrentTime",
+  "cleanTitle",
+  "truncate",
+  "extractArtistFromTitle",
+  "normalizeTitleAndArtist",
+]);
 inlineUtilsFunctions("background.js", "common/history.js", ["HISTORY_KEY", "MAX_HISTORY", "loadHistory", "addToHistory", "saveHistory"]);
 inlineUtilsFunctions("mainParser.js", "common/utils.js", [
   "extractTimeParts",
@@ -151,6 +165,8 @@ inlineUtilsFunctions("mainParser.js", "common/utils.js", [
   "hashFromPatternStrings",
   "getText",
   "parseUrlPattern",
+  "isElementText",
+  "isNotElementText",
 ]);
 
 // 7. Write the manifest in the dist folder

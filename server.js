@@ -132,8 +132,14 @@ function isSameActivityIgnore(a, b) {
   return a && b && a.details === b.details && a.state === b.state;
 }
 
-function truncate(str, maxLength = 128, { prefix = "", fallback = "Unknown", minLength = 2 } = {}) {
-  if (!str) str = "";
+function truncate(str, maxLength = 128, { fallback = "Unknown", minLength = 2 } = {}) {
+  // If it's not a string, null.
+  if (typeof str !== "string") {
+    return fallback;
+  }
+
+  str = str.trim();
+  if (!str) return fallback;
 
   const keywordGroup = [
     "free\\s+(download|dl|song|now)",
@@ -150,10 +156,17 @@ function truncate(str, maxLength = 128, { prefix = "", fallback = "Unknown", min
   ].join("|");
 
   const cleanRegex = new RegExp(`([\\[\\(]\\s*(${keywordGroup})\\s*[\\]\\)])|(\\s*-\\s*(${keywordGroup})\\s*$)`, "gi");
+
+  // Cleaning
   str = str.replace(cleanRegex, "").replace(/\s+/g, " ").trim();
 
+  // Abbreviation
   let result = str.length > maxLength ? str.slice(0, maxLength - 3) + "..." : str;
-  if (result.length < minLength) result = prefix + fallback;
+
+  // Minimum length check
+  if (result.length < minLength) {
+    return fallback;
+  }
   return result;
 }
 
@@ -192,6 +205,32 @@ function extractArtistFromTitle(title, originalArtist) {
     }
   }
   return originalArtist;
+}
+
+function normalizeTitleAndArtist(title, artist) {
+  let dataTitle = title?.trim() || "";
+  let dataArtist = artist?.trim() || "";
+
+  if (!dataTitle || !dataArtist) return { title: dataTitle, artist: dataArtist };
+
+  // If the title and artist are exactly the same and contain ' - ', separate them
+  if (dataTitle.toLowerCase() === dataArtist.toLowerCase() && dataTitle.includes(" - ")) {
+    const parts = dataTitle
+      .split("-")
+      .map((s) => s.trim())
+      .filter((s) => s.length > 0);
+
+    if (parts.length >= 2) {
+      dataArtist = parts.shift();
+      dataTitle = parts.join(" - ");
+    }
+  } else {
+    // Normal extract + clean process
+    dataArtist = extractArtistFromTitle(dataTitle, dataArtist);
+    dataTitle = cleanTitle(dataTitle, dataArtist);
+  }
+
+  return { title: dataTitle, artist: dataArtist };
 }
 
 const isValidUrl = (url) => {
@@ -239,12 +278,13 @@ app.post("/update-rpc", async (req, res) => {
     let settings = data?.settings;
 
     if (dataTitle && dataArtist) {
-      dataArtist = extractArtistFromTitle(dataTitle, dataArtist);
-      dataTitle = cleanTitle(dataTitle, dataArtist);
+      const normalized = normalizeTitleAndArtist(dataTitle, dataArtist);
+      dataTitle = normalized.title;
+      dataArtist = normalized.artist;
     }
 
-    dataTitle = truncate(dataTitle, 128, { prefix: "Title: ", fallback: "Unknown Song" });
-    dataArtist = truncate(dataArtist, 128, { prefix: "Artist: ", fallback: "Unknown Artist" });
+    dataTitle = truncate(dataTitle, 128, { fallback: "Unknown Song" });
+    dataArtist = truncate(dataArtist, 128, { fallback: "Unknown Artist" });
 
     const defaultSettings = {
       showFavIcon: false,
@@ -270,15 +310,17 @@ app.post("/update-rpc", async (req, res) => {
       const iconSize = 64;
       favIcon = iconUrl ? `https://www.google.com/s2/favicons?domain=${iconUrl}&sz=${iconSize}` : "";
     }
+    const sourceText = truncate(data?.source, 32, { fallback: "Unknown Source" });
+    const artistIsMissingOrSame = !dataArtist || dataArtist === dataTitle;
 
     const activity = {
       details: dataTitle,
-      state: dataArtist,
+      state: artistIsMissingOrSame ? sourceText : dataArtist,
       type: data?.watching ? 3 : 2,
       largeImageKey: activitySettings.customCover && activitySettings.customCoverUrl ? activitySettings.customCoverUrl : activitySettings.showCover ? data.image || "" : undefined,
-      largeImageText: activitySettings.showSource ? truncate(data?.source, 32, { prefix: "Source: ", fallback: "Unknown Source" }) : undefined,
-      smallImageKey: showSmallIcon ? favIcon || (data?.watching ? "watch" : "listen") : undefined,
-      smallImageText: showSmallIcon ? truncate(data?.source, 32, { prefix: "Source: ", fallback: "Unknown Source" }) : data?.watching ? "Watching" : "Listening",
+      largeImageText: activitySettings.showSource && dataTitle !== dataArtist && dataTitle !== sourceText ? sourceText : undefined,
+      smallImageKey: artistIsMissingOrSame ? undefined : showSmallIcon ? favIcon || (data?.watching ? "watch" : "listen") : undefined,
+      smallImageText: showSmallIcon ? sourceText : data?.watching ? "Watching" : "Listening",
       instance: false,
       statusDisplayType: StatusDisplayType.STATE,
     };

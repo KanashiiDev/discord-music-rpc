@@ -17,14 +17,20 @@ async function addToHistory({ image, title, artist, source }) {
 
   const history = await loadHistory();
   const last = history[0];
-  const normalizedArtist = extractArtistFromTitle(title, artist);
-  const normalizedTitle = cleanTitle(title, normalizedArtist);
-  const sameAsLast = last && last.title === truncate(normalizedTitle, 128) && last.artist === truncate(normalizedArtist, 128) && last.source === truncate(source, 32);
+  const lastArtist = last.title === last.artist ? "" : last.artist;
+  const normalized = normalizeTitleAndArtist(title, artist);
+  const normalizedArtist = normalized.artist === normalized.title ? "Radio" : normalized.artist;
+  const normalizedTitle = normalized.title;
+  const titleText = truncate(normalizedTitle, 128, { fallback: "Unknown Song" });
+  const artistText = truncate(normalizedArtist, 128, {fallback: "Unknown Artist" });
+  const sourceText = truncate(source, 32, {fallback: "Unknown Source" });
+  const sameAsLast = last && last.title === titleText && lastArtist === artistText && last.source === sourceText;
+
   const entry = {
     image,
-    title: truncate(normalizedTitle, 128, { prefix: "Artist: ", fallback: "Unknown Artist" }),
-    artist: truncate(normalizedArtist, 128, { prefix: "Artist: ", fallback: "Unknown Artist" }),
-    source: truncate(source, 32, { prefix: "Source: ", fallback: "Unknown Source" }),
+    title: titleText,
+    artist: artistText,
+    source: sourceText,
     playedAt: Date.now(),
   };
 

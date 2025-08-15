@@ -275,7 +275,7 @@ async function injectSelectorUI(editMode = false) {
     .rpc-preview .card {
       background-color: #2a2a2a;
       border-radius: 8px;
-      width: 350px;
+      width: auto;
       color: #dbdee1;
       display: flex;
       flex-direction: column;
@@ -360,7 +360,7 @@ async function injectSelectorUI(editMode = false) {
       font-weight: 500;
       border-radius: 4px;
       cursor: pointer;
-      width: 222px;
+      width: auto;
       transition: background-color 0.2s;
       display: block;
       text-align: center;
@@ -626,6 +626,7 @@ async function injectSelectorUI(editMode = false) {
 
   // User Add RPC - Make Draggable
   let isDragging = false;
+  let hasMoved = false;
   let offsetX = 0;
   let offsetY = 0;
 
@@ -638,6 +639,7 @@ async function injectSelectorUI(editMode = false) {
 
   document.addEventListener("mousemove", function (e) {
     if (isDragging) {
+      hasMoved = true;
       moveWithinBounds(e.clientX - offsetX, e.clientY - offsetY);
     }
   });
@@ -647,7 +649,14 @@ async function injectSelectorUI(editMode = false) {
   });
 
   window.addEventListener("resize", function () {
-    keepInsideViewport();
+    if (hasMoved) {
+      keepInsideViewport();
+    } else {
+      // If no movement has been made, stay on the right side.
+      const rect = root.getBoundingClientRect();
+      root.style.left = window.innerWidth - rect.width - 15 + "px";
+      root.style.top = "15px";
+    }
   });
 
   function moveWithinBounds(left, top) {
@@ -726,11 +735,36 @@ async function injectSelectorUI(editMode = false) {
       if (val) selectors[f] = val;
     });
 
+    // Mandatory Fields
+    if (!selectors.title || !selectors.artist) {
+      statusDiv.style.color = "red";
+      shadowDoc.getElementById("selectorStatus").textContent = "Please fill in both the 'title' and 'artist' fields.";
+      return;
+    }
+
+    // Check Selector Fields
+    const checkFields = ["title", "artist", "timePassed", "duration"];
+    let invalidFields = [];
+
+    checkFields.forEach((f) => {
+      if (selectors[f] && !isElementText(selectors[f])) {
+        invalidFields.push(formatLabel(f));
+      }
+    });
+    if (invalidFields.length > 0) {
+      statusDiv.style.color = "red";
+
+      const listItems = invalidFields.map((f) => `<li>${f}</li>`).join("");
+      shadowDoc.getElementById("selectorStatus").innerHTML = `Invalid or not found selector(s):<br><ul>${listItems}</ul>`;
+
+      return;
+    }
+
+    statusDiv.style.color = "green";
+
     const hostname = location.hostname.replace(/^https?:\/\/|^www\./g, "");
     const rawPattern = selectors["regex"] || ".*";
     const patternStrings = Array.isArray(rawPattern) ? rawPattern.map((p) => p.toString()) : [rawPattern.toString()];
-
-    // If the hashFromPatternStrings function exists globally, use it directly.
     const id = `${hostname}_${hashFromPatternStrings(patternStrings)}`;
 
     const newEntry = {
@@ -823,43 +857,6 @@ async function injectSelectorUI(editMode = false) {
       return str.replace(cleanRegex, "").replace(/\s+/g, " ").trim();
     };
 
-    function cleanTitle(title, artist) {
-      const trimmedTitle = title.trim();
-      const trimmedArtist = artist.trim();
-
-      if (trimmedTitle.toLowerCase() === trimmedArtist.toLowerCase()) {
-        return trimmedTitle;
-      }
-
-      const artistListRaw = trimmedArtist
-        .split(/,|&|feat\.?|featuring/gi)
-        .map((a) => a.trim())
-        .filter((a) => a.length >= 3);
-
-      if (artistListRaw.length === 0) return trimmedTitle;
-
-      const artistList = artistListRaw.map((a) => a.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
-      const pattern = new RegExp(`^(${artistList.join("|")})(\\s*[&+,xX]\\s*(${artistList.join("|")}))*\\s*[-–:|.]?\\s*`, "i");
-      const cleaned = trimmedTitle.replace(pattern, "").trim();
-
-      return cleaned.length > 0 ? cleaned : trimmedTitle;
-    }
-
-    function extractArtistFromTitle(title, originalArtist) {
-      const pattern = /^(.+?)\s*-\s*/;
-      const match = title.match(pattern);
-      if (match) {
-        const extracted = match[1].trim();
-        const origLower = originalArtist.toLowerCase();
-        const extractedLower = extracted.toLowerCase();
-
-        if (extractedLower !== origLower && (extractedLower.includes(origLower) || origLower.includes(extractedLower)) && extracted.length > originalArtist.length) {
-          return extracted;
-        }
-      }
-      return originalArtist;
-    }
-
     // Get selectors
     const selectors = {
       name: getValue("nameSelector"),
@@ -894,14 +891,14 @@ async function injectSelectorUI(editMode = false) {
     };
 
     let texts = {
-      name: elements.name?.textContent || selectors.name || location.hostname,
-      title: elements.title?.textContent || selectors.title || "title",
-      artist: elements.artist?.textContent || selectors.artist || "artist",
-      source: elements.source?.textContent || selectors.source || "source",
+      name: elements.name?.textContent || isNotElementText(selectors.name) || location.hostname || "name",
+      title: elements.title?.textContent || isNotElementText(selectors.title) || "title",
+      artist: elements.artist?.textContent || isNotElementText(selectors.artist) || "artist",
+      source: elements.source?.textContent || isNotElementText(selectors.source) || location.hostname || "source",
       timePassed: elements.timePassed?.textContent,
       duration: elements.duration?.textContent.replace("-", ""),
-      buttonText: elements.buttonText?.textContent || selectors.buttonText || "Custom Action",
-      buttonText2: elements.buttonText2?.textContent || selectors.buttonText2 || "Custom Action",
+      buttonText: elements.buttonText?.textContent || isNotElementText(selectors.buttonText) || "Custom Action",
+      buttonText2: elements.buttonText2?.textContent || isNotElementText(selectors.buttonText2) || "Custom Action",
     };
 
     // Trim texts
@@ -909,13 +906,19 @@ async function injectSelectorUI(editMode = false) {
 
     // If artist name contains title, clean it
     if (texts.title && texts.artist) {
-      texts.artist = extractArtistFromTitle(texts.title, texts.artist);
-      texts.title = cleanTitle(texts.title, texts.artist);
+      const normalized = normalizeTitleAndArtist(texts.title, texts.artist);
+
+      texts.artist = normalized.artist;
+      texts.title = normalized.title;
     }
 
     // Clean Title
     if (texts.title) {
       texts.title = cleanStr(texts.title);
+    }
+
+    if (texts.title === texts.artist) {
+      texts.artist = "";
     }
 
     // If "5:47 / 6:57" style string is found, split into both

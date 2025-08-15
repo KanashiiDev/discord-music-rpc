@@ -361,7 +361,12 @@ document.addEventListener("DOMContentLoaded", async () => {
         small.textContent = `${entry.source}${dateHourMinute(time) ? " • " + dateHourMinute(time) : ""}`;
 
         info.appendChild(strong);
-        info.append(` ${entry.artist}`, br, small);
+        const parts = [];
+        if (entry.artist !== "Radio") {
+          parts.push(` ${entry.artist}`, br);
+        }
+        parts.push(small);
+        info.append(...parts);
         div.append(checkbox, img, info);
         panel.appendChild(div);
         if (document.getElementById("historySearchBox")) {

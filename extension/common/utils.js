@@ -494,13 +494,18 @@ function showInitialSetupDialog() {
  * @param {string} str - The string to truncate.
  *  @param {number} [maxLength=128] - The maximum length of the string.
  * @param {object} [options] - Options for truncation.
- * @param {string} [options.prefix=""] - A prefix to add to the truncated string.
  * @param {string} [options.fallback="Unknown"] - A fallback string if the result is empty.
  * @param {number} [options.minLength=2] - The minimum length of the string before applying the fallback.
  * @return {string} The truncated string.
  */
-function truncate(str, maxLength = 128, { prefix = "", fallback = "Unknown", minLength = 2 } = {}) {
-  if (!str) str = "";
+function truncate(str, maxLength = 128, { fallback = "Unknown", minLength = 2 } = {}) {
+  // If it's not a string, null.
+  if (typeof str !== "string") {
+    return fallback;
+  }
+
+  str = str.trim();
+  if (!str) return fallback;
 
   const keywordGroup = [
     "free\\s+(download|dl|song|now)",
@@ -517,10 +522,17 @@ function truncate(str, maxLength = 128, { prefix = "", fallback = "Unknown", min
   ].join("|");
 
   const cleanRegex = new RegExp(`([\\[\\(]\\s*(${keywordGroup})\\s*[\\]\\)])|(\\s*-\\s*(${keywordGroup})\\s*$)`, "gi");
+
+  // Cleaning
   str = str.replace(cleanRegex, "").replace(/\s+/g, " ").trim();
 
+  // Abbreviation
   let result = str.length > maxLength ? str.slice(0, maxLength - 3) + "..." : str;
-  if (result.length < minLength) result = prefix + fallback;
+
+  // Minimum length check
+  if (result.length < minLength) {
+    return fallback;
+  }
   return result;
 }
 
@@ -563,4 +575,61 @@ function extractArtistFromTitle(title, originalArtist) {
     }
   }
   return originalArtist;
+}
+
+function normalizeTitleAndArtist(title, artist) {
+  let dataTitle = title?.trim() || "";
+  let dataArtist = artist?.trim() || "";
+
+  if (!dataTitle || !dataArtist) return { title: dataTitle, artist: dataArtist };
+
+  // If the title and artist are exactly the same and contain ' - ', separate them
+  if (dataTitle.toLowerCase() === dataArtist.toLowerCase() && dataTitle.includes(" - ")) {
+    const parts = dataTitle
+      .split("-")
+      .map((s) => s.trim())
+      .filter((s) => s.length > 0);
+
+    if (parts.length >= 2) {
+      dataArtist = parts.shift();
+      dataTitle = parts.join(" - ");
+    }
+  } else {
+    // Normal extract + clean process
+    dataArtist = extractArtistFromTitle(dataTitle, dataArtist);
+    dataTitle = cleanTitle(dataTitle, dataArtist);
+  }
+
+  return { title: dataTitle, artist: dataArtist };
+}
+
+function isElementText(text) {
+  if (typeof text !== "string") return null;
+
+  const trimmed = text.trim();
+  if (!trimmed) return null;
+
+  try {
+    const el = document.querySelector(trimmed);
+    if (el) {
+      return trimmed;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+function isNotElementText(text) {
+  if (typeof text !== "string") return null;
+
+  const trimmed = text.trim();
+  if (!trimmed) return null;
+
+  try {
+    document.querySelector(trimmed);
+    return null;
+  } catch {
+    return trimmed;
+  }
 }
