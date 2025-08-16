@@ -30,7 +30,7 @@ let manifest = fs.readJsonSync(manifestPath);
 manifest.version = pkgVersion;
 
 // 4. Update manifest content_scripts to use compiledParsers.js and <all_urls>
-const defaultJSFiles = ["libs/browser-polyfill.js", "rpcStateManager.js", "mainParser.js", "compiledParsers.js", "selector.js", "main.js"];
+const defaultJSFiles = ["libs/browser-polyfill.js", "libs/pako.js", "rpcStateManager.js", "mainParser.js", "compiledParsers.js", "selector.js", "main.js"];
 
 if (!manifest.content_scripts) {
   manifest.content_scripts = [];
@@ -57,6 +57,7 @@ if (TARGET === "firefox") {
   if (fs.existsSync(backgroundPath)) {
     let backgroundContent = fs.readFileSync(backgroundPath, "utf8");
     backgroundContent = backgroundContent.replace(/import\s+["']\.\/libs\/browser-polyfill\.js["'];?\s*/g, "");
+    backgroundContent = backgroundContent.replace(/import\s+["']\.\/libs\/pako\.js["'];?\s*/g, "");
     fs.writeFileSync(backgroundPath, backgroundContent);
   }
 }
@@ -105,16 +106,19 @@ function extractFunctionsFromFile(sourceFilePath, functionNames) {
   });
 
   const extracted = [];
+  const includeAll = !Array.isArray(functionNames) || functionNames.length === 0;
 
   for (const node of ast.body) {
-    if (node.type === "FunctionDeclaration" && functionNames.includes(node.id.name)) {
+    // Normal function declarations
+    if (node.type === "FunctionDeclaration" && (includeAll || functionNames.includes(node.id.name))) {
       const fnCode = code.slice(node.start, node.end);
       extracted.push(fnCode);
     }
 
+    // Variable declarations (const foo = () => {})
     if (node.type === "VariableDeclaration" && node.declarations.length > 0) {
       for (const decl of node.declarations) {
-        if (decl.id.type === "Identifier" && functionNames.includes(decl.id.name)) {
+        if (decl.id.type === "Identifier" && (includeAll || functionNames.includes(decl.id.name))) {
           const fnCode = code.slice(node.start, node.end);
           extracted.push(fnCode);
         }
@@ -138,7 +142,7 @@ function inlineUtilsFunctions(targetFileName, sourceUtilsFile, functionsToInclud
 
 inlineUtilsFunctions("common/history.js", "common/utils.js", ["truncate", "cleanTitle", "extractArtistFromTitle", "normalizeTitleAndArtist"]);
 inlineUtilsFunctions("main.js", "common/utils.js", ["delay", "logInfo", "logWarn", "logError", "applyOverrides", "applyOverridesLoop"]);
-inlineUtilsFunctions("selector.js", "common/utils.js", ["cleanTitle", "extractArtistFromTitle", "normalizeTitleAndArtist", "isElementText", "isNotElementText"]);
+inlineUtilsFunctions("selector.js", "common/utils.js", ["truncate", "cleanTitle", "extractArtistFromTitle", "normalizeTitleAndArtist", "getExistingElementSelector", "getPlainText", "getIconAsDataUrl", "parseRegexArray"]);
 inlineUtilsFunctions("background.js", "common/utils.js", [
   "logInfo",
   "logWarn",
@@ -152,8 +156,9 @@ inlineUtilsFunctions("background.js", "common/utils.js", [
   "truncate",
   "extractArtistFromTitle",
   "normalizeTitleAndArtist",
+  "openIndexedDB",
 ]);
-inlineUtilsFunctions("background.js", "common/history.js", ["HISTORY_KEY", "MAX_HISTORY", "loadHistory", "addToHistory", "saveHistory"]);
+inlineUtilsFunctions("background.js", "common/history.js", []);
 inlineUtilsFunctions("mainParser.js", "common/utils.js", [
   "extractTimeParts",
   "parseTime",
@@ -165,8 +170,8 @@ inlineUtilsFunctions("mainParser.js", "common/utils.js", [
   "hashFromPatternStrings",
   "getText",
   "parseUrlPattern",
-  "isElementText",
-  "isNotElementText",
+  "getExistingElementSelector",
+  "getPlainText",
 ]);
 
 // 7. Write the manifest in the dist folder

@@ -1,43 +1,3 @@
-async function getIconAsDataUrl() {
-  const iconUrl = browser.runtime.getURL("icons/128x128.png");
-  const response = await fetch(iconUrl);
-  const blob = await response.blob();
-
-  return await new Promise((resolve) => {
-    const reader = new FileReader();
-    reader.onloadend = () => resolve(reader.result);
-    reader.readAsDataURL(blob);
-  });
-}
-
-// User Add RPC - Load All Saved User Parsers
-function parseRegexArray(input) {
-  try {
-    const trimmed = input.trim();
-    const inner = trimmed.startsWith("[") && trimmed.endsWith("]") ? trimmed.slice(1, -1).trim() : trimmed;
-
-    if (!inner) return [/.*/];
-
-    const parts = inner
-      .split(/,(?![^\[]*\])/g)
-      .map((s) => s.trim())
-      .filter(Boolean);
-
-    const regexes = parts.map((str) => {
-      const m = str.match(/^\/(.+)\/([gimsuy]*)$/);
-      try {
-        return m ? new RegExp(m[1], m[2]) : new RegExp(str);
-      } catch {
-        return /.*/;
-      }
-    });
-
-    return regexes.length ? regexes : [/.*/];
-  } catch {
-    return [/.*/];
-  }
-}
-
 // User Add RPC - Add Selector UI to the page
 browser.runtime.onMessage.addListener((msg) => {
   if (msg.action === "startSelectorUI") {
@@ -70,9 +30,9 @@ async function injectSelectorUI(editMode = false) {
   // User Add RPC - CSS
   const selectorCSS = `
     :host {
-      all: initial;
       position: relative;
       z-index: 2147483647;
+      isolation: isolate;
     }
 
     .rpc-preview .card,
@@ -217,6 +177,9 @@ async function injectSelectorUI(editMode = false) {
       background: #393939 !important;
       border-radius: 4px !important;
       -webkit-border-radius: 4px !important;
+      -webkit-user-select:all !important;
+         -moz-user-select:all !important;
+              user-select:all !important
     }
 
     #regexSelector.userRpc-select {
@@ -251,12 +214,12 @@ async function injectSelectorUI(editMode = false) {
     #userRpc-selectorRoot::-webkit-scrollbar-track,
     #userRpc-selectorChooser-container-list::-webkit-scrollbar-corner,
     #userRpc-selectorChooser-container-list::-webkit-scrollbar-track {
-      background: #fff0
+      background: #1e1e1e!important
     }
 
     #userRpc-selectorRoot::-webkit-scrollbar-thumb,
     #userRpc-selectorChooser-container-list::-webkit-scrollbar-thumb {
-      background: #2a2a2a;
+      background: #2a2a2a!important
     }
 
     #userRpc-selectorChooser-button {
@@ -304,6 +267,7 @@ async function injectSelectorUI(editMode = false) {
     .rpc-preview .details {
       margin-left: 12px;
       flex: 1;
+      word-break: break-word;
     }
 
     .rpc-preview .details h2 {
@@ -678,7 +642,7 @@ async function injectSelectorUI(editMode = false) {
   }
 
   const rect = root.getBoundingClientRect();
-  root.style.left = window.innerWidth - rect.width - 15 + "px";
+  root.style.left = window.innerWidth - rect.width - 25 + "px";
   root.style.top = "15px";
   root.style.right = "";
 
@@ -747,15 +711,25 @@ async function injectSelectorUI(editMode = false) {
     let invalidFields = [];
 
     checkFields.forEach((f) => {
-      if (selectors[f] && !isElementText(selectors[f])) {
+      if (selectors[f] && !getExistingElementSelector(selectors[f])) {
         invalidFields.push(formatLabel(f));
       }
     });
     if (invalidFields.length > 0) {
       statusDiv.style.color = "red";
 
-      const listItems = invalidFields.map((f) => `<li>${f}</li>`).join("");
-      shadowDoc.getElementById("selectorStatus").innerHTML = `Invalid or not found selector(s):<br><ul>${listItems}</ul>`;
+      const statusEl = shadowDoc.getElementById("selectorStatus");
+      statusEl.textContent = "Invalid or not found selector(s):";
+
+      const ul = document.createElement("ul");
+      invalidFields.forEach((f) => {
+        const li = document.createElement("li");
+        li.textContent = f;
+        ul.appendChild(li);
+      });
+
+      statusEl.appendChild(document.createElement("br"));
+      statusEl.appendChild(ul);
 
       return;
     }
@@ -891,14 +865,14 @@ async function injectSelectorUI(editMode = false) {
     };
 
     let texts = {
-      name: elements.name?.textContent || isNotElementText(selectors.name) || location.hostname || "name",
-      title: elements.title?.textContent || isNotElementText(selectors.title) || "title",
-      artist: elements.artist?.textContent || isNotElementText(selectors.artist) || "artist",
-      source: elements.source?.textContent || isNotElementText(selectors.source) || location.hostname || "source",
+      name: selectors.name || location.hostname || "name",
+      title: elements.title?.textContent || getPlainText(selectors.title) || "title",
+      artist: elements.artist?.textContent || getPlainText(selectors.artist) || "artist",
+      source: elements.source?.textContent || getPlainText(selectors.source) || location.hostname || "source",
       timePassed: elements.timePassed?.textContent,
       duration: elements.duration?.textContent.replace("-", ""),
-      buttonText: elements.buttonText?.textContent || isNotElementText(selectors.buttonText) || "Custom Action",
-      buttonText2: elements.buttonText2?.textContent || isNotElementText(selectors.buttonText2) || "Custom Action",
+      buttonText: elements.buttonText?.textContent || getPlainText(selectors.buttonText) || "Custom Action",
+      buttonText2: elements.buttonText2?.textContent || getPlainText(selectors.buttonText2) || "Custom Action",
     };
 
     // Trim texts
@@ -907,7 +881,6 @@ async function injectSelectorUI(editMode = false) {
     // If artist name contains title, clean it
     if (texts.title && texts.artist) {
       const normalized = normalizeTitleAndArtist(texts.title, texts.artist);
-
       texts.artist = normalized.artist;
       texts.title = normalized.title;
     }
@@ -937,7 +910,7 @@ async function injectSelectorUI(editMode = false) {
     const previewRoot = shadowDoc.querySelector(".rpc-preview");
     if (!previewRoot) return;
 
-    const details = previewRoot.querySelector(".details");
+    const details = previewRoot.querySelector(".card");
 
     const setText = (selector, value) => {
       const el = details.querySelector(selector);
@@ -1105,6 +1078,7 @@ async function injectSelectorUI(editMode = false) {
     setText(".source", texts.source);
     setText(".title", texts.title);
     setText(".artist", texts.artist);
+    setText(".header", `Listening to ${texts.artist}`);
     if (editMode) {
       if (shadowDoc.querySelector(".userRpc-h4").textContent !== texts.name) {
         shadowDoc.querySelector(".userRpc-h4").textContent = texts.name;
@@ -1115,14 +1089,14 @@ async function injectSelectorUI(editMode = false) {
     setButtons({
       linkElement: elements.buttonLink,
       fallbackUrl: selectors.buttonLink,
-      buttonText: texts.buttonText,
+      buttonText: truncate(texts.buttonText, 32),
       buttonSelector: "#customButton",
     });
 
     setButtons({
       linkElement: elements.buttonLink2,
       fallbackUrl: selectors.buttonLink2,
-      buttonText: texts.buttonText2,
+      buttonText: truncate(texts.buttonText2, 32),
       buttonSelector: "#customButton2",
     });
     updateProgress();

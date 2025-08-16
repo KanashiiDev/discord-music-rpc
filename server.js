@@ -132,14 +132,13 @@ function isSameActivityIgnore(a, b) {
   return a && b && a.details === b.details && a.state === b.state;
 }
 
-function truncate(str, maxLength = 128, { fallback = "Unknown", minLength = 2 } = {}) {
-  // If it's not a string, null.
-  if (typeof str !== "string") {
-    return fallback;
-  }
+function truncate(str, maxLength = 128, { fallback = "Unknown", minLength = 2, maxRegexLength = 512 } = {}) {
+  if (typeof str !== "string") return fallback;
 
   str = str.trim();
   if (!str) return fallback;
+
+  let strForRegex = str.length > maxRegexLength ? str.slice(0, maxRegexLength) : str;
 
   const keywordGroup = [
     "free\\s+(download|dl|song|now)",
@@ -157,16 +156,11 @@ function truncate(str, maxLength = 128, { fallback = "Unknown", minLength = 2 } 
 
   const cleanRegex = new RegExp(`([\\[\\(]\\s*(${keywordGroup})\\s*[\\]\\)])|(\\s*-\\s*(${keywordGroup})\\s*$)`, "gi");
 
-  // Cleaning
-  str = str.replace(cleanRegex, "").replace(/\s+/g, " ").trim();
+  strForRegex = strForRegex.replace(cleanRegex, "").replace(/\s+/g, " ").trim();
 
-  // Abbreviation
-  let result = str.length > maxLength ? str.slice(0, maxLength - 3) + "..." : str;
+  let result = strForRegex.length > maxLength ? strForRegex.slice(0, maxLength - 3) + "..." : strForRegex;
 
-  // Minimum length check
-  if (result.length < minLength) {
-    return fallback;
-  }
+  if (result.length < minLength) return fallback;
   return result;
 }
 

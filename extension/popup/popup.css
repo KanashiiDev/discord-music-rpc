@@ -133,6 +133,16 @@ footer {
 }
 
 #historySearchBox::-webkit-input-placeholder,
+#searchBox::-webkit-input-placeholder {
+  color: #888;
+}
+
+#historySearchBox::-webkit-input-placeholder,
+#searchBox::-webkit-input-placeholder {
+  color: #888;
+}
+
+#historySearchBox::-webkit-input-placeholder,
 #historySearchBox::-moz-placeholder,
 #historySearchBox:-ms-input-placeholder,
 #historySearchBox::-ms-input-placeholder,
@@ -182,6 +192,7 @@ footer {
   font-weight: bold;
 }
 
+.song-link,
 .del-user-parser,
 .redirect-user-parser,
 .gear-button {
@@ -195,6 +206,16 @@ footer {
   transition: opacity 0.2s;
 }
 
+.song-link,
+.del-user-parser {
+  margin-left: auto;
+}
+
+.song-link {
+  opacity: 0;
+}
+
+.history-entry:hover .song-link,
 #historyToggle:hover,
 .redirect-user-parser:hover,
 .gear-button:hover {
@@ -255,6 +276,7 @@ footer {
   transition: background 0.2s;
   padding: 6px;
   border-radius: 6px;
+  word-break: break-word;
 }
 
 .history-entry img {
@@ -262,6 +284,7 @@ footer {
   height: 36px;
   border-radius: 4px;
   margin-right: 10px;
+  -o-object-fit: cover;
   object-fit: cover;
 }
 
@@ -348,4 +371,33 @@ body.cleaning-mode .history-checkbox {
 
 .setup-dialog .setup-note-link {
   margin-bottom: 10px;
+}
+
+.spinner {
+  border: 4px solid rgba(0, 0, 0, 0.1);
+  border-left-color: #00545e;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  -webkit-animation: spin 1s linear infinite;
+  animation: spin 1s linear infinite;
+  margin: 40px auto;
+}
+
+@-webkit-keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
 }

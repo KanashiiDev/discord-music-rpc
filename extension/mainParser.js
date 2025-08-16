@@ -176,7 +176,7 @@ function querySelectorDeep(selector, root = document) {
         try {
           const title = get("title")?.textContent?.trim() ?? "";
           const artist = get("artist")?.textContent?.trim() ?? "";
-          let source = get("source")?.textContent?.trim() ?? isNotElementText(data.selectors["source"]) ?? "";
+          let source = get("source")?.textContent?.trim() ?? getPlainText(data.selectors["source"]) ?? "";
           const timePassed = get("timePassed")?.textContent ?? "";
           const duration = get("duration")?.textContent ?? "";
           const imageElement = get("image");

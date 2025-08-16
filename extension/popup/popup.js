@@ -1,11 +1,18 @@
 document.addEventListener("DOMContentLoaded", async () => {
   try {
     const setup = await browser.storage.local.get("initialSetupDone");
-
     if (!setup.initialSetupDone) {
       showInitialSetupDialog();
       return;
     }
+
+    const ohm = await browser.storage.local.get("oldHistoryMigrate");
+    if (!ohm.oldHistoryMigrate) {
+      await migrateOldHistory();
+      await browser.storage.local.set({ oldHistoryMigrate: true });
+      return;
+    }
+
     const container = document.getElementById("siteList");
     const searchBox = document.getElementById("searchBox");
     const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
@@ -125,7 +132,6 @@ document.addEventListener("DOMContentLoaded", async () => {
           delBtn.className = "del-user-parser";
           delBtn.appendChild(createSVG(svg_paths.trashIconPaths));
           delBtn.title = "Delete this user parser";
-          delBtn.style.marginLeft = "auto";
           delBtn.addEventListener("click", async () => {
             const confirmed = confirm(`Do you want to delete "${title}" parser?`);
             if (!confirmed) return;
@@ -167,7 +173,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     await renderList();
 
-    // SearchBox
+    // Search Box
     const debouncedSearch = debounce(async () => {
       const query = searchBox.value.toLowerCase();
       const list = await getFreshParserList();
@@ -175,7 +181,14 @@ document.addEventListener("DOMContentLoaded", async () => {
       await renderList(filtered);
     }, 200);
 
+    // History Search Box
     searchBox.addEventListener("input", debouncedSearch);
+    const historySearchInput = document.getElementById("historySearchBox");
+    const debouncedHistorySearch = debounce(() => {
+      const query = historySearchInput.value.toLowerCase();
+      filterRenderedHistory(query);
+    }, 200);
+    historySearchInput.addEventListener("input", debouncedHistorySearch);
 
     // Open Element Selector
     document.getElementById("openSelector").addEventListener("click", async function () {
@@ -195,14 +208,17 @@ document.addEventListener("DOMContentLoaded", async () => {
       }
     });
 
-    // History
     const toggleBtn = document.getElementById("historyToggle");
-    toggleBtn.appendChild(createSVG(svg_paths.historyIconPaths));
     const panel = document.getElementById("historyPanel");
     const panelHeader = document.getElementById("historyHeader");
     const clearBtn = document.getElementById("clearHistoryBtn");
     const cancelCleanBtn = document.getElementById("cancelCleanBtn");
 
+    toggleBtn.appendChild(createSVG(svg_paths.historyIconPaths));
+    let cleaningMode = false;
+    let fullHistory = [];
+
+    // Toggle history panel
     toggleBtn.addEventListener("click", async () => {
       const isOpen = panel.style.display === "block";
       panel.style.display = isOpen ? "none" : "block";
@@ -216,11 +232,103 @@ document.addEventListener("DOMContentLoaded", async () => {
       mainHeader.appendChild(toggleBtn);
       toggleBtn.innerHTML = "";
       toggleBtn.appendChild(!isOpen ? createSVG(svg_paths.backIconPaths) : createSVG(svg_paths.historyIconPaths));
+
       if (!isOpen) {
         await renderHistory();
       }
     });
 
+    // Render history
+    async function renderHistory() {
+      panel.innerHTML = "";
+      const spinner = document.createElement("div");
+      spinner.className = "spinner";
+      panel.appendChild(spinner);
+      fullHistory = await loadHistory();
+      const history = fullHistory.slice(0, MAX_HISTORY);
+      panel.innerHTML = "";
+
+      if (!history.length) {
+        const emptyMsg = document.createElement("i");
+        emptyMsg.textContent = "Empty.";
+        panel.appendChild(emptyMsg);
+        return;
+      }
+
+      if (document.getElementById("historySearchBox")) {
+        document.getElementById("historySearchBox").value = "";
+      }
+
+      let lastHeader = null;
+      const fragment = document.createDocumentFragment();
+
+      history.forEach((entry, i) => {
+        const time = new Date(entry.p);
+        const header = isSameDay(time, dateToday) ? "Today" : isSameDay(time, dateYesterday) ? "Yesterday" : dateFull(time);
+
+        if (header !== lastHeader) {
+          const h3 = document.createElement("h3");
+          h3.textContent = header;
+          h3.style.marginTop = "10px";
+          fragment.appendChild(h3);
+          lastHeader = header;
+        }
+
+        const div = document.createElement("div");
+        div.className = "history-entry";
+
+        const checkbox = document.createElement("input");
+        checkbox.type = "checkbox";
+        checkbox.className = "history-checkbox";
+        checkbox.dataset.index = fullHistory.indexOf(entry);
+
+        const img = document.createElement("img");
+        img.width = 36;
+        img.height = 36;
+        img.className = "lazyload";
+        img.dataset.src = entry.i || browser.runtime.getURL("icons/48x48.png");
+
+        img.onerror = function () {
+          this.onerror = null;
+          this.src = browser.runtime.getURL("icons/48x48.png");
+        };
+
+        const info = document.createElement("div");
+        info.className = "history-info";
+
+        const strong = document.createElement("strong");
+        strong.textContent = entry.t;
+
+        const link = document.createElement("a");
+        link.className = entry.u ? "song-link" : "song-link hidden";
+        link.title = "Go to The Song";
+        link.appendChild(createSVG(svg_paths.redirectIconPaths));
+        if (entry.u) link.href = entry.u;
+        link.target = "_blank";
+        link.rel = "noopener noreferrer";
+
+        const small = document.createElement("small");
+        small.textContent = `${entry.s}${dateHourMinute(time) ? " • " + dateHourMinute(time) : ""}`;
+
+        info.appendChild(strong);
+        const parts = [];
+        if (entry.a !== "Radio") {
+          const br = document.createElement("br");
+          parts.push(` ${entry.a}`, br);
+        }
+        parts.push(small);
+        info.append(...parts);
+        div.append(checkbox, img, info, link);
+        fragment.appendChild(div);
+      });
+
+      panel.appendChild(fragment);
+
+      // Add checkbox events while in cleaning mode
+      if (cleaningMode) attachCheckboxListeners();
+    }
+
+    // Filter Render history
     function filterRenderedHistory(query) {
       const entries = document.querySelectorAll(".history-entry");
 
@@ -246,133 +354,67 @@ document.addEventListener("DOMContentLoaded", async () => {
       });
     }
 
-    const historySearchInput = document.getElementById("historySearchBox");
-    const debouncedHistorySearch = debounce(() => {
-      const query = historySearchInput.value.toLowerCase();
-      filterRenderedHistory(query);
-    }, 200);
-    historySearchInput.addEventListener("input", debouncedHistorySearch);
-
-    // Clear History
-    let cleaningMode = false;
-    clearBtn.addEventListener("click", async () => {
+    // Listen checkbox changes
+    function attachCheckboxListeners() {
       const checkboxes = document.querySelectorAll(".history-checkbox");
-      const selectedIndexes = Array.from(checkboxes)
-        .filter((cb) => cb.checked)
-        .map((cb) => parseInt(cb.dataset.index, 10));
+      checkboxes.forEach((cb) => {
+        cb.addEventListener("change", updateClearBtnText);
+      });
+    }
+
+    // Update Clear Button
+    function updateClearBtnText() {
+      if (!cleaningMode) return;
+
+      const selectedCount = Array.from(document.querySelectorAll(".history-checkbox")).filter((cb) => cb.checked && cb.closest(".history-entry").style.display !== "none").length;
+
+      clearBtn.textContent = selectedCount > 0 ? `Delete Selected (${selectedCount})` : "Delete All";
+    }
+
+    // Clear Button Click Event
+    clearBtn.addEventListener("click", async () => {
       if (!cleaningMode) {
+        // Start the cleaning mode
         cleaningMode = true;
         document.body.classList.add("cleaning-mode");
-        clearBtn.textContent = selectedIndexes.length ? `Delete Selected (${selectedIndexes.length})` : "Delete All";
         cancelCleanBtn.style.display = "inline-block";
+        updateClearBtnText();
+        attachCheckboxListeners();
         return;
       }
-      let history = await loadHistory();
-      const confirmMsg = selectedIndexes.length ? `Should the selected ${selectedIndexes.length} history be deleted?` : `Should all history (${history.length}) be erased?`;
 
-      if (!confirm(confirmMsg)) return;
+      // Get selected items
+      const selectedIndexes = Array.from(document.querySelectorAll(".history-checkbox:checked"))
+        .filter((cb) => cb.closest(".history-entry").style.display !== "none")
+        .map((cb) => parseInt(cb.dataset.index));
 
-      if (selectedIndexes.length) {
-        history = history.filter((_, i) => !selectedIndexes.includes(i));
-      } else {
-        history = [];
+      //If no items were selected, ask for user confirmation to delete all history.
+      if (selectedIndexes.length === 0) {
+        if (!confirm("Are you sure you want to delete ALL history?")) return;
+        fullHistory = [];
+      }
+      // If there are selected items, delete only them.
+      else {
+        if (!confirm(`Delete ${selectedIndexes.length} selected item(s)?`)) return;
+        fullHistory = fullHistory.filter((_, i) => !selectedIndexes.includes(i));
       }
 
-      await saveHistory(history);
+      //Update the database and refresh the UI
+      await saveHistory(fullHistory);
       await renderHistory();
       exitCleaningMode();
     });
 
-    cancelCleanBtn.addEventListener("click", () => {
-      exitCleaningMode();
-    });
+    // Cancel Button Event
+    cancelCleanBtn.addEventListener("click", exitCleaningMode);
 
+    // Exit cleaning mode
     function exitCleaningMode() {
       cleaningMode = false;
       document.body.classList.remove("cleaning-mode");
       clearBtn.textContent = "Clear History";
       cancelCleanBtn.style.display = "none";
       document.querySelectorAll(".history-checkbox").forEach((cb) => (cb.checked = false));
-    }
-
-    async function renderHistory() {
-      const history = (await loadHistory()).slice(0, MAX_HISTORY);
-      panel.innerHTML = "";
-
-      if (!history.length) {
-        const emptyMsg = document.createElement("i");
-        emptyMsg.textContent = "Empty.";
-        panel.appendChild(emptyMsg);
-        return;
-      }
-
-      let lastHeader = null;
-
-      history.forEach((entry, i) => {
-        const time = new Date(entry.playedAt);
-        let header;
-
-        if (isSameDay(time, dateToday)) {
-          header = "Today";
-        } else if (isSameDay(time, dateYesterday)) {
-          header = "Yesterday";
-        } else {
-          header = dateFull(time);
-        }
-
-        if (header !== lastHeader) {
-          const h3 = document.createElement("h3");
-          h3.textContent = header;
-          h3.style.marginTop = "10px";
-          panel.appendChild(h3);
-          lastHeader = header;
-        }
-
-        const div = document.createElement("div");
-        div.className = "history-entry";
-
-        const checkbox = document.createElement("input");
-        checkbox.type = "checkbox";
-        checkbox.className = "history-checkbox";
-        checkbox.dataset.index = i;
-        checkbox.addEventListener("click", async () => {
-          const checkboxes = document.querySelectorAll(".history-checkbox");
-          const selectedIndexes = Array.from(checkboxes)
-            .filter((cb) => cb.checked)
-            .map((cb) => parseInt(cb.dataset.index, 10));
-          clearBtn.textContent = selectedIndexes.length ? `Delete Selected (${selectedIndexes.length})` : "Delete All";
-        });
-
-        const img = document.createElement("img");
-        img.width = 36;
-        img.height = 36;
-        img.className = "lazyload";
-        img.dataset.src = entry.image || browser.runtime.getURL("icons/48x48.png");
-
-        const info = document.createElement("div");
-        info.className = "history-info";
-
-        const strong = document.createElement("strong");
-        strong.textContent = entry.title;
-
-        const br = document.createElement("br");
-
-        const small = document.createElement("small");
-        small.textContent = `${entry.source}${dateHourMinute(time) ? " • " + dateHourMinute(time) : ""}`;
-
-        info.appendChild(strong);
-        const parts = [];
-        if (entry.artist !== "Radio") {
-          parts.push(` ${entry.artist}`, br);
-        }
-        parts.push(small);
-        info.append(...parts);
-        div.append(checkbox, img, info);
-        panel.appendChild(div);
-        if (document.getElementById("historySearchBox")) {
-          document.getElementById("historySearchBox").value = "";
-        }
-      });
     }
   } catch (error) {
     logError("Error loading settings:", error);

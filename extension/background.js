@@ -1,4 +1,5 @@
 import "./libs/browser-polyfill.js";
+import "./libs/pako.js";
 
 const state = {
   activeTabMap: new Map(),
@@ -343,6 +344,7 @@ const setupListeners = () => {
           title: req.data.title,
           artist: req.data.artist,
           source: req.data.source || (sender?.tab?.url ? new URL(sender.tab.url).hostname.replace(/^www\./, "") : "unknown"),
+          songUrl: req.data.songUrl || "",
         });
 
         return true;

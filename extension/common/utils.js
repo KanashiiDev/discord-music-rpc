@@ -442,7 +442,7 @@ function showInitialSetupDialog() {
   content.appendChild(contentText);
 
   const contentLink = document.createElement("a");
-  contentLink.href = "https://github.com/KanashiiDev/discord-music-rpc/releases/latest/download/Discord.Music.RPC.Setup.zip";
+  contentLink.href = "https://github.com/KanashiiDev/discord-music-rpc/releases/latest/download/Discord-Music-RPC-Setup.zip";
   contentLink.textContent = "Download Application";
   contentLink.target = "_blank";
   contentLink.rel = "noopener noreferrer";
@@ -498,14 +498,13 @@ function showInitialSetupDialog() {
  * @param {number} [options.minLength=2] - The minimum length of the string before applying the fallback.
  * @return {string} The truncated string.
  */
-function truncate(str, maxLength = 128, { fallback = "Unknown", minLength = 2 } = {}) {
-  // If it's not a string, null.
-  if (typeof str !== "string") {
-    return fallback;
-  }
+function truncate(str, maxLength = 128, { fallback = "Unknown", minLength = 2, maxRegexLength = 512 } = {}) {
+  if (typeof str !== "string") return fallback;
 
   str = str.trim();
   if (!str) return fallback;
+
+  let strForRegex = str.length > maxRegexLength ? str.slice(0, maxRegexLength) : str;
 
   const keywordGroup = [
     "free\\s+(download|dl|song|now)",
@@ -523,16 +522,11 @@ function truncate(str, maxLength = 128, { fallback = "Unknown", minLength = 2 } 
 
   const cleanRegex = new RegExp(`([\\[\\(]\\s*(${keywordGroup})\\s*[\\]\\)])|(\\s*-\\s*(${keywordGroup})\\s*$)`, "gi");
 
-  // Cleaning
-  str = str.replace(cleanRegex, "").replace(/\s+/g, " ").trim();
+  strForRegex = strForRegex.replace(cleanRegex, "").replace(/\s+/g, " ").trim();
 
-  // Abbreviation
-  let result = str.length > maxLength ? str.slice(0, maxLength - 3) + "..." : str;
+  let result = strForRegex.length > maxLength ? strForRegex.slice(0, maxLength - 3) + "..." : strForRegex;
 
-  // Minimum length check
-  if (result.length < minLength) {
-    return fallback;
-  }
+  if (result.length < minLength) return fallback;
   return result;
 }
 
@@ -603,7 +597,7 @@ function normalizeTitleAndArtist(title, artist) {
   return { title: dataTitle, artist: dataArtist };
 }
 
-function isElementText(text) {
+function getExistingElementSelector(text) {
   if (typeof text !== "string") return null;
 
   const trimmed = text.trim();
@@ -620,16 +614,76 @@ function isElementText(text) {
   }
 }
 
-function isNotElementText(text) {
-  if (typeof text !== "string") return null;
-
+function getPlainText(text) {
+  if (typeof text !== "string") return text;
   const trimmed = text.trim();
   if (!trimmed) return null;
 
+  const htmlTags = new Set([
+    "html","head","body","div","span","p","a","ul","ol","li","table",
+    "tr","td","th","thead","tbody","tfoot","section","article","nav",
+    "header","footer","main","aside","form","input","textarea","button",
+    "select","option","label","img","canvas","svg","video","audio","source",
+    "iframe","script","style","link","meta","h1","h2","h3","h4","h5","h6",
+    "pre","code","blockquote","figure","figcaption","strong","em","b","i","u",
+    "small","sub","sup","hr","br"
+  ]);
+  if (/^[.#\[]/.test(trimmed)) return null;
+  if (!trimmed.includes(" ") && htmlTags.has(trimmed.toLowerCase())) return null;
+  if (/[\s>+~.#:\[\]]/.test(trimmed)) return null;
+  return trimmed;
+}
+
+
+function openIndexedDB(DB_NAME, STORE_NAME, DB_VERSION) {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(DB_NAME, DB_VERSION);
+    request.onupgradeneeded = (e) => {
+      const db = e.target.result;
+      if (!db.objectStoreNames.contains(STORE_NAME)) {
+        db.createObjectStore(STORE_NAME);
+      }
+    };
+    request.onsuccess = (e) => resolve(e.target.result);
+    request.onerror = (e) => reject(e.target.error);
+  });
+}
+
+async function getIconAsDataUrl() {
+  const iconUrl = browser.runtime.getURL("icons/128x128.png");
+  const response = await fetch(iconUrl);
+  const blob = await response.blob();
+
+  return await new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result);
+    reader.readAsDataURL(blob);
+  });
+}
+
+function parseRegexArray(input) {
   try {
-    document.querySelector(trimmed);
-    return null;
+    const trimmed = input.trim();
+    const inner = trimmed.startsWith("[") && trimmed.endsWith("]") ? trimmed.slice(1, -1).trim() : trimmed;
+
+    if (!inner) return [/.*/];
+
+    const parts = inner
+      .split(/,(?![^\[]*\])/g)
+      .map((s) => s.trim())
+      .filter(Boolean);
+
+    const regexes = parts.map((str) => {
+      const m = str.match(/^\/(.+)\/([gimsuy]*)$/);
+      try {
+        return m ? new RegExp(m[1], m[2]) : new RegExp(str);
+      } catch {
+        return /.*/;
+      }
+    });
+
+    return regexes.length ? regexes : [/.*/];
   } catch {
-    return trimmed;
+    return [/.*/];
   }
 }

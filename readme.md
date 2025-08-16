@@ -109,7 +109,7 @@ You can add a parser in **two ways**:
 5. Click **"Save"** and refresh the page.
 
 **Notes**
-- If either the  **“Artist”** or **“Title”** is missing, you can select the same selector for both.
+- If **“Artist”** or **“Title”** is missing, you can select the same selector for both. The source field will replace the artist field.
 - If the song **“Artist”** and **“Title”** are combined, you can add the same selector to both sections. The application will automatically separate them.
 - If only **“Duration”** is available, you can still add it. The app will calculate playback time starting from when the song changes until the full duration is reached.
 - If **“Time Passed”** and **“Duration”** are combined (e.g., `0:12 / 2:20`), you can use the same selector for both.
