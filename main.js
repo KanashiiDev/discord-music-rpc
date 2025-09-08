@@ -9,7 +9,7 @@ const config = {
   server: {
     PORT: 3000,
     START_TIMEOUT: 10000,
-    HEALTH_CHECK_INTERVAL: 30000,
+    UPDATE_CHECK_INTERVAL: 3600000,
     MAX_RESTART_ATTEMPTS: 5,
     RESTART_DELAY: 5000,
   },
@@ -23,6 +23,8 @@ const state = {
   isStopping: false,
   restartAttempts: 0,
   serverStartTime: null,
+  logSongUpdate: false,
+  isRPCConnected: false,
 };
 
 // App Ready
@@ -92,6 +94,10 @@ async function startServer() {
         log.info("Server started successfully");
         resolve();
       }
+      if (msg.type === "RPC_STATUS") {
+        state.isRPCConnected = msg.value;
+        updateTrayMenu();
+      }
     });
 
     state.serverProcess.stdout.on("data", (data) => {
@@ -132,12 +138,14 @@ async function stopServer() {
   state.isStopping = true;
 
   return new Promise((resolve) => {
+    const timeoutDuration = Math.min(3000, state.serverStartTime ? Date.now() - state.serverStartTime : 3000);
+
     const killTimeout = setTimeout(() => {
       if (state.serverProcess) {
         state.serverProcess.kill("SIGKILL");
       }
       resolve();
-    }, 3000);
+    }, timeoutDuration);
 
     state.serverProcess.once("exit", () => {
       clearTimeout(killTimeout);
@@ -215,24 +223,20 @@ function initializeApp() {
 function updateTrayMenu() {
   const contextMenu = Menu.buildFromTemplate([
     {
-      label: `Status: ${state.isServerRunning ? "Running" : "Stopped"}`,
-      enabled: false,
-    },
-    {
       label: `Version: ${app.getVersion()}`,
       enabled: false,
     },
     { type: "separator" },
+    {
+      label: state.isServerRunning ? "Stop Server" : "Start Server",
+      click: () => (state.isServerRunning ? stopServer() : startServer()),
+    },
     {
       label: "Restart Server",
       click: () =>
         restartServer().catch((err) => {
           dialog.showErrorBox("Restart Error", err.message);
         }),
-    },
-    {
-      label: state.isServerRunning ? "Stop Server" : "Start Server",
-      click: () => (state.isServerRunning ? stopServer() : startServer()),
     },
     { type: "separator" },
     {
@@ -284,8 +288,33 @@ function updateTrayMenu() {
       },
     },
     {
-      label: "Open Logs",
-      click: () => openLogs(),
+      label: "Debug",
+      submenu: [
+        {
+          label: `Status: ${state.isServerRunning ? "Running" : "Stopped"}`,
+          enabled: false,
+        },
+        {
+          label: `RPC: ${state.isRPCConnected ? "Connected" : "Disconnected"}`,
+          enabled: false,
+        },
+        { type: "separator" },
+        { label: "Open Logs", click: () => openLogs() },
+        {
+          label: "Log Song Updates",
+          type: "checkbox",
+          checked: state.logSongUpdate,
+          click: (item) => {
+            state.logSongUpdate = item.checked;
+            if (state.serverProcess) {
+              state.serverProcess.send({
+                type: "SET_LOG_SONG_UPDATE",
+                value: state.logSongUpdate,
+              });
+            }
+          },
+        },
+      ],
     },
     { type: "separator" },
     {
@@ -296,7 +325,7 @@ function updateTrayMenu() {
 
   if (state.tray) {
     state.tray.setContextMenu(contextMenu);
-    state.tray.setToolTip(`Music RPC\nStatus: ${state.isServerRunning ? "Running" : "Stopped"}`);
+    state.tray.setToolTip(`Discord Music RPC\nStatus: ${state.isServerRunning ? "Running" : "Stopped"}\nRPC: ${state.isRPCConnected ? "Connected" : "Disconnected"}`);
   }
 }
 
@@ -370,3 +399,10 @@ process.on("uncaughtException", (err) => {
 process.on("unhandledRejection", (reason, promise) => {
   log.error("Unhandled rejection at:", promise, "reason:", reason);
 });
+
+// Background update checks
+if (app.isPackaged) {
+  setInterval(() => {
+    autoUpdater.checkForUpdates().catch((err) => log.error("Background update check failed:", err));
+  }, config.server.UPDATE_CHECK_INTERVAL);
+}
