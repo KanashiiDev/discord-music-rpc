@@ -1,7 +1,7 @@
 const express = require("express");
 const cors = require("cors");
 const { Client, StatusDisplayType } = require("@xhayper/discord-rpc");
-
+const { logRpcConnection, shouldLogAttempt, getCurrentTime, isSameActivity, isSameActivityIgnore, truncate, normalizeTitleAndArtist, isValidUrl, notifyRpcStatus } = require("./utils.js");
 const app = express();
 const PORT = 3000;
 const CLIENT_ID = "1366752683628957767";
@@ -9,7 +9,6 @@ const RETRY_DELAY = 10000; // 10 seconds
 const CLIENT_TIMEOUT = 20000; // 20 seconds
 const STUCK_TIMEOUT = 60000; // 60 seconds
 const STUCK_THRESHOLD = 90000; // 90 seconds
-const logSongUpdate = false;
 
 console.log("\n=== Server Initialization ===");
 console.log("Port:", PORT);
@@ -24,14 +23,26 @@ let currentActivity = null;
 let lastActiveClient = null;
 let healthCheckTimeout = null;
 let showSmallIcon = false;
+let logSongUpdate = false;
 
+// Start server
+const server = app.listen(PORT, () => {
+  console.log(`Server running on http://localhost:${PORT}`);
+  if (process.env.ELECTRON_MODE === "true" && process.send) process.send("ready");
+  connectRPC().catch(console.error);
+});
+
+// Initial connection
+connectRPC().catch(console.error);
+
+// Setup RPC event listeners
 function setupRpcListeners(client) {
   client.removeAllListeners();
 
   client.on("disconnected", () => {
     isRpcConnected = false;
     isConnecting = false;
-
+    notifyRpcStatus(isRpcConnected);
     if (!isShuttingDown) {
       console.warn("RPC disconnected. Attempting reconnect...");
       connectRPC().catch(console.error);
@@ -39,6 +50,7 @@ function setupRpcListeners(client) {
   });
 }
 
+// Create new RPC Client
 function createClient() {
   const client = new Client({
     clientId: CLIENT_ID,
@@ -51,6 +63,7 @@ function createClient() {
   return client;
 }
 
+// Connect to RPC
 async function connectRPC() {
   if (isRpcConnected || isConnecting) return true;
   isConnecting = true;
@@ -65,176 +78,47 @@ async function connectRPC() {
           rpcClient.removeAllListeners();
           await rpcClient.destroy();
         } catch (err) {
-          console.warn("Failed to cleanly destroy RPC client:", err.message);
+          logRpcConnection(`Failed to cleanly destroy RPC client: ${err.message}`);
         }
         rpcClient = null;
         global.gc?.();
       }
 
       rpcClient = createClient();
-      if (attempt <= 3 || attempt % 10 === 0) {
-        console.log(`Connecting to RPC (attempt ${attempt})...`);
+
+      if (shouldLogAttempt(attempt)) {
+        logRpcConnection(`Connecting to RPC (attempt ${attempt})`);
       }
+
       await Promise.race([rpcClient.login(), new Promise((_, reject) => setTimeout(() => reject(new Error("Login timed out")), RETRY_DELAY))]);
 
       isRpcConnected = true;
-      console.log("RPC connected");
+      notifyRpcStatus(isRpcConnected);
+      logRpcConnection(`RPC connected successfully`);
       return true;
     } catch (err) {
-      if (attempt <= 3 || attempt % 10 === 0) {
-        console.error(`RPC connection failed (attempt #${attempt}): ${err.message}`);
-        console.log(`Retrying every ${RETRY_DELAY / 1000} seconds.`);
+      if (shouldLogAttempt(attempt)) {
+        logRpcConnection(`RPC connection failed (attempt #${attempt}): ${err.message}`);
+        logRpcConnection(`Retrying every ${RETRY_DELAY / 1000} seconds`);
       }
-      if (attempt === 4) console.log("RPC connection still fails. The log will now be sent every 10 attempts to avoid unnecessary logs.");
+
+      if (attempt === 4) {
+        logRpcConnection("RPC connection still fails. Subsequent failures will be logged every 10 attempts to reduce noise.");
+      }
+
       await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY));
     } finally {
       isConnecting = false;
     }
   }
 
+  logRpcConnection("RPC could not connect.");
   return false;
-}
-
-// Health check timer
-function startHealthCheckTimer() {
-  if (healthCheckTimeout) clearTimeout(healthCheckTimeout);
-
-  healthCheckTimeout = setTimeout(() => {
-    if (isRpcConnected && currentActivity) {
-      rpcClient.user
-        ?.clearActivity()
-        .then(() => {
-          if (logSongUpdate) {
-            console.log("RPC cleared due to health timeout.");
-          }
-          currentActivity = null;
-        })
-        .catch(console.error);
-    }
-    lastActiveClient = null;
-  }, CLIENT_TIMEOUT);
 }
 
 // Middleware
 app.use(cors());
 app.use(express.json());
-
-function getCurrentTime() {
-  const now = new Date();
-  return [now.getHours().toString().padStart(2, "0"), now.getMinutes().toString().padStart(2, "0"), now.getSeconds().toString().padStart(2, "0")].join(":");
-}
-
-function isSameActivity(a, b) {
-  return a && b && a.details === b.details && a.state === b.state && a.startTimestamp === b.startTimestamp && a.endTimestamp === b.endTimestamp;
-}
-
-function isSameActivityIgnore(a, b) {
-  return a && b && a.details === b.details && a.state === b.state;
-}
-
-function truncate(str, maxLength = 128, { fallback = "Unknown", minLength = 2, maxRegexLength = 512 } = {}) {
-  if (typeof str !== "string") return fallback;
-
-  str = str.trim();
-  if (!str) return fallback;
-
-  let strForRegex = str.length > maxRegexLength ? str.slice(0, maxRegexLength) : str;
-
-  const keywordGroup = [
-    "free\\s+(download|dl|song|now)",
-    "download\\s+(free|now)",
-    "official(\\s+(video|music\\s+video|audio|lyric\\s+video|visualizer))?",
-    "lyric\\s+video|lyrics?|music\\s+video|out\\s+now",
-    "hd|hq|4k|1080p|720p|mp3|mp4|320kbps|flac",
-    "extended\\s+remix|radio\\s+edit|club\\s+mix|party\\s+mix|mixed\\s+by\\s+dj|live(\\s+performance)?",
-    "cover|karaoke|instrumental|backing\\s+track|vocals\\s+only",
-    "teaser|trailer|promo|bootleg|mashup",
-    "now\\s+available|full\\s+song|full\\s+version|complete\\s+version|original\\s+version|radio\\s+version",
-    "explicit|clean\\s+version|copyright\\s+free|royalty\\s+free|no\\s+copyright|creative\\s+commons|cc",
-    "official\\s+trailer|official\\s+teaser|[\\w\\s'’\\-]+\\s+premiere",
-  ].join("|");
-
-  const cleanRegex = new RegExp(`([\\[\\(]\\s*(${keywordGroup})\\s*[\\]\\)])|(\\s*-\\s*(${keywordGroup})\\s*$)`, "gi");
-
-  strForRegex = strForRegex.replace(cleanRegex, "").replace(/\s+/g, " ").trim();
-
-  let result = strForRegex.length > maxLength ? strForRegex.slice(0, maxLength - 3) + "..." : strForRegex;
-
-  if (result.length < minLength) return fallback;
-  return result;
-}
-
-function cleanTitle(title, artist) {
-  const trimmedTitle = title.trim();
-  const trimmedArtist = artist.trim();
-
-  if (trimmedTitle.toLowerCase() === trimmedArtist.toLowerCase()) {
-    return trimmedTitle;
-  }
-
-  const artistListRaw = trimmedArtist
-    .split(/,|&|feat\.?|featuring/gi)
-    .map((a) => a.trim())
-    .filter((a) => a.length >= 3);
-
-  if (artistListRaw.length === 0) return trimmedTitle;
-
-  const artistList = artistListRaw.map((a) => a.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
-  const pattern = new RegExp(`^(${artistList.join("|")})(\\s*[&+,xX]\\s*(${artistList.join("|")}))*\\s*[-–:|.]?\\s*`, "i");
-  const cleaned = trimmedTitle.replace(pattern, "").trim();
-
-  return cleaned.length > 0 ? cleaned : trimmedTitle;
-}
-
-function extractArtistFromTitle(title, originalArtist) {
-  const pattern = /^(.+?)\s*-\s*/;
-  const match = title.match(pattern);
-  if (match) {
-    const extracted = match[1].trim();
-    const origLower = originalArtist.toLowerCase();
-    const extractedLower = extracted.toLowerCase();
-
-    if (extractedLower !== origLower && (extractedLower.includes(origLower) || origLower.includes(extractedLower)) && extracted.length > originalArtist.length) {
-      return extracted;
-    }
-  }
-  return originalArtist;
-}
-
-function normalizeTitleAndArtist(title, artist) {
-  let dataTitle = title?.trim() || "";
-  let dataArtist = artist?.trim() || "";
-
-  if (!dataTitle || !dataArtist) return { title: dataTitle, artist: dataArtist };
-
-  // If the title and artist are exactly the same and contain ' - ', separate them
-  if (dataTitle.toLowerCase() === dataArtist.toLowerCase() && dataTitle.includes(" - ")) {
-    const parts = dataTitle
-      .split("-")
-      .map((s) => s.trim())
-      .filter((s) => s.length > 0);
-
-    if (parts.length >= 2) {
-      dataArtist = parts.shift();
-      dataTitle = parts.join(" - ");
-    }
-  } else {
-    // Normal extract + clean process
-    dataArtist = extractArtistFromTitle(dataTitle, dataArtist);
-    dataTitle = cleanTitle(dataTitle, dataArtist);
-  }
-
-  return { title: dataTitle, artist: dataArtist };
-}
-
-const isValidUrl = (url) => {
-  try {
-    const parsed = new URL(url);
-    return parsed.protocol === "https:" || parsed.protocol === "http:";
-  } catch (_) {
-    return false;
-  }
-};
 
 // RPC update endpoint
 app.post("/update-rpc", async (req, res) => {
@@ -395,7 +279,6 @@ app.post("/clear-rpc", express.json(), async (req, res) => {
       await rpcClient.user?.clearActivity();
       currentActivity = null;
       if (lastActiveClient?.clientId === clientId) lastActiveClient = null;
-      if (logSongUpdate) console.log(`RPC Cleared`);
     }
 
     res.json({ success: true });
@@ -424,6 +307,43 @@ app.get("/health", (req, res) => {
   });
 });
 
+// Health check timer
+function startHealthCheckTimer() {
+  if (healthCheckTimeout) clearTimeout(healthCheckTimeout);
+
+  healthCheckTimeout = setTimeout(() => {
+    if (isRpcConnected && currentActivity) {
+      rpcClient.user
+        ?.clearActivity()
+        .then(() => {
+          if (logSongUpdate) {
+            console.log("RPC cleared due to health timeout.");
+          }
+          currentActivity = null;
+        })
+        .catch(console.error);
+    }
+    lastActiveClient = null;
+  }, CLIENT_TIMEOUT);
+}
+
+// Stuck activity cleanup
+setInterval(async () => {
+  if (lastActiveClient && lastActiveClient.timestamp && Date.now() - lastActiveClient.timestamp > STUCK_THRESHOLD) {
+    console.log("Cleaned stale RPC activity.");
+
+    currentActivity = null;
+
+    try {
+      await rpcClient?.user?.clearActivity();
+    } catch (err) {
+      console.error("Failed to clear RPC activity:", err);
+    }
+
+    lastActiveClient = null;
+  }
+}, STUCK_TIMEOUT);
+
 // Shutdown
 async function shutdown() {
   console.log("Shutting down...");
@@ -446,6 +366,12 @@ process.on("SIGINT", shutdown);
 process.on("SIGTERM", shutdown);
 if (process.env.ELECTRON_MODE === "true") {
   process.on("message", (msg) => msg === "shutdown" && shutdown());
+  process.on("message", (msg) => {
+    if (msg.type === "SET_LOG_SONG_UPDATE") {
+      logSongUpdate = msg.value;
+      console.log(`Logging song updates is ${logSongUpdate ? "enabled" : "disabled"}`);
+    }
+  });
 }
 
 process.on("exit", (code) => {
@@ -461,23 +387,3 @@ process.on("uncaughtException", (err) => {
 process.on("unhandledRejection", (reason) => {
   console.error("Unhandled rejection:", reason);
 });
-
-// Start server
-const server = app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
-  if (process.env.ELECTRON_MODE === "true" && process.send) process.send("ready");
-  connectRPC().catch(console.error);
-});
-
-// Initial connection
-connectRPC().catch(console.error);
-
-// Stuck activity cleanup
-setInterval(() => {
-  if (lastActiveClient && Date.now() - lastActiveClient.timestamp > STUCK_THRESHOLD) {
-    console.log("Cleaned stale RPC activity.");
-    currentActivity = null;
-    rpcClient.user?.clearActivity().catch(console.error);
-    lastActiveClient = null;
-  }
-}, STUCK_TIMEOUT);
