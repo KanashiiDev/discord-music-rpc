@@ -27,8 +27,20 @@ const state = {
   isRPCConnected: false,
 };
 
-// App Ready
+// Force English Locale
 app.commandLine.appendSwitch("lang", "en-US");
+
+// App Optimizations
+app.commandLine.appendSwitch("disable-gpu");
+app.disableHardwareAcceleration();
+app.commandLine.appendSwitch("disable-gpu-memory-buffer-compositor-resources");
+app.commandLine.appendSwitch("disable-background-timer-throttling");
+app.commandLine.appendSwitch("disable-renderer-backgrounding");
+app.commandLine.appendSwitch("disable-backgrounding-occluded-windows");
+app.commandLine.appendSwitch("js-flags", "--max-old-space-size=128 --expose-gc");
+app.commandLine.appendSwitch("no-sandbox");
+
+// App Ready
 app.whenReady().then(() => {
   try {
     initializeApp();
@@ -139,7 +151,6 @@ async function stopServer() {
 
   return new Promise((resolve) => {
     const timeoutDuration = Math.min(3000, state.serverStartTime ? Date.now() - state.serverStartTime : 3000);
-
     const killTimeout = setTimeout(() => {
       if (state.serverProcess) {
         state.serverProcess.kill("SIGKILL");
