@@ -4,7 +4,7 @@ window.parserMeta = window.parserMeta || [];
 const rpcState = new window.RPCStateManager();
 
 // Register a new parser
-window.registerParser = function ({ title, domain, urlPatterns, fn, userAdd = false }) {
+window.registerParser = async function ({ title, domain, urlPatterns, fn, userAdd = false }) {
   if (!domain || typeof fn !== "function") return;
 
   const patternStrings = (urlPatterns || []).map((p) => p.toString());
@@ -91,14 +91,12 @@ window.registerParser = function ({ title, domain, urlPatterns, fn, userAdd = fa
   window.parserMeta.push({ id, title, domain, urlPatterns: patternStrings, userAdd });
   window.parserMeta.sort((a, b) => (a.title || a.domain).toLowerCase().localeCompare((b.title || b.domain).toLowerCase()));
 
-  scheduleParserListSave();
+  await scheduleParserListSave();
 };
 
 // Save parser metadata to storage
 let parserListSaveTimeout;
-function scheduleParserListSave() {
-  clearTimeout(parserListSaveTimeout);
-  parserListSaveTimeout = setTimeout(async () => {
+async function scheduleParserListSave() {
     try {
       const validList = (window.parserMeta || []).filter((p) => p.domain && p.title && p.urlPatterns);
       if (validList.length > 0 && browser?.storage?.local) {
@@ -107,7 +105,6 @@ function scheduleParserListSave() {
     } catch (error) {
       logError("Error saving parser list:", error);
     }
-  }, 300);
 }
 
 // Get current song info based on location and parser list

@@ -3,14 +3,12 @@ document.addEventListener("DOMContentLoaded", async () => {
     const setup = await browser.storage.local.get("initialSetupDone");
     if (!setup.initialSetupDone) {
       showInitialSetupDialog();
-      return;
     }
 
     const ohm = await browser.storage.local.get("oldHistoryMigrate");
     if (!ohm.oldHistoryMigrate) {
       await migrateOldHistory();
       await browser.storage.local.set({ oldHistoryMigrate: true });
-      return;
     }
 
     const container = document.getElementById("siteList");
@@ -170,7 +168,8 @@ document.addEventListener("DOMContentLoaded", async () => {
         container.appendChild(wrapper);
       }
     }
-
+    
+    // Initial render
     await renderList();
 
     // Search Box

@@ -484,7 +484,7 @@ function showInitialSetupDialog() {
     await browser.storage.local.set({ initialSetupDone: true });
     document.body.removeChild(dialog);
     document.body.classList.remove("setup-dialog-open");
-    location.reload();
+    window.location.reload();
   });
 }
 
@@ -633,7 +633,6 @@ function getPlainText(text) {
   if (/[\s>+~.#:\[\]]/.test(trimmed)) return null;
   return trimmed;
 }
-
 
 function openIndexedDB(DB_NAME, STORE_NAME, DB_VERSION) {
   return new Promise((resolve, reject) => {
