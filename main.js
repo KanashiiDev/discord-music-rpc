@@ -1,9 +1,14 @@
-const { app, Tray, Menu, nativeImage, dialog, shell } = require("electron");
+const { app, Tray, Menu, Notification, MenuItem, nativeImage, dialog, shell } = require("electron");
 const { autoUpdater } = require("electron-updater");
 const path = require("path");
+const JSONdb = require("simple-json-db");
+const userDataPath = app.getPath("userData");
+const dbPath = path.join(userDataPath, "config.json");
+const store = new JSONdb(dbPath);
 const { fork } = require("child_process");
 const log = require("./logger");
 const fs = require("fs");
+const os = require("os");
 
 const config = {
   server: {
@@ -18,12 +23,13 @@ const config = {
 // State Management
 const state = {
   tray: null,
+  updateAvailable: false,
   serverProcess: null,
   isServerRunning: false,
   isStopping: false,
   restartAttempts: 0,
   serverStartTime: null,
-  logSongUpdate: false,
+  logSongUpdate: store.get("logSongUpdate") || false,
   isRPCConnected: false,
 };
 
@@ -40,18 +46,21 @@ app.commandLine.appendSwitch("disable-backgrounding-occluded-windows");
 app.commandLine.appendSwitch("js-flags", "--max-old-space-size=128 --expose-gc");
 app.commandLine.appendSwitch("no-sandbox");
 
+// Auto Updater Menu Item
+const updateMenuItem = new MenuItem({
+  label: "New Update - Click to Install",
+  visible: false,
+  click: () => autoUpdater.quitAndInstall(),
+});
+const updateMenuItemSeparator = new MenuItem({
+  type: "separator",
+  visible: false,
+});
+
 // App Ready
 app.whenReady().then(() => {
   try {
     initializeApp();
-    autoUpdater.autoDownload = true;
-    autoUpdater.autoInstallOnAppQuit = true;
-    autoUpdater.on("update-downloaded", () => {
-      autoUpdater.quitAndInstall(true, true);
-    });
-    autoUpdater.checkForUpdates().catch((err) => {
-      log.error("Update check failed:", err);
-    });
   } catch (err) {
     handleCriticalError("App initialization failed", err);
   }
@@ -221,6 +230,7 @@ function initializeApp() {
     app.setAppUserModelId("com.kanashiidev.discord.music.rpc");
     setupSingleInstanceLock();
     createTray();
+    setupAutoUpdater();
     startServer().catch((err) => {
       log.error("Initial server start failed:", err);
       scheduleServerRestart();
@@ -228,6 +238,44 @@ function initializeApp() {
   } catch (err) {
     handleCriticalError("Initialization failed", err);
   }
+}
+
+// Auto Updater Setup
+function setupAutoUpdater() {
+  autoUpdater.autoDownload = true;
+  autoUpdater.autoInstallOnAppQuit = false;
+  autoUpdater.on("update-downloaded", (info) => {
+    updateAvailable = true;
+    const platform = os.release().split(".")[0];
+    const isWin10OrLater = parseInt(platform, 10) >= 10;
+
+    if (process.platform === "win32" && !isWin10OrLater) {
+      // Windows 7/8 Tray Balloon
+      state.tray.displayBalloon({
+        icon: path.join(__dirname, "assets", "icon", "icon.ico"),
+        title: `Update ${info.version} ready`,
+        content: "Click to install",
+      });
+    } else {
+      // Windows 10/11 - Modern Notification
+      const notification = new Notification({
+        title: `Update ${info.version} ready`,
+        body: "Click to install",
+        icon: path.join(__dirname, "assets", "icon", "icon.ico"),
+      });
+
+      notification.on("click", () => autoUpdater.quitAndInstall());
+      notification.show();
+    }
+
+    // Add the update to the tray menu
+    updateMenuItem.visible = true;
+    updateMenuItemSeparator.visible = true;
+    updateTrayMenu();
+  });
+  autoUpdater.checkForUpdates().catch((err) => {
+    log.error("Update check failed:", err);
+  });
 }
 
 // Tray Menu
@@ -317,6 +365,7 @@ function updateTrayMenu() {
           checked: state.logSongUpdate,
           click: (item) => {
             state.logSongUpdate = item.checked;
+            store.set("logSongUpdate", state.logSongUpdate);
             if (state.serverProcess) {
               state.serverProcess.send({
                 type: "SET_LOG_SONG_UPDATE",
@@ -336,6 +385,7 @@ function updateTrayMenu() {
 
   if (state.tray) {
     state.tray.setContextMenu(contextMenu);
+    contextMenu.append(updateMenuItem, updateMenuItemSeparator);
     state.tray.setToolTip(`Discord Music RPC\nStatus: ${state.isServerRunning ? "Running" : "Stopped"}\nRPC: ${state.isRPCConnected ? "Connected" : "Disconnected"}`);
   }
 }
@@ -396,7 +446,7 @@ function handleCriticalError(message, error) {
   });
 }
 
-// Cleanup on quit
+// App Exit Handling
 app.on("before-quit", async () => {
   log.info("Application quitting...");
   await stopServer();
