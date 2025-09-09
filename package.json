@@ -71,15 +71,20 @@
     "nsis": {
       "oneClick": false,
       "perMachine": true,
-      "createDesktopShortcut": false,
-      "createStartMenuShortcut": false,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
       "allowToChangeInstallationDirectory": true,
-      "include": "scripts/installer.nsh"
+      "shortcutName": "${productName}",
+      "installerSidebar": "assets/installer/sidebar.bmp",
+      "installerIcon": "assets/icon/icon.ico",
+      "uninstallDisplayName": "${productName}",
+      "uninstallerIcon": "assets/icon/icon.ico"
     },
     "files": [
       "assets/**/*",
       "main.js",
       "server.js",
+      "utils.js",
       "logger.js",
       "updater.js",
       "package.json",
