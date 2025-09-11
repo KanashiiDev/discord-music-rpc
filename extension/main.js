@@ -1,40 +1,48 @@
-let updateTimer = null;
-let lastUpdateTime = 0;
-let isUpdating = false;
-let overridesApplied = false;
-let lastSongInfo = null;
-const MAX_ERROR_COUNT = 5;
-const songStatus = 0;
-let activeTab = true;
+const state = {
+  updateTimer: null,
+  lastUpdateTime: 0,
+  isUpdating: false,
+  lastSongInfo: null,
+  errorCount: 0,
+  maxErrorCount: 5,
+  activeTab: true,
+};
+
+const CONSTANTS = {
+  ACTIVE_INTERVAL: CONFIG.activeInterval ?? 5000,
+  IDLE_INTERVAL: CONFIG?.idleInterval ?? 10000,
+  SERVER_PORT: CONFIG.serverPort ?? 3000,
+  RECOVERY_DELAY: (CONFIG.activeInterval ?? 5000) + 2000,
+};
 
 function startWatching() {
-  if (updateTimer) return;
+  if (state.updateTimer) return;
   logInfo("Started watching.");
-  activeTab = true;
-  loop();
+  state.activeTab = true;
+  mainLoop();
 }
 
 function stopWatching() {
   logInfo("Stopped watching.");
-  clearTimeout(updateTimer);
-  updateTimer = null;
-  isUpdating = false;
-  activeTab = false;
+  clearTimeout(state.updateTimer);
+  state.updateTimer = null;
+  state.isUpdating = false;
+  state.activeTab = false;
 }
 
-function scheduleNextUpdate(interval = CONFIG.activeInterval) {
-  if (!activeTab) return;
+function scheduleNextUpdate(interval = CONSTANTS.ACTIVE_INTERVAL) {
+  if (!state.activeTab) return;
 
-  clearTimeout(updateTimer);
+  clearTimeout(state.updateTimer);
   logInfo(`Next Update Scheduled: ${interval / 1000} seconds later.`);
-  updateTimer = setTimeout(() => {
-    if (activeTab) loop();
+  state.updateTimer = setTimeout(() => {
+    if (state.activeTab) mainLoop();
   }, interval);
 }
 
-async function loop() {
-  if (isUpdating) return;
-  isUpdating = true;
+async function mainLoop() {
+  if (state.isUpdating) return;
+  state.isUpdating = true;
 
   try {
     const song = await safeGetSongInfo();
@@ -54,8 +62,7 @@ async function loop() {
     const progress = hasValidDuration && hasValidPosition ? Math.min(100, (song.position / song.duration) * 100) : 0;
     const positionStable = typeof rpcState.lastPosition === "number" && Math.abs(song.position - rpcState.lastPosition) < 1;
     const stuckAtZero = typeof rpcState.lastPosition === "number" && song.position === 0 && rpcState.lastPosition === 0 && song.duration === 0;
-    const idleInterval = CONFIG?.idleInterval ?? 10000;
-    const isIdle = rpcState.lastActivity?.lastUpdated ? Date.now() - rpcState.lastActivity.lastUpdated >= idleInterval : true;
+    const isIdle = rpcState.lastActivity?.lastUpdated ? Date.now() - rpcState.lastActivity.lastUpdated >= CONSTANTS.IDLE_INTERVAL : true;
 
     logInfo(`Idle: ${isIdle} | Stable: ${positionStable} | Changed: ${isChanged} | Seeking: ${isSeeking}`);
     logInfo(`Current: ${song.title} - ${song.artist} | Pos: ${song.position} / ${song.duration}`);
@@ -73,15 +80,15 @@ async function loop() {
       let updatedProgress = progress;
 
       if (isIdle && !isChanged && !isSeeking) {
-        logInfo(`Delaying next update by ${CONFIG.activeInterval / 1000}s (idle state)`);
-        await delay(CONFIG.activeInterval);
-        updatedProgress = hasValidDuration && hasValidPosition ? Math.min(100, ((song.position + CONFIG.activeInterval / 1000) / song.duration) * 100) : 0;
+        logInfo(`Delaying next update by ${CONSTANTS.ACTIVE_INTERVAL / 1000}s (idle state)`);
+        await delay(CONSTANTS.ACTIVE_INTERVAL);
+        updatedProgress = hasValidDuration && hasValidPosition ? Math.min(100, ((song.position + CONSTANTS.ACTIVE_INTERVAL / 1000) / song.duration) * 100) : 0;
       }
 
       const didUpdate = await processRPCUpdate(song, updatedProgress);
       if (didUpdate) {
         rpcState.lastPosition = song.position;
-        lastUpdateTime = Date.now();
+        statelastUpdateTime = Date.now();
         scheduleNextUpdate();
         return;
       }
@@ -89,27 +96,36 @@ async function loop() {
 
     // Fallback: Pass to the next update with normal flow
     rpcState.lastPosition = song.position;
-    lastUpdateTime = Date.now();
+    state.lastUpdateTime = Date.now();
     scheduleNextUpdate();
   } catch (e) {
-    logError("Loop error:", e);
+    logError("mainLoop error:", e);
     scheduleNextUpdate();
   } finally {
-    isUpdating = false;
+    state.isUpdating = false;
   }
 }
 
 async function processRPCUpdate(song, progress) {
   const rpcOk = await isRpcConnected();
   if (!rpcOk) {
-    logInfo("RPC not connected, skipping update");
+    logInfo("RPC not connected, triggering recovery...");
+    triggerRecovery();
     return false;
   }
+
   logInfo(`RPC server status ok, RPC Updating...`);
-  const result = await browser.runtime.sendMessage({
-    type: "UPDATE_RPC",
-    data: { ...song, progress, lastUpdated: Date.now() },
-  });
+  let result = null;
+  try {
+    result = await browser.runtime.sendMessage({
+      type: "UPDATE_RPC",
+      data: { ...song, progress, lastUpdated: Date.now() },
+    });
+  } catch (e) {
+    logError("RPC update failed:", e);
+    triggerRecovery();
+    return false;
+  }
 
   if (result) {
     if (!window._rpcKeepActiveInjected) rtcKeepAliveTab();
@@ -119,6 +135,7 @@ async function processRPCUpdate(song, progress) {
     logInfo(`RPC Updated: ${result}`);
     return true;
   }
+
   return false;
 }
 
@@ -152,7 +169,7 @@ async function triggerRecovery() {
   setTimeout(() => {
     rpcState.isRecovering = false;
     startWatching();
-  }, CONFIG.idleInterval);
+  }, CONSTANTS.RECOVERY_DELAY);
 }
 
 async function handleNoSong() {
@@ -164,13 +181,24 @@ async function handleNoSong() {
 
 async function safeGetSongInfo() {
   if (typeof window.getSongInfo !== "function") return null;
+
   try {
     const song = await window.getSongInfo();
-    lastSongInfo = song;
-    return song;
+    if (song && song.title && song.artist) {
+      state.lastSongInfo = song;
+      state.errorCount = 0;
+      return song;
+    }
+    return null;
   } catch (error) {
     logError("Song info error:", error);
-    return lastSongInfo;
+
+    if (state.errorCount < state.maxErrorCount && state.lastSongInfo) {
+      state.errorCount++;
+      logInfo(`Using cached song info (attempt ${state.errorCount}/${state.maxErrorCount})`);
+      return state.lastSongInfo;
+    }
+    return null;
   }
 }
 
@@ -193,7 +221,7 @@ async function init() {
   window.addEventListener("beforeunload", () => {
     stopWatching();
     rpcState.reset();
-    navigator.sendBeacon?.(`http://localhost:${CONFIG.serverPort}/clear-rpc`, JSON.stringify({ clientId: `tab_${browser.devtools?.inspectedWindow?.tabId || "unknown"}` }));
+    navigator.sendBeacon?.(`http://localhost:${CONSTANTS.SERVER_PORT}/clear-rpc`, JSON.stringify({ clientId: `tab_${browser.devtools?.inspectedWindow?.tabId || "unknown"}` }));
   });
 }
 

@@ -95,7 +95,6 @@ window.registerParser = async function ({ title, domain, urlPatterns, fn, userAd
 };
 
 // Save parser metadata to storage
-let parserListSaveTimeout;
 async function scheduleParserListSave() {
     try {
       const validList = (window.parserMeta || []).filter((p) => p.domain && p.title && p.urlPatterns);
@@ -130,7 +129,7 @@ window.getSongInfo = async function () {
   }
 };
 
-// querySelector
+// Deep query selector that traverses shadow DOMs
 function querySelectorDeep(selector, root = document) {
   const el = root.querySelector(selector);
   if (el) return el;

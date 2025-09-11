@@ -36,25 +36,50 @@ function truncate(str, maxLength = 128, { fallback = "Unknown", minLength = 2, m
 
   let strForRegex = str.length > maxRegexLength ? str.slice(0, maxRegexLength) : str;
 
-  const keywordGroup = [
-    "free\\s+(download|dl|song|now)",
-    "download\\s+(free|now)",
+  // Keywords that need to be cleaned
+  const alwaysRemoveKeywords = [
+    "copyright free|royalty free|no copyright|creative commons|free download|download free",
+    "download now|new release|official site|official page|buy now|available now|stream now|link in bio|link below",
+    "official video|music video|lyric video|full video|video clip|full version|full ver\.|official mv",
+    "フルバージョン|完全版|主題歌|劇場版|映画|テーマソング|MV|ミュージックビデオ|音楽ビデオ|公式|ライブ|生放送|カラオケ|歌詞付き|歌詞動画|予告|トレーラー|主題歌/FULL ver\.|主題歌",
+    "完整版|完整版MV|官方MV|官方视频|主题曲|原声带|插曲|电影版|影视版|演唱会|现场|现场版|歌词版|歌词视频|卡拉OK|预告|预告片|预览|高清|官方预告",
+    "완전판|풀버전|정식버전|공식|공식뮤직비디오|뮤비|뮤직비디오|테마송|주제가|영화판|가사영상|가사버전|티저|예고편|예고|영상|고화질",
+  ];
+
+  // Keywords that need to be cleaned if they are in parentheses
+  const optionalRemoveKeywords = [
+    "hd|hq|4k|8k|1080p|720p|480p|mp3|mp4|flac|wav|aac|320kbps|256kbps|128kbps",
+    "free\\s+(download|dl|song|now)|download\\s+(free|now)",
     "official(\\s+(video|music\\s+video|audio|lyric\\s+video|visualizer))?",
-    "lyric\\s+video|lyrics?|music\\s+video|out\\s+now",
-    "hd|hq|4k|1080p|720p|mp3|mp4|320kbps|flac",
-    "extended\\s+remix|radio\\s+edit|club\\s+mix|party\\s+mix|mixed\\s+by\\s+dj|live(\\s+performance)?",
-    "cover|karaoke|instrumental|backing\\s+track|vocals\\s+only",
-    "teaser|trailer|promo|bootleg|mashup",
-    "now\\s+available|full\\s+song|full\\s+version|complete\\s+version|original\\s+version|radio\\s+version",
-    "explicit|clean\\s+version|copyright\\s+free|royalty\\s+free|no\\s+copyright|creative\\s+commons|cc",
+    "teaser|trailer|promo|lyric\\s+video|lyrics?|music\\s+video|out\\s+now",
+    "mixed\\s+by\\s+dj|karaoke|backing\\s+track|vocals\\s+only|live(\\s+performance)?",
+    "now\\s+available|full\\s+song|full\\s+version|complete\\s+version|original\\s+version\\s+version",
     "official\\s+trailer|official\\s+teaser|[\\w\\s'’\\-]+\\s+premiere",
-  ].join("|");
+  ];
 
-  const cleanRegex = new RegExp(`([\\[\\(]\\s*(${keywordGroup})\\s*[\\]\\)])|(\\s*-\\s*(${keywordGroup})\\s*$)`, "gi");
+  // Always remove
+  const alwaysRemoveRegex = new RegExp(alwaysRemoveKeywords.join("|"), "gi");
+  strForRegex = strForRegex.replace(alwaysRemoveRegex, "");
 
-  strForRegex = strForRegex.replace(cleanRegex, "").replace(/\s+/g, " ").trim();
+  // Optional remove (only in brackets)
+  const optionalRegexStr = optionalRemoveKeywords.join("|");
+  const optionalRemoveRegex = new RegExp(`([\\[\\(（]\\s*(${optionalRegexStr})\\s*[\\]\\)）])|(\\s*-\\s*(${optionalRegexStr})\\s*$)`, "gi");
+  strForRegex = strForRegex.replace(optionalRemoveRegex, "");
 
-  let result = strForRegex.length > maxLength ? strForRegex.slice(0, maxLength - 3) + "..." : strForRegex;
+  // Clean unnecessary parentheses
+  strForRegex = strForRegex.replace(/[\\[\\(（【].*?[\\)\\]）】]/g, "");
+
+  // Clean up the extra spaces
+  strForRegex = strForRegex.replace(/\s+/g, " ").trim();
+
+  // Max length
+  let result = strForRegex;
+  if (strForRegex.length > maxLength) {
+    // Try not to leave the last word unfinished.
+    const lastSpaceIndex = strForRegex.lastIndexOf(" ", maxLength - 3);
+    const truncateIndex = lastSpaceIndex > maxLength / 2 ? lastSpaceIndex : maxLength - 3;
+    result = strForRegex.slice(0, truncateIndex) + "...";
+  }
 
   if (result.length < minLength) return fallback;
   return result;
@@ -138,4 +163,16 @@ function notifyRpcStatus(isRpcConnected) {
   }
 }
 
-module.exports = { logRpcConnection, shouldLogAttempt, getCurrentTime, isSameActivity, isSameActivityIgnore, truncate, cleanTitle, extractArtistFromTitle, normalizeTitleAndArtist, isValidUrl, notifyRpcStatus };
+module.exports = {
+  logRpcConnection,
+  shouldLogAttempt,
+  getCurrentTime,
+  isSameActivity,
+  isSameActivityIgnore,
+  truncate,
+  cleanTitle,
+  extractArtistFromTitle,
+  normalizeTitleAndArtist,
+  isValidUrl,
+  notifyRpcStatus,
+};

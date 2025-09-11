@@ -88,6 +88,7 @@ const parseUrlPattern = (pattern) => {
 };
 
 // Keep Alive Tab
+let overridesApplied = false;
 function applyOverrides() {
   if (overridesApplied) return;
   overridesApplied = true;
@@ -486,115 +487,6 @@ function showInitialSetupDialog() {
     document.body.classList.remove("setup-dialog-open");
     window.location.reload();
   });
-}
-
-// Truncate string with options
-/**
- * Truncates a string to a specified length, removing common keywords and adding an ellipsis if necessary.
- * @param {string} str - The string to truncate.
- *  @param {number} [maxLength=128] - The maximum length of the string.
- * @param {object} [options] - Options for truncation.
- * @param {string} [options.fallback="Unknown"] - A fallback string if the result is empty.
- * @param {number} [options.minLength=2] - The minimum length of the string before applying the fallback.
- * @return {string} The truncated string.
- */
-function truncate(str, maxLength = 128, { fallback = "Unknown", minLength = 2, maxRegexLength = 512 } = {}) {
-  if (typeof str !== "string") return fallback;
-
-  str = str.trim();
-  if (!str) return fallback;
-
-  let strForRegex = str.length > maxRegexLength ? str.slice(0, maxRegexLength) : str;
-
-  const keywordGroup = [
-    "free\\s+(download|dl|song|now)",
-    "download\\s+(free|now)",
-    "official(\\s+(video|music\\s+video|audio|lyric\\s+video|visualizer))?",
-    "lyric\\s+video|lyrics?|music\\s+video|out\\s+now",
-    "hd|hq|4k|1080p|720p|mp3|mp4|320kbps|flac",
-    "extended\\s+remix|radio\\s+edit|club\\s+mix|party\\s+mix|mixed\\s+by\\s+dj|live(\\s+performance)?",
-    "cover|karaoke|instrumental|backing\\s+track|vocals\\s+only",
-    "teaser|trailer|promo|bootleg|mashup",
-    "now\\s+available|full\\s+song|full\\s+version|complete\\s+version|original\\s+version|radio\\s+version",
-    "explicit|clean\\s+version|copyright\\s+free|royalty\\s+free|no\\s+copyright|creative\\s+commons|cc",
-    "official\\s+trailer|official\\s+teaser|[\\w\\s'’\\-]+\\s+premiere",
-  ].join("|");
-
-  const cleanRegex = new RegExp(`([\\[\\(]\\s*(${keywordGroup})\\s*[\\]\\)])|(\\s*-\\s*(${keywordGroup})\\s*$)`, "gi");
-
-  strForRegex = strForRegex.replace(cleanRegex, "").replace(/\s+/g, " ").trim();
-
-  let result = strForRegex.length > maxLength ? strForRegex.slice(0, maxLength - 3) + "..." : strForRegex;
-
-  if (result.length < minLength) return fallback;
-  return result;
-}
-
-// Clean title function
-// This function normalizes the title based on the artist and removes common keywords.
-function cleanTitle(title, artist) {
-  const trimmedTitle = title.trim();
-  const trimmedArtist = artist.trim();
-
-  if (trimmedTitle.toLowerCase() === trimmedArtist.toLowerCase()) {
-    return trimmedTitle;
-  }
-
-  const artistListRaw = trimmedArtist
-    .split(/,|&|feat\.?|featuring/gi)
-    .map((a) => a.trim())
-    .filter((a) => a.length >= 3);
-
-  if (artistListRaw.length === 0) return trimmedTitle;
-
-  const artistList = artistListRaw.map((a) => a.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
-  const pattern = new RegExp(`^(${artistList.join("|")})(\\s*[&+,xX]\\s*(${artistList.join("|")}))*\\s*[-–:|.]?\\s*`, "i");
-  const cleaned = trimmedTitle.replace(pattern, "").trim();
-
-  return cleaned.length > 0 ? cleaned : trimmedTitle;
-}
-
-// Extract artist from title
-// This function extracts the artist from the title if it matches the original artist.
-function extractArtistFromTitle(title, originalArtist) {
-  const pattern = /^(.+?)\s*-\s*/;
-  const match = title.match(pattern);
-  if (match) {
-    const extracted = match[1].trim();
-    const origLower = originalArtist.toLowerCase();
-    const extractedLower = extracted.toLowerCase();
-
-    if (extractedLower !== origLower && (extractedLower.includes(origLower) || origLower.includes(extractedLower)) && extracted.length > originalArtist.length) {
-      return extracted;
-    }
-  }
-  return originalArtist;
-}
-
-function normalizeTitleAndArtist(title, artist) {
-  let dataTitle = title?.trim() || "";
-  let dataArtist = artist?.trim() || "";
-
-  if (!dataTitle || !dataArtist) return { title: dataTitle, artist: dataArtist };
-
-  // If the title and artist are exactly the same and contain ' - ', separate them
-  if (dataTitle.toLowerCase() === dataArtist.toLowerCase() && dataTitle.includes(" - ")) {
-    const parts = dataTitle
-      .split("-")
-      .map((s) => s.trim())
-      .filter((s) => s.length > 0);
-
-    if (parts.length >= 2) {
-      dataArtist = parts.shift();
-      dataTitle = parts.join(" - ");
-    }
-  } else {
-    // Normal extract + clean process
-    dataArtist = extractArtistFromTitle(dataTitle, dataArtist);
-    dataTitle = cleanTitle(dataTitle, dataArtist);
-  }
-
-  return { title: dataTitle, artist: dataArtist };
 }
 
 function getExistingElementSelector(text) {

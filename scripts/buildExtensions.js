@@ -96,31 +96,66 @@ if (fs.existsSync(configPath)) {
 }
 
 // 6.6 Inline selected utils into specific files
-function extractFunctionsFromFile(sourceFilePath, functionNames) {
+function extractFunctionsFromFile(sourceFilePath, namesToInclude) {
   const code = fs.readFileSync(sourceFilePath, "utf8");
 
   const ast = acorn.parse(code, {
     ecmaVersion: "latest",
     sourceType: "module",
-    locations: true,
   });
 
   const extracted = [];
-  const includeAll = !Array.isArray(functionNames) || functionNames.length === 0;
+  const includeAll = !Array.isArray(namesToInclude) || namesToInclude.length === 0;
+
+  function shouldInclude(name) {
+    return includeAll || (name && namesToInclude.includes(name));
+  }
 
   for (const node of ast.body) {
-    // Normal function declarations
-    if (node.type === "FunctionDeclaration" && (includeAll || functionNames.includes(node.id.name))) {
-      const fnCode = code.slice(node.start, node.end);
-      extracted.push(fnCode);
+    // Function declarations
+    if (node.type === "FunctionDeclaration" && shouldInclude(node.id?.name)) {
+      extracted.push(code.slice(node.start, node.end));
+      continue;
     }
 
-    // Variable declarations (const foo = () => {})
-    if (node.type === "VariableDeclaration" && node.declarations.length > 0) {
-      for (const decl of node.declarations) {
-        if (decl.id.type === "Identifier" && (includeAll || functionNames.includes(decl.id.name))) {
-          const fnCode = code.slice(node.start, node.end);
-          extracted.push(fnCode);
+    // Variable declarations
+    if (node.type === "VariableDeclaration") {
+      const declarations = node.declarations.filter((d) => shouldInclude(d.id?.name));
+      if (declarations.length > 0 || includeAll) {
+        extracted.push(code.slice(node.start, node.end));
+      }
+      continue;
+    }
+
+    // Export named declarations
+    if (node.type === "ExportNamedDeclaration") {
+      const decl = node.declaration;
+      if (!decl) continue;
+
+      if (decl.type === "FunctionDeclaration" && shouldInclude(decl.id?.name)) {
+        extracted.push(code.slice(node.start, node.end));
+      }
+
+      if (decl.type === "VariableDeclaration") {
+        const declarations = decl.declarations.filter((d) => shouldInclude(d.id?.name));
+        if (declarations.length > 0 || includeAll) {
+          extracted.push(code.slice(node.start, node.end));
+        }
+      }
+      continue;
+    }
+
+    // CommonJS exports
+    if (node.type === "ExpressionStatement" && node.expression.type === "AssignmentExpression") {
+      const left = node.expression.left;
+      const right = node.expression.right;
+
+      if (left.type === "MemberExpression" && left.object.name === "module" && left.property.name === "exports" && right.type === "ObjectExpression") {
+        for (const prop of right.properties) {
+          const keyName = prop.key?.name || prop.key?.value;
+          if (shouldInclude(keyName)) {
+            extracted.push(code.slice(prop.start, prop.end));
+          }
         }
       }
     }
@@ -129,36 +164,31 @@ function extractFunctionsFromFile(sourceFilePath, functionNames) {
   return extracted;
 }
 
-function inlineUtilsFunctions(targetFileName, sourceUtilsFile, functionsToInclude) {
-  const sourcePath = path.join(EXTENSION_DIR, sourceUtilsFile);
-  const targetPath = path.join(DIST_DIR, targetFileName);
+function inlineUtilsFunctions(targetFiles, sourceFile, functionsToInclude) {
+  if (!Array.isArray(targetFiles)) targetFiles = [targetFiles];
+
+  if (Array.isArray(functionsToInclude) && functionsToInclude.length === 0) {
+    functionsToInclude = undefined;
+  }
+  const sourcePath = path.join(EXTENSION_DIR, sourceFile);
   const extractedFunctions = extractFunctionsFromFile(sourcePath, functionsToInclude);
-  let targetContent = fs.readFileSync(targetPath, "utf8");
-  const inlineTag = `// === BEGIN INLINE UTILS (${functionsToInclude.join(", ")}) ===`;
-  const inlinedCode = `${inlineTag}\n${extractedFunctions.join("\n\n")}\n// === END INLINE UTILS ===\n\n`;
-  targetContent = inlinedCode + targetContent;
-  fs.writeFileSync(targetPath, targetContent, "utf8");
+
+  targetFiles.forEach((targetFiles) => {
+    const targetPath = path.join(DIST_DIR, targetFiles);
+    let targetContent = fs.readFileSync(targetPath, "utf8");
+    const inlineTag = `// === BEGIN INLINE UTILS (${sourceFile}) - (${functionsToInclude?.join?.(", ") || "ALL"}) ===`;
+    const inlinedCode = `${inlineTag}\n${extractedFunctions.join("\n\n")}\n// === END INLINE UTILS (${sourceFile}) ===\n\n`;
+    targetContent = inlinedCode + targetContent;
+    fs.writeFileSync(targetPath, targetContent, "utf8");
+  });
 }
 
-inlineUtilsFunctions("common/history.js", "common/utils.js", ["truncate", "cleanTitle", "extractArtistFromTitle", "normalizeTitleAndArtist"]);
-inlineUtilsFunctions("main.js", "common/utils.js", ["delay", "logInfo", "logWarn", "logError", "applyOverrides", "applyOverridesLoop"]);
-inlineUtilsFunctions("selector.js", "common/utils.js", ["truncate", "cleanTitle", "extractArtistFromTitle", "normalizeTitleAndArtist", "getExistingElementSelector", "getPlainText", "getIconAsDataUrl", "parseRegexArray"]);
-inlineUtilsFunctions("background.js", "common/utils.js", [
-  "logInfo",
-  "logWarn",
-  "logError",
-  "delay",
-  "parseUrlPattern",
-  "normalizeHost",
-  "normalize",
-  "getCurrentTime",
-  "cleanTitle",
-  "truncate",
-  "extractArtistFromTitle",
-  "normalizeTitleAndArtist",
-  "openIndexedDB",
-]);
+inlineUtilsFunctions(["common/utils.js", "common/history.js", "selector.js", "background.js"], "../utils.js", ["truncate", "cleanTitle", "extractArtistFromTitle", "normalizeTitleAndArtist"]);
+inlineUtilsFunctions("main.js", "common/utils.js", ["overridesApplied", "applyOverrides", "applyOverridesLoop"]);
+inlineUtilsFunctions(["background.js", "main.js"], "common/utils.js", ["logInfo", "logWarn", "logError", "delay"]);
 inlineUtilsFunctions("background.js", "common/history.js", []);
+inlineUtilsFunctions("background.js", "common/utils.js", ["parseUrlPattern", "normalizeHost", "normalize", "getCurrentTime", "openIndexedDB"]);
+inlineUtilsFunctions("selector.js", "common/utils.js", ["getExistingElementSelector", "getPlainText", "getIconAsDataUrl", "parseRegexArray"]);
 inlineUtilsFunctions("mainParser.js", "common/utils.js", [
   "extractTimeParts",
   "parseTime",
@@ -168,7 +198,6 @@ inlineUtilsFunctions("mainParser.js", "common/utils.js", [
   "getText",
   "getImage",
   "hashFromPatternStrings",
-  "getText",
   "parseUrlPattern",
   "getExistingElementSelector",
   "getPlainText",

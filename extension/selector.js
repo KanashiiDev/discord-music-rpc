@@ -912,10 +912,13 @@ async function injectSelectorUI(editMode = false) {
 
     const details = previewRoot.querySelector(".card");
 
-    const setText = (selector, value) => {
+    const setText = (selector, value, maxLength) => {
       const el = details.querySelector(selector);
-      if (el && el.textContent !== value) {
-        el.textContent = value;
+      if (el) {
+        const truncatedValue = truncate(value, maxLength);
+        if (el.textContent !== truncatedValue) {
+          el.textContent = truncatedValue;
+        }
       }
     };
 
@@ -1075,10 +1078,10 @@ async function injectSelectorUI(editMode = false) {
     };
 
     // Apply updates
-    setText(".source", texts.source);
-    setText(".title", texts.title);
-    setText(".artist", texts.artist);
-    setText(".header", `Listening to ${texts.artist}`);
+    setText(".source", texts.source, 32);
+    setText(".title", texts.title, 128);
+    setText(".artist", texts.artist, 128);
+    setText(".header", `Listening to ${texts.artist}`, 128);
     if (editMode) {
       if (shadowDoc.querySelector(".userRpc-h4").textContent !== texts.name) {
         shadowDoc.querySelector(".userRpc-h4").textContent = texts.name;
