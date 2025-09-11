@@ -22,8 +22,12 @@ let isShuttingDown = false;
 let currentActivity = null;
 let lastActiveClient = null;
 let healthCheckTimeout = null;
-let showSmallIcon = false;
-let logSongUpdate = false;
+
+// Settings
+let serverSettings = {
+  showSmallIcon: false,
+  logSongUpdate: false,
+};
 
 // Start server
 const server = app.listen(PORT, () => {
@@ -153,7 +157,7 @@ app.post("/update-rpc", async (req, res) => {
 
     let dataTitle = data?.title || "";
     let dataArtist = data?.artist || "";
-    let settings = data?.settings;
+    let dataSettings = data?.settings;
 
     if (dataTitle && dataArtist) {
       const normalized = normalizeTitleAndArtist(dataTitle, dataArtist);
@@ -174,20 +178,25 @@ app.post("/update-rpc", async (req, res) => {
       showTimeLeft: true,
     };
 
-    const activitySettings = { ...defaultSettings, ...(settings || {}) };
+    const activitySettings = { ...defaultSettings, ...(dataSettings || {}) };
 
     if (activitySettings.showFavIcon) {
-      showSmallIcon = true;
+      serverSettings.showSmallIcon = true;
     } else {
-      showSmallIcon = false;
+      serverSettings.showSmallIcon = false;
     }
 
     let favIcon = null;
-    if (showSmallIcon) {
-      const iconUrl = new URL(data.songUrl || "");
-      const iconSize = 64;
-      favIcon = iconUrl ? `https://www.google.com/s2/favicons?domain=${iconUrl}&sz=${iconSize}` : "";
+    if (serverSettings.showSmallIcon && data.songUrl) {
+      try {
+        const iconUrl = new URL(data.songUrl);
+        const iconSize = 64;
+        favIcon = `https://www.google.com/s2/favicons?domain=${iconUrl.hostname}&sz=${iconSize}`;
+      } catch {
+        favIcon = null;
+      }
     }
+
     const sourceText = truncate(data?.source, 32, { fallback: "Unknown Source" });
     const artistIsMissingOrSame = !dataArtist || dataArtist === dataTitle;
 
@@ -197,8 +206,8 @@ app.post("/update-rpc", async (req, res) => {
       type: data?.watching ? 3 : 2,
       largeImageKey: activitySettings.customCover && activitySettings.customCoverUrl ? activitySettings.customCoverUrl : activitySettings.showCover ? data.image || "" : undefined,
       largeImageText: activitySettings.showSource && dataTitle !== dataArtist && dataTitle !== sourceText ? sourceText : undefined,
-      smallImageKey: artistIsMissingOrSame ? undefined : showSmallIcon ? favIcon || (data?.watching ? "watch" : "listen") : undefined,
-      smallImageText: showSmallIcon ? sourceText : data?.watching ? "Watching" : "Listening",
+      smallImageKey: artistIsMissingOrSame ? undefined : serverSettings.showSmallIcon ? favIcon || (data?.watching ? "watch" : "listen") : undefined,
+      smallImageText: serverSettings.showSmallIcon ? sourceText : data?.watching ? "Watching" : "Listening",
       instance: false,
       statusDisplayType: StatusDisplayType.STATE,
     };
@@ -243,7 +252,7 @@ app.post("/update-rpc", async (req, res) => {
     }
 
     if (!isSameActivity(activity, currentActivity)) {
-      if (!isSameActivityIgnore(activity, currentActivity) && logSongUpdate) {
+      if (!isSameActivityIgnore(activity, currentActivity) && serverSettings.logSongUpdate) {
         console.log(`RPC Updated: ${activity.details} by ${activity.state} - ${getCurrentTime()}`);
       }
       await rpcClient.user?.setActivity(activity);
@@ -316,7 +325,7 @@ function startHealthCheckTimer() {
       rpcClient.user
         ?.clearActivity()
         .then(() => {
-          if (logSongUpdate) {
+          if (serverSettings.logSongUpdate) {
             console.log("RPC cleared due to health timeout.");
           }
           currentActivity = null;
@@ -365,11 +374,15 @@ async function shutdown() {
 process.on("SIGINT", shutdown);
 process.on("SIGTERM", shutdown);
 if (process.env.ELECTRON_MODE === "true") {
-  process.on("message", (msg) => msg === "shutdown" && shutdown());
   process.on("message", (msg) => {
-    if (msg.type === "SET_LOG_SONG_UPDATE") {
-      logSongUpdate = msg.value;
-      console.log(`Logging song updates is ${logSongUpdate ? "enabled" : "disabled"}`);
+    if (msg === "shutdown") {
+      shutdown();
+      return;
+    }
+
+    if (msg.type === "UPDATE_SETTINGS") {
+      const newSettings = msg.value;
+      serverSettings = { ...serverSettings, ...newSettings };
     }
   });
 }

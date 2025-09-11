@@ -1,5 +1,6 @@
 const { app, Tray, Menu, Notification, MenuItem, nativeImage, dialog, shell } = require("electron");
 const { autoUpdater } = require("electron-updater");
+const semver = require("semver");
 const path = require("path");
 const JSONdb = require("simple-json-db");
 const userDataPath = app.getPath("userData");
@@ -23,7 +24,6 @@ const config = {
 // State Management
 const state = {
   tray: null,
-  updateAvailable: false,
   serverProcess: null,
   isServerRunning: false,
   isStopping: false,
@@ -112,6 +112,7 @@ async function startServer() {
         state.serverStartTime = Date.now();
         state.restartAttempts = 0;
         updateTrayMenu();
+        updateServerSettings();
         log.info("Server started successfully");
         resolve();
       }
@@ -209,6 +210,20 @@ function scheduleServerRestart() {
   }, delay);
 }
 
+// Update Server Settings
+function updateServerSettings() {
+  if (state.serverProcess) {
+    const settings = {
+      logSongUpdate: state.logSongUpdate,
+    };
+
+    state.serverProcess.send({
+      type: "UPDATE_SETTINGS",
+      value: settings,
+    });
+  }
+}
+
 // Single instance lock
 function setupSingleInstanceLock() {
   if (!app.requestSingleInstanceLock()) {
@@ -244,8 +259,10 @@ function initializeApp() {
 function setupAutoUpdater() {
   autoUpdater.autoDownload = true;
   autoUpdater.autoInstallOnAppQuit = false;
+  autoUpdater.on("update-available", (info) => {
+    log.info(`Update available: ${info.version}, downloading automatically...`);
+  });
   autoUpdater.on("update-downloaded", (info) => {
-    updateAvailable = true;
     const platform = os.release().split(".")[0];
     const isWin10OrLater = parseInt(platform, 10) >= 10;
 
@@ -314,7 +331,8 @@ function updateTrayMenu() {
         try {
           log.info("Manual update check triggered by user");
           const result = await autoUpdater.checkForUpdates();
-          if (result?.updateInfo?.version && result.updateInfo.version !== app.getVersion()) {
+
+          if (result?.updateInfo?.version && semver.gt(result.updateInfo.version, app.getVersion())) {
             dialog.showMessageBox({
               type: "info",
               buttons: ["OK"],
@@ -366,12 +384,7 @@ function updateTrayMenu() {
           click: (item) => {
             state.logSongUpdate = item.checked;
             store.set("logSongUpdate", state.logSongUpdate);
-            if (state.serverProcess) {
-              state.serverProcess.send({
-                type: "SET_LOG_SONG_UPDATE",
-                value: state.logSongUpdate,
-              });
-            }
+            updateServerSettings();
           },
         },
       ],
