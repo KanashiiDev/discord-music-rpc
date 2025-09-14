@@ -3,6 +3,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     const setup = await browser.storage.local.get("initialSetupDone");
     if (!setup.initialSetupDone) {
       showInitialSetupDialog();
+      return;
     }
 
     const ohm = await browser.storage.local.get("oldHistoryMigrate");
@@ -22,6 +23,14 @@ document.addEventListener("DOMContentLoaded", async () => {
     async function renderList(filteredList = null) {
       const list = filteredList || (await getFreshParserList());
       container.innerHTML = "";
+
+      if (!list || list.length === 0) {
+        const setupListMessage = document.createElement("div");
+        setupListMessage.className = "setup-list-message";
+        setupListMessage.textContent = "Please open a supported website (YouTube, Soundcloud, Deezer etc.) in an active tab to build the parser list.";
+        container.appendChild(setupListMessage);
+        return;
+      }
 
       for (const entry of list) {
         const { id, domain, title, userAdd, urlPatterns = [] } = entry;
@@ -168,7 +177,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         container.appendChild(wrapper);
       }
     }
-    
+
     // Initial render
     await renderList();
 
