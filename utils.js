@@ -69,6 +69,9 @@ function truncate(str, maxLength = 128, { fallback = "Unknown", minLength = 2, m
   // Clean unnecessary parentheses
   strForRegex = strForRegex.replace(/[\\[\\(（【].*?[\\)\\]）】]/g, "");
 
+  // Empty parentheses/square bracket cleaning
+  strForRegex = strForRegex.replace(/(\(\s*\)|\[\s*\]|（\s*）|【\s*】)/g, "");
+
   // Clean up the extra spaces
   strForRegex = strForRegex.replace(/\s+/g, " ").trim();
 
