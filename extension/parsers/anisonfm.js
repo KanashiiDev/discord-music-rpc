@@ -3,8 +3,6 @@ registerParser({
   title: "ANISON.FM",
   urlPatterns: [/.*/],
   fn: function () {
-
-     // Calculate Duration
     return {
       title: getText(".track_info span:last-child"),
       artist: getText(".track_info span:first-child"),

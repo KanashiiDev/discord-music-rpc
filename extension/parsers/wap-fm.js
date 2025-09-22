@@ -1,5 +1,6 @@
 registerParser({
   domain: "radio.wapchan.org",
+  homepage: "https://radio.wapchan.org/public/wapfm",
   title: "Wap-FM",
   urlPatterns: [/public\/wapfm/],
   fn: function () {
