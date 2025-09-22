@@ -30,7 +30,7 @@ let manifest = fs.readJsonSync(manifestPath);
 manifest.version = pkgVersion;
 
 // 4. Update manifest content_scripts to use compiledParsers.js and <all_urls>
-const defaultJSFiles = ["libs/browser-polyfill.js", "libs/pako.js", "rpcStateManager.js", "mainParser.js", "compiledParsers.js", "selector.js", "main.js"];
+const defaultJSFiles = ["libs/browser-polyfill.js", "libs/pako.js", "rpcStateManager.js", "mainParser.js", "compiledParsers.js", "popup/selector/selector.js", "main.js"];
 
 if (!manifest.content_scripts) {
   manifest.content_scripts = [];
@@ -69,17 +69,62 @@ const parserOutputPath = path.join(DIST_DIR, "compiledParsers.js");
 if (fs.existsSync(parsersDir)) {
   const parserFiles = fs.readdirSync(parsersDir).filter((file) => file.endsWith(".js"));
   let combinedCode = "";
+  let allParserSettings = {};
 
   for (const file of parserFiles) {
     const filePath = path.join(parsersDir, file);
     const code = fs.readFileSync(filePath, "utf8");
+
+    // Detect the parser id
+    const domainMatch = code.match(/registerParser\s*\(\s*{[^}]*domain:\s*['"`]([^'"`]+)['"`]/);
+    const parserId = domainMatch ? domainMatch[1] : file.replace(/\.js$/, "");
+
+    // Detect useSetting calls
+    const regex = /useSetting\(\s*['"`]([^'"`]+)['"`]\s*,\s*['"`]([^'"`]+)['"`]\s*,\s*['"`]([^'"`]+)['"`]\s*,\s*([\s\S]*?)\)/g;
+    let match;
+    let parserSettings = [];
+
+    while ((match = regex.exec(code)) !== null) {
+      const [_, key, label, type, defaultValueRaw] = match;
+      parserSettings.push({
+        key,
+        label,
+        type,
+        defaultValue: defaultValueRaw.trim(),
+      });
+    }
+
+    // Only add the parser if useSetting exists.
+    if (parserSettings.length > 0) {
+      const urlPatternsMatch = code.match(/urlPatterns\s*:\s*(\[[^\]]*\])/);
+      let urlPatternsLiteral = "[]";
+
+      if (urlPatternsMatch) {
+        urlPatternsLiteral = urlPatternsMatch[1];
+      }
+
+      allParserSettings[parserId] = {
+        urlPatterns: urlPatternsLiteral,
+        settings: parserSettings,
+      };
+    }
     combinedCode += `\n// --- ${file} ---\n${code.trim()}\n`;
   }
 
-  fs.writeFileSync(parserOutputPath, combinedCode, "utf8");
+  // Write as a JS literal file during the build phase
+  let output = "window.initialSettings = {\n";
+  for (const [parserId, data] of Object.entries(allParserSettings)) {
+    output += `  "${parserId}": {\n    urlPatterns: ${data.urlPatterns},\n    settings: [\n`;
+    for (const s of data.settings) {
+      output += `      { key: "${s.key}", label: "${s.label}", type: "${s.type}", defaultValue: ${s.defaultValue} },\n`;
+    }
+    output += "    ]\n  }, \n";
+  }
+  output += "};\n";
+
+  fs.writeFileSync(parserOutputPath, combinedCode + "\n\n" + output, "utf8");
   console.log(`📦 Parsers bundled into: ${parserOutputPath}`);
 }
-
 // 6.5 Inline config.js content into background.js and main.js
 const filesToPatch = ["background.js", "main.js"];
 
@@ -183,13 +228,23 @@ function inlineUtilsFunctions(targetFiles, sourceFile, functionsToInclude) {
   });
 }
 
-inlineUtilsFunctions(["common/utils.js", "common/history.js", "selector.js", "background.js"], "../utils.js", ["truncate", "cleanTitle", "extractArtistFromTitle", "normalizeTitleAndArtist"]);
+inlineUtilsFunctions(["common/utils.js", "popup/modules/history.js", "popup/selector/selector.js", "popup/selector/components/preview.js", "background.js"], "../utils.js", [
+  "truncate",
+  "cleanTitle",
+  "extractArtistFromTitle",
+  "normalizeTitleAndArtist",
+]);
 inlineUtilsFunctions("main.js", "common/utils.js", ["overridesApplied", "applyOverrides", "applyOverridesLoop"]);
 inlineUtilsFunctions(["background.js", "main.js"], "common/utils.js", ["logInfo", "logWarn", "logError", "delay"]);
-inlineUtilsFunctions("background.js", "common/history.js", []);
+inlineUtilsFunctions("background.js", "popup/modules/history.js", []);
 inlineUtilsFunctions("background.js", "common/utils.js", ["parseUrlPattern", "normalizeHost", "normalize", "getCurrentTime", "openIndexedDB"]);
-inlineUtilsFunctions("selector.js", "common/utils.js", ["getExistingElementSelector", "getPlainText", "getIconAsDataUrl", "parseRegexArray"]);
+inlineUtilsFunctions("popup/selector/selector.js", "common/utils.js", ["throttle", "formatLabel", "getExistingElementSelector", "getPlainText", "getIconAsDataUrl", "parseRegexArray"]);
+inlineUtilsFunctions("popup/selector/selector.js", "popup/selector/modules/selectorChooserUtils.js", []);
+inlineUtilsFunctions("popup/selector/selector.js", "popup/selector/components/selectorChooser.js", []);
+inlineUtilsFunctions("popup/selector/selector.js", "popup/selector/modules/selectorHelpers.js", []);
+inlineUtilsFunctions("popup/selector/selector.js", "popup/selector/components/preview.js", []);
 inlineUtilsFunctions("mainParser.js", "common/utils.js", [
+  "DEFAULT_PARSER_OPTIONS",
   "extractTimeParts",
   "parseTime",
   "formatTime",
@@ -197,7 +252,9 @@ inlineUtilsFunctions("mainParser.js", "common/utils.js", [
   "processPlaybackInfo",
   "getText",
   "getImage",
+  "querySelectorDeep",
   "hashFromPatternStrings",
+  "makeIdFromDomainAndPatterns",
   "parseUrlPattern",
   "getExistingElementSelector",
   "getPlainText",

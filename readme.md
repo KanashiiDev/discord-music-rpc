@@ -111,6 +111,7 @@ You can add a parser in **two ways**:
 5. Click **"Save"** and refresh the page.
 
 **Notes**
+
 - If **“Artist”** or **“Title”** is missing, you can select the same selector for both. The source field will replace the artist field.
 - If the song **“Artist”** and **“Title”** are combined, you can add the same selector to both sections. The application will automatically separate them.
 - If only **“Duration”** is available, you can still add it. The app will calculate playback time starting from when the song changes until the full duration is reached.
@@ -132,9 +133,17 @@ Create a new file in the `extension/parsers/` directory, named `<yourSite>.js`. 
 registerParser({
   domain: "example.com", // Website domain
   title: "Example", // Display title
+  homepage: "https://example.com/homepage", // The page the user will be redirected to when they click on the parser image in the pop-up window (optional)
   urlPatterns: [/.*/], // Only run on specific paths (Regex)
+  authors: [""], // Contributors GitHub names for the code to be displayed in the parser's settings (optional)
 
   fn: function () {
+    // To use custom settings in your parser (checkbox, text, or select), include useSetting in the parser function parameters: async function ({ useSetting })
+    // Example useSetting Types:
+    // const checkboxExample = await useSetting("checkboxVariable", "checkboxLabel", "checkbox", true);
+    // const textExample = await useSetting("textVariable", "textLabel", "text", "Default text");
+    // const selectExample = await useSetting("selectVariable", "selectLabel", "select", [{ value: "example1", label: "Example Value", selected: true },{ value: "example2", label: "Example Value 2" }]);
+
     // You can define and use helper functions here if needed
     return {
       title: getText(".now-playing-title"), // Song title (required)

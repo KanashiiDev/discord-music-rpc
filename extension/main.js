@@ -232,6 +232,9 @@ browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
     });
     return true;
   }
+  if (message.action === "reloadPage") {
+    location.reload();
+  }
 });
 
 function rtcKeepAliveTab() {

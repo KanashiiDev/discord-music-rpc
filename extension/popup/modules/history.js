@@ -8,7 +8,6 @@ async function saveHistory(data) {
   if (Array.isArray(data)) {
     data = data.slice(0, MAX_HISTORY);
   }
-
   const db = await openIndexedDB(HISTORY_DB_NAME, HISTORY_STORE_NAME, HISTORY_DB_VERSION);
   const tx = db.transaction(HISTORY_STORE_NAME, "readwrite");
   const store = tx.objectStore(HISTORY_STORE_NAME);
@@ -22,13 +21,21 @@ async function loadHistory() {
   const tx = db.transaction(HISTORY_STORE_NAME, "readonly");
   const store = tx.objectStore(HISTORY_STORE_NAME);
   const req = store.get("history");
+
   return new Promise((resolve) => {
     req.onsuccess = () => {
-      if (!req.result) resolve([]);
-      const decompressed = pako.inflate(req.result, { to: "string" });
-      const data = JSON.parse(decompressed);
-      resolve(Array.isArray(data.h) ? data.h : []);
+      const compressed = req.result;
+      if (!compressed || !compressed.length) return resolve([]);
+      try {
+        const decompressed = pako.inflate(compressed, { to: "string" });
+        const data = JSON.parse(decompressed);
+        resolve(Array.isArray(data.h) ? data.h : []);
+      } catch (e) {
+        resolve([]);
+      }
     };
+
+    req.onerror = () => resolve([]);
   });
 }
 

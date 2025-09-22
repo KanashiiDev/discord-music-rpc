@@ -40,8 +40,8 @@ function truncate(str, maxLength = 128, { fallback = "Unknown", minLength = 2, m
   const alwaysRemoveKeywords = [
     "copyright free|royalty free|no copyright|creative commons|free download|download free",
     "download now|new release|official site|official page|buy now|available now|stream now|link in bio|link below",
-    "official video|music video|lyric video|full video|video clip|full version|full ver\.|official mv",
-    "フルバージョン|完全版|主題歌|劇場版|映画|テーマソング|MV|ミュージックビデオ|音楽ビデオ|公式|ライブ|生放送|カラオケ|歌詞付き|歌詞動画|予告|トレーラー|主題歌/FULL ver\.|主題歌",
+    "official video|music video|MusicVideo|lyric video|full video|video clip|full version|full ver\.|official mv",
+    "フルバージョン|完全版|主題歌|劇場版|映画|テーマソング|ミュージックビデオ|音楽ビデオ|公式|ライブ|生放送|カラオケ|歌詞付き|歌詞動画|予告|トレーラー|主題歌/FULL ver\.|主題歌",
     "完整版|完整版MV|官方MV|官方视频|主题曲|原声带|插曲|电影版|影视版|演唱会|现场|现场版|歌词版|歌词视频|卡拉OK|预告|预告片|预览|高清|官方预告",
     "완전판|풀버전|정식버전|공식|공식뮤직비디오|뮤비|뮤직비디오|테마송|주제가|영화판|가사영상|가사버전|티저|예고편|예고|영상|고화질",
   ];
@@ -66,11 +66,20 @@ function truncate(str, maxLength = 128, { fallback = "Unknown", minLength = 2, m
   const optionalRemoveRegex = new RegExp(`([\\[\\(（]\\s*(${optionalRegexStr})\\s*[\\]\\)）])|(\\s*-\\s*(${optionalRegexStr})\\s*$)`, "gi");
   strForRegex = strForRegex.replace(optionalRemoveRegex, "");
 
-  // Clean unnecessary parentheses
+  // Clean unnecessary parentheses - first clean the empty parentheses
+  strForRegex = strForRegex.replace(/(\(\s*\)|\[\s*\]|（\s*）|【\s*】)/g, "");
+  
+  // Then clean the filled parentheses.
   strForRegex = strForRegex.replace(/[\\[\\(（【].*?[\\)\\]）】]/g, "");
 
-  // Empty parentheses/square bracket cleaning
+  // Checking for empty brackets again (for those that remain empty after the content has been deleted)
   strForRegex = strForRegex.replace(/(\(\s*\)|\[\s*\]|（\s*）|【\s*】)/g, "");
+
+   // Remove unnecessary brackets and spaces at the beginning and end.
+  strForRegex = strForRegex.replace(/^[\s\/\\\-–—|•·]+|[\s\/\\\-–—|•·]+$/g, '');
+
+  // Clean the excess separators inside (multiple ones next to each other)
+  strForRegex = strForRegex.replace(/[\s\/\\\-–—|•·]{2,}/g, ' ');
 
   // Clean up the extra spaces
   strForRegex = strForRegex.replace(/\s+/g, " ").trim();

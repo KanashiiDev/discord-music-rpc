@@ -1,23 +1,179 @@
-// Global parser storage
 window.parsers = window.parsers || {};
 window.parserMeta = window.parserMeta || [];
 const rpcState = new window.RPCStateManager();
+const settingsCache = {};
+const loadingPromises = {};
+const saveTimers = {};
+let initLoadPromise = null;
 
-// Register a new parser
-window.registerParser = async function ({ title, domain, urlPatterns, fn, userAdd = false }) {
+// Save settings
+function scheduleSave(settingKey) {
+  if (saveTimers[settingKey]) clearTimeout(saveTimers[settingKey]);
+  saveTimers[settingKey] = setTimeout(async () => {
+    try {
+      await browser.storage.local.set({ [settingKey]: settingsCache[settingKey] });
+    } catch (err) {
+      logError(`[settings] save error for ${settingKey}:`, err);
+    } finally {
+      clearTimeout(saveTimers[settingKey]);
+      delete saveTimers[settingKey];
+    }
+  }, 120);
+}
+
+// Load settings
+async function loadSettingsForId(id) {
+  const settingKey = `settings_${id}`;
+  if (settingsCache[settingKey]) return settingsCache[settingKey];
+  if (loadingPromises[settingKey]) return loadingPromises[settingKey];
+
+  loadingPromises[settingKey] = (async () => {
+    try {
+      const stored = await browser.storage.local.get(settingKey);
+      settingsCache[settingKey] = stored[settingKey] || {};
+      return settingsCache[settingKey];
+    } catch (err) {
+      settingsCache[settingKey] = {};
+      return settingsCache[settingKey];
+    } finally {
+      delete loadingPromises[settingKey];
+    }
+  })();
+
+  return loadingPromises[settingKey];
+}
+
+// useSettings
+async function useSetting(id, key, label, type = "text", defaultValue = "", newValue) {
+  if (!key) throw new Error("useSetting requires (id, key, ...)");
+  const settingKey = `settings_${id}`;
+
+  // Ensure cache loaded
+  const opts = await loadSettingsForId(id);
+
+  let current = opts[key];
+  let shouldSave = false;
+
+  // Initialize default if absent
+  if (current === undefined) {
+    if (type === "select" && Array.isArray(defaultValue)) {
+      current = {
+        label,
+        type: "select",
+        value: defaultValue.map((opt, i) => ({
+          ...opt,
+          selected: opt.hasOwnProperty("selected") ? opt.selected : i === 0,
+        })),
+      };
+    } else {
+      current = { label, type, value: defaultValue };
+    }
+    shouldSave = true;
+  }
+
+  // Apply new value if provided and different
+  if (newValue !== undefined) {
+    if (type === "select" && Array.isArray(current.value)) {
+      const currentSelected = current.value.find((o) => o.selected)?.value;
+      if (currentSelected !== newValue) {
+        current.value = current.value.map((opt) => ({ ...opt, selected: opt.value === newValue }));
+        shouldSave = true;
+      }
+    } else if (current.value !== newValue) {
+      current.value = newValue;
+      shouldSave = true;
+    }
+  }
+
+  if (shouldSave) {
+    opts[key] = current;
+    settingsCache[settingKey] = opts;
+    scheduleSave(settingKey);
+  }
+
+  return current;
+}
+
+// Initialize all parser settings
+async function initializeAllParserSettings() {
+  if (!window.initialSettings) return;
+
+  const allStored = await browser.storage.local.get(null);
+  const validIds = new Set();
+  for (const [domain, data] of Object.entries(window.initialSettings)) {
+    const id = makeIdFromDomainAndPatterns(domain, data.urlPatterns);
+    validIds.add(`settings_${id}`);
+  }
+
+  // Clean up unnecessary old keys
+  for (const key of Object.keys(allStored)) {
+    if (key.startsWith("settings_") && !validIds.has(key)) {
+      const opts = allStored[key] || {};
+      // Delete everything except for DEFAULT_PARSER_OPTIONS
+      const cleaned = {};
+      for (const optKey of Object.keys(opts)) {
+        if (DEFAULT_PARSER_OPTIONS.hasOwnProperty(optKey)) {
+          cleaned[optKey] = opts[optKey];
+        }
+      }
+
+      if (Object.keys(cleaned).length > 0) {
+        await browser.storage.local.set({ [key]: cleaned });
+        settingsCache[key] = cleaned;
+      } else {
+        await browser.storage.local.remove(key);
+        delete settingsCache[key];
+      }
+    }
+  }
+
+  // Prepare defaults for initialSettings
+  for (const [domain, data] of Object.entries(window.initialSettings)) {
+    const id = makeIdFromDomainAndPatterns(domain, data.urlPatterns);
+    const settingKey = `settings_${id}`;
+    settingsCache[settingKey] = allStored[settingKey] || settingsCache[settingKey] || {};
+
+    for (const s of data.settings) {
+      await useSetting(id, s.key, s.label, s.type, s.defaultValue);
+    }
+  }
+}
+
+// registerParser
+window.registerParser = async function ({ title, domain, urlPatterns, authors, homepage, fn, userAdd = false, initOnly = false }) {
   if (!domain || typeof fn !== "function") return;
 
-  const patternStrings = (urlPatterns || []).map((p) => p.toString());
+  // wait initialSettings ready
+  while (!window.initialSettings) {
+    await new Promise((r) => setTimeout(r, 50));
+  }
+
+  if (!initLoadPromise) {
+    initLoadPromise = (async () => {
+      await initializeAllParserSettings();
+      await loadAllSavedUserParsers();
+    })();
+  }
+  await initLoadPromise;
+
+  const patternStrings = (urlPatterns || []).map((p) => p.toString()).sort();
   const id = `${domain}_${hashFromPatternStrings(patternStrings)}`;
   const patternRegexes = (urlPatterns || []).map(parseUrlPattern);
 
+  if (window.parsers[domain]?.some((p) => p.id === id)) return;
   if (!window.parsers[domain]) window.parsers[domain] = [];
+
+  // bind the id
+  const boundUseSetting = (key, label, type = "text", defaultValue = "", newValue) => useSetting(id, key, label, type, defaultValue, newValue);
 
   window.parsers[domain].push({
     id,
     patterns: patternRegexes,
-    parse: async () => {
-      const rawData = await fn();
+    authors,
+    homepage,
+    parse: async (...args) => {
+      if (initOnly) return null;
+      const rawData = await fn({ useSetting: boundUseSetting });
       if (!rawData) return null;
 
       let { timePassed = "", duration: durationElem = "", ...rest } = rawData;
@@ -88,22 +244,24 @@ window.registerParser = async function ({ title, domain, urlPatterns, fn, userAd
   });
 
   // Metadata Registration
-  window.parserMeta.push({ id, title, domain, urlPatterns: patternStrings, userAdd });
-  window.parserMeta.sort((a, b) => (a.title || a.domain).toLowerCase().localeCompare((b.title || b.domain).toLowerCase()));
+  if (!window.parserMeta.some((m) => m.id === id)) {
+    window.parserMeta.push({ id, title, domain, urlPatterns: patternStrings, authors, homepage, userAdd });
+    window.parserMeta.sort((a, b) => (a.title || a.domain).toLowerCase().localeCompare((b.title || b.domain).toLowerCase()));
+  }
 
   await scheduleParserListSave();
 };
 
 // Save parser metadata to storage
 async function scheduleParserListSave() {
-    try {
-      const validList = (window.parserMeta || []).filter((p) => p.domain && p.title && p.urlPatterns);
-      if (validList.length > 0 && browser?.storage?.local) {
-        await browser.storage.local.set({ parserList: validList });
-      }
-    } catch (error) {
-      logError("Error saving parser list:", error);
+  try {
+    const validList = (window.parserMeta || []).filter((p) => p.domain && p.title && p.urlPatterns);
+    if (validList.length > 0 && browser?.storage?.local) {
+      await browser.storage.local.set({ parserList: validList });
     }
+  } catch (error) {
+    logError("Error saving parser list:", error);
+  }
 }
 
 // Get current song info based on location and parser list
@@ -113,8 +271,12 @@ window.getSongInfo = async function () {
     const hostname = location.hostname.replace(/^www\./, "").toLowerCase();
     const pathname = location.pathname;
 
-    const domainParsers = window.parsers?.[hostname];
-    if (!domainParsers) return null;
+    // Get subdomains or exact match domains.
+    const domainParsers = Object.entries(window.parsers || {})
+      .filter(([domain]) => hostname === domain || hostname.endsWith(`.${domain}`))
+      .flatMap(([_, parsers]) => parsers);
+
+    if (!domainParsers.length) return null;
 
     for (const parser of domainParsers) {
       const isEnabled = settings[`enable_${parser.id}`] !== false;
@@ -129,22 +291,8 @@ window.getSongInfo = async function () {
   }
 };
 
-// Deep query selector that traverses shadow DOMs
-function querySelectorDeep(selector, root = document) {
-  const el = root.querySelector(selector);
-  if (el) return el;
-
-  const elemsWithShadow = root.querySelectorAll("*");
-  for (const el of elemsWithShadow) {
-    if (el.shadowRoot) {
-      const found = querySelectorDeep(selector, el.shadowRoot);
-      if (found) return found;
-    }
-  }
-  return null;
-}
-
-(async function loadAllSavedUserParsers() {
+// Load User Parsers
+async function loadAllSavedUserParsers() {
   const settings = await browser.storage.local.get("userParserSelectors");
   const parserArray = settings.userParserSelectors;
 
@@ -154,12 +302,17 @@ function querySelectorDeep(selector, root = document) {
     if (!data.selectors || !data.domain) continue;
 
     const get = (key) => {
-      const sel = data.selectors[key];
-      return sel ? querySelectorDeep(sel) : null;
+      try {
+        const sel = data.selectors[key];
+        return sel ? querySelectorDeep(sel) : null;
+      } catch (e) {
+        logError(`Selector error for key "${key}" in domain "${data.domain}":`, e);
+        return null;
+      }
     };
 
-    const hostname = data.domain;
-    const locHostname = location.hostname.replace(/^https?:\/\/|^www\./g, "");
+    const hostname = data.domain.toLowerCase();
+    const locHostname = location.hostname.replace(/^www\./, "").toLowerCase();
 
     window.registerParser?.({
       domain: hostname,
@@ -167,7 +320,7 @@ function querySelectorDeep(selector, root = document) {
       urlPatterns: data.urlPatterns,
       userAdd: true,
       fn: async function () {
-        if (locHostname !== hostname) return null;
+        if (locHostname !== hostname && !locHostname.endsWith(`.${hostname}`)) return null;
 
         try {
           const title = get("title")?.textContent?.trim() ?? "";
@@ -270,4 +423,4 @@ function querySelectorDeep(selector, root = document) {
       },
     });
   }
-})();
+}

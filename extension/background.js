@@ -53,11 +53,11 @@ async function loadParserList() {
     state.parserList = fullList.map((p) => {
       const fallbackId = Object.keys(settings).find((k) => k.startsWith("settings_") && k === `settings_${p.domain}`);
       const parserSettings = settings[`settings_${p.id}`] || settings[fallbackId] || {};
-
+      const parsedSettings = Object.fromEntries(Object.entries(parserSettings).map(([key, obj]) => [key, obj.value]));
       return {
         ...p,
         isEnabled: settings[`enable_${p.id}`] !== false,
-        settings: parserSettings,
+        settings: parsedSettings,
       };
     });
 
@@ -233,7 +233,7 @@ const checkServerHealth = async () => {
   if (now - state.serverStatus.lastCheck < CONFIG.serverCacheTime) return state.serverStatus.isHealthy;
 
   try {
-    const res = await fetchWithTimeout(`http://localhost:${CONFIG.serverPort}/health`, {}, 500);
+    const res = await fetchWithTimeout(`http://localhost:${CONFIG.serverPort}/health`, {}, CONFIG.requestTimeout);
     state.serverStatus.isHealthy = res.ok && (await res.json()).rpcConnected;
   } catch {
     state.serverStatus.isHealthy = false;

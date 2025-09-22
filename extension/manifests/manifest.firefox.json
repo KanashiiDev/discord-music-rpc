@@ -35,11 +35,14 @@
     "64": "icons/64x64.png",
     "128": "icons/128x128.png"
   },
-  "web_accessible_resources": ["icons/*"],
+  "web_accessible_resources": ["icons/*", "popup/selector/selector.css"],
   "browser_specific_settings": {
     "gecko": {
       "id": "discord-rpc@kanashiidev.local",
-      "strict_min_version": "106.0"
+      "strict_min_version": "106.0",
+      "data_collection_permissions": {
+        "required": ["websiteContent"]
+      }
     }
   }
 }

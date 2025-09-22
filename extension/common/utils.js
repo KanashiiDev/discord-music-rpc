@@ -1,3 +1,14 @@
+// Default Parser Options
+const DEFAULT_PARSER_OPTIONS = {
+  showCover: { label: "Show Cover", type: "checkbox", value: true },
+  showSource: { label: "Show Source", type: "checkbox", value: true },
+  showTimeLeft: { label: "Show Time Left", type: "checkbox", value: true },
+  showButtons: { label: "Show Buttons", type: "checkbox", value: true },
+  showFavIcon: { label: "Show Small Site Icon", type: "checkbox", value: false },
+  customCover: { label: "Custom Cover", type: "checkbox", value: false },
+  customCoverUrl: { label: "Custom Cover URL", type: "text", value: "" },
+};
+
 // Logs
 const logInfo = (...a) => CONFIG.debugMode && console.info("[DISCORD-MUSIC-RPC - INFO]", ...a);
 const logWarn = (...a) => console.warn("[DISCORD-MUSIC-RPC - WARN]", ...a);
@@ -34,12 +45,30 @@ function debounce(func, wait = 200) {
   };
 }
 
+// Throttle
+function throttle(fn, wait) {
+  let last = 0;
+  return function (...args) {
+    const now = Date.now();
+    if (now - last >= wait) {
+      last = now;
+      fn.apply(this, args);
+    }
+  };
+}
+
 // Time
 const getCurrentTime = () => new Date().toLocaleTimeString("en-GB", { hour12: false });
 const dateToday = new Date();
 const dateYesterday = new Date();
 dateYesterday.setDate(dateToday.getDate() - 1);
 const isSameDay = (d1, d2) => d1.getFullYear() === d2.getFullYear() && d1.getMonth() === d2.getMonth() && d1.getDate() === d2.getDate();
+
+// Format Label
+function formatLabel(name) {
+  const capitalized = name.charAt(0).toUpperCase() + name.slice(1);
+  return capitalized.replace(/([A-Z0-9])/g, " $1").trim();
+}
 
 // Date formatting
 const userLocale = navigator.languages?.[0] || navigator.language || "en-US";
@@ -288,14 +317,13 @@ function parseTime(timeInput) {
 
   if (typeof timeInput !== "string") return 0;
 
-  // If there is a negative sign, remove it from the beginning (for example "-01:23")
+  // Remove negative sign if any
   timeInput = timeInput.trim().replace(/^-/, "");
 
-  // Split the parts, it can be hours (hh:mm:ss), take the parts in reverse (seconds first)
+  // Split the parts, reverse to handle hh:mm:ss properly
   const parts = timeInput.split(":").reverse();
 
   return parts.reduce((acc, part, i) => {
-    // If there's an error here, it becomes NaN, and then it gets converted to 0.
     const n = parseInt(part, 10);
     return acc + (isNaN(n) ? 0 : n * Math.pow(60, i));
   }, 0);
@@ -321,39 +349,38 @@ function getTimestamps(currentPosition, totalDuration, options = { returnEnd: tr
   }
 
   const now = Date.now();
-  const baseTimestamp = now - currentPosition * 1000;
+
+  // Start is "now"
+  const startTimestamp = now;
 
   if (options.returnEnd) {
+    // End is "now + remaining time"
+    const remaining = totalDuration - currentPosition;
     return {
-      startTimestamp: baseTimestamp,
-      endTimestamp: baseTimestamp + totalDuration * 1000,
+      startTimestamp,
+      endTimestamp: startTimestamp + Math.max(0, remaining) * 1000,
     };
   } else {
-    return {
-      startTimestamp: baseTimestamp,
-    };
+    return { startTimestamp };
   }
 }
 
 // Parses playback time values and returns detailed playback information.
 function processPlaybackInfo(timePassed = "", durationElem = "", progress = 0, duration = 0) {
-  // If timePassed and durationElem are strings, perform the operation. otherwise, use the number directly.
   if (typeof timePassed === "string" && typeof durationElem === "string") {
     timePassed = timePassed.trim();
     durationElem = durationElem.trim();
-
     progress = parseTime(timePassed);
     duration = parseTime(durationElem);
   } else {
-    // If the parameter is already given as a numeric value, assign it directly.
     progress = Number(timePassed) || 0;
     duration = Number(durationElem) || 0;
   }
 
-  const currentPosition = isNaN(progress) ? 0 : progress;
-  const totalDuration = isNaN(duration) ? 0 : duration;
+  const currentPosition = Math.max(0, progress);
+  const totalDuration = Math.max(0, duration);
   const timestamps = getTimestamps(currentPosition, totalDuration);
-  const currentProgress = timestamps && totalDuration ? (currentPosition / totalDuration) * 100 : 0;
+  const currentProgress = totalDuration ? (currentPosition / totalDuration) * 100 : 0;
 
   return {
     currentPosition,
@@ -405,7 +432,7 @@ function getImage(selector) {
   const elem = document.querySelector(selector);
   if (!elem) return null;
 
-  // Priority: <img src = "...">
+  // Priority: element directly <img>
   if (elem.tagName.toLowerCase() === "img" && elem.src) {
     return elem.src;
   }
@@ -416,15 +443,43 @@ function getImage(selector) {
     return bgImage.replace(/^url\(["']?/, "").replace(/["']?\)$/, "");
   }
 
+  // Alternative: check for <img> inside
+  const childImg = elem.querySelector("img");
+  if (childImg && childImg.src) {
+    return childImg.src;
+  }
+
   return null;
 }
 
-// Utility: Pattern hash creation
+// Deep query selector that traverses shadow DOMs
+function querySelectorDeep(selector, root = document) {
+  const el = root.querySelector(selector);
+  if (el) return el;
+
+  const elemsWithShadow = root.querySelectorAll("*");
+  for (const el of elemsWithShadow) {
+    if (el.shadowRoot) {
+      const found = querySelectorDeep(selector, el.shadowRoot);
+      if (found) return found;
+    }
+  }
+  return null;
+}
+
+// Pattern hash creation
 function hashFromPatternStrings(patterns) {
   return btoa(patterns.join("|"))
     .replace(/[^a-zA-Z0-9]/g, "")
     .slice(0, 10);
 }
+
+// Create ID from domain and patterns
+function makeIdFromDomainAndPatterns(domain, urlPatterns) {
+  const patternStrings = (urlPatterns || []).map((p) => p.toString()).sort();
+  return `${domain}_${hashFromPatternStrings(patternStrings)}`;
+}
+
 
 // Show initial setup dialog
 function showInitialSetupDialog() {
@@ -511,7 +566,7 @@ function getPlainText(text) {
   const trimmed = text.trim();
   if (!trimmed) return null;
 
-  const htmlTags = new Set([
+   const htmlTags = new Set([
     "html","head","body","div","span","p","a","ul","ol","li","table",
     "tr","td","th","thead","tbody","tfoot","section","article","nav",
     "header","footer","main","aside","form","input","textarea","button",
