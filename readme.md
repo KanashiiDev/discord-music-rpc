@@ -14,6 +14,7 @@ What sets it apart is its **customizable selector system** — no coding require
 ## 📚 Table of Contents
 
 - [Features](#-features)
+- [Supported Websites](#-supported-websites)
 - [Compatibility](#-compatibility)
 - [Setup](#-setup)
 - [Troubleshooting](#-troubleshooting)
@@ -44,6 +45,17 @@ What sets it apart is its **customizable selector system** — no coding require
 - Chrome
 - Firefox
 - chromium based browsers (opera brave, etc.)
+
+---
+
+## 🎵 Supported Websites
+| [<img src="https://www.google.com/s2/favicons?domain=youtube.com" width="20">](https://www.youtube.com) YouTube | [<img src="https://www.google.com/s2/favicons?domain=music.youtube.com" width="20">](https://music.youtube.com) YouTube Music | [<img src="https://www.google.com/s2/favicons?domain=soundcloud.com" width="20">](https://soundcloud.com) SoundCloud | [<img src="https://www.google.com/s2/favicons?domain=deezer.com" width="20">](https://www.deezer.com) Deezer | [<img src="https://www.google.com/s2/favicons?domain=tidal.com" width="20">](https://tidal.com) Tidal |
+|:---|:---|:---|:---|:---|
+| [<img src="https://www.google.com/s2/favicons?domain=pandora.com" width="20">](https://www.pandora.com) Pandora | [<img src="https://www.google.com/s2/favicons?domain=music.apple.com" width="20">](https://music.apple.com) Apple Music | [<img src="https://www.google.com/s2/favicons?domain=music.amazon.com" width="20">](https://music.amazon.com) Amazon Music | [<img src="https://www.google.com/s2/favicons?domain=tunein.com" width="20">](https://tunein.com) TuneIn | [<img src="https://www.google.com/s2/favicons?domain=iheart.com" width="20">](https://www.iheart.com) iHeartRadio |
+| [<img src="https://www.google.com/s2/favicons?domain=onlineradiobox.com" width="20">](https://www.onlineradiobox.com) OnlineRadioBox | [<img src="https://www.google.com/s2/favicons?domain=radioparadise.com" width="20">](https://www.radioparadise.com) Radio Paradise | [<img src="https://www.google.com/s2/favicons?domain=radio.net" width="20">](https://www.radio.net) Radio.net | [<img src="https://www.google.com/s2/favicons?domain=radio.garden" width="20">](https://radio.garden) Radio Garden | [<img src="https://www.google.com/s2/favicons?domain=listen.moe" width="20">](https://listen.moe) Listen.moe |
+| [<img src="https://www.google.com/s2/favicons?domain=gensokyoradio.net" width="20">](https://gensokyoradio.net) Gensokyo Radio | [<img src="https://www.google.com/s2/favicons?domain=accuRadio.com" width="20">](https://accuRadio.com) accuRadio | [<img src="https://www.google.com/s2/favicons?domain=anison.fm" width="20">](https://anison.fm) anison.fm | [<img src="https://www.google.com/s2/favicons?domain=asiaDreamRadio.com" width="20">](https://asiaDreamRadio.com) Asia Dream Radio | [<img src="https://www.google.com/s2/favicons?domain=plaza.one" width="20">](https://plaza.one) Plaza One |
+
+💡 Additional sites can be easily added. Check out the [How to Add a New Music Site](#-how-to-add-a-new-music-site) section.
 
 ---
 

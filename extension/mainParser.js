@@ -271,12 +271,8 @@ window.getSongInfo = async function () {
     const hostname = location.hostname.replace(/^www\./, "").toLowerCase();
     const pathname = location.pathname;
 
-    // Get subdomains or exact match domains.
-    const domainParsers = Object.entries(window.parsers || {})
-      .filter(([domain]) => hostname === domain || hostname.endsWith(`.${domain}`))
-      .flatMap(([_, parsers]) => parsers);
-
-    if (!domainParsers.length) return null;
+    const domainParsers = window.parsers?.[hostname];
+    if (!domainParsers) return null;
 
     for (const parser of domainParsers) {
       const isEnabled = settings[`enable_${parser.id}`] !== false;

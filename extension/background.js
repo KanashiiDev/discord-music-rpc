@@ -16,18 +16,25 @@ const state = {
 
 const getEnabledParsers = () => state.parserList.filter((p) => p.isEnabled);
 
-function scheduleHistoryAdd(tabId, songData, delay = 10000) {
+const scheduleHistoryAdd = (tabId, songData, delay = 10000) => {
   if (!tabId || !songData?.title || !songData?.artist) return;
 
-  clearTimeout(state.historyTimers.get(tabId));
+  // Clear the previous timer
+  const existingTimer = state.historyTimers.get(tabId);
+  if (existingTimer) {
+    clearTimeout(existingTimer);
+    state.historyTimers.delete(tabId);
+  }
 
   const timer = setTimeout(() => {
-    addToHistory(songData).catch(logError);
     state.historyTimers.delete(tabId);
+    addToHistory(songData).catch((error) => {
+      logError("History add error:", error);
+    });
   }, delay);
 
   state.historyTimers.set(tabId, timer);
-}
+};
 
 async function loadParserList() {
   try {
@@ -74,47 +81,33 @@ async function loadParserList() {
   }
 }
 
+const parserListMutex = createMutex();
+
 const loadParserListOnce = async () => {
-  if (state.parserListLoaded && state.parserList.length > 0) return;
+  return parserListMutex(async () => {
+    if (state.parserListLoaded && state.parserList.length > 0) return;
 
-  if (state.parserListLoading) {
-    return state.parserListLoading;
-  }
-
-  state.parserListLoading = (async () => {
-    try {
-      await loadParserList();
-      return true;
-    } catch (error) {
-      logError("Critical: Parser list loading failed completely", error);
-      return false;
-    } finally {
-      state.parserListLoading = null;
+    if (state.parserListLoading) {
+      return state.parserListLoading;
     }
-  })();
 
-  return state.parserListLoading;
-};
+    state.parserListLoading = (async () => {
+      try {
+        await loadParserList();
+        return true;
+      } catch (error) {
+        logError("Critical: Parser list loading failed completely", error);
+        return false;
+      } finally {
+        state.parserListLoading = null;
+      }
+    })();
 
-const parserReady = loadParserListOnce();
-
-const findMatchingParsersForUrl = (url, list) => {
-  const host = normalizeHost(url);
-  return list.filter(({ domain }) => {
-    const d = normalize(domain);
-    return d && (host === d || host.endsWith(`.${d}`));
+    return state.parserListLoading;
   });
 };
 
-const fetchWithTimeout = async (url, options = {}, timeout = 1000) => {
-  const controller = new AbortController();
-  const id = setTimeout(() => controller.abort(), timeout);
-  try {
-    return await fetch(url, { ...options, signal: controller.signal });
-  } finally {
-    clearTimeout(id);
-  }
-};
+const parserReady = loadParserListOnce();
 
 const clearRpcForTab = async (tabId) => {
   if (!state.activeTabMap.has(tabId)) return;
@@ -163,17 +156,6 @@ const updateRpc = async (data, tabId) => {
         if (exactMatch) {
           parserId = exactMatch.id;
           logInfo(`Found exact parser match: ${hostname} -> ${parserId}`);
-        } else {
-          const partialMatch = state.parserList.find((parser) => {
-            const domain = normalize(parser.domain);
-            const normHost = normalize(hostname);
-            return domain && (normHost === domain || normHost.endsWith(`.${domain}`));
-          });
-
-          if (partialMatch) {
-            parserId = partialMatch.id;
-            logInfo(`Found partial parser match: ${hostname} -> ${parserId}`);
-          }
         }
       }
     } catch (e) {
@@ -247,28 +229,63 @@ const safePingTab = (tabId) => Promise.race([browser.tabs.sendMessage(tabId, { t
 
 const processTab = async (tabId, tabData) => {
   if (!state.activeTabMap.has(tabId)) return;
+
   const now = Date.now();
   if (now - tabData.lastUpdated < CONFIG.activeInterval) return;
 
-  const res = await safePingTab(tabId);
-  if (!res) return now - tabData.lastUpdated > CONFIG.stuckThreshold && state.cleanupQueue.add(tabId);
+  try {
+    const res = await safePingTab(tabId);
+    if (!res) {
+      if (now - tabData.lastUpdated > CONFIG.stuckThreshold) {
+        state.cleanupQueue.add(tabId);
+      }
+      return;
+    }
 
-  const newKey = `${res.title}|${res.artist}|${tabData.isAudioPlaying}|${Math.floor(res.progress / 10)}|${res.duration}`;
-  if ((res.duration > 0 && tabData.lastKey === newKey) || (res.duration <= 0 && now - tabData.lastUpdated < CONFIG.activeInterval)) return;
+    // Null check ve validation
+    if (!res || typeof res !== "object") {
+      logError(`Invalid response from tab ${tabId}:`, res);
+      return;
+    }
 
-  state.activeTabMap.set(tabId, {
-    ...res,
-    isAudioPlaying: true,
-    lastKey: newKey,
-    lastUpdated: now,
-    parserId: tabData.parserId ?? null,
-  });
+    const safeProgress = Math.floor((res.progress || 0) / 10);
+    const safeDuration = res.duration || 0;
+    const safeTitle = res.title || "";
+    const safeArtist = res.artist || "";
+
+    const newKey = `${safeTitle}|${safeArtist}|${tabData.isAudioPlaying}|${safeProgress}|${safeDuration}`;
+
+    if ((safeDuration > 0 && tabData.lastKey === newKey) || (safeDuration <= 0 && now - tabData.lastUpdated < CONFIG.activeInterval)) {
+      return;
+    }
+
+    state.activeTabMap.set(tabId, {
+      ...res,
+      isAudioPlaying: true,
+      lastKey: newKey,
+      lastUpdated: now,
+      parserId: tabData.parserId ?? null,
+    });
+  } catch (error) {
+    logError(`Error processing tab ${tabId}:`, error);
+    state.cleanupQueue.add(tabId);
+  }
 };
 
 const deferredCleanup = async () => {
-  if (!state.cleanupQueue.size) return;
-  await Promise.all([...state.cleanupQueue].map(clearRpcForTab));
-  state.cleanupQueue.clear();
+  if (state.cleanupQueue.size > 0) {
+    // Clean the history timers too.
+    for (const tabId of state.cleanupQueue) {
+      const timer = state.historyTimers.get(tabId);
+      if (timer) {
+        clearTimeout(timer);
+        state.historyTimers.delete(tabId);
+      }
+    }
+
+    await Promise.all([...state.cleanupQueue].map(clearRpcForTab));
+    state.cleanupQueue.clear();
+  }
 };
 
 const markOtherTabsForCleanup = (activeId) => {
@@ -401,28 +418,58 @@ const updateActiveTabMap = async (state, tabs) => {
   await loadParserListOnce();
   const enabled = getEnabledParsers();
 
+  const tabParserMap = new Map();
+
   const matchedTabs = tabs.filter((tab) => {
-    const matched = findMatchingParsersForUrl(tab.url, enabled);
-    if (matched.length > 0) {
-      tab._matchedParsers = matched;
-      return true;
+    try {
+      if (!tab.url) return false;
+
+      const matched = findMatchingParsersForUrl(tab.url, enabled);
+      if (matched.length === 0) return false;
+
+      // URL pattern check
+      const urlObj = new URL(tab.url);
+      const validMatches = matched.filter((parser) => {
+        try {
+          const patterns = parser.urlPatterns || [];
+          return patterns.some((pattern) => {
+            const regex = parseUrlPattern(pattern);
+            return regex.test(urlObj.pathname);
+          });
+        } catch (e) {
+          logError(`Pattern error for parser ${parser.id}:`, e);
+          return false;
+        }
+      });
+
+      if (validMatches.length > 0) {
+        tabParserMap.set(tab.id, validMatches);
+        return true;
+      }
+      return false;
+    } catch (e) {
+      logError("Tab URL parsing error:", e);
+      return false;
     }
-    return false;
   });
 
-  if (!matchedTabs.length) return;
+  if (!matchedTabs.length) return null;
 
   const mainTab = matchedTabs.find((t) => t.active) || matchedTabs[0];
+  const matchedParsers = tabParserMap.get(mainTab.id) || [];
+
   markOtherTabsForCleanup(mainTab.id);
 
-  if (!state.activeTabMap.has(mainTab.id)) {
-    const matched = mainTab._matchedParsers || [];
+  const currentTabState = state.activeTabMap.get(mainTab.id);
+  if (!currentTabState) {
     state.activeTabMap.set(mainTab.id, {
       lastUpdated: 0,
       lastKey: "",
       isAudioPlaying: mainTab.audible ?? false,
-      parserId: matched[0]?.id ?? null,
+      parserId: matchedParsers[0]?.id ?? null,
     });
+  } else if (!currentTabState.parserId && matchedParsers.length > 0) {
+    currentTabState.parserId = matchedParsers[0].id;
   }
 
   return mainTab;

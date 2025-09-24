@@ -237,7 +237,16 @@ inlineUtilsFunctions(["common/utils.js", "popup/modules/history.js", "popup/sele
 inlineUtilsFunctions("main.js", "common/utils.js", ["overridesApplied", "applyOverrides", "applyOverridesLoop"]);
 inlineUtilsFunctions(["background.js", "main.js"], "common/utils.js", ["logInfo", "logWarn", "logError", "delay"]);
 inlineUtilsFunctions("background.js", "popup/modules/history.js", []);
-inlineUtilsFunctions("background.js", "common/utils.js", ["parseUrlPattern", "normalizeHost", "normalize", "getCurrentTime", "openIndexedDB"]);
+inlineUtilsFunctions("background.js", "common/utils.js", [
+  "parseUrlPattern",
+  "normalizeHost",
+  "normalize",
+  "getCurrentTime",
+  "openIndexedDB",
+  "createMutex",
+  "findMatchingParsersForUrl",
+  "fetchWithTimeout",
+]);
 inlineUtilsFunctions("popup/selector/selector.js", "common/utils.js", ["throttle", "formatLabel", "getExistingElementSelector", "getPlainText", "getIconAsDataUrl", "parseRegexArray"]);
 inlineUtilsFunctions("popup/selector/selector.js", "popup/selector/modules/selectorChooserUtils.js", []);
 inlineUtilsFunctions("popup/selector/selector.js", "popup/selector/components/selectorChooser.js", []);

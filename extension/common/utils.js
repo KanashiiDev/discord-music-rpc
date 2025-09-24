@@ -57,6 +57,16 @@ function throttle(fn, wait) {
   };
 }
 
+// Mutex
+const createMutex = () => {
+  let current = Promise.resolve();
+  return (fn) => {
+    const next = current.then(() => fn());
+    current = next.catch(() => {});
+    return next;
+  };
+};
+
 // Time
 const getCurrentTime = () => new Date().toLocaleTimeString("en-GB", { hour12: false });
 const dateToday = new Date();
@@ -114,6 +124,32 @@ const parseUrlPattern = (pattern) => {
     }
   }
   return /.^/;
+};
+
+// Find matching parsers for URL
+const findMatchingParsersForUrl = (url, list) => {
+  const host = normalizeHost(url);
+  return list.filter(({ domain }) => {
+    const d = normalize(domain);
+    return d && host === d;
+  });
+};
+
+// Fetch with timeout
+const fetchWithTimeout = async (url, options = {}, timeout = 3000) => {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeout);
+
+  try {
+    return await fetch(url, { ...options, signal: controller.signal });
+  } catch (err) {
+    if (err.name === "AbortError") {
+      logError(`Request timed out after ${timeout / 1000} seconds`);
+    }
+    logError(err);
+  } finally {
+    clearTimeout(timer);
+  }
 };
 
 // Keep Alive Tab
@@ -479,7 +515,6 @@ function makeIdFromDomainAndPatterns(domain, urlPatterns) {
   const patternStrings = (urlPatterns || []).map((p) => p.toString()).sort();
   return `${domain}_${hashFromPatternStrings(patternStrings)}`;
 }
-
 
 // Show initial setup dialog
 function showInitialSetupDialog() {
