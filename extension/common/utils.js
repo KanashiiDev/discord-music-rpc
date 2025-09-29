@@ -11,21 +11,37 @@ const DEFAULT_PARSER_OPTIONS = {
 
 // Logs
 const logInfo = (...a) => CONFIG.debugMode && console.info("[DISCORD-MUSIC-RPC - INFO]", ...a);
-const logWarn = (...a) => console.warn("[DISCORD-MUSIC-RPC - WARN]", ...a);
+const logWarn = (...a) => CONFIG.debugMode && console.warn("[DISCORD-MUSIC-RPC - WARN]", ...a);
 const logError = (...a) => {
+  const safeStringify = (obj) => {
+    const seen = new WeakSet();
+    return JSON.stringify(obj, (key, value) => {
+      if (typeof value === "object" && value !== null) {
+        if (seen.has(value)) return "[Circular]";
+        seen.add(value);
+      }
+      return value;
+    });
+  };
+
   const errorString = a
     .map((arg) => {
       if (arg instanceof Error) {
-        return `${arg.message || ""} ${arg.stack || ""}`;
+        return `${arg.name || ""} ${arg.message || ""} ${arg.stack || ""}`;
       } else if (typeof arg === "object" && arg !== null) {
-        return JSON.stringify(arg);
+        return safeStringify(arg);
       }
       return arg?.toString?.() || "";
     })
     .join(" ")
     .toLowerCase();
 
-  const ignorePatterns = [/extension context invalidated/, /could not establish connection/];
+  const ignorePatterns = [
+    /extension context invalidated/i,
+    /could not establish connection/i,
+    /failed to fetch/i,
+    /update failed after all retries/i,
+    /update failed \(no response\)/i];
   const isIgnorable = ignorePatterns.some((re) => re.test(errorString));
 
   if (!isIgnorable) {
@@ -79,6 +95,15 @@ function formatLabel(name) {
   const capitalized = name.charAt(0).toUpperCase() + name.slice(1);
   return capitalized.replace(/([A-Z0-9])/g, " $1").trim();
 }
+
+// Create key for song data
+const makeSongKey = ({ title = "", artist = "", progress = 0, duration = 0, playing = false }) => {
+  const t = title;
+  const a = artist;
+  const p = Math.floor((progress || 0) / 10);
+  const d = Number(duration) || 0;
+  return `${t}|${a}|${playing ? "1" : "0"}|${p}|${d}`;
+};
 
 // Date formatting
 const userLocale = navigator.languages?.[0] || navigator.language || "en-US";
@@ -136,7 +161,7 @@ const findMatchingParsersForUrl = (url, list) => {
 };
 
 // Fetch with timeout
-const fetchWithTimeout = async (url, options = {}, timeout = 3000) => {
+const fetchWithTimeout = async (url, options = {}, timeout = 5000) => {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeout);
 
@@ -144,9 +169,11 @@ const fetchWithTimeout = async (url, options = {}, timeout = 3000) => {
     return await fetch(url, { ...options, signal: controller.signal });
   } catch (err) {
     if (err.name === "AbortError") {
-      logError(`Request timed out after ${timeout / 1000} seconds`);
+      logInfo(`Request timed out after ${timeout / 1000} seconds`);
+    } else {
+      logError(err);
     }
-    logError(err);
+    return null;
   } finally {
     clearTimeout(timer);
   }
@@ -327,6 +354,7 @@ const svg_paths = {
   trashIconPaths: ["M3 6h18", "M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2", "M19 6l-1.5 14h-11L5 6", "M10 11v6", "M14 11v6"],
   historyIconPaths: ["M3 3v5h5", "M3.05 13a9 9 0 1 0 2.13-9.36L3 8", "M12 7v5l3 3"],
   backIconPaths: ["M15 18l-6-6 6-6"],
+  filterIconPaths: ["M3 4h18", "M6 12h12", "M10 20h4"],
 };
 
 // Get Fresh Parser List
@@ -667,4 +695,104 @@ function parseRegexArray(input) {
   } catch {
     return [/.*/];
   }
+}
+
+// Validate URL function
+const isValidUrl = (url) => {
+  try {
+    const parsed = new URL(url, location.origin);
+    return parsed.protocol === "https:" || parsed.protocol === "http:";
+  } catch (_) {
+    return false;
+  }
+};
+
+// Helper function to safely get text content
+const getSafeText = (getFn, key, fallback) => {
+  try {
+    const el = getFn(key);
+    return el?.textContent?.trim() || fallback || null;
+  } catch (_) {
+    return fallback || null;
+  }
+};
+
+// Helper function to safely get href
+const getSafeHref = (getFn, key, fallback) => {
+  try {
+    const el = getFn(key);
+    let raw = el?.getAttribute?.("href") ?? fallback;
+
+    try {
+      raw = new URL(raw, location.origin).href;
+    } catch (_) {
+      // If URL parsing fails, fallback to the original href
+    }
+
+    return isValidUrl(raw) ? raw : null;
+  } catch (_) {
+    try {
+      fallback = new URL(fallback, location.origin).href;
+    } catch (_) {}
+    return isValidUrl(fallback) ? fallback : null;
+  }
+};
+
+// HistoryEntry template
+function createHistoryEntry(entry) {
+  const div = document.createElement("div");
+  div.className = "history-entry";
+
+  // Checkbox
+  const checkbox = document.createElement("input");
+  checkbox.type = "checkbox";
+  checkbox.className = "history-checkbox";
+  checkbox.dataset.index = fullHistory.indexOf(entry);
+
+  // Image
+  const img = document.createElement("img");
+  img.width = 36;
+  img.height = 36;
+  img.className = "history-image lazyload";
+  img.dataset.src = entry.i || browser.runtime.getURL("icons/48x48.png");
+  img.onerror = function () {
+    this.onerror = null;
+    this.src = browser.runtime.getURL("icons/48x48.png");
+  };
+
+  // Info
+  const info = document.createElement("div");
+  info.className = "history-info";
+
+  const strong = document.createElement("strong");
+  strong.textContent = entry.t;
+  strong.className = "history-title";
+
+  const link = document.createElement("a");
+  link.className = "song-link";
+  link.title = "Go to The Song";
+  link.appendChild(createSVG(svg_paths.redirectIconPaths));
+  if (entry.u) link.href = entry.u;
+  link.target = "_blank";
+  link.rel = "noopener noreferrer";
+
+  const small = document.createElement("small");
+  small.className = "history-source";
+  const time = new Date(entry.p);
+  small.textContent = `${entry.s}${dateHourMinute(time) ? " • " + dateHourMinute(time) : ""}`;
+
+  info.appendChild(strong);
+  const parts = [];
+  if (entry.a !== "Radio") {
+    const artist = document.createElement("span");
+    artist.className = "history-artist";
+    artist.textContent = entry.a;
+    const br = document.createElement("br");
+    parts.push(artist, br);
+  }
+  parts.push(small);
+  info.append(...parts);
+  div.append(checkbox, img, info, link);
+
+  return div;
 }

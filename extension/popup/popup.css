@@ -4,7 +4,7 @@ body {
   margin: 0;
   padding: 16px;
   background-color: #1e1e1e;
-  width: 300px;
+  width: 325px;
   color: #e0e0e0;
 }
 
@@ -68,6 +68,7 @@ a:hover {
 }
 .site-list::-webkit-scrollbar,
 .parser-entry::-webkit-scrollbar,
+.history-filter-menu::-webkit-scrollbar,
 #historyPanel::-webkit-scrollbar {
   width: 10px;
   background: 0 0;
@@ -75,18 +76,21 @@ a:hover {
 
 ::-webkit-scrollbar-corner,
 .parser-entry::-webkit-scrollbar-corner,
+.history-filter-menu::-webkit-scrollbar-corner,
 #historyPanel::-webkit-scrollbar-corner {
   background: #0000;
 }
 
 .site-list::-webkit-scrollbar-track,
 .parser-entry::-webkit-scrollbar-track,
+.history-filter-menu::-webkit-scrollbar-track,
 #historyPanel::-webkit-scrollbar-track {
   background: #1e1e1e;
 }
 
 .site-list::-webkit-scrollbar-thumb,
 .parser-entry::-webkit-scrollbar-thumb,
+.history-filter-menu::-webkit-scrollbar-thumb,
 #historyPanel::-webkit-scrollbar-thumb {
   background-color: #555;
   -webkit-border-radius: 4px;
@@ -96,11 +100,14 @@ a:hover {
 
 .site-list::-webkit-scrollbar-thumb:hover,
 .parser-entry::-webkit-scrollbar-thumb:hover,
+.history-filter-menu::-webkit-scrollbar-thumb:hover,
 #historyPanel::-webkit-scrollbar-thumb:hover {
   background-color: #777;
 }
 
-span,
+.parser-span,
+.slider,
+.history-trash,
 #openSelector,
 .button {
   display: -webkit-box;
@@ -122,7 +129,9 @@ span,
   transition: background 0.2s;
 }
 
-span:hover,
+.parser-span:hover,
+.slider:hover,
+.history-trash:hover,
 #openSelector:hover {
   background-color: #3a3a3a;
 }
@@ -198,6 +207,8 @@ footer {
 #historySearchBox,
 #searchBox {
   display: block;
+  position: relative;
+  z-index: 5;
   width: -webkit-calc(100% - 24px);
   width: calc(100% - 24px);
   max-height: 20px;
@@ -219,6 +230,17 @@ footer {
   transition: max-height 0.4s ease, transform 0.4s ease, opacity 0.4s ease, -webkit-transform 0.4s ease;
 }
 
+#historySearchBox {
+  width: -webkit-calc(100% - 45px);
+  width: calc(100% - 45px);
+  padding-right: 30px;
+}
+
+#searchBox::-webkit-input-placeholder {
+  color: #888;
+}
+
+#historySearchBox::-webkit-input-placeholder,
 #searchBox::-webkit-input-placeholder {
   color: #888;
 }
@@ -516,18 +538,12 @@ footer {
   opacity: 0;
 }
 
-.history-entry:hover .song-link,
-#historyToggle:hover,
-.redirect-user-parser:hover,
-.gear-button:hover {
-  opacity: 1;
-}
-
 .hidden {
   display: none;
 }
 
-#historyToggle {
+#historyToggle,
+.history-filter {
   position: absolute;
   right: 10px;
   -webkit-transform: translateY(-50%);
@@ -538,6 +554,109 @@ footer {
   transition: opacity 0.2s;
   bottom: 0;
   height: 20px;
+}
+
+.history-filter {
+  position: absolute;
+  right: 12px;
+  height: 16px;
+  width: 16px;
+  z-index: 6;
+}
+
+.history-filter-menu {
+  position: absolute;
+  padding: 0 6px;
+  top: 25px;
+  left: 5px;
+  -webkit-border-bottom-left-radius: 6px;
+  border-bottom-left-radius: 6px;
+  -webkit-border-bottom-right-radius: 6px;
+  border-bottom-right-radius: 6px;
+  -webkit-box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+  background: #333;
+  border: 1px solid #555;
+  z-index: 4;
+  overflow: hidden;
+  -webkit-transition: height 0.3s ease, padding 0.3s ease, top 0.3s ease;
+  transition: height 0.3s ease, padding 0.3s ease, top 0.3s ease;
+  height: 0px;
+  max-height: 200px;
+  overflow-y: auto;
+  width: -webkit-calc(100% - 32px);
+  width: calc(100% - 32px);
+}
+
+.history-filter-menu.open {
+  padding: 6px;
+  top: 30px;
+}
+
+.history-filter-menu label {
+  display: block;
+  font-size: 13px;
+  cursor: pointer;
+  margin-bottom: 4px;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+
+.history-filter-menu > label > input {
+  width: 22px;
+  height: 22px;
+  color: #00545e;
+  vertical-align: middle;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  background: none;
+  border: 0;
+  outline: 0;
+  -webkit-box-flex: 0;
+  -webkit-flex-grow: 0;
+  flex-grow: 0;
+  -webkit-border-radius: 50%;
+  border-radius: 50%;
+  background-color: #333;
+  -webkit-transition: background 0.3s ease;
+  transition: background 0.3s ease;
+  cursor: pointer;
+}
+
+.history-filter-menu > label > input::before {
+  content: "";
+  color: transparent;
+  display: block;
+  width: inherit;
+  height: inherit;
+  -webkit-border-radius: inherit;
+  border-radius: inherit;
+  border: 0;
+  background-color: transparent;
+  background-size: contain;
+  -webkit-box-shadow: inset 0 0 0 1px #666;
+  box-shadow: inset 0 0 0 1px #666;
+}
+
+.history-filter-menu > label > input:checked {
+  background-color: currentcolor;
+}
+
+.history-filter-menu > label > input:checked::before {
+  -webkit-box-shadow: none;
+  box-shadow: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E %3Cpath d='M15.88 8.29L10 14.17l-1.88-1.88a.996.996 0 1 0-1.41 1.41l2.59 2.59c.39.39 1.02.39 1.41 0L17.3 9.7a.996.996 0 0 0 0-1.41c-.39-.39-1.03-.39-1.42 0z' fill='%23fff'/%3E %3C/svg%3E");
+}
+
+.history-entry:hover .song-link,
+#historyToggle:hover,
+.history-filter:hover,
+.redirect-user-parser:hover,
+.gear-button:hover {
+  opacity: 1;
 }
 
 #historyPanel {

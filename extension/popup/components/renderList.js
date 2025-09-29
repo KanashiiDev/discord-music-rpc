@@ -28,6 +28,7 @@ async function renderList(filteredList = null, isSearch = null) {
 
     if (tab.url?.startsWith("http")) {
       e.textContent = "Please refresh the page to apply the settings.";
+      e.title = "Click to refresh the page";
 
       const newEl = e.cloneNode(true);
       e.replaceWith(newEl);
@@ -131,7 +132,7 @@ async function renderList(filteredList = null, isSearch = null) {
       optionsContainer = document.createElement("div");
       optionsContainer.id = `options-${id}`;
       optionsContainer.className = "parser-options";
-      document.body.appendChild(optionsContainer);
+      wrapper.appendChild(optionsContainer);
     }
     optionsContainer.innerHTML = "";
 
@@ -273,12 +274,13 @@ async function renderList(filteredList = null, isSearch = null) {
     }
 
     // Gear click
-    entryInner.addEventListener("click", async () => {
+    entryInner.addEventListener("click", async (e) => {
       const allEntries = document.querySelectorAll(".parser-entry");
       const optionsContainer = wrapper.querySelector(".parser-options");
       const siteListContainer = document.getElementById("siteListContainer");
       const siteList = document.getElementById("siteList");
       const isOpen = optionsContainer.classList.contains("open");
+      e.stopPropagation();
 
       if (!isOpen) {
         // Open

@@ -13,7 +13,11 @@
         <svg width="16px" height="16px" ...></svg>
       </a>
     </div>
-    <input type="text" id="historySearchBox" placeholder="Search history..." style="display: none" />
+    <div class="history-controls" style="display: none; position: relative">
+      <input type="text" id="historySearchBox" placeholder="Search history..." />
+      <span id="historyFilterBtn" title="Filter Source"></span>
+      <div id="historyFilterMenu" class="history-filter-menu"></div>
+    </div>
     <div id="historyPanel" data-lazy-container></div>
     <input type="text" id="searchBox" placeholder="Search parser..." />
     <div id="siteList" class="site-list">
@@ -27,11 +31,11 @@
     <script src="../libs/lazysizes.js" async></script>
     <script src="../libs/browser-polyfill.js"></script>
     <script src="../libs/pako.js"></script>
+    <script src="../common/utils.js"></script>
+    <script src="modules/getIcons.js"></script>
+    <script src="modules/history.js"></script>
     <script src="components/renderList.js"></script>
     <script src="components/renderHistory.js"></script>
-    <script src="../common/utils.js"></script>
-    <script src="modules/history.js"></script>
-    <script src="modules/getIcons.js"></script>
     <script src="popup.js"></script>
   </body>
 </html>

@@ -24,15 +24,14 @@ document.addEventListener("DOMContentLoaded", async () => {
       const list = await getFreshParserList();
       const filtered = list.filter(({ domain, title }) => domain.toLowerCase().includes(query) || (title && title.toLowerCase().includes(query)));
       await renderList(filtered, 1);
-    }, 200);
+    }, 250);
 
     // History Search Box
     searchBox.addEventListener("input", debouncedSearch);
     const historySearchInput = document.getElementById("historySearchBox");
     const debouncedHistorySearch = debounce(() => {
-      const query = historySearchInput.value.toLowerCase();
-      filterRenderedHistory(query);
-    }, 200);
+      renderHistory({ query: historySearchInput.value });
+    }, 250);
     historySearchInput.addEventListener("input", debouncedHistorySearch);
 
     // Open Element Selector
@@ -69,7 +68,6 @@ document.addEventListener("DOMContentLoaded", async () => {
         }, 3000);
       }
     });
- 
 
     const toggleBtn = document.getElementById("historyToggle");
     toggleBtn.appendChild(createSVG(svg_paths.historyIconPaths));
@@ -83,8 +81,10 @@ document.addEventListener("DOMContentLoaded", async () => {
       panelHeader.style.display = isOpen ? "none" : "flex";
       document.querySelector("#siteList").style.display = isOpen ? "block" : "none";
       document.querySelector("#searchBox").style.display = isOpen ? "block" : "none";
+      document.querySelector("#searchBox").value = "";
+      document.querySelector("#historySearchBox").value = "";
       document.querySelector("#openSelector").style.display = isOpen ? "flex" : "none";
-      document.getElementById("historySearchBox").style.display = isOpen ? "none" : "block";
+      document.querySelector(".history-controls").style.display = isOpen ? "none" : "block";
       const mainHeader = document.querySelector("#mainHeader");
       mainHeader.textContent = isOpen ? "Discord Music RPC" : "History";
       mainHeader.appendChild(toggleBtn);
@@ -92,8 +92,40 @@ document.addEventListener("DOMContentLoaded", async () => {
       toggleBtn.appendChild(!isOpen ? createSVG(svg_paths.backIconPaths) : createSVG(svg_paths.historyIconPaths));
 
       if (!isOpen) {
+        isFiltering = false;
+        selectedSources.clear();
+        exitCleaningMode();
         await renderHistory();
+      } else {
+        await renderList();
       }
+    });
+
+    // Close history filter and parser options by clicking outside
+    document.addEventListener("click", (e) => {
+      // History filter menu
+      if (!filterBtn.contains(e.target) && !filterMenu.contains(e.target)) {
+        filterMenu.classList.remove("open");
+        filterMenu.style.height = "0";
+      }
+
+      // Parser options
+      document.querySelectorAll(".parser-options.open").forEach((optionsContainer) => {
+        if (!optionsContainer.contains(e.target)) {
+          const siteListContainer = document.getElementById("siteListContainer");
+          const searchBox = document.getElementById("searchBox");
+          const allEntries = document.querySelectorAll(".parser-entry");
+
+          optionsContainer.classList.remove("open");
+          optionsContainer.style.maxHeight = "0";
+          siteListContainer.style.transform = "translateY(0)";
+          siteListContainer.style.marginBottom = ``;
+          searchBox.classList.remove("fading");
+          allEntries.forEach((entry) => {
+            entry.classList.remove("fading");
+          });
+        }
+      });
     });
   } catch (error) {
     logError("Error loading settings:", error);

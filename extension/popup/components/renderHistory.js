@@ -1,31 +1,53 @@
 let cleaningMode = false;
+let isFiltering = false;
 let fullHistory = [];
+let filteredHistory = [];
+let currentOffset = 0;
+const PAGE_SIZE = 20;
+let selectedSources = new Set();
+const panel = document.getElementById("historyPanel");
+const filterBtn = document.getElementById("historyFilterBtn");
+const filterMenu = document.getElementById("historyFilterMenu");
 
-async function renderHistory() {
-  const panel = document.getElementById("historyPanel");
-  panel.innerHTML = "";
-  const spinner = document.createElement("div");
-  spinner.className = "spinner";
-  panel.appendChild(spinner);
-  fullHistory = await loadHistory();
-  const history = fullHistory.slice(0, MAX_HISTORY);
-  panel.innerHTML = "";
-
-  if (!history.length) {
-    const emptyMsg = document.createElement("i");
-    emptyMsg.textContent = "Empty.";
-    panel.appendChild(emptyMsg);
-    return;
+// Render
+async function renderHistory({ reset = true, query = "" } = {}) {
+  if (reset) {
+    panel.innerHTML = "";
+    currentOffset = 0;
+    fullHistory = await loadHistory();
   }
 
-  if (document.getElementById("historySearchBox")) {
-    document.getElementById("historySearchBox").value = "";
+  // Update the filter menu
+  renderSourceFilterMenu();
+
+  // Apply filter
+  if (query || selectedSources.size > 0) {
+    filteredHistory = fullHistory.filter((entry) => {
+      const matchesText = (entry.t + " " + entry.a + " " + entry.s).toLowerCase().includes(query.toLowerCase());
+      const matchesSource = selectedSources.size === 0 || selectedSources.has(entry.s);
+      return matchesText && matchesSource;
+    });
+    isFiltering = true;
+  } else {
+    filteredHistory = [];
+    isFiltering = false;
+  }
+
+  const dataSource = isFiltering ? filteredHistory : fullHistory;
+  const pagedHistory = dataSource.slice(currentOffset, currentOffset + PAGE_SIZE);
+  currentOffset += PAGE_SIZE;
+
+  if (reset && !pagedHistory.length) {
+    const emptyMsg = document.createElement("i");
+    emptyMsg.textContent = query || selectedSources.size ? "No results." : "Empty.";
+    panel.appendChild(emptyMsg);
+    return;
   }
 
   let lastHeader = null;
   const fragment = document.createDocumentFragment();
 
-  history.forEach((entry, i) => {
+  pagedHistory.forEach((entry) => {
     const time = new Date(entry.p);
     const header = isSameDay(time, dateToday) ? "Today" : isSameDay(time, dateYesterday) ? "Yesterday" : dateFull(time);
 
@@ -37,113 +59,55 @@ async function renderHistory() {
       lastHeader = header;
     }
 
-    const div = document.createElement("div");
-    div.className = "history-entry";
-
-    const checkbox = document.createElement("input");
-    checkbox.type = "checkbox";
-    checkbox.className = "history-checkbox";
-    checkbox.dataset.index = fullHistory.indexOf(entry);
-
-    const img = document.createElement("img");
-    img.width = 36;
-    img.height = 36;
-    img.className = "history-image lazyload";
-    img.dataset.src = entry.i || browser.runtime.getURL("icons/48x48.png");
-
-    img.onerror = function () {
-      this.onerror = null;
-      this.src = browser.runtime.getURL("icons/48x48.png");
-    };
-
-    const info = document.createElement("div");
-    info.className = "history-info";
-
-    const strong = document.createElement("strong");
-    strong.textContent = entry.t;
-
-    const link = document.createElement("a");
-    link.className = entry.u ? "song-link" : "song-link hidden";
-    link.title = "Go to The Song";
-    link.appendChild(createSVG(svg_paths.redirectIconPaths));
-    if (entry.u) link.href = entry.u;
-    link.target = "_blank";
-    link.rel = "noopener noreferrer";
-
-    const small = document.createElement("small");
-    small.textContent = `${entry.s}${dateHourMinute(time) ? " • " + dateHourMinute(time) : ""}`;
-
-    info.appendChild(strong);
-    const parts = [];
-    if (entry.a !== "Radio") {
-      const br = document.createElement("br");
-      parts.push(` ${entry.a}`, br);
-    }
-    parts.push(small);
-    info.append(...parts);
-    div.append(checkbox, img, info, link);
-    fragment.appendChild(div);
+    fragment.appendChild(createHistoryEntry(entry));
   });
 
   panel.appendChild(fragment);
-
-  // Add checkbox events while in cleaning mode
   if (cleaningMode) attachCheckboxListeners();
 }
 
-// Filter Render history
-function filterRenderedHistory(query) {
-  const entries = document.querySelectorAll(".history-entry");
-
-  entries.forEach((entry) => {
-    const textContent = entry.innerText.toLowerCase();
-    entry.style.display = textContent.includes(query) ? "" : "none";
-  });
-
-  // Hide headers if no visible entries
-  const headers = document.querySelectorAll("#historyPanel h3");
-  headers.forEach((header) => {
-    // Check if any sibling entries are visible
-    let sibling = header.nextElementSibling;
-    let hasVisible = false;
-    while (sibling && !sibling.matches("h3")) {
-      if (sibling.style.display !== "none") {
-        hasVisible = true;
-        break;
-      }
-      sibling = sibling.nextElementSibling;
+// History Scroll Event
+panel.addEventListener("scroll", () => {
+  if (panel.scrollTop + panel.clientHeight >= panel.scrollHeight - 50) {
+    const dataSource = isFiltering ? filteredHistory : fullHistory;
+    if (currentOffset < dataSource.length) {
+      renderHistory({ reset: false, query: document.getElementById("historySearchBox").value || "" });
     }
-    header.style.display = hasVisible ? "" : "none";
-  });
-}
+  }
+});
 
 // Listen checkbox changes
 function attachCheckboxListeners() {
-  const checkboxes = document.querySelectorAll(".history-checkbox");
-
-  checkboxes.forEach((cb) => {
-    const entry = cb.closest(".history-entry");
-    if (!entry) return;
-
-    // Checkbox listener
-    cb.addEventListener("change", () => {
-      entry.classList.toggle("selected", cb.checked);
-      updateClearBtnText();
+  if (!panel._checkboxListenerAttached) {
+    panel.addEventListener("change", (e) => {
+      if (!cleaningMode) return;
+      if (e.target.matches(".history-checkbox")) {
+        const cb = e.target;
+        const entry = cb.closest(".history-entry");
+        if (entry) entry.classList.toggle("selected", cb.checked);
+        updateClearBtnText();
+      }
     });
+    panel._checkboxListenerAttached = true;
+  }
 
-    // If there is a trash icon, skip it; if not, add it.
+  // Add the missing trash icons and checkbox listeners
+  panel.querySelectorAll(".history-entry").forEach((entry) => {
+    const cb = entry.querySelector(".history-checkbox");
+    if (!cb._listenerAttached) {
+      cb._listenerAttached = true;
+    }
+
+    // Add trash icon if not present
     if (!entry.querySelector(".history-trash")) {
       const trashIcon = document.createElement("span");
       trashIcon.className = "history-trash";
       trashIcon.appendChild(createSVG(svg_paths.trashIconPaths));
-
-      // Trash icon click → checkbox toggle
       trashIcon.addEventListener("click", () => {
         cb.checked = !cb.checked;
         entry.classList.toggle("selected", cb.checked);
         updateClearBtnText();
       });
-
       cb.insertAdjacentElement("afterend", trashIcon);
     }
   });
@@ -163,13 +127,17 @@ function updateClearBtnText() {
 
 // Clear Button Click Event
 clearBtn.addEventListener("click", async () => {
-  if (!cleaningMode) {
+  if (!cleaningMode && fullHistory.length) {
     // Start the cleaning mode
     cleaningMode = true;
     document.body.classList.add("cleaning-mode");
     cancelCleanBtn.style.display = "inline-block";
     updateClearBtnText();
     attachCheckboxListeners();
+    return;
+  } else if (!fullHistory.length) {
+    alert("History is already empty.");
+    exitCleaningMode();
     return;
   }
 
@@ -178,18 +146,29 @@ clearBtn.addEventListener("click", async () => {
     .filter((cb) => cb.closest(".history-entry").style.display !== "none")
     .map((cb) => parseInt(cb.dataset.index));
 
-  //If no items were selected, ask for user confirmation to delete all history.
   if (selectedIndexes.length === 0) {
-    if (!confirm("Are you sure you want to delete ALL history?")) return;
-    fullHistory = [];
+    // If a filter has been applied, only delete the filtered history
+    if (isFiltering) {
+      const filteredSet = new Set(filteredHistory.map((e) => fullHistory.indexOf(e)));
+      if (!confirm(`Are you sure you want to delete ${filteredSet.size} entries from the current filtered list?`)) return;
+      fullHistory = fullHistory.filter((_, i) => !filteredSet.has(i));
+    } else {
+      //If no items were selected, ask for user confirmation to delete all history.
+      if (!confirm(`Are you sure you want to delete all ${fullHistory.length} history entries?`)) return;
+      fullHistory = [];
+    }
   }
   // If there are selected items, delete only them.
   else {
-    if (!confirm(`Delete ${selectedIndexes.length} selected item(s)?`)) return;
+    if (!confirm(`Are you sure you want to delete ${selectedIndexes.length} history ${selectedIndexes.length > 1 ? "entries" : "entry"}?`)) return;
     fullHistory = fullHistory.filter((_, i) => !selectedIndexes.includes(i));
   }
 
-  //Update the database and refresh the UI
+  // Reset filtering and re-render
+  isFiltering = false;
+  selectedSources.clear();
+  filteredHistory = [];
+  document.querySelector("#historySearchBox").value = "";
   await saveHistory(fullHistory);
   await renderHistory();
   exitCleaningMode();
@@ -209,3 +188,37 @@ function exitCleaningMode() {
     cb.checked = false;
   });
 }
+
+// Filter menu rendering
+function renderSourceFilterMenu() {
+  filterMenu.innerHTML = "";
+  const sources = [...new Set(fullHistory.map((e) => e.s))].sort();
+  if (!document.querySelector(".history-filter")) {
+    filterBtn.className = "history-filter";
+    filterBtn.appendChild(createSVG(svg_paths.filterIconPaths));
+  }
+
+  sources.forEach((src) => {
+    const label = document.createElement("label");
+    const cb = document.createElement("input");
+    const span = document.createElement("span");
+    span.textContent = src;
+    cb.type = "checkbox";
+    cb.value = src;
+    cb.checked = selectedSources.has(src);
+    cb.addEventListener("change", () => {
+      if (cb.checked) selectedSources.add(src);
+      else selectedSources.delete(src);
+      renderHistory({ query: document.getElementById("historySearchBox").value });
+    });
+    label.append(cb, " ", span);
+    filterMenu.appendChild(label);
+  });
+}
+
+// Filter Dropdown Toggle
+filterBtn.addEventListener("click", (e) => {
+  e.stopPropagation();
+  filterMenu.classList.toggle("open");
+  filterMenu.style.height = filterMenu.classList.contains("open") ? Math.min(200, filterMenu.scrollHeight) + "px" : "0";
+});
