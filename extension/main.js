@@ -15,6 +15,7 @@ const CONSTANTS = {
   RECOVERY_DELAY: (CONFIG.activeInterval ?? 5000) + 2000,
 };
 
+// Start watching tab activity and song changes
 function startWatching() {
   if (state.updateTimer) return;
   logInfo("Started watching.");
@@ -22,6 +23,7 @@ function startWatching() {
   mainLoop();
 }
 
+// Stop watching tab activity and song changes
 function stopWatching() {
   logInfo("Stopped watching.");
   clearTimeout(state.updateTimer);
@@ -30,6 +32,7 @@ function stopWatching() {
   state.activeTab = false;
 }
 
+// Schedule the next update based on activity
 function scheduleNextUpdate(interval = CONSTANTS.ACTIVE_INTERVAL) {
   if (!state.activeTab) return;
 
@@ -40,6 +43,7 @@ function scheduleNextUpdate(interval = CONSTANTS.ACTIVE_INTERVAL) {
   }, interval);
 }
 
+// Main loop to check for song changes and update RPC
 async function mainLoop() {
   if (state.isUpdating) return;
   state.isUpdating = true;
@@ -55,6 +59,7 @@ async function mainLoop() {
       return;
     }
 
+    // Validate song data
     const isChanged = rpcState.isSongChanged(song);
     const isSeeking = rpcState.isSeekDetected(song.position, song.duration);
     const hasValidDuration = typeof song.duration === "number" && song.duration > 0;
@@ -88,7 +93,7 @@ async function mainLoop() {
       const didUpdate = await processRPCUpdate(song, updatedProgress);
       if (didUpdate) {
         rpcState.lastPosition = song.position;
-        statelastUpdateTime = Date.now();
+        state.lastUpdateTime = Date.now();
         scheduleNextUpdate();
         return;
       }
@@ -106,6 +111,8 @@ async function mainLoop() {
   }
 }
 
+
+// Process the RPC update and handle connection
 async function processRPCUpdate(song, progress) {
   const rpcOk = await isRpcConnected();
   if (!rpcOk) {
@@ -139,6 +146,7 @@ async function processRPCUpdate(song, progress) {
   return false;
 }
 
+// Check if RPC is connected
 async function isRpcConnected() {
   try {
     return await browser.runtime.sendMessage({ type: "IS_RPC_CONNECTED" });
@@ -147,6 +155,7 @@ async function isRpcConnected() {
   }
 }
 
+// Check if the current hostname matches
 async function isHostnameMatch() {
   try {
     return await browser.runtime.sendMessage({ type: "IS_HOSTNAME_MATCH" });
@@ -155,6 +164,7 @@ async function isHostnameMatch() {
   }
 }
 
+// Trigger recovery process for RPC connection
 async function triggerRecovery() {
   if (rpcState.isRecovering) return;
   rpcState.isRecovering = true;
@@ -172,6 +182,7 @@ async function triggerRecovery() {
   }, CONSTANTS.RECOVERY_DELAY);
 }
 
+// Handle scenario when no song is playing
 async function handleNoSong() {
   if (!rpcState.lastActivity) return;
   logInfo(`No song played. RPC is being cleaned ...`);
@@ -179,6 +190,7 @@ async function handleNoSong() {
   rpcState.reset();
 }
 
+// Safely get song info with error handling and caching
 async function safeGetSongInfo() {
   if (typeof window.getSongInfo !== "function") return null;
 
@@ -202,16 +214,17 @@ async function safeGetSongInfo() {
   }
 }
 
-async function init() {
+// Initialize the extension
+function init() {
   const start = async () => {
     if (typeof window.getSongInfo !== "function") {
       setTimeout(init, 5000);
       return;
     }
+
     const hostMatch = await isHostnameMatch();
-    if (!hostMatch) {
-      return;
-    }
+    if (!hostMatch) return;
+
     startWatching();
   };
 
@@ -221,10 +234,10 @@ async function init() {
   window.addEventListener("beforeunload", () => {
     stopWatching();
     rpcState.reset();
-    navigator.sendBeacon?.(`http://localhost:${CONSTANTS.SERVER_PORT}/clear-rpc`, JSON.stringify({ clientId: `tab_${browser.devtools?.inspectedWindow?.tabId || "unknown"}` }));
   });
 }
 
+// Listen for messages from the background script
 browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === "PING_FOR_DATA") {
     safeGetSongInfo().then((info) => {
@@ -237,6 +250,7 @@ browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 });
 
+// Apply overrides to keep the tab active
 function rtcKeepAliveTab() {
   applyOverrides();
   // Apply again every 5 seconds

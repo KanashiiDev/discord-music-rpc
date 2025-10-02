@@ -74,14 +74,20 @@ function throttle(fn, wait) {
 }
 
 // Mutex
-const createMutex = () => {
-  let current = Promise.resolve();
-  return (fn) => {
-    const next = current.then(() => fn());
-    current = next.catch(() => {});
-    return next;
+function createMutex() {
+  let lock = Promise.resolve();
+  return async (fn) => {
+    const unlock = lock;
+    let resolveNext;
+    lock = new Promise((r) => (resolveNext = r));
+    await unlock;
+    try {
+      return await fn();
+    } finally {
+      resolveNext();
+    }
   };
-};
+}
 
 // Time
 const getCurrentTime = () => new Date().toLocaleTimeString("en-GB", { hour12: false });
@@ -95,15 +101,6 @@ function formatLabel(name) {
   const capitalized = name.charAt(0).toUpperCase() + name.slice(1);
   return capitalized.replace(/([A-Z0-9])/g, " $1").trim();
 }
-
-// Create key for song data
-const makeSongKey = ({ title = "", artist = "", progress = 0, duration = 0, playing = false }) => {
-  const t = title;
-  const a = artist;
-  const p = Math.floor((progress || 0) / 10);
-  const d = Number(duration) || 0;
-  return `${t}|${a}|${playing ? "1" : "0"}|${p}|${d}`;
-};
 
 // Date formatting
 const userLocale = navigator.languages?.[0] || navigator.language || "en-US";
@@ -751,8 +748,8 @@ function createHistoryEntry(entry) {
 
   // Image
   const img = document.createElement("img");
-  img.width = 36;
-  img.height = 36;
+  img.width = 46;
+  img.height = 46;
   img.className = "history-image lazyload";
   img.dataset.src = entry.i || browser.runtime.getURL("icons/48x48.png");
   img.onerror = function () {

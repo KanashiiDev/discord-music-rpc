@@ -135,10 +135,7 @@ app.post("/update-rpc", async (req, res) => {
     const endTime = startTime + duration * 1000;
 
     if (lastActiveClient && lastActiveClient.clientId !== clientId && now - lastActiveClient.timestamp < CLIENT_TIMEOUT) {
-      return res.status(429).json({
-        error: "Another client is currently controlling the RPC",
-        retryAfter: Math.ceil((CLIENT_TIMEOUT - (now - lastActiveClient.timestamp)) / 1000),
-      });
+      return res.json({ success: true, message: "Another Client is Active" });
     }
 
     lastActiveClient = { clientId: clientId || "unknown", timestamp: now };

@@ -267,6 +267,9 @@ inlineUtilsFunctions("mainParser.js", "common/utils.js", [
   "parseUrlPattern",
   "getExistingElementSelector",
   "getPlainText",
+  "isValidUrl",
+  "getSafeText",
+  "getSafeHref",
 ]);
 
 // 7. Write the manifest in the dist folder
