@@ -55,7 +55,7 @@ function createTitleElements(root, editMode) {
 
   const editTitle = document.createElement("h4");
   editTitle.className = "userRpc-h4";
-  editTitle.textContent = editMode ? `Edit Current Parser` : "Add New Parser";
+  editTitle.textContent = editMode ? `Edit Current Music Site` : "Add New Music Site";
   root.appendChild(editTitle);
 }
 
@@ -196,13 +196,21 @@ function setupDragFunctionality(root) {
 
 // Inject Selector CSS
 async function injectStyles(shadowRoot) {
-  const response = await fetch(chrome.runtime.getURL("popup/selector/selector.css"));
+  const response = await fetch(browser.runtime.getURL("popup/selector/selector.css"));
   const css = await response.text();
 
-  const sheet = new CSSStyleSheet();
-  await sheet.replace(css);
+  try {
+    const sheet = new CSSStyleSheet();
+    await sheet.replace(css);
 
-  shadowRoot.adoptedStyleSheets = [...shadowRoot.adoptedStyleSheets, sheet];
+    if ("adoptedStyleSheets" in shadowRoot) {
+      shadowRoot.adoptedStyleSheets = [...(shadowRoot.adoptedStyleSheets || []), sheet];
+      return;
+    }
+  } catch (e) {}
+  const style = document.createElement("style");
+  style.textContent = css;
+  shadowRoot.appendChild(style);
 }
 
 // Set the position of the Selector

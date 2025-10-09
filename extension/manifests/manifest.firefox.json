@@ -5,7 +5,7 @@
   "homepage_url": "https://github.com/KanashiiDev",
 
   "background": {
-    "scripts": ["libs/browser-polyfill.js", "background.js"],
+    "scripts": ["libs/browser-polyfill.js", "libs/pako.js", "background.js"],
     "persistent": false
   },
 

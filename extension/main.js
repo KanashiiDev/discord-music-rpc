@@ -6,6 +6,9 @@ const state = {
   errorCount: 0,
   maxErrorCount: 5,
   activeTab: true,
+  rpcKeepAliveIntervalId: null,
+  initStarted: false,
+  messageListenerRegistered: false,
 };
 
 const CONSTANTS = {
@@ -15,11 +18,22 @@ const CONSTANTS = {
   RECOVERY_DELAY: (CONFIG.activeInterval ?? 5000) + 2000,
 };
 
+const RECOVERY_STATE = {
+  attempts: 0,
+  maxAttempts: 10,
+  baseDelay: CONSTANTS.RECOVERY_DELAY,
+};
+
 // Start watching tab activity and song changes
 function startWatching() {
   if (state.updateTimer) return;
   logInfo("Started watching.");
   state.activeTab = true;
+  // ensure no leftover intervals
+  if (state.rpcKeepAliveIntervalId) {
+    clearInterval(state.rpcKeepAliveIntervalId);
+    state.rpcKeepAliveIntervalId = null;
+  }
   mainLoop();
 }
 
@@ -30,6 +44,13 @@ function stopWatching() {
   state.updateTimer = null;
   state.isUpdating = false;
   state.activeTab = false;
+  rpcState.reset();
+  // clear keepalive interval
+  if (state.rpcKeepAliveIntervalId) {
+    clearInterval(state.rpcKeepAliveIntervalId);
+    state.rpcKeepAliveIntervalId = null;
+    window._rpcKeepActiveInjected = false;
+  }
 }
 
 // Schedule the next update based on activity
@@ -111,7 +132,6 @@ async function mainLoop() {
   }
 }
 
-
 // Process the RPC update and handle connection
 async function processRPCUpdate(song, progress) {
   const rpcOk = await isRpcConnected();
@@ -147,6 +167,7 @@ async function processRPCUpdate(song, progress) {
 }
 
 // Check if RPC is connected
+
 async function isRpcConnected() {
   try {
     return await browser.runtime.sendMessage({ type: "IS_RPC_CONNECTED" });
@@ -169,17 +190,38 @@ async function triggerRecovery() {
   if (rpcState.isRecovering) return;
   rpcState.isRecovering = true;
   stopWatching();
-  logInfo(`Triggering RPC Recovery...`);
+
+  const attempt = RECOVERY_STATE.attempts + 1;
+  logInfo(`Triggering RPC Recovery (attempt ${attempt})...`);
+
   try {
     await browser.runtime.sendMessage({ type: "RECOVER_RPC" });
   } catch (e) {
     logError("Recovery message failed:", e);
   }
 
-  setTimeout(() => {
+  // Exponential backoff with cap (max 15s)
+  RECOVERY_STATE.attempts = attempt;
+  const delayMs = Math.min(RECOVERY_STATE.baseDelay * Math.pow(2, attempt - 1), 15000);
+
+  setTimeout(async () => {
     rpcState.isRecovering = false;
-    startWatching();
-  }, CONSTANTS.RECOVERY_DELAY);
+
+    try {
+      const ok = await isRpcConnected();
+      if (ok) {
+        logInfo("RPC connection restored.");
+        RECOVERY_STATE.attempts = 0; // reset attempts
+        startWatching();
+      } else {
+        logWarn(`RPC still down after attempt ${RECOVERY_STATE.attempts}, retrying in ${Math.round(delayMs / 1000)}s...`);
+        triggerRecovery(); // retry again
+      }
+    } catch (e) {
+      logError("Error during recovery check:", e);
+      triggerRecovery(); // keep retrying even if check fails
+    }
+  }, delayMs);
 }
 
 // Handle scenario when no song is playing
@@ -216,15 +258,31 @@ async function safeGetSongInfo() {
 
 // Initialize the extension
 function init() {
+  if (state.initStarted) return;
+  state.initStarted = true;
+
   const start = async () => {
+    // polling for getSongInfo to be available
+    let tries = 0;
+    const maxTries = 30;
+    while (typeof window.getSongInfo !== "function" && tries < maxTries) {
+      await delay(2000);
+      tries++;
+    }
+
     if (typeof window.getSongInfo !== "function") {
-      setTimeout(init, 5000);
+      logWarn("getSongInfo not available after retries, abort init.");
       return;
     }
 
     const hostMatch = await isHostnameMatch();
-    if (!hostMatch) return;
+    if (!hostMatch) {
+      logInfo("Hostname not allowed, not starting watcher.");
+      return;
+    }
 
+    // register message listener
+    registerRuntimeMessageListener();
     startWatching();
   };
 
@@ -233,28 +291,49 @@ function init() {
 
   window.addEventListener("beforeunload", () => {
     stopWatching();
-    rpcState.reset();
   });
 }
 
 // Listen for messages from the background script
-browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (message.type === "PING_FOR_DATA") {
-    safeGetSongInfo().then((info) => {
-      sendResponse(info?.title && info?.artist ? info : null);
-    });
-    return true;
-  }
-  if (message.action === "reloadPage") {
-    location.reload();
-  }
-});
+function registerRuntimeMessageListener() {
+  if (state.messageListenerRegistered) return;
+  state.messageListenerRegistered = true;
+
+  browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    if (message.type === "PING_FOR_DATA") {
+      safeGetSongInfo().then((info) => {
+        sendResponse(info?.title && info?.artist ? info : null);
+      });
+      return true;
+    }
+    if (message.action === "reloadPage") {
+      location.reload();
+    }
+  });
+}
 
 // Apply overrides to keep the tab active
 function rtcKeepAliveTab() {
-  applyOverrides();
+  try {
+    applyOverrides();
+  } catch (e) {
+    logError("applyOverrides failed:", e);
+  }
+
+  // clear any existing interval first
+  if (state.rpcKeepAliveIntervalId) {
+    clearInterval(state.rpcKeepAliveIntervalId);
+  }
+
   // Apply again every 5 seconds
-  setInterval(applyOverridesLoop, 5000);
+  state.rpcKeepAliveIntervalId = setInterval(() => {
+    try {
+      applyOverridesLoop();
+    } catch (e) {
+      logError("applyOverridesLoop error:", e);
+    }
+  }, 5000);
+
   window._rpcKeepActiveInjected = true;
 }
 

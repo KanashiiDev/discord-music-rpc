@@ -36,12 +36,7 @@ const logError = (...a) => {
     .join(" ")
     .toLowerCase();
 
-  const ignorePatterns = [
-    /extension context invalidated/i,
-    /could not establish connection/i,
-    /failed to fetch/i,
-    /update failed after all retries/i,
-    /update failed \(no response\)/i];
+  const ignorePatterns = [/extension context invalidated/i, /could not establish connection/i, /failed to fetch/i, /update failed after all retries/i, /update failed \(no response\)/i];
   const isIgnorable = ignorePatterns.some((re) => re.test(errorString));
 
   if (!isIgnorable) {
@@ -96,15 +91,113 @@ const dateYesterday = new Date();
 dateYesterday.setDate(dateToday.getDate() - 1);
 const isSameDay = (d1, d2) => d1.getFullYear() === d2.getFullYear() && d1.getMonth() === d2.getMonth() && d1.getDate() === d2.getDate();
 
-// Format Label
-function formatLabel(name) {
-  const capitalized = name.charAt(0).toUpperCase() + name.slice(1);
-  return capitalized.replace(/([A-Z0-9])/g, " $1").trim();
+// Time Calculations
+function getStartTime(range, customStart = null, customEnd = null) {
+  const now = new Date();
+
+  const setStartOfDay = (d) => {
+    d.setHours(0, 0, 0, 0);
+    return d;
+  };
+
+  const setEndOfDay = (d) => {
+    d.setHours(23, 59, 59, 999);
+    return d;
+  };
+
+  let startTime = 0;
+  let endTime = now.getTime();
+
+  if (range === "custom" && customStart) {
+    return { startTime: customStart, endTime: customEnd || endTime };
+  }
+
+  switch (range) {
+    case "day": {
+      const d = setStartOfDay(new Date(now));
+      startTime = d.getTime();
+      endTime = setEndOfDay(new Date(now)).getTime();
+      break;
+    }
+
+    case "yesterday": {
+      const d = setStartOfDay(new Date(now));
+      d.setDate(d.getDate() - 1);
+      startTime = d.getTime();
+      endTime = setEndOfDay(new Date(d)).getTime();
+      break;
+    }
+
+    case "week": {
+      const d = setStartOfDay(new Date(now));
+      const diff = d.getDay() === 0 ? -6 : 1 - d.getDay();
+      d.setDate(d.getDate() + diff);
+      startTime = d.getTime();
+
+      const weekEnd = new Date(d);
+      weekEnd.setDate(weekEnd.getDate() + 6);
+      endTime = setEndOfDay(weekEnd).getTime();
+      break;
+    }
+
+    case "month": {
+      const start = new Date(now.getFullYear(), now.getMonth(), 1);
+      const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+      startTime = start.getTime();
+      endTime = setEndOfDay(end).getTime();
+      break;
+    }
+
+    case "lastMonth": {
+      const start = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      const end = new Date(now.getFullYear(), now.getMonth(), 0);
+      startTime = start.getTime();
+      endTime = setEndOfDay(end).getTime();
+      break;
+    }
+
+    case "3months": {
+      const start = new Date(now.getFullYear(), now.getMonth() - 3, 1);
+      const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+      startTime = start.getTime();
+      endTime = setEndOfDay(end).getTime();
+      break;
+    }
+
+    case "6months": {
+      const start = new Date(now.getFullYear(), now.getMonth() - 6, 1);
+      const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+      startTime = start.getTime();
+      endTime = setEndOfDay(end).getTime();
+      break;
+    }
+
+    case "year": {
+      const start = new Date(now.getFullYear(), 0, 1);
+      const end = new Date(now.getFullYear(), 11, 31);
+      startTime = start.getTime();
+      endTime = setEndOfDay(end).getTime();
+      break;
+    }
+
+    case "all": {
+      startTime = 0;
+      endTime = now.getTime();
+      break;
+    }
+
+    default: {
+      startTime = 0;
+      endTime = now.getTime();
+      break;
+    }
+  }
+
+  return { startTime, endTime };
 }
 
 // Date formatting
 const userLocale = navigator.languages?.[0] || navigator.language || "en-US";
-
 const dateHourMinute = (time) =>
   time.toLocaleTimeString(userLocale, {
     hour: "2-digit",
@@ -119,6 +212,17 @@ const dateFull = (time) =>
     month: "long",
     year: "numeric",
   });
+
+// Format Label
+function formatLabel(name) {
+  const capitalized = name.charAt(0).toUpperCase() + name.slice(1);
+  return capitalized.replace(/([A-Z0-9])/g, " $1").trim();
+}
+
+// Normalize artist name
+function normalizeArtistName(name) {
+  return name.split(/,|&|feat\.|Feat\.|FEAT\./)[0].trim();
+}
 
 // Normalize host string
 const normalizeHost = (url) => {
@@ -350,7 +454,12 @@ const svg_paths = {
   ],
   trashIconPaths: ["M3 6h18", "M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2", "M19 6l-1.5 14h-11L5 6", "M10 11v6", "M14 11v6"],
   historyIconPaths: ["M3 3v5h5", "M3.05 13a9 9 0 1 0 2.13-9.36L3 8", "M12 7v5l3 3"],
-  backIconPaths: ["M15 18l-6-6 6-6"],
+  historyStatsIconPaths: [
+    "M9 5c0-1.1.9-2 2-2h2c1.1 0 2 .9 2 2v14c0 1.1-.9 2-2 2h-2c-1.1 0-2-.9-2-2V5z",
+    "M3 11c0-1.1.9-2 2-2h2c1.1 0 2 .9 2 2v8c0 1.1-.9 2-2 2H5c-1.1 0-2-.9-2-2v-8z",
+    "M15 7c0-1.1.9-2 2-2h2c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2h-2c-1.1 0-2-.9-2-2V7z",
+  ],
+  backIconPaths: ["M19 20l-8-8 8-8"],
   filterIconPaths: ["M3 4h18", "M6 12h12", "M10 20h4"],
 };
 
@@ -626,14 +735,70 @@ function getPlainText(text) {
   const trimmed = text.trim();
   if (!trimmed) return null;
 
-   const htmlTags = new Set([
-    "html","head","body","div","span","p","a","ul","ol","li","table",
-    "tr","td","th","thead","tbody","tfoot","section","article","nav",
-    "header","footer","main","aside","form","input","textarea","button",
-    "select","option","label","img","canvas","svg","video","audio","source",
-    "iframe","script","style","link","meta","h1","h2","h3","h4","h5","h6",
-    "pre","code","blockquote","figure","figcaption","strong","em","b","i","u",
-    "small","sub","sup","hr","br"
+  const htmlTags = new Set([
+    "html",
+    "head",
+    "body",
+    "div",
+    "span",
+    "p",
+    "a",
+    "ul",
+    "ol",
+    "li",
+    "table",
+    "tr",
+    "td",
+    "th",
+    "thead",
+    "tbody",
+    "tfoot",
+    "section",
+    "article",
+    "nav",
+    "header",
+    "footer",
+    "main",
+    "aside",
+    "form",
+    "input",
+    "textarea",
+    "button",
+    "select",
+    "option",
+    "label",
+    "img",
+    "canvas",
+    "svg",
+    "video",
+    "audio",
+    "source",
+    "iframe",
+    "script",
+    "style",
+    "link",
+    "meta",
+    "h1",
+    "h2",
+    "h3",
+    "h4",
+    "h5",
+    "h6",
+    "pre",
+    "code",
+    "blockquote",
+    "figure",
+    "figcaption",
+    "strong",
+    "em",
+    "b",
+    "i",
+    "u",
+    "small",
+    "sub",
+    "sup",
+    "hr",
+    "br",
   ]);
   if (/^[.#\[]/.test(trimmed)) return null;
   if (!trimmed.includes(" ") && htmlTags.has(trimmed.toLowerCase())) return null;
@@ -792,4 +957,143 @@ function createHistoryEntry(entry) {
   div.append(checkbox, img, info, link);
 
   return div;
+}
+
+// Get Sender Tab
+async function getSenderTab(sender) {
+  if (sender?.tab?.id) return sender.tab;
+
+  try {
+    const [activeTab] = await browser.tabs.query({
+      active: true,
+      lastFocusedWindow: true,
+    });
+    if (activeTab) return activeTab;
+  } catch (err) {
+    logWarn("getSenderTab fallback error:", err);
+  }
+
+  return null;
+}
+
+// If simplebar is added, update the element's padding
+async function updatePanelPadding(targetIds, maxRetries = 10, delay = 50) {
+  if (!Array.isArray(targetIds)) targetIds = targetIds ? [targetIds] : [];
+
+  const allSelectors = [...targetIds.map((id) => `#${id}`)];
+  const invisibleCounts = new Map();
+
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    // Check only the panels that are missing padding
+    const panelsToCheck = [];
+    allSelectors.forEach((sel) => {
+      document.querySelectorAll(sel).forEach((panel) => {
+        if (panel.style.paddingRight !== "16px") panelsToCheck.push(panel);
+      });
+    });
+
+    if (!panelsToCheck.length) return true;
+
+    panelsToCheck.forEach((panel) => {
+      const scrollbar = panel.querySelector(".simplebar-vertical");
+      const visible = scrollbar && getComputedStyle(scrollbar).visibility === "visible";
+
+      if (visible) {
+        panel.style.paddingRight = "16px";
+        invisibleCounts.delete(panel);
+      } else {
+        const prev = invisibleCounts.get(panel) || 0;
+        invisibleCounts.set(panel, prev + 1);
+      }
+    });
+
+    const allDone = panelsToCheck.every((panel) => {
+      const tries = invisibleCounts.get(panel) || 0;
+      return panel.style.paddingRight === "16px" || tries >= maxRetries;
+    });
+
+    if (allDone) return true;
+
+    await new Promise((resolve) => setTimeout(resolve, delay));
+  }
+
+  return false;
+}
+
+// Activate simplebar
+async function activateSimpleBar(targetIds, options = { maxWaitMs: 1000 }) {
+  if (!Array.isArray(targetIds)) targetIds = [targetIds];
+
+  const results = [];
+
+  const isElementVisible = (el) => {
+    if (!el) return false;
+    const style = getComputedStyle(el);
+    return style.display !== "none" && style.visibility !== "hidden" && el.offsetWidth > 0 && el.offsetHeight > 0;
+  };
+
+  const waitForVisible = async (el, maxWaitMs = options.maxWaitMs) => {
+    const start = Date.now();
+    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+    while (Date.now() - start < maxWaitMs) {
+      if (isElementVisible(el)) return true;
+      await sleep(50);
+    }
+    return isElementVisible(el);
+  };
+
+  for (const id of targetIds) {
+    const el = document.getElementById(id);
+    if (!el) {
+      results.push({ id, success: false, reason: "not_found" });
+      continue;
+    }
+
+    // If it has been initialized before, just recalculate
+    if (el.dataset.sbInit === "1") {
+      try {
+        if (el.SimpleBar && typeof el.SimpleBar.recalculate === "function") {
+          el.SimpleBar.recalculate();
+          updatePanelPadding(targetIds);
+          results.push({ id, success: true, action: "recalculated" });
+        } else {
+          el.dataset.sbInit = "0";
+        }
+        continue;
+      } catch (e) {}
+    }
+
+    // Wait to be visible
+    const isVisible = await waitForVisible(el);
+    if (!isVisible) {
+      results.push({ id, success: false, reason: "not_visible" });
+      continue;
+    }
+
+    // Clear the old instance
+    try {
+      if (el.SimpleBar && typeof el.SimpleBar.unMount === "function") {
+        try {
+          el.SimpleBar.unMount();
+        } catch (e) {}
+      }
+    } catch (e) {}
+
+    // Init
+    try {
+      const inst = new SimpleBar(el, { autoHide: false });
+      if (inst && inst.el) {
+        el.SimpleBar = inst;
+      }
+      el.dataset.sbInit = "1";
+      // Update the padding after SimpleBar is fully rendered
+      updatePanelPadding(targetIds);
+      results.push({ id, success: true, action: "initialized" });
+    } catch (e) {
+      console.error("SimpleBar init failed for", id, e);
+      el.dataset.sbInit = "0";
+      results.push({ id, success: false, reason: "init_failed", error: String(e) });
+    }
+  }
+  return results;
 }

@@ -30,18 +30,19 @@ function isSameActivityIgnore(a, b) {
 
 function truncate(str, maxLength = 128, { fallback = "Unknown", minLength = 2, maxRegexLength = 512 } = {}) {
   if (typeof str !== "string") return fallback;
-
   str = str.trim();
-  if (!str) return fallback;
+  if (!str || str.length < minLength) return fallback;
 
+  // Limit for regex
   let strForRegex = str.length > maxRegexLength ? str.slice(0, maxRegexLength) : str;
 
   // Keywords that need to be cleaned
   const alwaysRemoveKeywords = [
+    "FLASH WARNING",
     "copyright free|royalty free|no copyright|creative commons|free download|download free",
     "download now|new release|official site|official page|buy now|available now|stream now|link in bio|link below",
-    "official video|music video|MusicVideo|lyric video|full video|video clip|full version|full ver\.|official mv",
-    "フルバージョン|完全版|主題歌|劇場版|映画|テーマソング|ミュージックビデオ|音楽ビデオ|公式|ライブ|生放送|カラオケ|歌詞付き|歌詞動画|予告|トレーラー|主題歌/FULL ver\.|主題歌",
+    "official video|music video|MusicVideo|lyric video|full video|video clip|full version|full ver.|official mv",
+    "フルバージョン|完全版|主題歌|劇場版|映画|テーマソング|ミュージックビデオ|音楽ビデオ|公式|ライブ|生放送|カラオケ|歌詞付き|歌詞動画|予告|トレーラー|主題歌/FULL ver.|主題歌",
     "完整版|完整版MV|官方MV|官方视频|主题曲|原声带|插曲|电影版|影视版|演唱会|现场|现场版|歌词版|歌词视频|卡拉OK|预告|预告片|预览|高清|官方预告",
     "완전판|풀버전|정식버전|공식|공식뮤직비디오|뮤비|뮤직비디오|테마송|주제가|영화판|가사영상|가사버전|티저|예고편|예고|영상|고화질",
   ];
@@ -51,7 +52,7 @@ function truncate(str, maxLength = 128, { fallback = "Unknown", minLength = 2, m
     "hd|hq|4k|8k|1080p|720p|480p|mp3|mp4|flac|wav|aac|320kbps|256kbps|128kbps",
     "free\\s+(download|dl|song|now)|download\\s+(free|now)",
     "official(\\s+(video|music\\s+video|audio|lyric\\s+video|visualizer))?",
-    "teaser|trailer|promo|lyric\\s+video|lyrics?|music\\s+video|out\\s+now",
+    "PATREON|teaser|trailer|promo|lyric\\s+video|lyrics?|music\\s+video|out\\s+now",
     "mixed\\s+by\\s+dj|karaoke|backing\\s+track|vocals\\s+only|live(\\s+performance)?",
     "now\\s+available|full\\s+song|full\\s+version|complete\\s+version|original\\s+version\\s+version",
     "official\\s+trailer|official\\s+teaser|[\\w\\s'’\\-]+\\s+premiere",
@@ -66,34 +67,40 @@ function truncate(str, maxLength = 128, { fallback = "Unknown", minLength = 2, m
   const optionalRemoveRegex = new RegExp(`([\\[\\(（]\\s*(${optionalRegexStr})\\s*[\\]\\)）])|(\\s*-\\s*(${optionalRegexStr})\\s*$)`, "gi");
   strForRegex = strForRegex.replace(optionalRemoveRegex, "");
 
-  // Clean unnecessary parentheses - first clean the empty parentheses
-  strForRegex = strForRegex.replace(/(\(\s*\)|\[\s*\]|（\s*）|【\s*】)/g, "");
-  
-  // Then clean the filled parentheses.
-  strForRegex = strForRegex.replace(/[\\[\\(（【].*?[\\)\\]）】]/g, "");
+  // Clean unnecessary parentheses
+  const safeParenthesesRegex = new RegExp(`[\[\(（【][^\[\]()（）【】]{0,500}[\)\]）】]`, "g");
+  strForRegex = strForRegex.replace(safeParenthesesRegex, "");
 
-  // Checking for empty brackets again (for those that remain empty after the content has been deleted)
-  strForRegex = strForRegex.replace(/(\(\s*\)|\[\s*\]|（\s*）|【\s*】)/g, "");
-
-   // Remove unnecessary brackets and spaces at the beginning and end.
-  strForRegex = strForRegex.replace(/^[\s\/\\\-–—|•·]+|[\s\/\\\-–—|•·]+$/g, '');
-
-  // Clean the excess separators inside (multiple ones next to each other)
-  strForRegex = strForRegex.replace(/[\s\/\\\-–—|•·]{2,}/g, ' ');
-
-  // Clean up the extra spaces
+  // Empty parentheses
+  strForRegex = strForRegex.replace(/[\[\(（【]\s*[\]\)）】]/g, "");
   strForRegex = strForRegex.replace(/\s+/g, " ").trim();
 
   // Max length
   let result = strForRegex;
   if (strForRegex.length > maxLength) {
-    // Try not to leave the last word unfinished.
-    const lastSpaceIndex = strForRegex.lastIndexOf(" ", maxLength - 3);
-    const truncateIndex = lastSpaceIndex > maxLength / 2 ? lastSpaceIndex : maxLength - 3;
-    result = strForRegex.slice(0, truncateIndex) + "...";
+    const chars = Array.from(strForRegex);
+
+    if (chars.length > maxLength) {
+      let truncateIndex = maxLength - 3;
+
+      // Try not to leave the last word unfinished.
+      for (let i = Math.min(maxLength - 3, chars.length - 1); i > maxLength / 2; i--) {
+        if (/[\s\p{P}\p{Z}]/u.test(chars[i])) {
+          truncateIndex = i;
+          break;
+        }
+      }
+
+      result = chars.slice(0, truncateIndex).join("") + "...";
+    }
   }
 
+  result = result.trim();
   if (result.length < minLength) return fallback;
+
+  // If only special characters remain return fallback
+  if (/^[\s\p{P}\p{S}]+$/u.test(result)) return fallback;
+
   return result;
 }
 
@@ -105,56 +112,41 @@ function cleanTitle(title, artist) {
     return trimmedTitle;
   }
 
+  // Separate the artist list
   const artistListRaw = trimmedArtist
-    .split(/,|&|feat\.?|featuring/gi)
+    .split(/\s*(?:,|&|feat\.?|featuring|ft\.?|with)\s*/i)
     .map((a) => a.trim())
-    .filter((a) => a.length >= 3);
+    .filter((a) => a.length >= 2);
 
   if (artistListRaw.length === 0) return trimmedTitle;
 
+  // Escape and lowercase
   const artistList = artistListRaw.map((a) => a.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
-  const pattern = new RegExp(`^(${artistList.join("|")})(\\s*[&+,xX]\\s*(${artistList.join("|")}))*\\s*[-–:|.]?\\s*`, "i");
+
+  // Create a pattern
+  const pattern = new RegExp(`^(${artistList.join("|")})(\\s*[&+,xX×]\\s*(${artistList.join("|")}))*\\s*[-–—:]+\\s*`, "i");
   const cleaned = trimmedTitle.replace(pattern, "").trim();
-
-  return cleaned.length > 0 ? cleaned : trimmedTitle;
+  const finalCleaned = cleaned.replace(/^[-–—:]+\s*/, "").trim();
+  return finalCleaned.length > 0 ? finalCleaned : trimmedTitle;
 }
 
-function extractArtistFromTitle(title, originalArtist) {
-  const pattern = /^(.+?)\s*-\s*/;
-  const match = title.match(pattern);
-  if (match) {
-    const extracted = match[1].trim();
-    const origLower = originalArtist.toLowerCase();
-    const extractedLower = extracted.toLowerCase();
-
-    if (extractedLower !== origLower && (extractedLower.includes(origLower) || origLower.includes(extractedLower)) && extracted.length > originalArtist.length) {
-      return extracted;
-    }
-  }
-  return originalArtist;
-}
-
-function normalizeTitleAndArtist(title, artist) {
+function normalizeTitleAndArtist(title, artist, replaceArtist = true) {
   let dataTitle = title?.trim() || "";
   let dataArtist = artist?.trim() || "";
 
-  if (!dataTitle || !dataArtist) return { title: dataTitle, artist: dataArtist };
+  const dashMatch = dataTitle.match(/^(.+?)\s*[-–—]\s*(.+)$/);
+  if (dashMatch && replaceArtist) {
+    const extractedArtist = dashMatch[1].trim();
+    const newTitle = dashMatch[2].trim();
 
-  // If the title and artist are exactly the same and contain ' - ', separate them
-  if (dataTitle.toLowerCase() === dataArtist.toLowerCase() && dataTitle.includes(" - ")) {
-    const parts = dataTitle
-      .split("-")
-      .map((s) => s.trim())
-      .filter((s) => s.length > 0);
+    const extractedLower = extractedArtist.toLowerCase();
+    const artistLower = dataArtist.toLowerCase();
 
-    if (parts.length >= 2) {
-      dataArtist = parts.shift();
-      dataTitle = parts.join(" - ");
+    if (!(dataArtist.length > extractedArtist.length && artistLower.includes(extractedLower))) {
+      dataArtist = extractedArtist;
     }
-  } else {
-    // Normal extract + clean process
-    dataArtist = extractArtistFromTitle(dataTitle, dataArtist);
-    dataTitle = cleanTitle(dataTitle, dataArtist);
+
+    dataTitle = newTitle;
   }
 
   return { title: dataTitle, artist: dataArtist };
@@ -183,7 +175,6 @@ module.exports = {
   isSameActivityIgnore,
   truncate,
   cleanTitle,
-  extractArtistFromTitle,
   normalizeTitleAndArtist,
   isValidUrl,
   notifyRpcStatus,

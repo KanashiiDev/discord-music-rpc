@@ -4,38 +4,78 @@
     <meta charset="UTF-8" />
     <title>Discord Music RPC</title>
     <link rel="stylesheet" href="popup.css" />
+    <link rel="stylesheet" href="../libs/flatpickr.css" />
+    <link rel="stylesheet" href="../libs/simplebar.css" />
   </head>
-
   <body>
     <div class="header-container">
+      <a id="historyStatsToggle" title="Stats"> </a>
       <h1 id="mainHeader">Discord Music RPC</h1>
-      <a id="historyToggle">
-        <svg width="16px" height="16px" ...></svg>
-      </a>
+      <a id="historyToggle" title="History"> </a>
     </div>
     <div class="history-controls" style="display: none; position: relative">
       <input type="text" id="historySearchBox" placeholder="Search history..." />
       <span id="historyFilterBtn" title="Filter Source"></span>
-      <div id="historyFilterMenu" class="history-filter-menu"></div>
+      <div id="historyFilterMenu" class="history-filter-menu">
+        <div id="historyFilterMenuContent" class="history-filter-menu-content"></div>
+      </div>
     </div>
     <div id="historyPanel" data-lazy-container></div>
-    <input type="text" id="searchBox" placeholder="Search parser..." />
+    <input type="text" id="searchBox" placeholder="Search site..." />
+    <div id="dropdownToggle" class="dropdown-toggle">
+      Today
+      <span class="arrow">▼</span>
+    </div>
+    <div id="statsFilters" class="custom-dropdown-container">
+      <ul id="dropdownMenu" class="dropdown-menu">
+        <li data-range="day">Today</li>
+        <li data-range="yesterday">Yesterday</li>
+        <li data-range="week">This Week</li>
+        <li data-range="month">This Month</li>
+        <li data-range="lastMonth">Last Month</li>
+        <li data-range="3months">Last 3 Months</li>
+        <li data-range="6months">Last 6 Months</li>
+        <li data-range="year">This Year</li>
+        <li data-range="all">All Time</li>
+        <li data-range="custom">Custom Range</li>
+      </ul>
+      <div class="date-range-picker" style="display: none">
+        <div class="container">
+          <div>
+            <label class="picker-label">Start Date</label>
+            <input type="text" id="customStartDate" class="picker-input flatpickr-input" readonly />
+          </div>
+          <div>
+            <label class="picker-label">End Date</label>
+            <input type="text" id="customEndDate" class="picker-input flatpickr-input" readonly />
+          </div>
+          <button id="applyCustomRange" class="picker-apply">Apply</button>
+          <button id="clearCustomRange" class="picker-clear">Close</button>
+        </div>
+      </div>
+    </div>
+    <div id="historyStatsPanel" style="display: none">
+      <div id="statsEntries"></div>
+    </div>
     <div id="siteList" class="site-list">
       <div id="siteListContainer" class="site-list-container"></div>
     </div>
     <div id="historyHeader" style="display: none">
       <a id="clearHistoryBtn" class="button" style="cursor: pointer; width: 100%">Clear History</a><a id="cancelCleanBtn" class="button" style="display: none">Cancel</a>
     </div>
-    <a id="openSelector" title="Add your own custom music rpc.">Add Music Parser</a>
+    <a id="openSelector">Add Music Site</a>
     <footer><a href="https://github.com/KanashiiDev/discord-music-rpc" target="_blank" rel="noopener noreferrer">Github</a></footer>
+    <script src="../libs/simplebar.js"></script>
     <script src="../libs/lazysizes.js" async></script>
     <script src="../libs/browser-polyfill.js"></script>
     <script src="../libs/pako.js"></script>
+    <script src="../libs/flatpickr.js"></script>
     <script src="../common/utils.js"></script>
     <script src="modules/getIcons.js"></script>
     <script src="modules/history.js"></script>
     <script src="components/renderList.js"></script>
     <script src="components/renderHistory.js"></script>
+    <script src="components/renderHistoryStats.js"></script>
     <script src="popup.js"></script>
   </body>
 </html>

@@ -333,7 +333,7 @@ async function renderList(filteredList = null, isSearch = null) {
       const delBtn = document.createElement("a");
       delBtn.className = "del-user-parser";
       delBtn.appendChild(createSVG(svg_paths.trashIconPaths));
-      delBtn.title = "Delete this user parser";
+      delBtn.title = "Delete this user music site";
       delBtn.addEventListener("click", async (e) => {
         e.stopPropagation();
         const confirmed = confirm(`Do you want to delete "${title}" parser?`);
@@ -361,7 +361,7 @@ async function renderList(filteredList = null, isSearch = null) {
       if (tabHostname === normalize(domain)) {
         const regexes = urlPatterns.map(parseUrlPattern);
         if (regexes.some((r) => r.test(tabPath))) {
-          document.getElementById("openSelector").textContent = "Edit Music Parser";
+          document.getElementById("openSelector").textContent = "Edit Music Site";
         }
       }
     }

@@ -6,7 +6,7 @@ const state = {
   cleanupQueue: new Set(),
   serverStatus: { lastCheck: 0, isHealthy: false },
   pendingUpdates: new Map(),
-  historyTimers: new Map(),
+  historyCounters: new Map(),
   lastLoopTime: 0,
   parserList: [],
   parserListLoaded: false,
@@ -28,22 +28,53 @@ async function loadParserEnabledCache(parserEnabledCache, parserList) {
   });
 }
 
-function scheduleHistoryAdd(tabId, songData, delay = 10000) {
-  if (!tabId || !songData?.title || !songData?.artist) return;
+async function scheduleHistoryAdd(tabId, songData) {
+  if (!tabId || !Number.isInteger(tabId)) return;
+  if (!songData?.title || !songData?.artist) return;
 
-  const existingTimer = state.historyTimers.get(tabId);
-  if (existingTimer) {
-    clearTimeout(existingTimer);
-    state.historyTimers.delete(tabId);
+  if (!state.historyCounters) state.historyCounters = new Map();
+
+  // normalize title & artist
+  const normalized = normalizeTitleAndArtist(songData.title, songData.artist);
+  const normalizedTitle = truncate(normalized.title, 128, { fallback: "Unknown Song" });
+  const normalizedArtist = truncate(normalized.artist === normalized.title ? "Radio" : normalized.artist, 128, { fallback: "Unknown Artist" });
+  const sourceText = truncate(songData.source, 32, { fallback: "Unknown Source" });
+
+  const key = `${normalizedTitle}::${normalizedArtist}::${sourceText}::${songData.image}`;
+  let tracker = state.historyCounters.get(tabId);
+  const now = Date.now();
+
+  // If a new song is playing, reset the tracker
+  if (!tracker || tracker.lastKey !== key) {
+    state.historyCounters.set(tabId, { lastKey: key, startTime: now });
+    return;
   }
 
-  const timer = setTimeout(() => {
-    addToHistory(songData).catch((error) => {
-      logError("History add error:", error);
-    });
-  }, delay);
+  // If 15 seconds have passed, add it
+  if (now - tracker.startTime >= 15000) {
+    try {
+      const history = await loadHistory();
 
-  state.historyTimers.set(tabId, timer);
+      // Control with normalized values
+      const exists = history.some((e) => e.t === normalizedTitle && e.a === normalizedArtist && e.s === sourceText);
+
+      if (!exists) {
+        // Add to History
+        await addToHistory({
+          image: songData.image,
+          title: normalizedTitle,
+          artist: normalizedArtist,
+          source: sourceText,
+          songUrl: songData.songUrl,
+        });
+      }
+    } catch (error) {
+      logError("History add error:", error);
+    }
+
+    // Clear tracker
+    state.historyCounters.delete(tabId);
+  }
 }
 
 async function loadParserList() {
@@ -116,40 +147,56 @@ const loadParserListOnce = async () => {
 
 const parserReady = loadParserListOnce();
 
-const clearRpcForTab = async (tabId) => {
-  if (!state.activeTabMap.has(tabId) || state.pendingClear.has(tabId)) return;
-  try {
-    state.pendingClear.add(tabId);
+// track tabs that were sent to backend so we only clear when needed
+const clientSentToServer = new Set();
 
-    // cancel pending update
+const clearRpcForTab = async (tabId) => {
+  // If a clear is already in-progress, skip
+  if (state.pendingClear.has(tabId)) return;
+
+  // Mark pending
+  state.pendingClear.add(tabId);
+
+  try {
+    // If it was never active and never sent to server, nothing to do
+    const wasActive = state.activeTabMap.has(tabId);
+    const wasSent = clientSentToServer.has(tabId);
+
+    // Cancel queued update timers
     const pending = state.pendingUpdates.get(tabId);
     if (pending?.timeout) clearTimeout(pending.timeout);
     state.pendingUpdates.delete(tabId);
-
-    // cancel history timer
-    const timer = state.historyTimers.get(tabId);
-    if (timer) clearTimeout(timer);
-    state.historyTimers.delete(tabId);
+    state.historyCounters.delete(tabId);
 
     // remove from active structures
     state.cleanupQueue.delete(tabId);
     state.activeTabMap.delete(tabId);
 
-    logInfo(`Cleared local state for tab ${tabId}`);
+    // Only send clear to backend if we previously sent an RPC for this tab
+    if (wasActive || wasSent) {
+      logInfo(`Cleared local state for tab ${tabId}`);
 
-    // notify backend
-    await fetchWithTimeout(
-      `http://localhost:${CONFIG.serverPort}/clear-rpc`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ clientId: `tab_${tabId}` }),
-      },
-      CONFIG.requestTimeout
-    );
+      // notify backend
+      try {
+        await fetchWithTimeout(
+          `http://localhost:${CONFIG.serverPort}/clear-rpc`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ clientId: `tab_${tabId}` }),
+          },
+          CONFIG.requestTimeout
+        );
+      } catch (e) {
+        logError(`Clear RPC notify failed [${tabId}]`, e);
+      }
+    }
+
+    clientSentToServer.delete(tabId);
   } catch (e) {
     logError(`Clear RPC failed [${tabId}]`, e);
   } finally {
+    // allow future clears
     state.pendingClear.delete(tabId);
   }
 };
@@ -281,14 +328,23 @@ const markOtherTabsForCleanup = (activeId) => {
 
 const setupListeners = () => {
   browser.runtime.onMessage.addListener(async (req, sender) => {
-    const tabId = sender.tab?.id;
-    if (!tabId) return;
+    const tab = await getSenderTab(sender);
+    if (!tab) {
+      logWarn("No tab info from sender, skipping:", req);
+      return;
+    }
+
+    const tabId = tab.id;
 
     try {
       await parserReady;
       if (req.type === "UPDATE_RPC") {
         const tab = await browser.tabs.get(tabId);
-        if (!tab.audible) return clearRpcForTab(tabId);
+        if (!tab.audible) {
+          const cur = state.activeTabMap.get(tabId);
+          if (!cur || cur.isAudioPlaying === false) return true;
+          return clearRpcForTab(tabId);
+        }
 
         const now = Date.now();
         const { title, artist, progress, duration } = req.data;
@@ -332,8 +388,8 @@ const setupListeners = () => {
           image: req.data.image,
           title: req.data.title,
           artist: req.data.artist,
-          source: req.data.source || (sender?.tab?.url ? new URL(sender.tab.url).hostname.replace(/^www\./, "") : "unknown"),
-          songUrl: req.data.songUrl || "",
+          source: req.data?.source || (tab.url ? new URL(tab.url).hostname.replace(/^www\./, "") : "unknown"),
+          songUrl: req.data?.songUrl || "",
         });
 
         return true;
@@ -459,7 +515,7 @@ const mainLoop = async () => {
   try {
     await loadParserListOnce();
 
-    const tabs = await browser.tabs.query({ audible: true, status: "complete" });
+    const tabs = await browser.tabs.query({ audible: true });
     if (!tabs.length) {
       if (state.activeTabMap.size > 0) {
         await deferredCleanup();

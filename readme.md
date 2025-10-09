@@ -113,7 +113,7 @@ You can add a parser in **two ways**:
 **You don’t need to write any code. Just follow these steps:**
 
 1. **Click the plugin icon** in your browser.
-2. Click **"Add Music Parser"**.
+2. Click **"Add Music Site"**.
 3. On the opened section, click the **“+” icon** next to each required element:
    - Title
    - Artist

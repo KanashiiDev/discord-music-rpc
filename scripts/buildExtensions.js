@@ -30,7 +30,7 @@ let manifest = fs.readJsonSync(manifestPath);
 manifest.version = pkgVersion;
 
 // 4. Update manifest content_scripts to use compiledParsers.js and <all_urls>
-const defaultJSFiles = ["libs/browser-polyfill.js", "libs/pako.js", "rpcStateManager.js", "mainParser.js", "compiledParsers.js", "popup/selector/selector.js", "main.js"];
+const defaultJSFiles = ["libs/browser-polyfill.js", "libs/pako.js", "libs/flatpickr.js", "rpcStateManager.js", "mainParser.js", "compiledParsers.js", "popup/selector/selector.js", "main.js"];
 
 if (!manifest.content_scripts) {
   manifest.content_scripts = [];
@@ -231,7 +231,6 @@ function inlineUtilsFunctions(targetFiles, sourceFile, functionsToInclude) {
 inlineUtilsFunctions(["common/utils.js", "popup/modules/history.js", "popup/selector/selector.js", "popup/selector/components/preview.js", "background.js"], "../utils.js", [
   "truncate",
   "cleanTitle",
-  "extractArtistFromTitle",
   "normalizeTitleAndArtist",
 ]);
 inlineUtilsFunctions("main.js", "common/utils.js", ["overridesApplied", "applyOverrides", "applyOverridesLoop"]);
@@ -246,6 +245,7 @@ inlineUtilsFunctions("background.js", "common/utils.js", [
   "createMutex",
   "findMatchingParsersForUrl",
   "fetchWithTimeout",
+  "getSenderTab",
 ]);
 inlineUtilsFunctions("popup/selector/selector.js", "common/utils.js", ["throttle", "formatLabel", "getExistingElementSelector", "getPlainText", "getIconAsDataUrl", "parseRegexArray"]);
 inlineUtilsFunctions("popup/selector/selector.js", "popup/selector/modules/selectorChooserUtils.js", []);

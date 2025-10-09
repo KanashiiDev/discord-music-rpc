@@ -3,24 +3,35 @@ let isFiltering = false;
 let fullHistory = [];
 let filteredHistory = [];
 let currentOffset = 0;
-const PAGE_SIZE = 20;
+const maxHistoryItemLoad = 20;
 let selectedSources = new Set();
 const panel = document.getElementById("historyPanel");
 const filterBtn = document.getElementById("historyFilterBtn");
 const filterMenu = document.getElementById("historyFilterMenu");
+const filterMenuContent = document.getElementById("historyFilterMenuContent");
+let lastRenderedHeader = null;
 
 // Render
 async function renderHistory({ reset = true, query = "" } = {}) {
+  const panel = document.getElementById("historyPanel");
+  const spinner = document.createElement("div");
+  spinner.className = "spinner";
+
+  // If simplebar exists, use its content element
+  const sbInstance = SimpleBar.instances?.get(panel);
+  const target = sbInstance ? sbInstance.getContentElement() : panel;
+
   if (reset) {
-    panel.innerHTML = "";
+    target.innerHTML = "";
+    panel.style.paddingRight = "";
+    lastRenderedHeader = null;
     currentOffset = 0;
+    target.appendChild(spinner);
     fullHistory = await loadHistory();
   }
 
-  // Update the filter menu
   renderSourceFilterMenu();
-
-  // Apply filter
+  target.querySelector(".spinner")?.remove();
   if (query || selectedSources.size > 0) {
     filteredHistory = fullHistory.filter((entry) => {
       const matchesText = (entry.t + " " + entry.a + " " + entry.s).toLowerCase().includes(query.toLowerCase());
@@ -34,47 +45,99 @@ async function renderHistory({ reset = true, query = "" } = {}) {
   }
 
   const dataSource = isFiltering ? filteredHistory : fullHistory;
-  const pagedHistory = dataSource.slice(currentOffset, currentOffset + PAGE_SIZE);
-  currentOffset += PAGE_SIZE;
+  const pagedHistory = dataSource.slice(currentOffset, currentOffset + maxHistoryItemLoad);
+  currentOffset += maxHistoryItemLoad;
 
   if (reset && !pagedHistory.length) {
     const emptyMsg = document.createElement("i");
     emptyMsg.textContent = query || selectedSources.size ? "No results." : "Empty.";
-    panel.appendChild(emptyMsg);
+    target.appendChild(emptyMsg);
     return;
   }
 
-  let lastHeader = null;
   const fragment = document.createDocumentFragment();
 
   pagedHistory.forEach((entry) => {
     const time = new Date(entry.p);
     const header = isSameDay(time, dateToday) ? "Today" : isSameDay(time, dateYesterday) ? "Yesterday" : dateFull(time);
 
-    if (header !== lastHeader) {
+    if (header !== lastRenderedHeader) {
       const h3 = document.createElement("h3");
       h3.textContent = header;
       h3.style.marginTop = "10px";
       fragment.appendChild(h3);
-      lastHeader = header;
+      lastRenderedHeader = header;
     }
 
     fragment.appendChild(createHistoryEntry(entry));
   });
 
-  panel.appendChild(fragment);
+  target.appendChild(fragment);
+
   if (cleaningMode) attachCheckboxListeners();
+
+  // Recalculate simplebar after adding content
+  sbInstance?.recalculate();
 }
 
-// History Scroll Event
-panel.addEventListener("scroll", () => {
-  if (panel.scrollTop + panel.clientHeight >= panel.scrollHeight - 50) {
-    const dataSource = isFiltering ? filteredHistory : fullHistory;
-    if (currentOffset < dataSource.length) {
-      renderHistory({ reset: false, query: document.getElementById("historySearchBox").value || "" });
+// History Scroll
+async function activateHistoryScroll() {
+  const panel = document.getElementById("historyPanel");
+  const sbInstance = SimpleBar.instances.get(panel);
+  if (!sbInstance) return;
+
+  const scrollElement = sbInstance.getScrollElement();
+  let isLoading = false;
+  let draggingInterval = null;
+  let lastScrollTop = scrollElement.scrollTop;
+  let throttleTimeout = null;
+  let isDragging = false;
+
+  // Check Dragging
+  draggingInterval = setInterval(() => {
+    isDragging = panel.classList.contains("simplebar-dragging");
+    if (!isDragging) {
+      tryLoad();
     }
+  }, 100);
+
+  // Load Next History Entries
+  async function tryLoad() {
+    const nearBottom = scrollElement.scrollTop + scrollElement.clientHeight >= scrollElement.scrollHeight - 50;
+    const dataSource = isFiltering ? filteredHistory : fullHistory;
+
+    if (currentOffset >= dataSource.length) {
+      if (draggingInterval) {
+        clearInterval(draggingInterval);
+        draggingInterval = null;
+      }
+      return;
+    }
+
+    if (!nearBottom || isLoading || isDragging) return;
+
+    isLoading = true;
+    await renderHistory({
+      reset: false,
+      query: document.getElementById("historySearchBox").value || "",
+    });
+    isLoading = false;
   }
-});
+
+  // Scroll Listener
+  scrollElement.addEventListener("scroll", () => {
+    isDragging = panel.classList.contains("simplebar-dragging");
+    if (scrollElement.scrollTop === lastScrollTop || isDragging) return;
+    lastScrollTop = scrollElement.scrollTop;
+
+    if (throttleTimeout) return;
+
+    throttleTimeout = setTimeout(async () => {
+      throttleTimeout = null;
+      await tryLoad();
+    }, 100);
+  });
+}
 
 // Listen checkbox changes
 function attachCheckboxListeners() {
@@ -191,7 +254,7 @@ function exitCleaningMode() {
 
 // Filter menu rendering
 function renderSourceFilterMenu() {
-  filterMenu.innerHTML = "";
+  filterMenuContent.innerHTML = "";
   const sources = [...new Set(fullHistory.map((e) => e.s))].sort();
   if (!document.querySelector(".history-filter")) {
     filterBtn.className = "history-filter";
@@ -206,19 +269,21 @@ function renderSourceFilterMenu() {
     cb.type = "checkbox";
     cb.value = src;
     cb.checked = selectedSources.has(src);
-    cb.addEventListener("change", () => {
+    cb.addEventListener("change", async () => {
       if (cb.checked) selectedSources.add(src);
       else selectedSources.delete(src);
-      renderHistory({ query: document.getElementById("historySearchBox").value });
+      await renderHistory({ query: document.getElementById("historySearchBox").value });
+      await activateSimpleBar("historyPanel");
     });
     label.append(cb, " ", span);
-    filterMenu.appendChild(label);
+    filterMenuContent.appendChild(label);
   });
 }
 
 // Filter Dropdown Toggle
-filterBtn.addEventListener("click", (e) => {
+filterBtn.addEventListener("click", async (e) => {
   e.stopPropagation();
   filterMenu.classList.toggle("open");
-  filterMenu.style.height = filterMenu.classList.contains("open") ? Math.min(200, filterMenu.scrollHeight) + "px" : "0";
+  filterMenu.style.height = filterMenu.classList.contains("open") ? Math.min(200, filterMenuContent.scrollHeight) + "px" : "0";
+  await activateSimpleBar("historyFilterMenuContent");
 });
