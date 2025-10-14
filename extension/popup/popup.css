@@ -208,7 +208,7 @@ a:hover {
 
 .history-stats-artist-entry .simplebar-track.simplebar-vertical {
   background: #242424;
-    border-radius: 5px;
+  border-radius: 5px;
 }
 
 html,
@@ -472,7 +472,7 @@ footer {
 
 .parser-entry.fading,
 #searchBox.fading {
-  opacity: 0.3!important;
+  opacity: 0.3 !important;
   -webkit-transform: scale(0.95);
   transform: scale(0.95);
   pointer-events: none;
@@ -491,8 +491,8 @@ footer {
   margin-right: 6px;
   -webkit-border-radius: 4px;
   border-radius: 4px;
-  -webkit-transition: height 0.4s ease;
-  transition: height 0.4s ease;
+  -webkit-transition: height 0.3s ease;
+  transition: height 0.3s ease;
   cursor: pointer;
 }
 
@@ -844,6 +844,10 @@ footer {
   box-sizing: border-box;
   overflow: hidden;
   padding: 8px 10px;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
 }
 
 #statsFilters {
@@ -898,7 +902,7 @@ footer {
 
 .history-stats-artist-entry.active .stats {
   margin-top: 10px;
-  max-height: 217px
+  max-height: 217px;
 }
 
 .history-entry:hover,

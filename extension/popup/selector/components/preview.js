@@ -121,6 +121,7 @@ function updatePreview(shadow, editMode) {
       return null;
     }
   };
+
   const getImageSrc = (el) => {
     if (!el) return null;
     if (el.src) return el.src;
@@ -167,13 +168,14 @@ function updatePreview(shadow, editMode) {
     source: getElement(selectors.source),
   };
 
+  // Text Values
   let texts = {
     name: selectors.name || getCleanHostname() || "name",
     title: elements.title?.textContent || getPlainText(selectors.title) || "title",
     artist: elements.artist?.textContent || getPlainText(selectors.artist) || "artist",
     source: elements.source?.textContent || getPlainText(selectors.source) || getCleanHostname() || "source",
     timePassed: elements.timePassed?.textContent,
-    duration: elements.duration?.textContent?.replace("-", ""),
+    duration: elements.duration?.textContent || undefined,
     buttonText: elements.buttonText?.textContent || getPlainText(selectors.buttonText) || "Custom Action",
     buttonText2: elements.buttonText2?.textContent || getPlainText(selectors.buttonText2) || "Custom Action",
   };
@@ -184,18 +186,13 @@ function updatePreview(shadow, editMode) {
   // If artist name contains title, clean it
   if (texts.title && texts.artist) {
     const normalized = normalizeTitleAndArtist(texts.title, texts.artist);
-    texts.artist = normalized.artist;
     texts.title = normalized.title;
+    texts.artist = normalized.artist;
   }
 
   // Clean Title
-  if (texts.title) {
-    texts.title = truncate(texts.title);
-  }
-
-  if (texts.title === texts.artist) {
-    texts.artist = "";
-  }
+  texts.title = truncate(texts.title, 128, { fallback: "Unknown Song" });
+  texts.artist = truncate(texts.artist, 128, { fallback: "Unknown Artist" });
 
   // If "5:47 / 6:57" style string is found, split into both
   let [tp, dur] = extractTimeParts(texts.timePassed);
@@ -210,18 +207,16 @@ function updatePreview(shadow, editMode) {
     }
   }
 
+  // Preview Elements
   const previewRoot = shadow.querySelector(".rpc-preview");
   if (!previewRoot) return;
-
   const details = previewRoot.querySelector(".card");
 
   const setText = (selector, value, maxLength) => {
     const el = details.querySelector(selector);
     if (el) {
       const truncatedValue = truncate(value, maxLength);
-      if (el.textContent !== truncatedValue) {
-        el.textContent = truncatedValue;
-      }
+      if (el.textContent !== truncatedValue) el.textContent = truncatedValue;
     }
   };
 
@@ -229,10 +224,9 @@ function updatePreview(shadow, editMode) {
     const img = previewRoot.querySelector(".imageContainer img");
     const imageSrc = getImageSrc(elements.image) || browser.runtime.getURL("icons/128x128.png");
     const prevImg = img.getAttribute("data-prev-image");
-
     if (imageSrc !== prevImg) {
       img.setAttribute("data-prev-image", imageSrc);
-      if (img) img.src = imageSrc;
+      img.src = imageSrc;
     }
   };
 
@@ -331,49 +325,80 @@ function updatePreview(shadow, editMode) {
     }
   }
 
-  const updateProgress = async () => {
+  // Progress Update
+  const updateProgress = async (details, texts, selectors) => {
     const timeEl = details.querySelector(".timePassed");
     const durEl = details.querySelector(".duration");
     const bar = details.querySelector(".progress-bar");
     const progress = details.querySelector(".progress");
+    const getSeconds = (text) => parseTime(text) || 0;
+    const setTimeText = (sec) => (timeEl.textContent = formatTime(sec));
+    let currentSec = getSeconds(timeEl.textContent);
 
-    if (!texts.timePassed) {
-      // show +1s workaround
-      if (!timeEl.getAttribute("reset")) {
+    // If there is timePassed but no duration, or if timePassed equals duration, hide the duration.
+    if ((selectors.timePassed.length > 1 && selectors.duration.length < 1) || texts.timePassed >= texts.duration && !/^[-–—]/.test(texts.duration.trim())) {
+      durEl.style.opacity = "0";
+      if (!timeEl.hasAttribute("reset")) {
         timeEl.textContent = "00:00";
-        timeEl.setAttribute("reset", 1);
+        timeEl.setAttribute("reset", "1");
+      } else {
+        const sec = parseTime(timeEl.textContent) + 1;
+        timeEl.textContent = formatTime(sec);
       }
-      const sec = parseTime(timeEl.textContent) + 1;
-      timeEl.textContent = formatTime(sec);
+      if (bar) bar.style.opacity = "0";
+      if (progress) progress.style.width = "0%";
+      return;
+    }
+    // If timePassed does not exist and duration does, calculate the remaining time.
+    if (!texts.timePassed) {
+      if (!timeEl.hasAttribute("reset")) {
+        setTimeText(0);
+        timeEl.setAttribute("reset", "1");
+      } else {
+        currentSec++;
+      }
+
+      if (texts.duration) {
+        const remaining = Math.abs(getSeconds(texts.duration));
+        setTimeText(currentSec > remaining ? 0 : currentSec);
+      } else {
+        setTimeText(currentSec);
+      }
     } else {
       timeEl.removeAttribute("reset");
-      timeEl.textContent = texts.timePassed;
+      setTimeText(getSeconds(texts.timePassed));
     }
+
+    // Calculate duration and progress
     if (texts.duration) {
       durEl.style.opacity = "1";
       bar.style.opacity = "1";
-      texts.duration = texts.duration.replace("-", "");
-
       setTimeout(() => {
-        const prevDuration = durEl.getAttribute("duration-prev") || "00:00";
         durEl.setAttribute("duration-prev", texts.duration);
+      }, 2000);
 
-        const prevSeconds = parseTime(prevDuration);
-        const currentSeconds = parseTime(texts.duration);
-        const remainingMode = currentSeconds !== prevSeconds;
+      // Convert the current and previous duration values to numbers
+      const currentDurationSec = getSeconds(texts.duration);
+      const prevDurationSec = getSeconds(durEl.getAttribute("duration-prev") || texts.duration);
 
-        if (remainingMode) {
-          const durationInSeconds = parseTime(timeEl.textContent) + currentSeconds;
-          durEl.textContent = formatTime(durationInSeconds);
-        } else {
-          durEl.textContent = texts.duration;
-        }
+      // Use remaining format if it decreases backward or starts with '-,–,—'.
+      const isRemaining = (/^[-–—]/.test(texts.duration.trim()) && currentDurationSec > prevDurationSec) || currentDurationSec < prevDurationSec;
 
-        const tpSec = texts.timePassed ? parseTime(texts.timePassed) : parseTime(timeEl.textContent);
-        const durSec = parseTime(durEl.textContent);
-        const percent = durSec > 0 && tpSec <= durSec ? (tpSec / durSec) * 100 : 0;
-        if (progress) progress.style.width = `${percent}%`;
-      }, 1000);
+      let totalSec;
+
+      if (isRemaining) {
+        const remaining = Math.abs(currentDurationSec);
+        totalSec = getSeconds(timeEl.textContent) + remaining;
+      } else {
+        totalSec = currentDurationSec;
+      }
+
+      durEl.textContent = formatTime(totalSec);
+
+      // Progress bar
+      const percent = totalSec > 0 ? Math.min((getSeconds(timeEl.textContent) / totalSec) * 100, 100) : 0;
+
+      if (progress) progress.style.width = `${percent}%`;
     } else {
       durEl.style.opacity = "0";
       bar.style.opacity = "0";
@@ -386,9 +411,8 @@ function updatePreview(shadow, editMode) {
   setText(".artist", texts.artist, 128);
   setText(".header", `Listening to ${texts.artist}`, 128);
   if (editMode) {
-    if (shadow.querySelector(".userRpc-h4").textContent !== texts.name) {
-      shadow.querySelector(".userRpc-h4").textContent = texts.name;
-    }
+    const header = shadow.querySelector(".userRpc-h4");
+    if (header && header.textContent !== texts.name) header.textContent = texts.name;
   }
   setImage();
   setLink();
@@ -405,5 +429,6 @@ function updatePreview(shadow, editMode) {
     buttonText: truncate(texts.buttonText2, 32),
     buttonSelector: "#customButton2",
   });
-  updateProgress();
+
+  updateProgress(details, texts, selectors);
 }

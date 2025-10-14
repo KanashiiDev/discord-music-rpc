@@ -18,18 +18,16 @@ function showSelectorChooser(scoredOptions, field, shadowDoc) {
       btn.className = "userRpc-optionButtons";
 
       const wrapper = document.createElement("div");
-      wrapper.style.display = "flex";
-      wrapper.style.justifyContent = "space-between";
-      wrapper.style.alignItems = "center";
+      wrapper.className = "wrapper";
 
       const selSpan = document.createElement("span");
-      selSpan.style.wordBreak = "break-all";
+      selSpan.className = "selector";
       selSpan.textContent = sel;
 
       const scoreSpan = document.createElement("span");
-      scoreSpan.style.marginLeft = "8px";
-      scoreSpan.style.fontSize = "12px";
+      scoreSpan.className = "score";
       scoreSpan.style.color = score >= 80 ? "#4CAF50" : score >= 50 ? "#FFC107" : "#F44336";
+      scoreSpan.title = score >= 80 ? "Highly Reliable" : score >= 50 ? "Moderately Reliable" : "Unreliable";
       scoreSpan.textContent = `(${score})`;
 
       wrapper.appendChild(selSpan);

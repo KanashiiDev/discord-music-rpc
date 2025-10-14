@@ -55,7 +55,7 @@ function truncate(str, maxLength = 128, { fallback = "Unknown", minLength = 2, m
     "PATREON|teaser|trailer|promo|lyric\\s+video|lyrics?|music\\s+video|out\\s+now",
     "mixed\\s+by\\s+dj|karaoke|backing\\s+track|vocals\\s+only|live(\\s+performance)?",
     "now\\s+available|full\\s+song|full\\s+version|complete\\s+version|original\\s+version\\s+version",
-    "official\\s+trailer|official\\s+teaser|[\\w\\s'’\\-]+\\s+premiere",
+    "official\\s+trailer|official\\s+teaser|[\\w\\s'’.\\-]+\\s+premiere",
   ];
 
   // Always remove
@@ -124,7 +124,7 @@ function cleanTitle(title, artist) {
   const artistList = artistListRaw.map((a) => a.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
 
   // Create a pattern
-  const pattern = new RegExp(`^(${artistList.join("|")})(\\s*[&+,xX×]\\s*(${artistList.join("|")}))*\\s*[-–—:]+\\s*`, "i");
+  const pattern = new RegExp(`^(${artistList.join("|")})(\\s*[&+,xX×]\\s*(${artistList.join("|")}))*\\s[-–—:]+\\s`, "i");
   const cleaned = trimmedTitle.replace(pattern, "").trim();
   const finalCleaned = cleaned.replace(/^[-–—:]+\s*/, "").trim();
   return finalCleaned.length > 0 ? finalCleaned : trimmedTitle;
@@ -134,7 +134,7 @@ function normalizeTitleAndArtist(title, artist, replaceArtist = true) {
   let dataTitle = title?.trim() || "";
   let dataArtist = artist?.trim() || "";
 
-  const dashMatch = dataTitle.match(/^(.+?)\s*[-–—]\s*(.+)$/);
+  const dashMatch = dataTitle.match(/^(.+?)\s[-–—]\s(.+)$/);
   if (dashMatch && replaceArtist) {
     const extractedArtist = dashMatch[1].trim();
     const newTitle = dashMatch[2].trim();
@@ -142,7 +142,7 @@ function normalizeTitleAndArtist(title, artist, replaceArtist = true) {
     const extractedLower = extractedArtist.toLowerCase();
     const artistLower = dataArtist.toLowerCase();
 
-    if (!(dataArtist.length > extractedArtist.length && artistLower.includes(extractedLower))) {
+    if (!(dataArtist.length > extractedArtist.length && artistLower.includes(extractedLower) && dataArtist !== dataTitle)) {
       dataArtist = extractedArtist;
     }
 

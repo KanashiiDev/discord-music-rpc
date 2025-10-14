@@ -180,7 +180,7 @@ window.registerParser = async function ({ title, domain, urlPatterns, authors, h
 
       const safeFormat = (val) => {
         if (typeof val === "number") return formatTime(val);
-        if (typeof val === "string" && /^\d{1,2}:\d{2}(:\d{2})?$/.test(val.trim())) return val.trim();
+        if (typeof val === "string" && /^-?\d{1,2}:\d{2}(:\d{2})?$/.test(val.trim())) return val.trim();
         return null;
       };
 
@@ -217,14 +217,24 @@ window.registerParser = async function ({ title, domain, urlPatterns, authors, h
       }
 
       // Remaining Duration Mode
+      const tpSec = parseTime(effectiveTimePassed);
+      const durSec = parseTime(effectiveDuration);
+
+      const isRemaining = durSec < 0;
+      let totalDurationSec = Math.abs(durSec);
+
+      if (isRemaining) {
+        totalDurationSec = tpSec + Math.abs(durSec);
+        effectiveDuration = formatTime(totalDurationSec);
+      }
+
       const lastAct = rpcState.lastActivity;
       const lastDurationSec = parseTime(lastAct?.duration || "");
-      const effectiveDurationSec = parseTime(effectiveDuration);
-
-      const remainingMode = lastAct && lastAct.title === rest.title && lastAct.artist === rest.artist && effectiveDurationSec !== lastDurationSec;
+      const sameTrack = lastAct && lastAct.title === rest.title && lastAct.artist === rest.artist;
+      const remainingMode = sameTrack && !isRemaining && durSec !== lastDurationSec;
 
       if (remainingMode) {
-        const durationInSeconds = parseTime(effectiveTimePassed) + effectiveDurationSec;
+        const durationInSeconds = tpSec + durSec;
         effectiveDuration = formatTime(durationInSeconds);
       }
 

@@ -13,6 +13,7 @@ const localhostPermission = `http://localhost:${port}/*`;
 const pkgPath = path.join(ROOT_DIR, "package.json");
 const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf8"));
 const pkgVersion = pkg.version;
+const pendingInlines = {};
 
 // 1. Clean and create the destination folder
 fs.emptyDirSync(DIST_DIR);
@@ -204,28 +205,50 @@ function extractFunctionsFromFile(sourceFilePath, namesToInclude) {
         }
       }
     }
+
+    // Class declarations
+    if (node.type === "ClassDeclaration" && shouldInclude(node.id?.name)) {
+      extracted.push(code.slice(node.start, node.end));
+      continue;
+    }
   }
 
   return extracted;
 }
 
-function inlineUtilsFunctions(targetFiles, sourceFile, functionsToInclude) {
+function inlineUtilsFunctions(targetFiles, sourceFiles, functionsToInclude) {
   if (!Array.isArray(targetFiles)) targetFiles = [targetFiles];
+  if (!Array.isArray(sourceFiles)) sourceFiles = [sourceFiles];
 
-  if (Array.isArray(functionsToInclude) && functionsToInclude.length === 0) {
-    functionsToInclude = undefined;
-  }
-  const sourcePath = path.join(EXTENSION_DIR, sourceFile);
-  const extractedFunctions = extractFunctionsFromFile(sourcePath, functionsToInclude);
+  targetFiles.forEach((target) => {
+    if (!pendingInlines[target]) pendingInlines[target] = [];
 
-  targetFiles.forEach((targetFiles) => {
-    const targetPath = path.join(DIST_DIR, targetFiles);
-    let targetContent = fs.readFileSync(targetPath, "utf8");
-    const inlineTag = `// === BEGIN INLINE UTILS (${sourceFile}) - (${functionsToInclude?.join?.(", ") || "ALL"}) ===`;
-    const inlinedCode = `${inlineTag}\n${extractedFunctions.join("\n\n")}\n// === END INLINE UTILS (${sourceFile}) ===\n\n`;
-    targetContent = inlinedCode + targetContent;
-    fs.writeFileSync(targetPath, targetContent, "utf8");
+    sourceFiles.forEach((sourceFile) => {
+      pendingInlines[target].push({
+        sourceFile,
+        functionsToInclude,
+      });
+    });
   });
+}
+
+function buildInlineFunctions() {
+  for (const [targetFile, inlines] of Object.entries(pendingInlines)) {
+    const targetPath = path.join(DIST_DIR, targetFile);
+    let targetContent = fs.readFileSync(targetPath, "utf8");
+    let allInlinedCode = "";
+
+    for (const { sourceFile, functionsToInclude } of inlines) {
+      const sourcePath = path.join(EXTENSION_DIR, sourceFile);
+      const extractedFunctions = extractFunctionsFromFile(sourcePath, functionsToInclude);
+      const inlineTag = `// === BEGIN INLINE UTILS (${sourceFile}) - (${functionsToInclude?.join?.(", ") || "ALL"}) ===`;
+      const inlinedCode = `${inlineTag}\n${extractedFunctions.join("\n\n")}\n// === END INLINE UTILS (${sourceFile}) ===\n\n`;
+      allInlinedCode += inlinedCode;
+    }
+
+    targetContent = targetContent + "\n" + allInlinedCode;
+    fs.writeFileSync(targetPath, targetContent, "utf8");
+  }
 }
 
 inlineUtilsFunctions(["common/utils.js", "popup/modules/history.js", "popup/selector/selector.js", "popup/selector/components/preview.js", "background.js"], "../utils.js", [
@@ -248,10 +271,20 @@ inlineUtilsFunctions("background.js", "common/utils.js", [
   "getSenderTab",
 ]);
 inlineUtilsFunctions("popup/selector/selector.js", "common/utils.js", ["throttle", "formatLabel", "getExistingElementSelector", "getPlainText", "getIconAsDataUrl", "parseRegexArray"]);
-inlineUtilsFunctions("popup/selector/selector.js", "popup/selector/modules/selectorChooserUtils.js", []);
-inlineUtilsFunctions("popup/selector/selector.js", "popup/selector/components/selectorChooser.js", []);
-inlineUtilsFunctions("popup/selector/selector.js", "popup/selector/modules/selectorHelpers.js", []);
-inlineUtilsFunctions("popup/selector/selector.js", "popup/selector/components/preview.js", []);
+inlineUtilsFunctions(
+  "popup/selector/selector.js",
+  [
+    "popup/selector/modules/selectorRegexes.js",
+    "popup/selector/modules/selectorUtils.js",
+    "popup/selector/modules/selectorEvaluate.js",
+    "popup/selector/modules/selectorStrategies.js",
+    "popup/selector/components/selectorChooser.js",
+    "popup/selector/modules/selectorInterfaceHelpers.js",
+    "popup/selector/components/preview.js",
+  ],
+  []
+);
+
 inlineUtilsFunctions("mainParser.js", "common/utils.js", [
   "DEFAULT_PARSER_OPTIONS",
   "extractTimeParts",
@@ -271,6 +304,8 @@ inlineUtilsFunctions("mainParser.js", "common/utils.js", [
   "getSafeText",
   "getSafeHref",
 ]);
+
+buildInlineFunctions();
 
 // 7. Write the manifest in the dist folder
 fs.writeJsonSync(path.join(DIST_DIR, "manifest.json"), manifest, {

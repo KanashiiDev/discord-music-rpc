@@ -480,23 +480,25 @@ function extractTimeParts(input) {
 
 // Helper to convert mm:ss to seconds.
 function parseTime(timeInput) {
-  if (typeof timeInput === "number" && timeInput > 0) {
-    // If a positive number comes, we first convert it to a string.
-    timeInput = formatTime(timeInput);
+  if (typeof timeInput === "number" && isFinite(timeInput)) {
+    return Math.floor(timeInput);
   }
-
   if (typeof timeInput !== "string") return 0;
 
-  // Remove negative sign if any
-  timeInput = timeInput.trim().replace(/^-/, "");
+  let s = timeInput.trim();
+  if (s === "") return 0;
 
-  // Split the parts, reverse to handle hh:mm:ss properly
-  const parts = timeInput.split(":").reverse();
+  // catch any short/long dash/minus character
+  const neg = /^[-–—]/.test(s);
+  s = s.replace(/^[-–—]+/, "");
 
-  return parts.reduce((acc, part, i) => {
+  const parts = s.split(":").reverse();
+  const seconds = parts.reduce((acc, part, i) => {
     const n = parseInt(part, 10);
     return acc + (isNaN(n) ? 0 : n * Math.pow(60, i));
   }, 0);
+
+  return neg ? -seconds : seconds;
 }
 
 // Helper to convert seconds to mm:ss format.
@@ -505,11 +507,23 @@ function formatTime(seconds) {
     seconds = parseTime(seconds);
   }
 
-  if (!isFinite(seconds) || typeof seconds !== "number" || seconds < 0) return "00:00";
+  if (!isFinite(seconds) || typeof seconds !== "number") return "00:00";
 
-  const mins = Math.floor(seconds / 60);
-  const secs = Math.floor(seconds % 60);
-  return `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
+  const neg = seconds < 0;
+  seconds = Math.abs(Math.floor(seconds));
+
+  const hrs = Math.floor(seconds / 3600);
+  const mins = Math.floor((seconds % 3600) / 60);
+  const secs = seconds % 60;
+
+  let formatted;
+  if (hrs > 0) {
+    formatted = `${hrs}:${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
+  } else {
+    formatted = `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
+  }
+
+  return (neg ? "-" : "") + formatted;
 }
 
 // Helper to get timestamps

@@ -1,3 +1,29 @@
+/* ─────────────────── */
+/*      Constants      */
+/* ─────────────────── */
+const SELECTOR_CONSTANTS = {
+  MAX_COMBINATION_DEPTH: 6,
+  MAX_COMBINATION_DEPTH_LIMIT: 12,
+  MAX_PARENT_DEPTH: 5,
+  MAX_RESULTS: 15,
+  BLOCKED_IDS: ["userRpc-selectorOverlay", "userRpc-selectorHighlight"],
+  BLOCKED_SELECTORS: ["#userRpc-selectorRoot"],
+
+  SCORE_THRESHOLDS: {
+    MIN_SELECTOR_SCORE: 5,
+    BASIC_VARIANT: 10,
+    PARENT_COMBO: 15,
+    SMART_CHAIN: 25,
+    CLASS_CHAIN: 30,
+  },
+
+  MATCH_LIMITS: {
+    MAX_CLASS_MATCHES: 100,
+    MAX_SELECTOR_LENGTH: 500,
+    MAX_DEPTH_SAFETY: 8,
+  },
+};
+
 // User Add RPC - Add Selector UI to the page
 browser.runtime.onMessage.addListener((msg) => {
   if (msg.action === "startSelectorUI") {
@@ -26,7 +52,6 @@ async function injectSelectorUI(editMode = false) {
   createStatusElement(root);
   createPreviewSection(root);
 
-
   shadow.appendChild(root);
   await injectStyles(shadow);
 
@@ -41,8 +66,7 @@ async function injectSelectorUI(editMode = false) {
 
 // User Add RPC - Element Selector
 function startSelectorMode(field, shadowDoc) {
-  const statusEl = shadowDoc.getElementById("selectorStatus");
-  statusEl.textContent = "Please click the element on the page with the mouse! (Press 'ESC' to leave)";
+  showStatusMsg("Please click the element on the page with the mouse! \n(Press 'ESC' or click here to leave)", 0, 0, shadowDoc);
 
   // Clear old overlays/choosers
   cleanupOldSelectorElements(shadowDoc);
@@ -56,16 +80,25 @@ function startSelectorMode(field, shadowDoc) {
   const cleanup = () => {
     overlay.remove();
     highlight.remove();
-    shadowDoc.getElementById("selectorStatus").textContent = "";
+    lastHighlightedElement = null;
+    showStatusMsg("", 0, 0, shadowDoc);
     document.removeEventListener("mousemove", moveHighlightThrottled);
     document.removeEventListener("click", clickHandler, true);
     document.removeEventListener("keydown", escHandler);
   };
 
   // Event handler references
-  const moveHighlightThrottled = throttle((e) => updateHighlight(e, overlay, highlight), 25);
-  const clickHandler = (e) => handleElementClick(e, field, shadowDoc, cleanup, statusEl);
-  const escHandler = (e) => handleEscapeKey(e, cleanup, statusEl);
+  const moveHighlightThrottled = throttle((e) => {
+    if (e.clientX === moveHighlightThrottled.lastX && e.clientY === moveHighlightThrottled.lastY) {
+      return;
+    }
+    moveHighlightThrottled.lastX = e.clientX;
+    moveHighlightThrottled.lastY = e.clientY;
+
+    updateHighlight(e, overlay, highlight, shadowDoc);
+  }, 25);
+  const clickHandler = (e) => handleElementClick(e, field, shadowDoc, cleanup);
+  const escHandler = (e) => handleEscapeKey(e, cleanup, shadowDoc);
 
   // Event binding
   document.addEventListener("mousemove", moveHighlightThrottled);

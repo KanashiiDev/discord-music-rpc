@@ -55,7 +55,7 @@ function createTitleElements(root, editMode) {
 
   const editTitle = document.createElement("h4");
   editTitle.className = "userRpc-h4";
-  editTitle.textContent = editMode ? `Edit Current Music Site` : "Add New Music Site";
+  editTitle.textContent = editMode ? "" : "Add New Music Site";
   root.appendChild(editTitle);
 }
 
@@ -133,9 +133,7 @@ function createActionButtons(root, shadow) {
 
 function createStatusElement(root) {
   const statusDiv = document.createElement("div");
-  statusDiv.id = "selectorStatus";
-  statusDiv.style.marginTop = "10px";
-  statusDiv.style.color = "green";
+  statusDiv.id = "userRpc-selectorStatus";
   root.appendChild(statusDiv);
 }
 
@@ -281,9 +279,7 @@ function setupEventListeners(shadow) {
 
     // Mandatory Fields
     if (!selectors.title || !selectors.artist) {
-      const statusDiv = shadow.getElementById("selectorStatus");
-      statusDiv.style.color = "red";
-      statusDiv.textContent = "Please fill in both the 'title' and 'artist' fields.";
+      showStatusMsg("Please fill in both the 'title' and 'artist' fields.", 1, 0, shadow);
       return;
     }
 
@@ -298,11 +294,7 @@ function setupEventListeners(shadow) {
     });
 
     if (invalidFields.length > 0) {
-      const statusDiv = shadow.getElementById("selectorStatus");
-      statusDiv.style.color = "red";
-
-      statusDiv.textContent = "Invalid or not found selector(s):";
-
+      showStatusMsg("Invalid or not found selector(s):", 1, 0, shadow);
       const ul = document.createElement("ul");
       invalidFields.forEach((f) => {
         const li = document.createElement("li");
@@ -310,14 +302,11 @@ function setupEventListeners(shadow) {
         ul.appendChild(li);
       });
 
-      statusDiv.appendChild(document.createElement("br"));
-      statusDiv.appendChild(ul);
+      const statusDiv = shadow.getElementById("userRpc-selectorStatus");
+      statusDiv.append(document.createElement("br"), ul);
 
       return;
     }
-
-    const statusDiv = shadow.getElementById("selectorStatus");
-    statusDiv.style.color = "green";
 
     const hostname = getCleanHostname();
     const rawPattern = selectors["regex"] || ".*";
@@ -345,7 +334,7 @@ function setupEventListeners(shadow) {
 
     await browser.storage.local.set({ userParserSelectors: parserArray });
 
-    shadow.getElementById("selectorStatus").textContent = "Saved! Please refresh the page.";
+    showStatusMsg("Saved! Please refresh the page.", 0, 0, shadow);
   });
 
   // Close User Add RPC
@@ -378,93 +367,159 @@ function createOverlay(id) {
       background: "rgba(0, 0, 0, 0.1)",
       cursor: "crosshair",
       zIndex: "2147483646",
-      pointerEvents: "none",
+      pointerEvents: "auto",
     });
   } else if (id === "userRpc-selectorHighlight") {
     Object.assign(el.style, {
       position: "absolute",
-      outline: "2px solid red",
       zIndex: "2147483647",
-      pointerEvents: "none",
+      pointerEvents: "auto",
     });
   }
 
   return el;
 }
 
+let lastHighlightedElement = null;
 // Selector Element Highlight Box
-function updateHighlight(e, overlay, highlight) {
+function updateHighlight(e, overlay, highlight, shadowDoc) {
   const el = deepElementFromPoint(e.clientX, e.clientY);
-  if (!el || [overlay, document.body, highlight].includes(el) || el.closest("#userRpc-selectorRoot")) return;
+  const isBlocked = isPointOnBlockedElement(e.clientX, e.clientY, shadowDoc);
 
-  const rect = el.getBoundingClientRect();
-  Object.assign(highlight.style, {
-    position: "absolute",
-    border: "2px solid red",
-    pointerEvents: "none",
-    top: `${rect.top + window.scrollY}px`,
-    left: `${rect.left + window.scrollX}px`,
-    width: `${rect.width}px`,
-    height: `${rect.height}px`,
-    zIndex: 999999,
-  });
+  // Check the overlay and highlight
+  if (!el || el === overlay || el === highlight || el === document.body || el === document.documentElement) {
+    highlight.style.display = "none";
+    lastHighlightedElement = null;
+    return;
+  }
+  if (el.closest("#userRpc-selectorRoot")) {
+    highlight.style.display = "none";
+    lastHighlightedElement = null;
+    return;
+  }
+
+  if (el !== lastHighlightedElement) {
+    lastHighlightedElement = el;
+    const rect = el.getBoundingClientRect();
+    Object.assign(highlight.style, {
+      display: "block",
+      position: "absolute",
+      background: isBlocked
+        ? `repeating-linear-gradient(135deg, rgba(255, 0, 0, 0.3) 0px, rgba(255, 0, 0, 0.3) 10px, rgba(255, 0, 0, 0.1) 10px, rgba(255, 0, 0, 0.1) 20px)`
+        : "rgba(59, 130, 246, 0.1)",
+      border: isBlocked ? "4px solid #ef4444" : "4px solid #3b82f6",
+      pointerEvents: "none",
+      top: `${rect.top + window.scrollY}px`,
+      left: `${rect.left + window.scrollX}px`,
+      width: `${rect.width}px`,
+      height: `${rect.height}px`,
+      contain: "layout style paint",
+      zIndex: "2147483647",
+    });
+  }
 }
 
 // Handle Selector Element Click
-function handleElementClick(e, field, shadowDoc, cleanup, statusEl) {
+function handleElementClick(e, field, shadowDoc, cleanup) {
   e.preventDefault();
   e.stopPropagation();
   e.stopImmediatePropagation();
 
   const el = deepElementFromPoint(e.clientX, e.clientY);
-  if (!el) {
-    showTempStatus(statusEl, "You did not select a valid element. Please try again.");
+  const isBlocked = isPointOnBlockedElement(e.clientX, e.clientY, shadowDoc);
+
+  if (isBlocked || !el) {
+    showStatusMsg("This area cannot be selected. Please click a valid element.", 1, 1, shadowDoc);
     return;
   }
 
-  if (isPointOnBlockedElement(e.clientX, e.clientY, shadowDoc)) {
-    showTempStatus(statusEl, "This area cannot be selected. Please click a valid element.");
-    return;
-  }
-
-  const semantic = detectSemanticRole(el);
   let targetEl = el;
-  if (field && semantic && semantic !== field) {
-    targetEl = semantic === "image" ? findImageElement(el) || el : semantic === "link" ? findLinkElement(el) || el : el;
+  if (targetEl.id && targetEl.id === "userRpc-selectorContainer")  {
+    cleanup();
+    showStatusMsg("", 0, 0, shadowDoc);
+    return;
   }
-
-  const rawOptions = generateSelectorOptions(targetEl);
-  const options = [...new Set(rawOptions)];
-  const scored = options
-    .filter((sel) => sel && sel.trim())
-    .map((sel) => ({ sel, score: scoreSelector(sel) }))
-    .sort((a, b) => b.score - a.score);
-
-  if (options.length) {
-    showSelectorChooser(scored, field, shadowDoc);
+  if (!isValidElement(targetEl)) {
+    showStatusMsg("Selected element is not valid or visible.\n Please choose another element.", 1, 1, shadowDoc);
+    return;
+  } else if (field === "image") {
+    targetEl = findImageElement(el);
+    if (!targetEl) {
+      showStatusMsg("No image element found. Please click on an image.", 1, 1, shadowDoc);
+      return;
+    }
+  } else if (field === "link") {
+    targetEl = findLinkElement(el);
+    if (!targetEl) {
+      showStatusMsg("No link element found. Please click on a link.", 1, 1, shadowDoc);
+      return;
+    }
   } else {
-    const selector = generateSmartSelector(targetEl);
-    if (selector) {
-      const input = shadowDoc.getElementById(`${field}Selector`);
-      if (input) input.value = selector;
+    targetEl = findTextElement(el);
+    if (!targetEl) {
+      showStatusMsg("No text element found. Please click on a text.", 1, 1, shadowDoc);
+      return;
     }
   }
 
-  cleanup();
-}
-
-// Selector ESC Exit
-function handleEscapeKey(e, cleanup, statusEl) {
-  if (e.key === "Escape") {
+  try {
+    const selectors = generateSelectorOptions(targetEl);
+    showSelectorChooser(selectors, field, shadowDoc);
+  } catch (error) {
+    showStatusMsg("Error generating selectors. Please try again.", 1, 1, shadowDoc);
+  } finally {
     cleanup();
-    statusEl.textContent = "";
   }
 }
 
-// Selector Temp Status Message
-function showTempStatus(statusEl, msg) {
+// Selector ESC Exit
+function handleEscapeKey(e, cleanup, shadowDoc) {
+  if (e.key === "Escape") {
+    cleanup();
+    showStatusMsg("", 0, 0, shadowDoc);
+  }
+}
+
+// Selector Status Message
+let statusTimeoutId = null;
+function showStatusMsg(msg, isAlert = false, isTemp = false, shadowDoc) {
+  const statusEl = shadowDoc.getElementById("userRpc-selectorStatus");
+  if (!statusEl) {
+    console.warn("Element with ID 'userRpc-selectorStatus' not found");
+    return;
+  }
+
+  // Clear the previous timeout
+  if (statusTimeoutId) {
+    clearTimeout(statusTimeoutId);
+    statusTimeoutId = null;
+  }
+
+  // Set the message
   statusEl.textContent = msg;
-  setTimeout(() => {
-    if (statusEl.textContent.length > 1) statusEl.textContent = "Please click the element on the page with the mouse! (Press 'ESC' to leave)";
-  }, 3000);
+
+  if (!msg) {
+    statusEl.classList.remove("open", "alert");
+    return;
+  }
+
+  statusEl.classList.add("open");
+
+  // Warning mode
+  if (isAlert) {
+    statusEl.classList.add("alert");
+
+    if (isTemp) {
+      statusTimeoutId = setTimeout(() => {
+        // Reset
+        if (statusEl.textContent === msg) {
+          statusEl.textContent = "Please click the element on the page with the mouse! \n(Press 'ESC' or click here to leave)";
+        }
+        statusEl.classList.remove("alert");
+        statusTimeoutId = null;
+      }, 3000);
+    }
+  } else {
+    statusEl.classList.remove("alert");
+  }
 }
