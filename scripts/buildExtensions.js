@@ -246,7 +246,7 @@ function buildInlineFunctions() {
       allInlinedCode += inlinedCode;
     }
 
-    targetContent = targetContent + "\n" + allInlinedCode;
+    targetContent = allInlinedCode + "\n" + targetContent ;
     fs.writeFileSync(targetPath, targetContent, "utf8");
   }
 }

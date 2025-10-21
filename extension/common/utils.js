@@ -48,11 +48,22 @@ const logError = (...a) => {
 const delay = (ms) => new Promise((res) => setTimeout(res, ms));
 
 // Debounce
-function debounce(func, wait = 200) {
-  let timeout;
-  return function (...args) {
-    clearTimeout(timeout);
-    timeout = setTimeout(() => func.apply(this, args), wait);
+function debounce(fn, delay) {
+  let t = null;
+  let lastArgs = null;
+  return (...args) => {
+    lastArgs = args;
+    clearTimeout(t);
+    return new Promise((resolve, reject) => {
+      t = setTimeout(async () => {
+        try {
+          const res = await fn(...lastArgs);
+          resolve(res);
+        } catch (e) {
+          reject(e);
+        }
+      }, delay);
+    });
   };
 }
 
@@ -82,6 +93,22 @@ function createMutex() {
       resolveNext();
     }
   };
+}
+
+// Waits for a condition to become true
+function waitFor(predicate, timeout = 500, interval = 50) {
+  const start = Date.now();
+  return new Promise((resolve) => {
+    const poll = () => {
+      try {
+        if (predicate()) return resolve(true);
+      } catch (e) {}
+
+      if (Date.now() - start >= timeout) return resolve(false);
+      setTimeout(poll, interval);
+    };
+    poll();
+  });
 }
 
 // Time
@@ -422,7 +449,7 @@ function applyOverridesLoop() {
 
 // Create SVG
 function createSVG(paths, options = {}) {
-  const { width = 16, height = 16, stroke = "#ccc", strokeWidth = 2, fill = "none", viewBox = "0 0 24 24" } = options;
+  const { width = 16, height = 16, stroke = "var(--icon-color)", strokeWidth = 2, fill = "none", viewBox = "0 0 24 24" } = options;
 
   const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
   svg.setAttribute("width", width);
@@ -727,6 +754,140 @@ function showInitialSetupDialog() {
   });
 }
 
+// Show initial tutorial dialog
+async function showInitialTutorial() {
+  // Steps in the tutorial
+  const steps = [
+    {
+      text: "You can open the settings by clicking on a music site.",
+      selector: ".parser-entry",
+    },
+    {
+      text: "You can enable/disable the music site by clicking on its switch.",
+      selector: ".parser-entry .switch-label",
+    },
+    {
+      text: 'You can add custom music site by clicking "Add Music Site" button.',
+      selector: "#openSelector",
+    },
+  ];
+
+  // References to DOM elements
+  const tooltip = document.getElementById("tutorialTooltip");
+  const tooltipHeader = document.getElementById("tooltipHeader");
+  const tooltipText = document.getElementById("tooltipText");
+  const nextBtn = document.getElementById("tooltipNextBtn");
+  const skipBtn = document.getElementById("tooltipSkipBtn");
+  const siteList = document.getElementById("siteList");
+  const siteHeader = document.querySelector(".header-container");
+  const allEntries = document.querySelectorAll(".header-container, .parser-entry, #searchBox, #openSelector, .simplebar-track.simplebar-vertical");
+
+  // Initial settings
+  let currentStep = 0;
+  tooltip.style.display = "block";
+  siteList.style.pointerEvents = "none";
+  siteHeader.style.pointerEvents = "none";
+
+  // Highlight a specific item
+  function highlightElement(targetEl) {
+    if (targetEl?.className === "parser-entry") {
+      allEntries.forEach((entry) => {
+        if (entry !== targetEl) entry.classList.add("fading");
+      });
+    }
+
+    // Remove previous highlights
+    document.querySelectorAll(".tutorialTooltip-highlight").forEach((el) => el.classList.remove("tutorialTooltip-highlight"));
+
+    // Add Highlight
+    if (targetEl) targetEl.classList.add("tutorialTooltip-highlight");
+  }
+
+  // Set the tooltip position relative to the target element
+  function positionTooltip(targetEl) {
+    if (!targetEl) return;
+
+    const rect = targetEl.getBoundingClientRect();
+    const scrollTop = document.documentElement.scrollTop || document.body.scrollTop;
+    const scrollLeft = document.documentElement.scrollLeft || document.body.scrollLeft;
+
+    const tooltipHeight = tooltip.offsetHeight;
+    const popupHeight = document.body.scrollHeight;
+
+    // Place the tooltip below or above the target
+    let top = rect.bottom + 8 + tooltipHeight > popupHeight ? rect.top + scrollTop - tooltipHeight - 12 : rect.bottom + scrollTop + 8;
+
+    tooltip.style.top = `${top}px`;
+    tooltip.style.left = `${rect.left + scrollLeft}px`;
+
+    // Let the tooltip not go outside the screen
+    const tooltipRect = tooltip.getBoundingClientRect();
+    if (tooltipRect.right > window.innerWidth) {
+      tooltip.style.left = `${window.innerWidth - tooltipRect.width - 10}px`;
+    }
+  }
+
+  // Show a specific step
+  function showStep(index) {
+    const step = steps[index];
+    const isLastStep = index + 1 >= steps.length;
+
+    tooltipHeader.textContent = `Tutorial (${index + 1}/${steps.length})`;
+    tooltipText.textContent = step.text;
+
+    const targetEl = document.querySelector(step.selector);
+    highlightElement(targetEl);
+    positionTooltip(targetEl);
+
+    // The last step is to show the 'Finish' button
+    if (isLastStep) {
+      allEntries.forEach((entry) => {
+        entry.classList.add("fading");
+        if (entry.id === "openSelector") {
+          entry.classList.remove("fading");
+          entry.style.pointerEvents = "none";
+        }
+      });
+      nextBtn.classList.add("finish");
+      nextBtn.textContent = "Finish";
+      skipBtn.remove();
+    }
+  }
+
+  // End the tutorial
+  async function endTutorial() {
+    tooltip.style.display = "none";
+
+    document.querySelectorAll(".tutorialTooltip-highlight").forEach((el) => el.classList.remove("tutorialTooltip-highlight"));
+
+    allEntries.forEach((entry) => entry.classList.remove("fading"));
+
+    await browser.storage.local.set({ initialTutorialDone: true });
+
+    // Re-enable clickability
+    siteList.style.pointerEvents = "";
+    siteHeader.style.pointerEvents = "";
+    document.getElementById("openSelector").style.pointerEvents = "";
+  }
+
+  // Event Listener
+  nextBtn.addEventListener("click", async () => {
+    currentStep++;
+    if (currentStep >= steps.length) {
+      await endTutorial();
+    } else {
+      showStep(currentStep);
+    }
+  });
+
+  skipBtn.addEventListener("click", async () => {
+    await endTutorial();
+  });
+
+  // Start the first step
+  showStep(currentStep);
+}
+
 function getExistingElementSelector(text) {
   if (typeof text !== "string") return null;
 
@@ -990,124 +1151,89 @@ async function getSenderTab(sender) {
   return null;
 }
 
-// If simplebar is added, update the element's padding
-async function updatePanelPadding(targetIds, maxRetries = 10, delay = 50) {
-  if (!Array.isArray(targetIds)) targetIds = targetIds ? [targetIds] : [];
-
-  const allSelectors = [...targetIds.map((id) => `#${id}`)];
-  const invisibleCounts = new Map();
-
-  for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    // Check only the panels that are missing padding
-    const panelsToCheck = [];
-    allSelectors.forEach((sel) => {
-      document.querySelectorAll(sel).forEach((panel) => {
-        if (panel.style.paddingRight !== "16px") panelsToCheck.push(panel);
-      });
-    });
-
-    if (!panelsToCheck.length) return true;
-
-    panelsToCheck.forEach((panel) => {
-      const scrollbar = panel.querySelector(".simplebar-vertical");
-      const visible = scrollbar && getComputedStyle(scrollbar).visibility === "visible";
-
-      if (visible) {
-        panel.style.paddingRight = "16px";
-        invisibleCounts.delete(panel);
-      } else {
-        const prev = invisibleCounts.get(panel) || 0;
-        invisibleCounts.set(panel, prev + 1);
-      }
-    });
-
-    const allDone = panelsToCheck.every((panel) => {
-      const tries = invisibleCounts.get(panel) || 0;
-      return panel.style.paddingRight === "16px" || tries >= maxRetries;
-    });
-
-    if (allDone) return true;
-
-    await new Promise((resolve) => setTimeout(resolve, delay));
-  }
-
-  return false;
-}
-
 // Activate simplebar
-async function activateSimpleBar(targetIds, options = { maxWaitMs: 1000 }) {
+async function activateSimpleBar(targetIds, timeout = 500, interval = 50, maxWaitMs = 1000) {
   if (!Array.isArray(targetIds)) targetIds = [targetIds];
+  const ids = targetIds.map((id) => String(id).replace(/^#/, ""));
 
   const results = [];
+  const panelPromises = new WeakMap();
 
-  const isElementVisible = (el) => {
-    if (!el) return false;
-    const style = getComputedStyle(el);
-    return style.display !== "none" && style.visibility !== "hidden" && el.offsetWidth > 0 && el.offsetHeight > 0;
-  };
-
-  const waitForVisible = async (el, maxWaitMs = options.maxWaitMs) => {
-    const start = Date.now();
-    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-    while (Date.now() - start < maxWaitMs) {
-      if (isElementVisible(el)) return true;
-      await sleep(50);
-    }
-    return isElementVisible(el);
-  };
-
-  for (const id of targetIds) {
-    const el = document.getElementById(id);
-    if (!el) {
-      results.push({ id, success: false, reason: "not_found" });
-      continue;
-    }
-
-    // If it has been initialized before, just recalculate
-    if (el.dataset.sbInit === "1") {
-      try {
-        if (el.SimpleBar && typeof el.SimpleBar.recalculate === "function") {
-          el.SimpleBar.recalculate();
-          updatePanelPadding(targetIds);
-          results.push({ id, success: true, action: "recalculated" });
-        } else {
-          el.dataset.sbInit = "0";
-        }
+  for (const id of ids) {
+    try {
+      // Find the element
+      const panel = document.getElementById(id);
+      if (!panel) {
+        results.push({ id, success: false, reason: "not_found" });
         continue;
-      } catch (e) {}
-    }
-
-    // Wait to be visible
-    const isVisible = await waitForVisible(el);
-    if (!isVisible) {
-      results.push({ id, success: false, reason: "not_visible" });
-      continue;
-    }
-
-    // Clear the old instance
-    try {
-      if (el.SimpleBar && typeof el.SimpleBar.unMount === "function") {
-        try {
-          el.SimpleBar.unMount();
-        } catch (e) {}
       }
-    } catch (e) {}
 
-    // Init
-    try {
-      const inst = new SimpleBar(el, { autoHide: false });
-      if (inst && inst.el) {
-        el.SimpleBar = inst;
+      // Wait for visibility
+      const isVisible = await waitFor(
+        () => {
+          const style = getComputedStyle(panel);
+          return style.display !== "none" && style.visibility !== "hidden" && panel.offsetWidth > 0 && panel.offsetHeight > 0;
+        },
+        maxWaitMs,
+        interval
+      );
+
+      if (!isVisible) {
+        results.push({ id, success: false, reason: "not_visible" });
+        continue;
       }
-      el.dataset.sbInit = "1";
-      // Update the padding after SimpleBar is fully rendered
-      updatePanelPadding(targetIds);
-      results.push({ id, success: true, action: "initialized" });
-    } catch (e) {
-      console.error("SimpleBar init failed for", id, e);
-      el.dataset.sbInit = "0";
-      results.push({ id, success: false, reason: "init_failed", error: String(e) });
+
+      // Initialize or update SimpleBar
+      if (panel.SimpleBar && typeof panel.SimpleBar.recalculate === "function") {
+        panel.SimpleBar.recalculate();
+        results.push({ id, success: true, action: "recalculated" });
+      } else {
+        // Clear the old instance
+        if (panel.SimpleBar?.unMount) {
+          try {
+            panel.SimpleBar.unMount();
+          } catch (e) {}
+        }
+
+        // Create a new instance
+        const instance = new SimpleBar(panel, { autoHide: false });
+        panel.SimpleBar = instance;
+        panel.dataset.sbInit = "1";
+        results.push({ id, success: true, action: "initialized" });
+      }
+
+      // Update the padding
+      await updatePanelPadding(panel, timeout, interval, panelPromises);
+    } catch (error) {
+      results.push({ id, success: false, reason: "error", error: error.message });
     }
   }
+
   return results;
+}
+
+// If simplebar is added, update the element's padding
+async function updatePanelPadding(panel, timeout = 500, interval = 50, panelPromises = new WeakMap()) {
+  // Parallel process control
+  if (panelPromises.has(panel)) {
+    return panelPromises.get(panel);
+  }
+
+  const promise = (async () => {
+    try {
+      // Wait for the scrollbar to appear
+      await waitFor(() => panel.querySelector(".simplebar-vertical"), timeout, interval);
+      const scrollbar = panel.querySelector(".simplebar-vertical");
+      const isVisible = scrollbar && getComputedStyle(scrollbar).visibility === "visible";
+      panel.style.paddingRight = isVisible ? "16px" : "0px";
+      return { ok: true, visible: isVisible };
+    } catch (error) {
+      panel.style.paddingRight = "0px";
+      return { ok: false, error: error.message };
+    } finally {
+      panelPromises.delete(panel);
+    }
+  })();
+  panelPromises.set(panel, promise);
+  return promise;
 }

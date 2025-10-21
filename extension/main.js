@@ -5,7 +5,7 @@ const state = {
   lastSongInfo: null,
   errorCount: 0,
   maxErrorCount: 5,
-  activeTab: true,
+  activeTab: false,
   rpcKeepAliveIntervalId: null,
   initStarted: false,
   messageListenerRegistered: false,
@@ -14,14 +14,6 @@ const state = {
 const CONSTANTS = {
   ACTIVE_INTERVAL: CONFIG.activeInterval ?? 5000,
   IDLE_INTERVAL: CONFIG?.idleInterval ?? 10000,
-  SERVER_PORT: CONFIG.serverPort ?? 3000,
-  RECOVERY_DELAY: (CONFIG.activeInterval ?? 5000) + 2000,
-};
-
-const RECOVERY_STATE = {
-  attempts: 0,
-  maxAttempts: 10,
-  baseDelay: CONSTANTS.RECOVERY_DELAY,
 };
 
 // Start watching tab activity and song changes
@@ -45,6 +37,7 @@ function stopWatching() {
   state.isUpdating = false;
   state.activeTab = false;
   rpcState.reset();
+  sleepWorker();
   // clear keepalive interval
   if (state.rpcKeepAliveIntervalId) {
     clearInterval(state.rpcKeepAliveIntervalId);
@@ -57,7 +50,11 @@ function stopWatching() {
 function scheduleNextUpdate(interval = CONSTANTS.ACTIVE_INTERVAL) {
   if (!state.activeTab) return;
 
-  clearTimeout(state.updateTimer);
+  if (state.updateTimer) {
+    clearTimeout(state.updateTimer);
+    state.updateTimer = null;
+  }
+
   logInfo(`Next Update Scheduled: ${interval / 1000} seconds later.`);
   state.updateTimer = setTimeout(() => {
     if (state.activeTab) mainLoop();
@@ -66,7 +63,11 @@ function scheduleNextUpdate(interval = CONSTANTS.ACTIVE_INTERVAL) {
 
 // Main loop to check for song changes and update RPC
 async function mainLoop() {
-  if (state.isUpdating) return;
+  if (state.isUpdating) {
+    scheduleNextUpdate();
+    return;
+  }
+
   state.isUpdating = true;
 
   try {
@@ -86,7 +87,7 @@ async function mainLoop() {
     const hasValidDuration = typeof song.duration === "number" && song.duration > 0;
     const hasValidPosition = typeof song.position === "number" && song.position >= 0;
     const progress = hasValidDuration && hasValidPosition ? Math.min(100, (song.position / song.duration) * 100) : 0;
-    const positionStable = typeof rpcState.lastPosition === "number" && Math.abs(song.position - rpcState.lastPosition) < 1;
+    const positionStable = typeof rpcState.lastPosition === "number" && Math.abs(song.position - rpcState.lastPosition) < 3;
     const stuckAtZero = typeof rpcState.lastPosition === "number" && song.position === 0 && rpcState.lastPosition === 0 && song.duration === 0;
     const isIdle = rpcState.lastActivity?.lastUpdated ? Date.now() - rpcState.lastActivity.lastUpdated >= CONSTANTS.IDLE_INTERVAL : true;
 
@@ -104,13 +105,6 @@ async function mainLoop() {
     if (isChanged || isSeeking || isIdle) {
       logInfo(`RPC Update triggered by: ${isChanged ? "Song Change" : isSeeking ? "Seek" : "Idle"}`);
       let updatedProgress = progress;
-
-      if (isIdle && !isChanged && !isSeeking) {
-        logInfo(`Delaying next update by ${CONSTANTS.ACTIVE_INTERVAL / 1000}s (idle state)`);
-        await delay(CONSTANTS.ACTIVE_INTERVAL);
-        updatedProgress = hasValidDuration && hasValidPosition ? Math.min(100, ((song.position + CONSTANTS.ACTIVE_INTERVAL / 1000) / song.duration) * 100) : 0;
-      }
-
       const didUpdate = await processRPCUpdate(song, updatedProgress);
       if (didUpdate) {
         rpcState.lastPosition = song.position;
@@ -136,12 +130,12 @@ async function mainLoop() {
 async function processRPCUpdate(song, progress) {
   const rpcOk = await isRpcConnected();
   if (!rpcOk) {
-    logInfo("RPC not connected, triggering recovery...");
-    triggerRecovery();
+    logInfo("RPC not connected.");
+    scheduleNextUpdate();
     return false;
   }
 
-  logInfo(`RPC server status ok, RPC Updating...`);
+  logInfo(`RPC Updating...`);
   let result = null;
   try {
     result = await browser.runtime.sendMessage({
@@ -150,7 +144,6 @@ async function processRPCUpdate(song, progress) {
     });
   } catch (e) {
     logError("RPC update failed:", e);
-    triggerRecovery();
     return false;
   }
 
@@ -159,7 +152,7 @@ async function processRPCUpdate(song, progress) {
     else window._rpcKeepAliveActive?.();
     rpcState.clearError();
     rpcState.updateLastActivity(song, progress);
-    logInfo(`RPC Updated: ${result}`);
+    logInfo(`RPC Updated!`);
     return true;
   }
 
@@ -167,7 +160,6 @@ async function processRPCUpdate(song, progress) {
 }
 
 // Check if RPC is connected
-
 async function isRpcConnected() {
   try {
     return await browser.runtime.sendMessage({ type: "IS_RPC_CONNECTED" });
@@ -185,43 +177,40 @@ async function isHostnameMatch() {
   }
 }
 
-// Trigger recovery process for RPC connection
-async function triggerRecovery() {
-  if (rpcState.isRecovering) return;
-  rpcState.isRecovering = true;
-  stopWatching();
-
-  const attempt = RECOVERY_STATE.attempts + 1;
-  logInfo(`Triggering RPC Recovery (attempt ${attempt})...`);
-
+// Check if background worker is active
+async function ensureBackgroundAwake() {
   try {
-    await browser.runtime.sendMessage({ type: "RECOVER_RPC" });
-  } catch (e) {
-    logError("Recovery message failed:", e);
-  }
+    logInfo("Background worker is being awakened...");
 
-  // Exponential backoff with cap (max 15s)
-  RECOVERY_STATE.attempts = attempt;
-  const delayMs = Math.min(RECOVERY_STATE.baseDelay * Math.pow(2, attempt - 1), 15000);
+    // Continue attempting until the worker responds
+    let retries = 0;
+    const maxRetries = 100;
+    const retryDelay = 1000;
 
-  setTimeout(async () => {
-    rpcState.isRecovering = false;
-
-    try {
-      const ok = await isRpcConnected();
-      if (ok) {
-        logInfo("RPC connection restored.");
-        RECOVERY_STATE.attempts = 0; // reset attempts
-        startWatching();
-      } else {
-        logWarn(`RPC still down after attempt ${RECOVERY_STATE.attempts}, retrying in ${Math.round(delayMs / 1000)}s...`);
-        triggerRecovery(); // retry again
+    while (retries < maxRetries) {
+      try {
+        // Send a message to the worker and wait for a reply
+        const result = await browser.runtime.sendMessage({ type: "ENSURE_WORKER_ACTIVE" });
+        return true;
+      } catch (error) {
+        await delay(retryDelay);
+        retries++;
       }
-    } catch (e) {
-      logError("Error during recovery check:", e);
-      triggerRecovery(); // keep retrying even if check fails
     }
-  }, delayMs);
+    return false;
+  } catch (error) {
+    logError("ensureBackgroundAwake error:", error);
+    return false;
+  }
+}
+
+// Sleep Background Worker
+async function sleepWorker() {
+  try {
+    if (!state.activeTab) await browser.runtime.sendMessage({ type: "SLEEP_WORKER" });
+  } catch {
+    return false;
+  }
 }
 
 // Handle scenario when no song is playing
@@ -262,6 +251,12 @@ function init() {
   state.initStarted = true;
 
   const start = async () => {
+    const workerAwake = await ensureBackgroundAwake();
+    if (!workerAwake) {
+      logWarn("Background worker could not be awakened, abort init.");
+      return;
+    }
+
     // polling for getSongInfo to be available
     let tries = 0;
     const maxTries = 30;
@@ -278,6 +273,7 @@ function init() {
     const hostMatch = await isHostnameMatch();
     if (!hostMatch) {
       logInfo("Hostname not allowed, not starting watcher.");
+      sleepWorker();
       return;
     }
 

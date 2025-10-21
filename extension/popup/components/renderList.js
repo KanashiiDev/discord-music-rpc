@@ -281,7 +281,9 @@ async function renderList(filteredList = null, isSearch = null) {
       const siteList = document.getElementById("siteList");
       const isOpen = optionsContainer.classList.contains("open");
       e.stopPropagation();
-
+      if (e.target.closest(".switch-label") || e.target.closest(".del-user-parser") || e.target.closest(".parser-icon")) {
+        return;
+      }
       if (!isOpen) {
         // Open
         optionsContainer.classList.add("open");
@@ -335,7 +337,6 @@ async function renderList(filteredList = null, isSearch = null) {
       delBtn.appendChild(createSVG(svg_paths.trashIconPaths));
       delBtn.title = "Delete this user music site";
       delBtn.addEventListener("click", async (e) => {
-        e.stopPropagation();
         const confirmed = confirm(`Do you want to delete "${title}" parser?`);
         if (!confirmed) return;
 

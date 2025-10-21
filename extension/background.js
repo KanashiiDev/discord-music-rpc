@@ -2,6 +2,7 @@ import "./libs/browser-polyfill.js";
 import "./libs/pako.js";
 
 const state = {
+  isLoopRunning: false,
   activeTabMap: new Map(),
   cleanupQueue: new Set(),
   serverStatus: { lastCheck: 0, isHealthy: false },
@@ -147,9 +148,6 @@ const loadParserListOnce = async () => {
 
 const parserReady = loadParserListOnce();
 
-// track tabs that were sent to backend so we only clear when needed
-const clientSentToServer = new Set();
-
 const clearRpcForTab = async (tabId) => {
   // If a clear is already in-progress, skip
   if (state.pendingClear.has(tabId)) return;
@@ -158,9 +156,8 @@ const clearRpcForTab = async (tabId) => {
   state.pendingClear.add(tabId);
 
   try {
-    // If it was never active and never sent to server, nothing to do
+    // If it was never active, nothing to do
     const wasActive = state.activeTabMap.has(tabId);
-    const wasSent = clientSentToServer.has(tabId);
 
     // Cancel queued update timers
     const pending = state.pendingUpdates.get(tabId);
@@ -173,26 +170,20 @@ const clearRpcForTab = async (tabId) => {
     state.activeTabMap.delete(tabId);
 
     // Only send clear to backend if we previously sent an RPC for this tab
-    if (wasActive || wasSent) {
+    if (wasActive) {
       logInfo(`Cleared local state for tab ${tabId}`);
 
       // notify backend
-      try {
-        await fetchWithTimeout(
-          `http://localhost:${CONFIG.serverPort}/clear-rpc`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ clientId: `tab_${tabId}` }),
-          },
-          CONFIG.requestTimeout
-        );
-      } catch (e) {
-        logError(`Clear RPC notify failed [${tabId}]`, e);
-      }
+      const res = await fetchWithTimeout(
+        `http://localhost:${CONFIG.serverPort}/clear-rpc`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ clientId: `tab_${tabId}` }),
+        },
+        CONFIG.requestTimeout
+      );
     }
-
-    clientSentToServer.delete(tabId);
   } catch (e) {
     logError(`Clear RPC failed [${tabId}]`, e);
   } finally {
@@ -287,7 +278,14 @@ const checkServerHealth = async () => {
   return state.serverStatus.isHealthy;
 };
 
-const safePingTab = (tabId) => Promise.race([browser.tabs.sendMessage(tabId, { type: "PING_FOR_DATA" }), delay(CONFIG.requestTimeout).then(() => null)]);
+async function safePingTab(tabId) {
+  try {
+    const res = await browser.tabs.sendMessage(tabId, { type: "PING_FOR_DATA" });
+    return res?.title && res?.artist ? res : null;
+  } catch {
+    return null;
+  }
+}
 
 const processTab = async (tabId, tabData) => {
   if (!state.activeTabMap.has(tabId)) return;
@@ -338,6 +336,21 @@ const setupListeners = () => {
 
     try {
       await parserReady;
+      if (req.type === "ENSURE_WORKER_ACTIVE") {
+        if (!state.isLoopRunning) {
+          logInfo("Waking background loop...");
+          state.isLoopRunning = true;
+          mainLoop().catch(logError);
+        }
+        return true;
+      }
+
+      if (req.type === "SLEEP_WORKER") {
+        logInfo("Putting background loop to sleep...");
+        state.isLoopRunning = false;
+        return true;
+      }
+
       if (req.type === "UPDATE_RPC") {
         const tab = await browser.tabs.get(tabId);
         if (!tab.audible) {
@@ -517,12 +530,9 @@ const mainLoop = async () => {
 
     const tabs = await browser.tabs.query({ audible: true });
     if (!tabs.length) {
-      if (state.activeTabMap.size > 0) {
-        await deferredCleanup();
-      }
+      await deferredCleanup();
       return;
     }
-
     const matched = await updateActiveTabMap(state, tabs);
     if (matched) {
       await processTab(matched.id, state.activeTabMap.get(matched.id));
@@ -540,15 +550,14 @@ const mainLoop = async () => {
     logError("Main Loop Error", e);
   } finally {
     state.lastLoopTime = Date.now();
+    if (state.isLoopRunning) setTimeout(mainLoop, CONFIG.activeInterval);
   }
 };
 
 const init = async () => {
   await parserReady;
   setupListeners();
-  (function loop() {
-    mainLoop().finally(() => setTimeout(loop, CONFIG.activeInterval));
-  })();
+  await mainLoop();
 };
 
 init();

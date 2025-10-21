@@ -140,6 +140,12 @@ document.addEventListener("DOMContentLoaded", async () => {
     await renderList();
     await activateSimpleBar("siteList");
 
+    // Initial Tutorial
+    const tutorial = await browser.storage.local.get("initialTutorialDone");
+    if (!tutorial.initialTutorialDone) {
+      showInitialTutorial();
+    }
+
     // Search Box
     const searchBox = document.getElementById("searchBox");
     const debouncedSearch = debounce(async () => {
@@ -147,6 +153,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       const list = await getFreshParserList();
       const filtered = list.filter(({ domain, title }) => domain.toLowerCase().includes(query) || (title && title.toLowerCase().includes(query)));
       await renderList(filtered, 1);
+      await activateSimpleBar("siteList");
     }, 300);
 
     searchBox.addEventListener("input", debouncedSearch);

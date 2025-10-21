@@ -21,17 +21,23 @@ window.RPCStateManager = class {
     if (duration === 0) return false;
     if (this.hasOnlyDuration) return false;
     if (this.lastKnownPosition === currentPosition) return false;
-
     const now = Date.now();
-    const elapsedTime = (now - (this.lastCheckTime || now)) / 1000;
+
+    if (this.lastCheckTime === null) {
+      this.lastCheckTime = now;
+      this.lastKnownPosition = currentPosition;
+      return false;
+    }
+
+    const elapsedTime = (now - this.lastCheckTime) / 1000;
     const expectedPosition = this.lastKnownPosition + elapsedTime;
     const drift = Math.abs(currentPosition - expectedPosition);
+    const minSeekThreshold = 7;
+    const threshold = Math.min(minSeekThreshold, duration / 3);
 
-    const threshold = duration > 300 ? 5 : 2;
-    this.lastKnownPosition = currentPosition;
     this.lastCheckTime = now;
-
-    return drift > threshold;
+    this.lastKnownPosition = currentPosition;
+    return drift >= threshold;
   }
 
   isSongChanged(newSong) {
@@ -40,9 +46,7 @@ window.RPCStateManager = class {
 
     if (!prev || changed) {
       this.reset();
-      if (this.hasOnlyDuration) {
-        this.startDurationTimer();
-      }
+      if (this.hasOnlyDuration) this.startDurationTimer();
       return true;
     }
     return false;

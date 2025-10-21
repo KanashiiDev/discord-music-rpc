@@ -80,7 +80,9 @@ var SimpleBar = (function () {
     var freeSelf = typeof self == 'object' && self && self.Object === Object && self;
 
     /** Used as a reference to the global object. */
-    var root = freeGlobal$1 || freeSelf || Function('return this')();
+    var root = typeof globalThis !== 'undefined'
+    ? globalThis
+    : (typeof self !== 'undefined' ? self : (typeof window !== 'undefined' ? window : {}));
 
     var root$1 = root;
 

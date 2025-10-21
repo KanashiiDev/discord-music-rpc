@@ -7,7 +7,7 @@
     <link rel="stylesheet" href="../libs/flatpickr.css" />
     <link rel="stylesheet" href="../libs/simplebar.css" />
   </head>
-  <body>
+  <body data-theme="dark" data-section="main">
     <div class="header-container">
       <a id="historyStatsToggle" title="Stats"> </a>
       <h1 id="mainHeader">Discord Music RPC</h1>
@@ -57,13 +57,19 @@
     <div id="historyStatsPanel" style="display: none">
       <div id="statsEntries"></div>
     </div>
-    <div id="siteList" class="site-list">
+    <div id="siteList" class="site-list" style="padding-right: 16px">
       <div id="siteListContainer" class="site-list-container"></div>
     </div>
     <div id="historyHeader" style="display: none">
       <a id="clearHistoryBtn" class="button" style="cursor: pointer; width: 100%">Clear History</a><a id="cancelCleanBtn" class="button" style="display: none">Cancel</a>
     </div>
     <a id="openSelector">Add Music Site</a>
+    <div id="tutorialTooltip" class="tutorial-dialog">
+      <h2 id="tooltipHeader">Tutorial</h2>
+      <p id="tooltipText"></p>
+      <button id="tooltipNextBtn" class="tutorial-button next">Next</button>
+      <button id="tooltipSkipBtn" class="tutorial-button skip">Skip</button>
+    </div>
     <footer><a href="https://github.com/KanashiiDev/discord-music-rpc" target="_blank" rel="noopener noreferrer">Github</a></footer>
     <script src="../libs/simplebar.js"></script>
     <script src="../libs/lazysizes.js" async></script>

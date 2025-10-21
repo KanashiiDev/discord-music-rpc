@@ -105,8 +105,8 @@ async function toggleArtistStats(artistName, artistId, range, customStart, custo
     });
 
   simpleContent.replaceChildren(fragment);
-  await activateSimpleBar(artistDiv.id);
   parent.classList.add("active");
+  await activateSimpleBar(artistDiv.id);
   parent.style.maxHeight = parent.scrollHeight + "px";
 }
 
@@ -146,7 +146,11 @@ async function renderTopStats(history, range = "day", topN = 5, customStart = nu
     div.appendChild(divStats);
 
     // Click event
-    div.addEventListener("click", async () => {
+    div.addEventListener("click", async (e) => {
+      e.stopPropagation();
+      if (e.target.closest(".stats")) {
+        return;
+      }
       await toggleArtistStats(artist.name, div.dataset.artistId, range, customStart, customEnd);
     });
 
@@ -223,8 +227,9 @@ document.addEventListener("DOMContentLoaded", () => {
         currentCustomEnd = null;
         await renderTopStats(fullHistory, range);
       }
-      historyPanel.style.paddingRight = "";
       await activateSimpleBar("historyStatsPanel");
+      document.querySelector("#customStartDate")._flatpickr.clear();
+      document.querySelector("#customEndDate")._flatpickr.clear();
     });
   });
 
@@ -254,6 +259,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!currentCustomStart) return alert("Please select start date");
     if (!currentCustomEnd) currentCustomEnd = new Date().getTime();
     await renderTopStats(fullHistory, "custom", 5, currentCustomStart, currentCustomEnd);
+    await activateSimpleBar("historyStatsPanel");
   });
 
   // Clear button
