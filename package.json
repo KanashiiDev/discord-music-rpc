@@ -1,6 +1,6 @@
 {
   "name": "discord-music-rpc",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "description": "Discord Music RPC Application",
   "homepage": "https://github.com/KanashiiDev/discord-music-rpc",
   "main": "main.js",
