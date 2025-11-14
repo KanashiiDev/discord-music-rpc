@@ -29,7 +29,7 @@
     "start:app": "electron .",
     "build:win": "node scripts/generateAsarUnpack.js win && electron-builder --win --x64 --publish=never",
     "build:linux": "node scripts/generateAsarUnpack.js linux && electron-builder --linux --x64 --publish=never --config.extraMetadata.productName='discord-music-rpc'",
-    "build:mac": "node scripts/generateAsarUnpack.js mac && electron-builder --mac universal --publish=never",
+    "build:mac": "node scripts/generateAsarUnpack.js mac && electron-builder --mac --publish=never",
     "build:chrome": "cross-env TARGET=chrome node scripts/buildExtensions.js",
     "build:firefox": "cross-env TARGET=firefox node scripts/buildExtensions.js",
     "build:extensions": "npm run build:chrome && npm run build:firefox",
@@ -112,8 +112,7 @@
         {
           "target": "dmg",
           "arch": [
-            "x64",
-            "arm64"
+            "universal"
           ]
         }
       ],
