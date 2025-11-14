@@ -3,6 +3,7 @@ registerParser({
   title: "YouTube",
   urlPatterns: [/.*/],
   fn: async function () {
+    if (location.pathname.includes("shorts")) return;
     const url = window.location.href;
     const title = getText("#title > h1 > yt-formatted-string");
     const artist = getText("#upload-info #text > a");

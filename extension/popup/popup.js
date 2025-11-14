@@ -1,6 +1,7 @@
 // Section Manager
 const sectionManager = {
   currentSection: "main",
+  listeners: {},
 
   init() {
     this.setupEventListeners();
@@ -15,18 +16,21 @@ const sectionManager = {
     historyStatsToggleBtn.appendChild(createSVG(svg_paths.historyStatsIconPaths));
 
     // History toggle
-    historyToggleBtn.addEventListener("click", async () => {
+    this.listeners.historyToggle = async () => {
       if (this.currentSection === "main") {
         await this.switchTo("history");
       } else {
         await this.switchTo("main");
       }
-    });
+    };
 
     // Stats toggle
-    historyStatsToggleBtn.addEventListener("click", async () => {
+    this.listeners.statsToggle = async () => {
       await this.switchTo("stats");
-    });
+    };
+
+    historyToggleBtn.addEventListener("click", this.listeners.historyToggle);
+    historyStatsToggleBtn.addEventListener("click", this.listeners.statsToggle);
   },
 
   async switchTo(sectionName) {
@@ -48,6 +52,7 @@ const sectionManager = {
   updateHeader(sectionName) {
     const mainHeader = document.querySelector("#mainHeader");
     const historyToggleBtn = document.getElementById("historyToggle");
+    const historyStatsToggleBtn = document.getElementById("historyStatsToggle");
 
     const titles = {
       main: "Discord Music RPC",
@@ -57,7 +62,8 @@ const sectionManager = {
 
     mainHeader.textContent = titles[sectionName];
     mainHeader.appendChild(historyToggleBtn);
-
+    mainHeader.prepend(historyStatsToggleBtn);
+    
     // Update icon
     historyToggleBtn.innerHTML = "";
     if (sectionName === "main") {
@@ -81,6 +87,8 @@ const sectionManager = {
     const dropdownToggle = document.getElementById("dropdownToggle");
     const dropdownMenu = document.getElementById("dropdownMenu");
     const datePicker = document.querySelector(".date-range-picker");
+    const filterMenu = document.getElementById("historyFilterMenu");
+
     filterMenu.classList.remove("open");
     filterMenu.style.height = "0";
     dropdownMenu.classList.remove("open");
@@ -99,6 +107,7 @@ const sectionManager = {
         exitCleaningMode();
         await renderList();
         await activateSimpleBar("siteList");
+        await destroyOtherSimpleBars("siteList");
         break;
 
       case "history":
@@ -108,7 +117,8 @@ const sectionManager = {
         break;
 
       case "stats":
-        fullHistory = await loadHistory();
+        res = await sendAction("loadHistory");
+        fullHistory = res.data;
         await renderTopStats(fullHistory, "day");
         await activateSimpleBar("historyStatsPanel");
         break;
@@ -116,8 +126,116 @@ const sectionManager = {
   },
 };
 
+// Global event handlers
+const popupModule = {
+  listeners: {},
+  initialized: false,
+
+  init() {
+    if (this.initialized) return;
+    this.initialized = true;
+
+    // Search Box
+    const searchBox = document.getElementById("searchBox");
+    this.listeners.searchBoxInput = debounce(async () => {
+      const query = searchBox.value.toLowerCase();
+      const list = await getFreshParserList();
+      const filtered = list.filter(({ title }) => title && title.toLowerCase().includes(query));
+      await renderList(filtered, 1);
+      await activateSimpleBar("siteList");
+    }, 300);
+
+    searchBox.addEventListener("input", this.listeners.searchBoxInput);
+
+    // History Search Box
+    const historySearchInput = document.getElementById("historySearchBox");
+    this.listeners.historySearchInput = debounce(async () => {
+      await renderHistory({ query: historySearchInput.value });
+      await activateSimpleBar("historyPanel");
+      await activateHistoryScroll();
+    }, 300);
+
+    historySearchInput.addEventListener("input", this.listeners.historySearchInput);
+
+    // Open userScript Manager
+    this.listeners.openManager = async () => {
+      await openUserScriptManager();
+    };
+    document.getElementById("openManager").addEventListener("click", this.listeners.openManager);
+
+    // Open Element Selector
+    let buttonDisableTimeout = null;
+    this.listeners.openSelector = async function () {
+      const button = this;
+      if (button.disabled) return;
+      button.disabled = true;
+
+      try {
+        clearTimeout(buttonDisableTimeout);
+        const isEdit = button.textContent.includes("Edit");
+        const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
+
+        if (tab.url?.startsWith("http")) {
+          await browser.tabs.sendMessage(tab.id, {
+            action: "startSelectorUI",
+            editMode: isEdit,
+          });
+          window.close();
+        } else {
+          showPopupMessage("This page is not supported.", "alert", 3000);
+          buttonDisableTimeout = setTimeout(() => {
+            button.disabled = false;
+          }, 3000);
+        }
+      } catch (e) {
+        showPopupMessage("Wait for the page to load.", "warning", 3000);
+        buttonDisableTimeout = setTimeout(() => {
+          button.disabled = false;
+        }, 3000);
+      }
+    };
+    document.getElementById("openSelector").addEventListener("click", this.listeners.openSelector);
+
+    // Document click handler
+    this.listeners.documentClick = (e) => {
+      const filterBtn = document.getElementById("historyFilterBtn");
+      const filterMenu = document.getElementById("historyFilterMenu");
+
+      // History filter menu
+      if (filterBtn && filterMenu && !filterBtn.contains(e.target) && !filterMenu.contains(e.target)) {
+        filterMenu.classList.remove("open");
+        filterMenu.style.height = "0";
+      }
+
+      // Parser options
+      const openOptions = e.target.closest(".parser-options.open");
+      if (!openOptions) {
+        // If the clicked element is not inside an open parser-options
+        document.querySelectorAll(".parser-options.open").forEach((optionsContainer) => {
+          const siteListContainer = document.getElementById("siteListContainer");
+          const searchBox = document.getElementById("searchBox");
+          const allEntries = document.querySelectorAll(".parser-entry");
+
+          optionsContainer.classList.remove("open");
+          optionsContainer.style.maxHeight = "0";
+          siteListContainer.style.transform = "translateY(0)";
+          siteListContainer.style.marginBottom = "";
+          searchBox.classList.remove("fading");
+          allEntries.forEach((entry) => {
+            entry.classList.remove("fading");
+          });
+        });
+      }
+    };
+
+    document.addEventListener("click", this.listeners.documentClick);
+  },
+};
+
 // DOMContentLoaded Event
-document.addEventListener("DOMContentLoaded", async () => {
+let domLoadedListener = null;
+
+domLoadedListener = async () => {
   try {
     // Initial Setup
     const setup = await browser.storage.local.get("initialSetupDone");
@@ -129,7 +247,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     // Migrate Old History
     const ohm = await browser.storage.local.get("oldHistoryMigrate");
     if (!ohm.oldHistoryMigrate) {
-      await migrateOldHistory();
+      await sendAction("migrateHistory");
       await browser.storage.local.set({ oldHistoryMigrate: true });
     }
 
@@ -137,104 +255,55 @@ document.addEventListener("DOMContentLoaded", async () => {
     sectionManager.init();
 
     // Initial render
-    await renderList();
+    const renderStatus = await renderList();
     await activateSimpleBar("siteList");
 
     // Initial Tutorial
-    const tutorial = await browser.storage.local.get("initialTutorialDone");
-    if (!tutorial.initialTutorialDone) {
-      showInitialTutorial();
+    if (renderStatus) {
+      const tutorial = await browser.storage.local.get("initialTutorialDone");
+      if (!tutorial.initialTutorialDone) {
+        showInitialTutorial();
+      }
     }
 
-    // Search Box
-    const searchBox = document.getElementById("searchBox");
-    const debouncedSearch = debounce(async () => {
-      const query = searchBox.value.toLowerCase();
-      const list = await getFreshParserList();
-      const filtered = list.filter(({ domain, title }) => domain.toLowerCase().includes(query) || (title && title.toLowerCase().includes(query)));
-      await renderList(filtered, 1);
-      await activateSimpleBar("siteList");
-    }, 300);
-
-    searchBox.addEventListener("input", debouncedSearch);
-
-    // History Search Box
-    const historySearchInput = document.getElementById("historySearchBox");
-    const debouncedHistorySearch = debounce(async () => {
-      await renderHistory({ query: historySearchInput.value });
-      await activateSimpleBar("historyPanel");
-    }, 300);
-
-    historySearchInput.addEventListener("input", debouncedHistorySearch);
-
-    // Open Element Selector
-    document.getElementById("openSelector").addEventListener("click", async function () {
-      const button = this;
-      if (button.disabled) return;
-      button.disabled = true;
-
-      const messages = {
-        default: "Add Music Site",
-        notSupported: "This page is not supported.",
-        wait: "Wait for the page to load.",
-      };
-
-      try {
-        const isEdit = button.textContent.includes("Edit");
-        const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
-
-        if (tab.url?.startsWith("http")) {
-          await browser.tabs.sendMessage(tab.id, {
-            action: "startSelectorUI",
-            editMode: isEdit,
-          });
-          window.close();
-        } else {
-          button.textContent = messages.notSupported;
-          setTimeout(() => {
-            button.textContent = messages.default;
-            button.disabled = false;
-          }, 3000);
-        }
-      } catch (e) {
-        button.textContent = messages.wait;
-        setTimeout(() => {
-          button.textContent = messages.default;
-          button.disabled = false;
-        }, 3000);
-      }
-    });
-
-    // Close dropdowns by clicking outside
-    const filterBtn = document.getElementById("filterBtn");
-    const filterMenu = document.getElementById("filterMenu");
-
-    document.addEventListener("click", (e) => {
-      // History filter menu
-      if (filterBtn && filterMenu && !filterBtn.contains(e.target) && !filterMenu.contains(e.target)) {
-        filterMenu.classList.remove("open");
-        filterMenu.style.height = "0";
-      }
-
-      // Parser options
-      document.querySelectorAll(".parser-options.open").forEach((optionsContainer) => {
-        if (!optionsContainer.contains(e.target)) {
-          const siteListContainer = document.getElementById("siteListContainer");
-          const searchBox = document.getElementById("searchBox");
-          const allEntries = document.querySelectorAll(".parser-entry");
-
-          optionsContainer.classList.remove("open");
-          optionsContainer.style.maxHeight = "0";
-          siteListContainer.style.transform = "translateY(0)";
-          siteListContainer.style.marginBottom = ``;
-          searchBox.classList.remove("fading");
-          allEntries.forEach((entry) => {
-            entry.classList.remove("fading");
-          });
-        }
-      });
-    });
+    // Initialize popup module
+    popupModule.init();
   } catch (error) {
     logError("Error loading settings:", error);
   }
+};
+
+document.addEventListener("DOMContentLoaded", domLoadedListener);
+window.addEventListener("pagehide", () => {
+  fullHistory = [];
+  filteredHistory = [];
+  selectedSources.clear();
+
+  if (draggingIntervalRef) {
+    clearInterval(draggingIntervalRef);
+    draggingIntervalRef = null;
+  }
+
+  if (scrollListenerRef && scrollElementGlobal) {
+    scrollElementGlobal.removeEventListener("scroll", scrollListenerRef);
+    scrollListenerRef = null;
+  }
+
+  panel._cleanupCheckboxListener?.();
+  panel._cleanupTrashListener?.();
+
+  if (filterMenuContent._sourceChangeListener) {
+    filterMenuContent.removeEventListener("change", filterMenuContent._sourceChangeListener);
+    filterMenuContent._sourceChangeListener = null;
+  }
+  if (currentRenderCleanup) {
+    currentRenderCleanup();
+    currentRenderCleanup = null;
+  }
+  scrollElementGlobal = null;
+  if (flatpickrInstances.start) flatpickrInstances.start.destroy();
+  if (flatpickrInstances.end) flatpickrInstances.end.destroy();
+  flatpickrInstances = { start: null, end: null };
+  svgCache.clear();
+  destroyOtherSimpleBars();
 });

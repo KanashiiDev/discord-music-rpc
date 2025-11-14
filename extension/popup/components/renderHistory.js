@@ -10,12 +10,20 @@ const filterBtn = document.getElementById("historyFilterBtn");
 const filterMenu = document.getElementById("historyFilterMenu");
 const filterMenuContent = document.getElementById("historyFilterMenuContent");
 let lastRenderedHeader = null;
+let scrollListenerRef = null;
+let draggingIntervalRef = null;
+let scrollElementGlobal = null;
 
 // Render
 async function renderHistory({ reset = true, query = "" } = {}) {
   const panel = document.getElementById("historyPanel");
   const spinner = document.createElement("div");
   spinner.className = "spinner";
+
+  if (cleaningMode) {
+    if (panel._cleanupCheckboxListener) panel._cleanupCheckboxListener();
+    if (panel._cleanupTrashListener) panel._cleanupTrashListener();
+  }
 
   // If simplebar exists, use its content element
   const sbInstance = SimpleBar.instances?.get(panel);
@@ -27,11 +35,13 @@ async function renderHistory({ reset = true, query = "" } = {}) {
     lastRenderedHeader = null;
     currentOffset = 0;
     target.appendChild(spinner);
-    fullHistory = await loadHistory();
+    const res = await sendAction("loadHistory");
+    fullHistory = res.data;
   }
 
   renderSourceFilterMenu();
   target.querySelector(".spinner")?.remove();
+
   if (query || selectedSources.size > 0) {
     filteredHistory = fullHistory.filter((entry) => {
       const matchesText = (entry.t + " " + entry.a + " " + entry.s).toLowerCase().includes(query.toLowerCase());
@@ -57,7 +67,7 @@ async function renderHistory({ reset = true, query = "" } = {}) {
 
   const fragment = document.createDocumentFragment();
 
-  pagedHistory.forEach((entry) => {
+  pagedHistory.forEach((entry, i) => {
     const time = new Date(entry.p);
     const header = isSameDay(time, dateToday) ? "Today" : isSameDay(time, dateYesterday) ? "Yesterday" : dateFull(time);
 
@@ -69,7 +79,8 @@ async function renderHistory({ reset = true, query = "" } = {}) {
       lastRenderedHeader = header;
     }
 
-    fragment.appendChild(createHistoryEntry(entry));
+    const historyIndex = currentOffset - maxHistoryItemLoad + i;
+    fragment.appendChild(createHistoryEntry(entry, historyIndex, "history"));
   });
 
   target.appendChild(fragment);
@@ -77,72 +88,214 @@ async function renderHistory({ reset = true, query = "" } = {}) {
   if (cleaningMode) attachCheckboxListeners();
 
   // Recalculate simplebar after adding content
-  sbInstance?.recalculate();
+  activateSimpleBar("historyPanel");
 }
 
 // History Scroll
+let activeScrollCleanup = null;
+
 async function activateHistoryScroll() {
+  // clear the existing instance
+  if (activeScrollCleanup) {
+    activeScrollCleanup();
+    activeScrollCleanup = null;
+  }
+
   const panel = document.getElementById("historyPanel");
   const sbInstance = SimpleBar.instances.get(panel);
   if (!sbInstance) return;
 
-  const scrollElement = sbInstance.getScrollElement();
+  let scrollElement = sbInstance.getScrollElement?.() || panel.querySelector(".simplebar-content-wrapper") || panel.querySelector(".simplebar-content") || panel;
+  scrollElementGlobal = scrollElement;
+
+  // State
   let isLoading = false;
-  let draggingInterval = null;
   let lastScrollTop = scrollElement.scrollTop;
-  let throttleTimeout = null;
+  let rafId = null;
   let isDragging = false;
+  let dragStartTime = 0;
+  let popupShown = false;
+  let observer = null;
+  let scrollListenerRef = null;
+  let draggingIntervalRef = null;
 
-  // Check Dragging
-  draggingInterval = setInterval(() => {
-    isDragging = panel.classList.contains("simplebar-dragging");
-    if (!isDragging) {
-      tryLoad();
-    }
-  }, 100);
+  const BOTTOM_TOLERANCE = 100;
+  const POPUP_DELAY = 700;
 
-  // Load Next History Entries
-  async function tryLoad() {
-    const nearBottom = scrollElement.scrollTop + scrollElement.clientHeight >= scrollElement.scrollHeight - 50;
+  cleanup();
+
+  function checkNearBottom(tolerance = BOTTOM_TOLERANCE) {
+    return scrollElement.scrollTop + scrollElement.clientHeight >= scrollElement.scrollHeight - tolerance;
+  }
+
+  function waitForStableScroll(timeout = 400) {
+    return new Promise((resolve) => {
+      let lastPos = scrollElement.scrollTop;
+      let stableCount = 0;
+
+      const checkStability = setInterval(() => {
+        if (scrollElement.scrollTop === lastPos) {
+          if (++stableCount >= 3) {
+            clearInterval(checkStability);
+            resolve();
+          }
+        } else {
+          lastPos = scrollElement.scrollTop;
+          stableCount = 0;
+        }
+      }, 40);
+
+      setTimeout(() => {
+        clearInterval(checkStability);
+        resolve();
+      }, timeout);
+    });
+  }
+
+  // Loading Logic
+  function isFullyLoaded() {
     const dataSource = isFiltering ? filteredHistory : fullHistory;
+    return currentOffset >= dataSource.length;
+  }
 
-    if (currentOffset >= dataSource.length) {
-      if (draggingInterval) {
-        clearInterval(draggingInterval);
-        draggingInterval = null;
-      }
+  async function tryLoad() {
+    if (isFullyLoaded() || !(scrollElement.scrollHeight > scrollElement.clientHeight + 1) || !checkNearBottom() || isLoading || isDragging) {
       return;
     }
 
-    if (!nearBottom || isLoading || isDragging) return;
-
     isLoading = true;
-    await renderHistory({
-      reset: false,
-      query: document.getElementById("historySearchBox").value || "",
-    });
-    isLoading = false;
+    try {
+      await renderHistory({
+        reset: false,
+        query: document.getElementById("historySearchBox")?.value || "",
+      });
+    } catch (e) {
+      console.error("renderHistory error:", e);
+    } finally {
+      isLoading = false;
+    }
   }
 
-  // Scroll Listener
-  scrollElement.addEventListener("scroll", () => {
-    isDragging = panel.classList.contains("simplebar-dragging");
-    if (scrollElement.scrollTop === lastScrollTop || isDragging) return;
+  //Drag Handling
+  function updateDraggingState() {
+    const wasDragging = isDragging;
+    isDragging = panel.classList.contains("simplebar-dragging") || sbInstance.el?.classList?.contains("simplebar-dragging");
+
+    if (isDragging && !wasDragging) {
+      // Drag started
+      dragStartTime = Date.now();
+      popupShown = false;
+
+      // If all data is loaded, do not show the popup
+      if (isFullyLoaded()) return;
+
+      // Start interval for popup control
+      draggingIntervalRef = setInterval(() => {
+        if (!isDragging || isFullyLoaded()) {
+          clearInterval(draggingIntervalRef);
+          draggingIntervalRef = null;
+          return;
+        }
+
+        if (checkNearBottom()) {
+          const elapsed = Date.now() - dragStartTime;
+          if (elapsed >= POPUP_DELAY && !popupShown) {
+            showPopupMessage("Release to load the history!", "warning");
+            popupShown = true;
+          }
+        } else {
+          dragStartTime = Date.now(); // Reset timer
+          if (popupShown) {
+            hidePopupMessage();
+            popupShown = false;
+          }
+        }
+      }, 100);
+    } else if (!isDragging && wasDragging) {
+      // Drag is over
+      if (draggingIntervalRef) {
+        clearInterval(draggingIntervalRef);
+        draggingIntervalRef = null;
+      }
+
+      if (popupShown) {
+        hidePopupMessage();
+        popupShown = false;
+      }
+
+      // Only load if it hasn't been fully loaded
+      if (!isFullyLoaded()) {
+        handleDragEnd();
+      }
+    }
+  }
+
+  async function handleDragEnd() {
+    await waitForStableScroll(400);
+
+    // try load only if it's very close (50px)
+    if (checkNearBottom(50)) {
+      await tryLoad();
+    }
+  }
+
+  // Scroll Handling
+  scrollListenerRef = () => {
+    updateDraggingState();
+
+    if (isDragging || scrollElement.scrollTop === lastScrollTop) return;
     lastScrollTop = scrollElement.scrollTop;
 
-    if (throttleTimeout) return;
+    if (rafId) return;
 
-    throttleTimeout = setTimeout(async () => {
-      throttleTimeout = null;
+    rafId = requestAnimationFrame(async () => {
+      rafId = null;
       await tryLoad();
-    }, 100);
+    });
+  };
+
+  scrollElement.addEventListener("scroll", scrollListenerRef, { passive: true });
+
+  // MutationObserver for drag detection
+  observer = new MutationObserver(updateDraggingState);
+  observer.observe(panel, {
+    attributes: true,
+    attributeFilter: ["class"],
   });
+
+  // Cleanup
+  function cleanup() {
+    if (scrollListenerRef && scrollElement) {
+      scrollElement.removeEventListener("scroll", scrollListenerRef);
+      scrollListenerRef = null;
+    }
+    if (draggingIntervalRef) {
+      clearInterval(draggingIntervalRef);
+      draggingIntervalRef = null;
+    }
+    if (rafId) {
+      cancelAnimationFrame(rafId);
+      rafId = null;
+    }
+    if (observer) {
+      observer.disconnect();
+      observer = null;
+    }
+    if (popupShown) {
+      hidePopupMessage();
+      popupShown = false;
+    }
+  }
+
+  activeScrollCleanup = cleanup;
+  return cleanup;
 }
 
-// Listen checkbox changes
 function attachCheckboxListeners() {
+  if (panel._cleanupCheckboxListener) panel._cleanupCheckboxListener();
+  if (panel._cleanupTrashListener) panel._cleanupTrashListener();
   if (!panel._checkboxListenerAttached) {
-    panel.addEventListener("change", (e) => {
+    const handlePanelChange = (e) => {
       if (!cleaningMode) return;
       if (e.target.matches(".history-checkbox")) {
         const cb = e.target;
@@ -150,30 +303,58 @@ function attachCheckboxListeners() {
         if (entry) entry.classList.toggle("selected", cb.checked);
         updateClearBtnText();
       }
-    });
+    };
+
+    panel.addEventListener("change", handlePanelChange);
     panel._checkboxListenerAttached = true;
+
+    panel._cleanupCheckboxListener = () => {
+      panel.removeEventListener("change", handlePanelChange);
+      panel._checkboxListenerAttached = false;
+    };
   }
 
-  // Add the missing trash icons and checkbox listeners
+  // Trash icon
   panel.querySelectorAll(".history-entry").forEach((entry) => {
     const cb = entry.querySelector(".history-checkbox");
-    if (!cb._listenerAttached) {
-      cb._listenerAttached = true;
-    }
 
     // Add trash icon if not present
     if (!entry.querySelector(".history-trash")) {
       const trashIcon = document.createElement("span");
       trashIcon.className = "history-trash";
       trashIcon.appendChild(createSVG(svg_paths.trashIconPaths));
-      trashIcon.addEventListener("click", () => {
-        cb.checked = !cb.checked;
-        entry.classList.toggle("selected", cb.checked);
-        updateClearBtnText();
-      });
+      trashIcon.dataset.checkboxFor = cb.id || `cb-${Date.now()}-${Math.random()}`;
+      if (!cb.id) cb.id = trashIcon.dataset.checkboxFor;
+
       cb.insertAdjacentElement("afterend", trashIcon);
     }
   });
+
+  // Trash icon click handler
+  if (!panel._trashClickListenerAttached) {
+    const handleTrashClick = (e) => {
+      if (e.target.closest(".history-trash")) {
+        const trashIcon = e.target.closest(".history-trash");
+        const cbId = trashIcon.dataset.checkboxFor;
+        const cb = document.getElementById(cbId);
+        if (cb) {
+          cb.checked = !cb.checked;
+          const entry = cb.closest(".history-entry");
+          if (entry) entry.classList.toggle("selected", cb.checked);
+          updateClearBtnText();
+        }
+      }
+    };
+
+    panel.addEventListener("click", handleTrashClick);
+    panel._trashClickListenerAttached = true;
+
+    // Cleanup function
+    panel._cleanupTrashListener = () => {
+      panel.removeEventListener("click", handleTrashClick);
+      panel._trashClickListenerAttached = false;
+    };
+  }
 }
 
 // Clear Button
@@ -188,8 +369,8 @@ function updateClearBtnText() {
   clearBtn.textContent = selectedCount > 0 ? `Delete Selected (${selectedCount})` : "Delete All";
 }
 
-// Clear Button Click Event
-clearBtn.addEventListener("click", async () => {
+// Clear button handler
+const handleClearButtonClick = async () => {
   if (!cleaningMode && fullHistory.length) {
     // Start the cleaning mode
     cleaningMode = true;
@@ -232,10 +413,16 @@ clearBtn.addEventListener("click", async () => {
   selectedSources.clear();
   filteredHistory = [];
   document.querySelector("#historySearchBox").value = "";
-  await saveHistory(fullHistory);
+  await sendAction("saveHistory", { data: fullHistory });
+
+  if (panel._cleanupCheckboxListener) panel._cleanupCheckboxListener();
+  if (panel._cleanupTrashListener) panel._cleanupTrashListener();
+
   await renderHistory();
   exitCleaningMode();
-});
+};
+
+clearBtn.addEventListener("click", handleClearButtonClick);
 
 // Cancel Button Event
 cancelCleanBtn.addEventListener("click", exitCleaningMode);
@@ -250,16 +437,43 @@ function exitCleaningMode() {
     cb.parentElement?.classList.remove("selected");
     cb.checked = false;
   });
+  panel._cleanupCheckboxListener?.();
+  panel._cleanupTrashListener?.();
+  activateSimpleBar("historyPanel");
 }
 
-// Filter menu rendering
+// Filter menu
 function renderSourceFilterMenu() {
   filterMenuContent.innerHTML = "";
   const sources = [...new Set(fullHistory.map((e) => e.s))].sort();
+
   if (!document.querySelector(".history-filter")) {
     filterBtn.className = "history-filter";
     filterBtn.appendChild(createSVG(svg_paths.filterIconPaths));
   }
+
+  // Checkbox handler
+  const handleSourceCheckboxChange = async (e) => {
+    if (e.target.type === "checkbox" && e.target.closest("#historyFilterMenuContent")) {
+      const src = e.target.value;
+      if (e.target.checked) {
+        selectedSources.add(src);
+      } else {
+        selectedSources.delete(src);
+      }
+      await renderHistory({ query: document.getElementById("historySearchBox").value });
+      await destroyOtherSimpleBars();
+      await activateSimpleBar(["historyPanel", "historyFilterMenuContent"]);
+      await activateHistoryScroll();
+    }
+  };
+
+  if (filterMenuContent._sourceChangeListener) {
+    filterMenuContent.removeEventListener("change", filterMenuContent._sourceChangeListener);
+    filterMenuContent._sourceChangeListener = null;
+  }
+  filterMenuContent._sourceChangeListener = handleSourceCheckboxChange;
+  filterMenuContent.addEventListener("change", handleSourceCheckboxChange);
 
   sources.forEach((src) => {
     const label = document.createElement("label");
@@ -269,21 +483,107 @@ function renderSourceFilterMenu() {
     cb.type = "checkbox";
     cb.value = src;
     cb.checked = selectedSources.has(src);
-    cb.addEventListener("change", async () => {
-      if (cb.checked) selectedSources.add(src);
-      else selectedSources.delete(src);
-      await renderHistory({ query: document.getElementById("historySearchBox").value });
-      await activateSimpleBar("historyPanel");
-    });
     label.append(cb, " ", span);
     filterMenuContent.appendChild(label);
   });
 }
 
-// Filter Dropdown Toggle
-filterBtn.addEventListener("click", async (e) => {
+// Filter button handler
+const handleFilterButtonClick = async (e) => {
   e.stopPropagation();
   filterMenu.classList.toggle("open");
-  filterMenu.style.height = filterMenu.classList.contains("open") ? Math.min(200, filterMenuContent.scrollHeight) + "px" : "0";
+  if (filterMenu.classList.contains("open")) {
+    const contentHeight = filterMenuContent.scrollHeight;
+    const finalHeight = Math.min(contentHeight, 160);
+    filterMenu.style.height = finalHeight + "px";
+  } else {
+    filterMenu.style.height = "0";
+  }
   await activateSimpleBar("historyFilterMenuContent");
-});
+};
+
+filterBtn.addEventListener("click", handleFilterButtonClick);
+
+// Create History Entry
+function createHistoryEntry(entry, historyIndex, type, filteredHistory = []) {
+  const div = document.createElement("div");
+  div.className = "history-entry";
+  div.dataset.historyIndex = historyIndex;
+
+  // Checkbox
+  const checkbox = document.createElement("input");
+  checkbox.type = "checkbox";
+  checkbox.className = "history-checkbox";
+  checkbox.dataset.index = historyIndex;
+
+  // Image
+  const img = document.createElement("img");
+  img.width = 46;
+  img.height = 46;
+  img.className = "history-image lazyload";
+  img.dataset.src = entry.i || browser.runtime.getURL("icons/48x48.png");
+  img.alt = "";
+
+  img.addEventListener(
+    "error",
+    () => {
+      img.src = browser.runtime.getURL("icons/48x48.png");
+    },
+    { once: true }
+  );
+
+  // Info
+  const info = document.createElement("div");
+  info.className = "history-info";
+
+  const strong = document.createElement("strong");
+  strong.textContent = entry.t;
+  strong.className = "history-title";
+
+  const small = document.createElement("small");
+  small.className = "history-source";
+  const time = new Date(entry.p);
+
+  let extraText = "";
+
+  if (type === "stats") {
+    const totalPlays = filteredHistory.filter((e) => e.t === entry.t).length;
+    if (totalPlays) {
+      extraText = ` • ${totalPlays} plays`;
+    }
+  } else {
+    const formattedTime = dateHourMinute(time);
+    if (formattedTime) {
+      extraText = ` • ${formattedTime}`;
+    }
+  }
+
+  small.textContent = `${entry.s}${extraText}`;
+
+  info.append(strong);
+
+  if (entry.a !== "Radio") {
+    const artist = document.createElement("span");
+    artist.className = "history-artist";
+    artist.textContent = entry.a;
+    const br = document.createElement("br");
+    info.append(artist, br);
+  }
+  info.appendChild(small);
+
+  // Link
+  const link = document.createElement("a");
+  link.className = "song-link";
+  link.title = "Go to The Song";
+  link.target = "_blank";
+  link.rel = "noopener noreferrer";
+  if (entry.u) {
+    link.href = entry.u;
+  }
+  // Get from SVG cache
+  link.appendChild(createSVG(svg_paths.redirectIconPaths));
+
+  // Combine them all
+  div.append(checkbox, img, info, link);
+  return div;
+}

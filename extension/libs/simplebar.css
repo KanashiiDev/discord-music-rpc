@@ -1,10 +1,19 @@
 [data-simplebar] {
   position: relative;
-  flex-direction: column;
-  flex-wrap: wrap;
-  justify-content: flex-start;
-  align-content: flex-start;
-  align-items: flex-start;
+  -webkit-box-orient: vertical;
+  -webkit-box-direction: normal;
+      -ms-flex-direction: column;
+          flex-direction: column;
+  -ms-flex-wrap: wrap;
+      flex-wrap: wrap;
+  -webkit-box-pack: start;
+      -ms-flex-pack: start;
+          justify-content: flex-start;
+  -ms-flex-line-pack: start;
+      align-content: flex-start;
+  -webkit-box-align: start;
+      -ms-flex-align: start;
+          align-items: flex-start;
 }
 
 .simplebar-wrapper {
@@ -32,7 +41,8 @@
 
 .simplebar-offset {
   direction: inherit !important;
-  box-sizing: inherit !important;
+  -webkit-box-sizing: inherit !important;
+          box-sizing: inherit !important;
   resize: none !important;
   position: absolute;
   top: 0;
@@ -46,7 +56,8 @@
 
 .simplebar-content-wrapper {
   direction: inherit;
-  box-sizing: border-box !important;
+  -webkit-box-sizing: border-box !important;
+          box-sizing: border-box !important;
   position: relative;
   display: block;
   height: 100%; /* Required for horizontal native scrollbar to not appear if parent is taller than natural height */
@@ -79,7 +90,8 @@
 }
 
 .simplebar-height-auto-observer-wrapper {
-  box-sizing: inherit !important;
+  -webkit-box-sizing: inherit !important;
+          box-sizing: inherit !important;
   height: 100%;
   width: 100%;
   max-width: 1px;
@@ -91,13 +103,18 @@
   padding: 0;
   margin: 0;
   pointer-events: none;
-  flex-grow: inherit;
-  flex-shrink: 0;
-  flex-basis: 0;
+  -webkit-box-flex: inherit;
+      -ms-flex-positive: inherit;
+          flex-grow: inherit;
+  -ms-flex-negative: 0;
+      flex-shrink: 0;
+  -ms-flex-preferred-size: 0;
+      flex-basis: 0;
 }
 
 .simplebar-height-auto-observer {
-  box-sizing: inherit;
+  -webkit-box-sizing: inherit;
+          box-sizing: inherit;
   display: block;
   opacity: 0;
   position: absolute;
@@ -125,7 +142,6 @@
   pointer-events: none;
   -webkit-touch-callout: none;
   -webkit-user-select: none;
-  -khtml-user-select: none;
   -moz-user-select: none;
   -ms-user-select: none;
   user-select: none;
@@ -135,7 +151,6 @@
   pointer-events: none;
   -webkit-touch-callout: none;
   -webkit-user-select: none;
-  -khtml-user-select: none;
   -moz-user-select: none;
   -ms-user-select: none;
   user-select: none;
@@ -160,13 +175,8 @@
   left: 2px;
   right: 2px;
   opacity: 0;
+  -webkit-transition: opacity 0.2s 0.5s linear;
   transition: opacity 0.2s 0.5s linear;
-}
-
-.simplebar-scrollbar.simplebar-visible:before {
-  opacity: 0.5;
-  transition-delay: 0s;
-  transition-duration: 0s;
 }
 
 .simplebar-track.simplebar-vertical {

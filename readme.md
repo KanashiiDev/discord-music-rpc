@@ -7,8 +7,6 @@
 
 **Discord Music RPC** is an open-source project that combines a **Chrome extension** with an **Electron-based desktop application**, allowing users to display their currently playing music from supported websites directly in their Discord status via Rich Presence.
 
-It works by running a lightweight Electron app that acts as a bridge between the browser extension and the Discord client, enabling seamless music status updates across a wide range of platforms.
-
 What sets it apart is its **customizable selector system** — no coding required. Users can easily create their own music parsers for any website by simply selecting elements on the page. This makes it possible to support virtually any music platform, even those not officially integrated.
 
 ## 📚 Table of Contents
@@ -27,8 +25,8 @@ What sets it apart is its **customizable selector system** — no coding require
 - Real-time Discord Rich Presence updates
 - Support for multiple platforms (e.g., YouTube, YouTube Music, Deezer, SoundCloud)
 - Lightweight, modular architecture
-- Easy to extend — add support for any music site using the built-in selector system
-- Cross-platform Electron desktop app (Windows support, Linux/Mac planned)
+- Easy to extend — add support for any music site using the built-in selector system or using userscripts.
+- Cross-platform Electron desktop app (Windows / Linux / MacOS)
 - Automatic updates with seamless integration between the Electron app and Chrome extension
 - Open-source and community-driven project
 
@@ -38,22 +36,33 @@ What sets it apart is its **customizable selector system** — no coding require
 
 **Operating System**:
 
-- Windows
+- **Windows 10/11** Full support with system tray integration and auto-updater.
+- **macOS (11+)** Full support for macOS 11+ (Big Sur and later) with native system tray integration via menu bar.
+  - **Important:** Drag the App to `/Applications` before first launch to ensure menu bar icon and auto-updates work correctly.
+- **Linux (AppImage)** Works on most modern distributions (Ubuntu, Debian, Fedora, Arch, etc).
+  - GNOME users must enable the _AppIndicator / KStatusNotifierItem_ extension.
+  - **Required packages on some distributions:**
+    - `libayatana-appindicator3-1` (or `libappindicator3-1`)
+  - **If the tray icon doesn’t appear:**
+    - Install [AppImageLauncher](https://github.com/TheAssassin/AppImageLauncher) or run once from terminal.
+    - If using GNOME on Wayland, switch to an X11 session or ensure AppIndicator support is enabled.
+  - **Auto-start note:** Moving the AppImage after first launch may require re-enabling “Run at Startup” in the tray menu.
 
 **Supported Browsers**:
 
 - Chrome
 - Firefox
-- chromium based browsers (opera brave, etc.)
+- Chromium-based browsers (Opera, Brave, etc.)
 
 ---
 
 ## 🎵 Supported Websites
-| [<img src="https://www.google.com/s2/favicons?domain=youtube.com" width="20">](https://www.youtube.com) YouTube | [<img src="https://www.google.com/s2/favicons?domain=music.youtube.com" width="20">](https://music.youtube.com) YouTube Music | [<img src="https://www.google.com/s2/favicons?domain=soundcloud.com" width="20">](https://soundcloud.com) SoundCloud | [<img src="https://www.google.com/s2/favicons?domain=deezer.com" width="20">](https://www.deezer.com) Deezer | [<img src="https://www.google.com/s2/favicons?domain=tidal.com" width="20">](https://tidal.com) Tidal |
-|:---|:---|:---|:---|:---|
-| [<img src="https://www.google.com/s2/favicons?domain=pandora.com" width="20">](https://www.pandora.com) Pandora | [<img src="https://www.google.com/s2/favicons?domain=music.apple.com" width="20">](https://music.apple.com) Apple Music | [<img src="https://www.google.com/s2/favicons?domain=music.amazon.com" width="20">](https://music.amazon.com) Amazon Music | [<img src="https://www.google.com/s2/favicons?domain=tunein.com" width="20">](https://tunein.com) TuneIn | [<img src="https://www.google.com/s2/favicons?domain=iheart.com" width="20">](https://www.iheart.com) iHeartRadio |
-| [<img src="https://www.google.com/s2/favicons?domain=onlineradiobox.com" width="20">](https://www.onlineradiobox.com) OnlineRadioBox | [<img src="https://www.google.com/s2/favicons?domain=radioparadise.com" width="20">](https://www.radioparadise.com) Radio Paradise | [<img src="https://www.google.com/s2/favicons?domain=radio.net" width="20">](https://www.radio.net) Radio.net | [<img src="https://www.google.com/s2/favicons?domain=radio.garden" width="20">](https://radio.garden) Radio Garden | [<img src="https://www.google.com/s2/favicons?domain=listen.moe" width="20">](https://listen.moe) Listen.moe |
-| [<img src="https://www.google.com/s2/favicons?domain=gensokyoradio.net" width="20">](https://gensokyoradio.net) Gensokyo Radio | [<img src="https://www.google.com/s2/favicons?domain=accuRadio.com" width="20">](https://accuRadio.com) accuRadio | [<img src="https://www.google.com/s2/favicons?domain=anison.fm" width="20">](https://anison.fm) anison.fm | [<img src="https://www.google.com/s2/favicons?domain=asiaDreamRadio.com" width="20">](https://asiaDreamRadio.com) Asia Dream Radio | [<img src="https://www.google.com/s2/favicons?domain=plaza.one" width="20">](https://plaza.one) Plaza One |
+
+| [<img src="https://www.google.com/s2/favicons?domain=youtube.com" width="20">](https://www.youtube.com) YouTube                      | [<img src="https://www.google.com/s2/favicons?domain=music.youtube.com" width="20">](https://music.youtube.com) YouTube Music      | [<img src="https://www.google.com/s2/favicons?domain=soundcloud.com" width="20">](https://soundcloud.com) SoundCloud       | [<img src="https://www.google.com/s2/favicons?domain=deezer.com" width="20">](https://www.deezer.com) Deezer                       | [<img src="https://www.google.com/s2/favicons?domain=tidal.com" width="20">](https://tidal.com) Tidal             |
+| :----------------------------------------------------------------------------------------------------------------------------------- | :--------------------------------------------------------------------------------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------- | :--------------------------------------------------------------------------------------------------------------------------------- | :---------------------------------------------------------------------------------------------------------------- |
+| [<img src="https://www.google.com/s2/favicons?domain=pandora.com" width="20">](https://www.pandora.com) Pandora                      | [<img src="https://www.google.com/s2/favicons?domain=music.apple.com" width="20">](https://music.apple.com) Apple Music            | [<img src="https://www.google.com/s2/favicons?domain=music.amazon.com" width="20">](https://music.amazon.com) Amazon Music | [<img src="https://www.google.com/s2/favicons?domain=tunein.com" width="20">](https://tunein.com) TuneIn                           | [<img src="https://www.google.com/s2/favicons?domain=iheart.com" width="20">](https://www.iheart.com) iHeartRadio |
+| [<img src="https://www.google.com/s2/favicons?domain=onlineradiobox.com" width="20">](https://www.onlineradiobox.com) OnlineRadioBox | [<img src="https://www.google.com/s2/favicons?domain=radioparadise.com" width="20">](https://www.radioparadise.com) Radio Paradise | [<img src="https://www.google.com/s2/favicons?domain=radio.net" width="20">](https://www.radio.net) Radio.net              | [<img src="https://www.google.com/s2/favicons?domain=radio.garden" width="20">](https://radio.garden) Radio Garden                 | [<img src="https://www.google.com/s2/favicons?domain=listen.moe" width="20">](https://listen.moe) Listen.moe      |
+| [<img src="https://www.google.com/s2/favicons?domain=gensokyoradio.net" width="20">](https://gensokyoradio.net) Gensokyo Radio       | [<img src="https://www.google.com/s2/favicons?domain=accuRadio.com" width="20">](https://accuRadio.com) accuRadio                  | [<img src="https://www.google.com/s2/favicons?domain=anison.fm" width="20">](https://anison.fm) anison.fm                  | [<img src="https://www.google.com/s2/favicons?domain=asiaDreamRadio.com" width="20">](https://asiaDreamRadio.com) Asia Dream Radio | [<img src="https://www.google.com/s2/favicons?domain=plaza.one" width="20">](https://plaza.one) Plaza One         |
 
 💡 Additional sites can be easily added. Check out the [How to Add a New Music Site](#-how-to-add-a-new-music-site) section.
 
@@ -65,7 +74,7 @@ What sets it apart is its **customizable selector system** — no coding require
    First, make sure the extension is installed in your browser. It usually appears in the window that opens when you click on the extensions icon (like a puzzle piece) next to the address bar.
 
 2. **Install the Application** <br>
-   [Download the latest release](https://github.com/KanashiiDev/discord-music-rpc/releases) for Windows. Run the app — it will appear in your system tray.
+   [Download the latest release](https://github.com/KanashiiDev/discord-music-rpc/releases). Run the app — it will appear in your system tray.
 
    <b>Important:</b> If you run Discord as an administrator, you must also run Discord Music RPC as an administrator. Otherwise, it will not function properly.
 
@@ -93,7 +102,8 @@ If your status isn't updating:
 - Make sure the song is playing and not muted.
 - Make sure the tab playing music is not minimized.
 - Make sure that "Display current activity as a status message" is enabled in Discord.
-- Check the console for errors and logs. For the server, right click on the Tray application and click on “open logs”.
+- If you run Discord as an administrator, you must also run Discord Music RPC as an administrator.
+- Check the console for errors and logs. For the server, click on the Tray application and click on “open logs” in the debug section.
 
 ---
 
@@ -101,7 +111,7 @@ If your status isn't updating:
 
 This guide explains how to create and use music parsers that extract song info (title, artist, album image, duration, etc.) from music websites.
 
-You can add a parser in **two ways**:
+You can add a parser in **three ways**:
 
 ---
 
@@ -136,7 +146,75 @@ You can add a parser in **two ways**:
 
 ---
 
-## 🔧 Option 2: Add Parser Using Code (for more advanced websites)
+## 🧩 Option 2: Add Parser Using UserScripts
+
+You can add your own custom music parsers directly from the extension using the built-in **UserScript Manager**.
+This allows you to create and manage scripts that extract track data (title, artist, album art, etc.) from any website.
+
+### 📖 How to Add a UserScript
+
+1. **Open the Script Manager**
+
+   - In the extension popup, click **“Open Script Manager”**.
+   - A new window will open showing the list of your current user scripts.
+
+2. **Create a New Script**
+
+   - Click the **“+ New Script”** button.
+   - Fill in the following fields:
+
+     - **Script Name** – A friendly name for your parser (e.g. “Spotify Parser”).
+     - **Description** – A short note about what the script does.
+     - **Authors** – Comma-separated list of authors (optional).
+     - **Domain** – The website where the script should run (e.g. `musicwebsite.com`).
+     - **URL Pattern(s)** – (Optional) Regex patterns to match specific pages (e.g. `player.*`).
+
+3. **Write the Script Code**
+
+   - In the code editor, define the required variables:
+
+     ```js
+     const title = "";
+     const artist = "";
+     const image = "";
+     const source = "";
+     const songUrl = "";
+     const timePassed = null;
+     const duration = null;
+     ```
+
+   - These variables are **required** for the Discord RPC to detect and display the music status correctly.
+   - Use JavaScript to fetch these values from the target webpage (supports async functions).
+
+4. **Save Your Script**
+
+   - Once you’ve filled everything out, click **“Save Script”**.
+   - The new script will appear in your list and can be enabled, edited, exported, or deleted anytime.
+
+---
+
+### 🧠 Optional: Using Custom Settings
+
+Each user script can also include **custom settings** that appear in the extension popup.
+This allows your parser to have adjustable options (e.g., toggles, custom text inputs, or selectors).
+
+To add them:
+
+1. In the **Script Editor**, scroll to the **“Manage Settings”** section.
+2. Click **“Generate Settings”** to create a new variable.
+3. Fill in:
+
+   - **Variable Name** – Used in your code (e.g. `mySetting`).
+   - **Label** – Display name shown in the popup.
+   - **Type** – Choose between `text`, `checkbox`, or `select`.
+   - **Default Value** – Starting value.
+
+4. Click **“Create Setting”** to generate it.
+5. You can later modify it by clicking **“Edit Settings”**.
+
+---
+
+## 🔧 Option 3: Add Parser Using Code (for more advanced websites)
 
 You can also manually register a parser with JavaScript using the `registerParser()` function.
 Create a new file in the `extension/parsers/` directory, named `<yourSite>.js`. Use this template:
@@ -165,7 +243,8 @@ registerParser({
       duration: getText(".time-display-total"), // Total duration (optional)
       source: "Example", // Source label (optional)
       songUrl: "example.com", // Link to song/station (optional)
-      buttons: [ // Buttons (max 2) (optional)
+      buttons: [
+        // Buttons (max 2) (optional)
         {
           link: "Example Button Link",
           text: "Example Button Text",
@@ -258,8 +337,14 @@ npm start:app
 
 ### Application Build
 
-- **`npm run build`**
+- **`npm run build:win`**
   Builds a Windows 64-bit Electron application.
+
+- **`npm run build:linux`**
+  Builds a Linux Electron application.
+
+- **`npm run build:mac`**
+  Builds a macOS Electron application.
 
 - **`npm run pack`**
   Creates the app directory without generating an installer (`--dir` mode).
@@ -308,4 +393,30 @@ Builds and packages only the Firefox extension.
 
 ## 📄 License
 
-This project is licensed under the MIT License. See the `LICENSE` file for details.
+This project is licensed under the MIT License. See the [`LICENSE`](LICENSE) file for details.
+
+---
+
+### 🧱 Built With
+
+#### Core Framework
+- [Electron](https://www.electronjs.org/) – Cross-platform desktop application framework
+- [Electron Builder](https://www.electron.build/) – Complete solution to package and build Electron apps
+
+#### Backend & Storage
+- [Express](https://expressjs.com/) – Fast, minimalist web server
+- [simple-json-db](https://www.npmjs.com/package/simple-json-db) – Lightweight JSON-based local storage
+- [Electron Log](https://github.com/megahertz/electron-log) – Simple logging for Electron applications
+
+#### Code Editor
+- [CodeMirror](https://codemirror.net/) – Versatile in-browser code editor
+- [acorn](https://www.npmjs.com/package/acorn) – JavaScript parser
+
+#### UI Components
+- [simplebar](https://grsmto.github.io/simplebar/) – Custom scrollbar library
+- [flatpickr](https://flatpickr.js.org/) – Lightweight date and time picker
+
+#### Utilities
+- [PostCSS](https://postcss.org/) & [Autoprefixer](https://github.com/postcss/autoprefixer) – CSS processing and vendor prefixes
+- [pako](https://github.com/nodeca/pako) – High-speed compression library
+- [@xhayper/discord-rpc](https://github.com/xhayper/discord-rpc) – Discord Rich Presence integration

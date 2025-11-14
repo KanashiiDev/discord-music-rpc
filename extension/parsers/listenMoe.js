@@ -1,6 +1,6 @@
 registerParser({
   domain: "listen.moe",
-  title: "Listen Moe",
+  title: "LISTEN.moe",
   urlPatterns: [/.*/],
   fn: function () {
     const title = getText(".player-song-title");
@@ -11,7 +11,7 @@ registerParser({
       title,
       artist,
       image,
-      source: "Listen Moe",
+      source: "LISTEN.moe",
       songUrl: "https://listen.moe/",
     };
   },

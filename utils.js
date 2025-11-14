@@ -9,12 +9,6 @@ function logRpcConnection(message) {
   lastLogMap.set(message, now);
 }
 
-// Connection Retry Frequency
-function shouldLogAttempt(attempt) {
-  if (attempt <= 3) return true;
-  return attempt % 10 === 0;
-}
-
 function getCurrentTime() {
   const now = new Date();
   return [now.getHours().toString().padStart(2, "0"), now.getMinutes().toString().padStart(2, "0"), now.getSeconds().toString().padStart(2, "0")].join(":");
@@ -52,7 +46,7 @@ function truncate(str, maxLength = 128, { fallback = "Unknown", minLength = 2, m
     "hd|hq|4k|8k|1080p|720p|480p|mp3|mp4|flac|wav|aac|320kbps|256kbps|128kbps",
     "free\\s+(download|dl|song|now)|download\\s+(free|now)",
     "official(\\s+(video|music\\s+video|audio|lyric\\s+video|visualizer))?",
-    "PATREON|teaser|trailer|promo|lyric\\s+video|lyrics?|music\\s+video|out\\s+now",
+    "/Bonus\s+Track|PATREON|teaser|trailer|promo|lyric\\s+video|lyrics?|music\\s+video|out\\s+now",
     "mixed\\s+by\\s+dj|karaoke|backing\\s+track|vocals\\s+only|live(\\s+performance)?",
     "now\\s+available|full\\s+song|full\\s+version|complete\\s+version|original\\s+version\\s+version",
     "official\\s+trailer|official\\s+teaser|[\\w\\s'’.\\-]+\\s+premiere",
@@ -169,7 +163,6 @@ function notifyRpcStatus(isRpcConnected) {
 
 module.exports = {
   logRpcConnection,
-  shouldLogAttempt,
   getCurrentTime,
   isSameActivity,
   isSameActivityIgnore,

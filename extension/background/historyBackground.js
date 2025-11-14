@@ -1,7 +1,7 @@
 const HISTORY_KEY = "listeningHistory";
 const HISTORY_DB_NAME = "HistoryDB";
 const HISTORY_STORE_NAME = "historyStore";
-const HISTORY_DB_VERSION = 1;
+const HISTORY_DB_VERSION = 2;
 const MAX_HISTORY = 60000;
 
 async function saveHistory(data) {

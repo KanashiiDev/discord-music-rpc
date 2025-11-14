@@ -3,6 +3,7 @@ registerParser({
   title: "Soundcloud",
   urlPatterns: [/.*/],
   fn: async function () {
+    if (document.querySelector(".fullScreenOverlay")) return;
     async function getValidImageUrl(baseUrl, timeoutMs = 3000) {
       const tryImageSizes = ["t120x120", "t200x200", "t50x50", "t500x500", "original"];
       const urlPattern = /-(t\d+x\d+|original)\.(jpg|png)$/;

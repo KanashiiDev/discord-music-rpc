@@ -1,49 +1,54 @@
+let currentRenderCleanup = null;
+const settingRefreshMessage = () => {
+  showPopupMessage("Please refresh the page to apply the settings.");
+};
+
 async function renderList(filteredList = null, isSearch = null) {
   const container = document.getElementById("siteListContainer");
+
+  if (currentRenderCleanup) {
+    currentRenderCleanup();
+    currentRenderCleanup = null;
+  }
+
+  container.replaceChildren();
   const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
   const tabUrl = new URL(tab.url);
   const tabPath = tabUrl.pathname;
   const tabHostname = normalize(tabUrl.hostname);
   const settings = await browser.storage.local.get();
+
+  // Spinner
   const spinner = document.createElement("div");
   spinner.className = "spinner";
   container.appendChild(spinner);
-  const list = filteredList || (await getFreshParserList());
-  container.innerHTML = "";
 
+  const updateMinHeight = () => {
+    document.getElementById("siteList").style.minHeight = `${container.scrollHeight < 404 ? container.scrollHeight : 404}px`;
+  };
+
+  const list = filteredList || (await getFreshParserList());
+  spinner.remove();
   if (!list || list.length === 0) {
     const setupListMessage = document.createElement("div");
     setupListMessage.className = "setup-list-message";
     setupListMessage.textContent = isSearch ? "Not Found" : "Please open a supported website (YouTube, Soundcloud, Deezer etc.) in an active tab to build the parser list.";
     container.appendChild(setupListMessage);
-    return;
+    updateMinHeight();
+    return false;
   }
 
-  // Settings change message handler
-  const settingRefreshMessage = async () => {
-    const e = document.querySelector("#openSelector");
-    if (!e) return;
-    const tabs = await browser.tabs.query({ active: true, currentWindow: true });
-    const tab = tabs[0];
-
-    if (tab.url?.startsWith("http")) {
-      e.textContent = "Please refresh the page to apply the settings.";
-      e.title = "Click to refresh the page";
-
-      const newEl = e.cloneNode(true);
-      e.replaceWith(newEl);
-
-      newEl.addEventListener("click", async () => {
-        await browser.tabs.sendMessage(tab.id, { action: "reloadPage" });
-        window.close();
-      });
-
-      newEl.classList.add("changed");
-    }
+  const listeners = [];
+  const addListener = (el, event, handler, options = {}) => {
+    if (!el) return;
+    el.addEventListener(event, handler, options);
+    listeners.push({ el, event, handler, options });
   };
 
+  const fragment = document.createDocumentFragment();
+
   for (const entry of list) {
-    const { id, domain, title, userAdd, urlPatterns = [], authors, homepage } = entry;
+    const { id, domain, title, userAdd, userScript, urlPatterns = [], authors, homepage } = entry;
     const key = `enable_${id}`;
     const isEnabled = settings[key] !== false;
 
@@ -51,57 +56,33 @@ async function renderList(filteredList = null, isSearch = null) {
     const wrapper = document.createElement("div");
     wrapper.className = "parser-entry";
 
-    // Authors
-    const authorDiv = document.createElement("div");
-    const authorHeader = document.createElement("h4");
-
-    if (authors) {
-      authorDiv.className = "parser-entry-authors";
-      authorHeader.textContent = authors.length > 1 ? "Authors" : "Author";
-
-      authors.forEach((author, i) => {
-        let authorContainer = document.createElement("div");
-        authorContainer.className = "author-container";
-        let authorIconContainer = document.createElement("div");
-        authorIconContainer.className = "author-image-container spinner";
-        let authorIcon = document.createElement("img");
-        authorIcon.className = "author-image hidden";
-        authorIcon.dataset.src = author;
-        authorIconContainer.appendChild(authorIcon);
-
-        const link = document.createElement("a");
-        link.href = `https://github.com/${encodeURIComponent(author)}`;
-        link.textContent = author;
-        link.target = "_blank";
-        link.rel = "noopener noreferrer";
-        authorContainer.append(authorIconContainer, link);
-        authorDiv.appendChild(authorContainer);
-        if (i !== authors.length - 1) {
-          authorDiv.appendChild(document.createTextNode(", "));
-        }
-      });
-    }
-
-    // FavIcons
-    let favIconContainer = document.createElement("div");
+    // FavIcon
+    const favIconContainer = document.createElement("div");
     favIconContainer.className = "parser-icon-container spinner";
-    let favIcon = document.createElement("img");
-    favIcon.className = "parser-icon hidden";
+
+    const favIcon = document.createElement("img");
+    favIcon.className = "parser-icon hidden-visibility";
     favIcon.title = `Open ${title || domain}`;
-    favIcon.dataset.src = `${domain}`;
+    favIcon.dataset.src = domain;
+    favIcon.loading = "lazy";
+    favIcon.decoding = "async";
     favIconContainer.appendChild(favIcon);
-    favIcon.addEventListener("click", () => {
+
+    // Favicon click
+    const handleFavIconClick = () => {
       const url = homepage || `https://${domain}`;
       window.open(url, "_blank", "noopener,noreferrer");
-    });
+    };
+    addListener(favIcon, "click", handleFavIconClick);
 
+    // Entry Inner
     const entryInner = document.createElement("span");
     entryInner.className = "parser-span";
 
     // Title
     const siteTitle = document.createElement("a");
     siteTitle.className = "parser-title";
-    siteTitle.textContent = `${title || domain}`;
+    siteTitle.textContent = title || domain;
 
     // Switch
     const switchLabel = document.createElement("label");
@@ -110,45 +91,66 @@ async function renderList(filteredList = null, isSearch = null) {
     const checkbox = document.createElement("input");
     checkbox.type = "checkbox";
     checkbox.checked = isEnabled;
+    checkbox.dataset.parserId = id;
+    checkbox.dataset.isUserScript = userScript ? "true" : "false";
 
     const slider = document.createElement("span");
     slider.className = "slider";
+    switchLabel.append(checkbox, slider);
 
-    switchLabel.appendChild(checkbox);
-    switchLabel.appendChild(slider);
+    if (!userAdd && !userScript) switchLabel.style.marginLeft = "auto";
 
-    checkbox.addEventListener("change", async () => {
-      const newSetting = {};
-      newSetting[key] = checkbox.checked;
+    // Checkbox change
+    const handleCheckboxChange = async (e) => {
+      const parserId = e.target.dataset.parserId;
+      const isUserScript = e.target.dataset.isUserScript === "true";
+      const enabled = e.target.checked;
+      const newSetting = { [`enable_${parserId}`]: enabled };
       await browser.storage.local.set(newSetting);
-      settings[key] = checkbox.checked;
-    });
+      settings[`enable_${parserId}`] = enabled;
+      if (isUserScript) {
+        await this.sendAction("toggleUserScript", { id: parserId, enabled });
+      }
+    };
+    addListener(checkbox, "change", handleCheckboxChange);
 
-    if (!userAdd) switchLabel.style.marginLeft = "auto";
+    // Authors
+    const authorDiv = document.createElement("div");
+    const authorHeader = document.createElement("h4");
 
-    // Settings Panel
-    let optionsContainer = document.querySelector(`#options-${id}`);
-    if (!optionsContainer) {
-      optionsContainer = document.createElement("div");
-      optionsContainer.id = `options-${id}`;
-      optionsContainer.className = "parser-options";
-      wrapper.appendChild(optionsContainer);
+    if (authors?.length > 0) {
+      authorDiv.className = "parser-entry-authors";
+      authorHeader.textContent = authors.length > 1 ? "Authors" : "Author";
+
+      authors.forEach((author) => {
+        const authorContainer = document.createElement("div");
+        authorContainer.className = "author-container";
+        const link = document.createElement("a");
+        link.href = `https://github.com/${encodeURIComponent(author)}`;
+        link.textContent = author;
+        link.target = "_blank";
+        link.rel = "noopener noreferrer";
+        authorContainer.appendChild(link);
+        authorDiv.appendChild(authorContainer);
+      });
     }
-    optionsContainer.innerHTML = "";
 
-    // Header for author and other stuff
+    // Options Container
+    const optionsContainer = document.createElement("div");
+    optionsContainer.id = `options-${id}`;
+    optionsContainer.className = "parser-options";
+
+    // Headers
     optionsContainer.append(authorHeader, authorDiv);
-
-    // Header for custom/user options
     const optionsHeader = document.createElement("h4");
     optionsHeader.textContent = "Settings";
     optionsContainer.appendChild(optionsHeader);
 
+    // Parser Options
     const settingKey = `settings_${id}`;
     const stored = await browser.storage.local.get(settingKey);
-    const parserOptions = stored[settingKey] || {};
+    let parserOptions = stored[settingKey] || {};
 
-    // Default Options
     for (const [key, def] of Object.entries(DEFAULT_PARSER_OPTIONS)) {
       if (parserOptions[key] === undefined) {
         parserOptions[key] = { ...def };
@@ -156,116 +158,10 @@ async function renderList(filteredList = null, isSearch = null) {
     }
     await browser.storage.local.set({ [settingKey]: parserOptions });
 
-    // Function to render options
-    async function renderOptions(optionsContainer) {
-      // Render custom parser options
-      const userKeys = Object.keys(parserOptions).filter((k) => !Object.keys(DEFAULT_PARSER_OPTIONS).includes(k));
+    // renderOptions
+    await renderOptions(optionsContainer, parserOptions, settingKey, addListener);
 
-      for (const key of userKeys) {
-        await renderOption(key, parserOptions[key], optionsContainer);
-      }
-
-      // Add header for Default Parser Options
-      if (userKeys.length > 0) {
-        const defaultHeader = document.createElement("h4");
-        defaultHeader.textContent = "General Settings";
-        optionsContainer.appendChild(defaultHeader);
-      }
-
-      // Render DEFAULT_PARSER_OPTIONS in order
-      const defaultKeys = Object.keys(DEFAULT_PARSER_OPTIONS).filter((k) => k !== "customCover" && k !== "customCoverUrl");
-
-      for (const key of defaultKeys) {
-        await renderOption(key, parserOptions[key], optionsContainer);
-      }
-
-      // Finally, render customCover & customCoverUrl
-      ["customCover", "customCoverUrl"].forEach((key) => {
-        if (parserOptions[key]) {
-          renderOption(key, parserOptions[key], optionsContainer);
-        }
-      });
-    }
-
-    // Helper function to render a single option
-    async function renderOption(key, data, container) {
-      const optionSpan = document.createElement("span");
-      optionSpan.className = "parser-option";
-
-      const label = document.createElement("label");
-      label.textContent = data.label || key;
-
-      let input = null;
-
-      if (data.type === "select") {
-        const optionsArray = Array.isArray(data.value) ? data.value : [];
-        input = document.createElement("select");
-
-        optionsArray.forEach((opt) => {
-          const optEl = document.createElement("option");
-          optEl.value = opt.value;
-          optEl.textContent = opt.label;
-          optEl.selected = opt.selected === true;
-          input.appendChild(optEl);
-        });
-
-        ((keyCopy, inputCopy) => {
-          inputCopy.addEventListener("change", async () => {
-            const selectedValue = inputCopy.value;
-            const newOptions = optionsArray.map((opt) => ({
-              ...opt,
-              selected: opt.value === selectedValue,
-            }));
-            parserOptions[keyCopy].value = newOptions;
-            await browser.storage.local.set({ [settingKey]: parserOptions });
-            settingRefreshMessage();
-          });
-        })(key, input);
-      } else if (data.type === "checkbox") {
-        const switchLabel = document.createElement("label");
-        switchLabel.className = "switch-label";
-
-        const checkbox = document.createElement("input");
-        checkbox.type = "checkbox";
-        checkbox.checked = data.value;
-
-        const slider = document.createElement("span");
-        slider.className = "slider";
-
-        switchLabel.appendChild(checkbox);
-        switchLabel.appendChild(slider);
-        input = switchLabel;
-
-        ((keyCopy, checkboxCopy) => {
-          checkboxCopy.addEventListener("change", async () => {
-            parserOptions[keyCopy].value = checkboxCopy.checked;
-            await browser.storage.local.set({ [settingKey]: parserOptions });
-            settingRefreshMessage();
-          });
-        })(key, checkbox);
-      } else if (data.type === "text") {
-        input = document.createElement("input");
-        input.type = "text";
-        input.value = data.value ?? "";
-
-        ((keyCopy, inputCopy) => {
-          inputCopy.addEventListener("change", async () => {
-            parserOptions[keyCopy].value = inputCopy.value;
-            await browser.storage.local.set({ [settingKey]: parserOptions });
-            settingRefreshMessage();
-          });
-        })(key, input);
-      }
-
-      if (input) {
-        optionSpan.append(label, input);
-        container.appendChild(optionSpan);
-      }
-    }
-
-    await renderOptions(optionsContainer);
-
-    // First Time Options Setup Message
+    // First time message
     if (optionsContainer.querySelectorAll(".parser-option").length < 1) {
       const messageDiv = document.createElement("div");
       messageDiv.className = "setup-options-message";
@@ -274,89 +170,84 @@ async function renderList(filteredList = null, isSearch = null) {
     }
 
     // Gear click
-    entryInner.addEventListener("click", async (e) => {
-      const allEntries = document.querySelectorAll(".parser-entry");
-      const optionsContainer = wrapper.querySelector(".parser-options");
-      const siteListContainer = document.getElementById("siteListContainer");
-      const siteList = document.getElementById("siteList");
-      const isOpen = optionsContainer.classList.contains("open");
+    const handleEntryInnerClick = (e) => {
+      if (e.target.closest(".switch-label, .del-user-parser, .edit-user-script, .parser-icon")) return;
       e.stopPropagation();
-      if (e.target.closest(".switch-label") || e.target.closest(".del-user-parser") || e.target.closest(".parser-icon")) {
-        return;
-      }
+
+      const isOpen = optionsContainer.classList.contains("open");
+      const siteList = document.getElementById("siteList");
+      const siteListContainer = document.getElementById("siteListContainer");
+      const searchBox = document.getElementById("searchBox");
+
       if (!isOpen) {
-        // Open
         optionsContainer.classList.add("open");
-        const originalScrollTop = siteList.scrollTop;
+        wrapper.dataset.originalScrollTop = siteList.scrollTop;
         const wrapperRect = wrapper.getBoundingClientRect();
-        const siteListRect = siteList.getBoundingClientRect();
-        wrapper.dataset.originalScrollTop = originalScrollTop;
-        wrapper.dataset.originalOffset = wrapperRect.top - siteListRect.top;
+        const listRect = siteList.getBoundingClientRect();
+        wrapper.dataset.originalOffset = wrapperRect.top - listRect.top;
         const targetOffset = -wrapper.dataset.originalOffset;
 
-        // Scroll the siteListContainer to bring the clicked entry to the top.
         siteListContainer.style.transform = `translateY(${targetOffset}px)`;
         siteListContainer.style.marginBottom = `-${-targetOffset}px`;
 
-        // Fade the other entries
-        allEntries.forEach((entry) => {
-          if (entry !== wrapper) {
-            entry.classList.add("fading");
-          }
+        container.querySelectorAll(".parser-entry").forEach((el) => {
+          if (el !== wrapper) el.classList.add("fading");
         });
-
-        searchBox.classList.add("fading");
-
-        // Open the options container
+        searchBox?.classList.add("fading");
         optionsContainer.style.maxHeight = optionsContainer.scrollHeight + "px";
       } else {
-        // Close
         optionsContainer.classList.remove("open");
         optionsContainer.style.maxHeight = "0";
         siteListContainer.style.transform = "translateY(0)";
-        siteListContainer.style.marginBottom = ``;
-        searchBox.classList.remove("fading");
-        allEntries.forEach((entry) => {
-          entry.classList.remove("fading");
-        });
+        siteListContainer.style.marginBottom = "";
+        searchBox?.classList.remove("fading");
+        container.querySelectorAll(".parser-entry").forEach((el) => el.classList.remove("fading"));
 
-        //Return to the original scroll position
         setTimeout(() => {
-          const originalScrollTop = wrapper.dataset.originalScrollTop;
-          if (originalScrollTop !== undefined) {
-            siteList.scrollTo({ top: originalScrollTop, behavior: "smooth" });
+          const original = wrapper.dataset.originalScrollTop;
+          if (original !== undefined) {
+            siteList.scrollTo({ top: original, behavior: "smooth" });
           }
         }, 400);
       }
-    });
+    };
     entryInner.append(favIconContainer, siteTitle);
+    addListener(entryInner, "click", handleEntryInnerClick);
+
     // User Add - Delete
     if (userAdd) {
       const delBtn = document.createElement("a");
       delBtn.className = "del-user-parser";
       delBtn.appendChild(createSVG(svg_paths.trashIconPaths));
-      delBtn.title = "Delete this user music site";
-      delBtn.addEventListener("click", async (e) => {
-        const confirmed = confirm(`Do you want to delete "${title}" parser?`);
-        if (!confirmed) return;
+      delBtn.title = "Delete";
+      delBtn.dataset.parserId = id;
+      delBtn.dataset.parserTitle = title;
+      delBtn.dataset.parserDomain = domain;
+
+      const handleDeleteClick = async (e) => {
+        e.stopPropagation();
+        const parserId = e.currentTarget.dataset.parserId;
+        const parserTitle = e.currentTarget.dataset.parserTitle;
+
+        if (!confirm(`Do you want to delete "${parserTitle}" parser?`)) return;
 
         const storage = await browser.storage.local.get(["userParserSelectors", "parserList"]);
-        const updatedUserList = (storage.userParserSelectors || []).filter((p) => p.id !== id);
-        const updatedParserList = (storage.parserList || []).filter((p) => p.id !== id);
+        const updatedUserList = (storage.userParserSelectors || []).filter((p) => p.id !== parserId);
+        const updatedParserList = (storage.parserList || []).filter((p) => p.id !== parserId);
 
-        await browser.storage.local.remove(`enable_${id}`);
+        await browser.storage.local.remove(`enable_${parserId}`);
         await browser.storage.local.set({
           userParserSelectors: updatedUserList,
           parserList: updatedParserList,
         });
 
         if (Array.isArray(window.parsers?.[domain])) {
-          window.parsers[domain] = window.parsers[domain].filter((p) => p.id !== id);
+          window.parsers[domain] = window.parsers[domain].filter((p) => p.id !== parserId);
         }
 
         await renderList(updatedParserList);
-      });
-
+      };
+      addListener(delBtn, "click", handleDeleteClick);
       entryInner.appendChild(delBtn);
 
       if (tabHostname === normalize(domain)) {
@@ -367,16 +258,151 @@ async function renderList(filteredList = null, isSearch = null) {
       }
     }
 
-    entryInner.appendChild(switchLabel);
+    // User Script Edit
+    if (userScript) {
+      const gearBtn = document.createElement("a");
+      gearBtn.className = "edit-user-script";
+      gearBtn.appendChild(createSVG(svg_paths.gearIconPaths));
+      gearBtn.title = "Edit user script";
+      gearBtn.dataset.parserId = id;
+
+      addListener(gearBtn, "click", (e) => {
+        e.stopPropagation();
+        openUserScriptManager(e.currentTarget.dataset.parserId);
+      });
+      entryInner.appendChild(gearBtn);
+    }
+
+    // Append all
+    entryInner.append(switchLabel);
     wrapper.append(entryInner, optionsContainer);
-    container.appendChild(wrapper);
+    fragment.appendChild(wrapper);
   }
 
-  // Load Icons
+  container.appendChild(fragment);
+  updateMinHeight();
+
+  // Favicon lazy load
   const allFavIcons = document.querySelectorAll(".parser-icon");
   loadFavIcons(allFavIcons);
 
-  // Load Author Icons
-  const allAuthorIcons = document.querySelectorAll(".author-image");
-  loadAuthorIcons(allAuthorIcons);
+  // Cleanup
+  currentRenderCleanup = () => {
+    listeners.forEach(({ el, event, handler, options }) => {
+      el?.removeEventListener?.(event, handler, options);
+    });
+    listeners.length = 0;
+  };
+
+  return true;
+}
+
+async function renderOptions(container, parserOptions, settingKey, addListener) {
+  const userKeys = Object.keys(parserOptions).filter((k) => !Object.keys(DEFAULT_PARSER_OPTIONS).includes(k));
+
+  for (const key of userKeys) {
+    await renderOption(key, parserOptions[key], container, settingKey, addListener);
+  }
+
+  if (userKeys.length > 0) {
+    const defaultHeader = document.createElement("h4");
+    defaultHeader.textContent = "General Settings";
+    container.appendChild(defaultHeader);
+  }
+
+  const defaultKeys = Object.keys(DEFAULT_PARSER_OPTIONS).filter((k) => !["customCover", "customCoverUrl"].includes(k));
+  for (const key of defaultKeys) {
+    await renderOption(key, parserOptions[key], container, settingKey, addListener);
+  }
+
+  ["customCover", "customCoverUrl"].forEach((key) => {
+    if (parserOptions[key]) {
+      renderOption(key, parserOptions[key], container, settingKey, addListener);
+    }
+  });
+}
+
+async function renderOption(key, data, container, settingKey, addListener) {
+  const optionSpan = document.createElement("span");
+  optionSpan.className = "parser-option";
+
+  const label = document.createElement("label");
+  label.textContent = data.label || key;
+
+  let input = null;
+
+  if (data.type === "select") {
+    input = document.createElement("select");
+    input.dataset.optionKey = key;
+    input.dataset.settingKey = settingKey;
+
+    const optionsArray = Array.isArray(data.value) ? data.value : [];
+    optionsArray.forEach((opt) => {
+      const optEl = document.createElement("option");
+      optEl.value = opt.value;
+      optEl.textContent = opt.label;
+      if (opt.selected) optEl.selected = true;
+      input.appendChild(optEl);
+    });
+
+    const handler = async (e) => {
+      const optKey = e.target.dataset.optionKey;
+      const setKey = e.target.dataset.settingKey;
+      const selectedValue = e.target.value;
+      const stored = await browser.storage.local.get(setKey);
+      const opts = stored[setKey] || {};
+      const arr = Array.isArray(opts[optKey]?.value) ? opts[optKey].value : [];
+      opts[optKey].value = arr.map((o) => ({ ...o, selected: o.value === selectedValue }));
+      await browser.storage.local.set({ [setKey]: opts });
+      settingRefreshMessage();
+    };
+    addListener(input, "change", handler);
+  } else if (data.type === "checkbox") {
+    const switchLabel = document.createElement("label");
+    switchLabel.className = "switch-label";
+
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.checked = !!data.value;
+    checkbox.dataset.optionKey = key;
+    checkbox.dataset.settingKey = settingKey;
+
+    const slider = document.createElement("span");
+    slider.className = "slider";
+    switchLabel.append(checkbox, slider);
+    input = switchLabel;
+
+    addListener(checkbox, "change", async (e) => {
+      const optKey = e.target.dataset.optionKey;
+      const setKey = e.target.dataset.settingKey;
+      const stored = await browser.storage.local.get(setKey);
+      const opts = stored[setKey] || {};
+      opts[optKey].value = e.target.checked;
+      await browser.storage.local.set({ [setKey]: opts });
+      settingRefreshMessage();
+    });
+  } else if (data.type === "text") {
+    input = document.createElement("input");
+    input.type = "text";
+    input.value = data.value ?? "";
+    input.dataset.optionKey = key;
+    input.dataset.settingKey = settingKey;
+
+    const debounced = debounce(async (e) => {
+      const optKey = e.target.dataset.optionKey;
+      const setKey = e.target.dataset.settingKey;
+      const stored = await browser.storage.local.get(setKey);
+      const opts = stored[setKey] || {};
+      opts[optKey].value = e.target.value;
+      await browser.storage.local.set({ [setKey]: opts });
+      settingRefreshMessage();
+    }, 300);
+
+    addListener(input, "input", debounced);
+  }
+
+  if (input) {
+    optionSpan.append(label, input);
+    container.appendChild(optionSpan);
+  }
 }

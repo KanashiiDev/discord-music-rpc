@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Discord Music Rpc - UserScript Manager</title>
+    <link rel="stylesheet" href="userScriptManager.css" />
+    <link rel="stylesheet" href="../libs/codemirror/css/codemirror.css" />
+    <link rel="stylesheet" href="../libs/codemirror/css/codemirror-material-darker.css" />
+    <link rel="stylesheet" href="../libs/simplebar.css" />
+  </head>
+
+  <body data-theme="dark">
+    <div class="header">
+      <div>
+        <h3>Discord Music RPC - UserScript Manager</h3>
+        <p class="header-desc">Add more advanced music parsers using userscripts!</p>
+      </div>
+      <div id="listControls">
+        <button id="btnNew">+ New Script</button>
+        <button id="btnImport">Import</button>
+        <button id="btnExport">Export</button>
+      </div>
+    </div>
+
+    <ul id="scriptList"></ul>
+
+    <input type="file" id="fileInput" accept=".json,.js" />
+
+    <div id="editor" current="0" hidden>
+      <h4 id="editorTitle">New Script</h4>
+      <div id="editor-container">
+        <div id="editor-left">
+          <div class="container">
+            <p>Script Name:</p>
+            <input type="text" id="inTitle" placeholder="Music Website" />
+          </div>
+          <div class="container">
+            <p>Description:</p>
+            <input type="text" id="inDesc" placeholder="My Userscript for Music Website." />
+          </div>
+          <div class="container">
+            <p>Authors (comma separated):</p>
+            <input type="text" id="inAuthors" placeholder="kanashiiDev,KanashiiDev2" />
+          </div>
+
+          <div class="container">
+            <p>Domain:</p>
+            <input type="text" id="inDomain" placeholder="musicwebsite.com" />
+            <small>Enter the domain where this script should run</small>
+          </div>
+
+          <div class="container">
+            <p>URL Pattern(s) (comma separated):</p>
+            <input type="text" id="inUrlPatterns" placeholder="home.*,player.*" />
+            <div id="patternStatus"></div>
+            <small>Regex patterns to match specific URLs. (Optional)</small>
+            <br />
+            <small>Example: <code>home.*</code> will match URLs that start with "home"</small>
+          </div>
+          <div class="container debug">
+            <p>Debug Mode</p>
+            <small>When your script is active, it displays song information every 5 seconds in the developer console of the relevant page.</small>
+            <label class="switch-label"><input type="checkbox" id="inDebug" placeholder="" value="" /><span class="slider"></span></label>
+          </div>
+          <div class="container">
+            <button id="btnSave">Save Script</button>
+            <button id="btnCancel">Close</button>
+          </div>
+        </div>
+        <div class="editor-right">
+          <div class="container">
+            <div class="code-header">
+              <p>Script Code:</p>
+              <button id="btnFormat">Beautify</button>
+            </div>
+            <textarea id="inCode" rows="15" placeholder="// Your javaScript code here..."></textarea>
+            <div class="code-notes">
+              <p class="required-vars">
+                <span>Required Variables: </span><code>title</code>, <code>artist</code>, <code>image</code>, <code>source</code>, <code>songUrl</code>, <code>timePassed</code>, <code>duration</code>.
+              </p>
+              <p>
+                <span class="keyboard-shortcuts">Keyboard Shortcuts:</span>
+                <code><code>Ctrl+/</code> Toggle Comment</code>
+                <code><code>Ctrl+z</code> Undo</code>
+                <code><code>Ctrl+y</code> Redo</code>
+                <code><code>Ctrl+F</code> Find</code>
+                <code><code>Ctrl+S</code> Save</code>
+              </p>
+            </div>
+            <div class="code-notes useSettings">
+              <p>Manage Settings</p>
+              <small>This section is for generating and editing default settings.</small>
+              <div class="buttons"><button id="createSettingsBtn">Generate Settings</button> <button id="editSettingsBtn">Edit Settings</button></div>
+              <div id="useSettingsContainer" class="use-settings-builder"></div>
+            </div>
+          </div>
+        </div>
+        <small class="editor-note">When you save your script for the first time, it is normal for the site not to appear in the popup. The popup will update when you open the relevant page.</small>
+      </div>
+
+      <div id="editorMsg"></div>
+    </div>
+    <div id="mv3Alert">
+      <div class="box">
+        <h2>⚠️ User Scripts Permission Required! ⚠️</h2>
+        <p>
+          This section relies on the <b>User Scripts API</b> to inject and manage custom scripts.
+          <br />
+          However, your browser has not granted this permission yet.
+        </p>
+        <br />
+        <h4>Why this matters</h4>
+        <p>Without this permission, you cannot create your custom user scripts for music websites.</p>
+        <br />
+        <h4>How to fix it</h4>
+        <p>
+          1. Open your browser's <b>Extension Management page</b>: <code>chrome://extensions/</code> and locate this extension.
+          <br />
+          2. Look for a permission setting related to <code>Allow User Scripts</code> and enable it.
+          <br />
+          3. After changing the permission, please refresh the page.
+        </p>
+      </div>
+    </div>
+
+    <script src="../libs/browser-polyfill.js"></script>
+    <script src="../libs/simplebar.js"></script>
+    <script src="../common/utils.js"></script>
+    <script src="../libs/codemirror/codemirror.js"></script>
+    <script src="userScriptWorker.js"></script>
+    <script src="userScriptManager.js"></script>
+  </body>
+</html>

@@ -1,7 +1,7 @@
 const express = require("express");
 const cors = require("cors");
 const { Client, StatusDisplayType } = require("@xhayper/discord-rpc");
-const { logRpcConnection, shouldLogAttempt, getCurrentTime, isSameActivity, isSameActivityIgnore, truncate, normalizeTitleAndArtist, isValidUrl, notifyRpcStatus } = require("./utils.js");
+const { logRpcConnection, getCurrentTime, isSameActivity, isSameActivityIgnore, truncate, normalizeTitleAndArtist, isValidUrl, notifyRpcStatus } = require("./utils.js");
 const app = express();
 const PORT = 3000;
 const CLIENT_ID = "1366752683628957767";
@@ -39,32 +39,32 @@ const server = app.listen(PORT, () => {
 // Initial connection
 connectRPC().catch(console.error);
 
-// Setup RPC event listeners
-function setupRpcListeners(client) {
-  client.removeAllListeners();
-
-  client.on("disconnected", () => {
-    isRpcConnected = false;
-    isConnecting = false;
-    notifyRpcStatus(isRpcConnected);
-    if (!isShuttingDown) {
-      console.warn("RPC disconnected. Attempting reconnect...");
-      connectRPC().catch(console.error);
-    }
-  });
-}
-
 // Create new RPC Client
 function createClient() {
-  const client = new Client({
+  if (rpcClient) return rpcClient;
+
+  rpcClient = new Client({
     clientId: CLIENT_ID,
     transport: process.env.ELECTRON_MODE === "true" ? "ipc" : "websocket",
     useSteam: false,
     reconnect: false,
   });
 
-  setupRpcListeners(client);
-  return client;
+  rpcClient.setMaxListeners(50);
+
+  // Disconnect Event
+  rpcClient.once("disconnected", async () => {
+    isRpcConnected = false;
+    isConnecting = false;
+    notifyRpcStatus(isRpcConnected);
+
+    if (!isShuttingDown) {
+      console.warn("RPC disconnected. Attempting reconnect...");
+      await connectRPC();
+    }
+  });
+
+  return rpcClient;
 }
 
 // Connect to RPC
@@ -75,39 +75,22 @@ async function connectRPC() {
 
   while (!isRpcConnected && !isShuttingDown) {
     attempt++;
-
     try {
-      if (rpcClient) {
-        try {
-          rpcClient.removeAllListeners();
-          await rpcClient.destroy();
-        } catch (err) {
-          logRpcConnection(`Failed to cleanly destroy RPC client: ${err.message}`);
-        }
-        rpcClient = null;
-        global.gc?.();
-      }
+      const client = createClient();
+      await Promise.race([client.login(), new Promise((_, reject) => setTimeout(() => reject(new Error("Login timed out")), RETRY_DELAY))]);
 
-      rpcClient = createClient();
-
-      if (shouldLogAttempt(attempt)) {
+      if (attempt === 1) {
         logRpcConnection(`Connecting to RPC (attempt ${attempt})`);
       }
-
-      await Promise.race([rpcClient.login(), new Promise((_, reject) => setTimeout(() => reject(new Error("Login timed out")), RETRY_DELAY))]);
 
       isRpcConnected = true;
       notifyRpcStatus(isRpcConnected);
       logRpcConnection(`RPC connected successfully`);
       return true;
     } catch (err) {
-      if (shouldLogAttempt(attempt)) {
+      if (attempt === 5) {
         logRpcConnection(`RPC connection failed (attempt #${attempt}): ${err.message}`);
-        logRpcConnection(`Retrying every ${RETRY_DELAY / 1000} seconds`);
-      }
-
-      if (attempt === 4) {
-        logRpcConnection("RPC connection still fails. Subsequent failures will be logged every 10 attempts to reduce noise.");
+        logRpcConnection("Waiting for connection..");
       }
 
       await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY));
@@ -358,14 +341,15 @@ async function shutdown() {
   if (healthCheckTimeout) clearTimeout(healthCheckTimeout);
 
   try {
-    if (rpcClient) await rpcClient.destroy();
+    if (rpcClient) {
+      await rpcClient.destroy();
+      rpcClient = null;
+    }
   } catch (err) {
     console.error("RPC destroy failed:", err);
   }
 
-  server.close(() => {
-    process.exit(0);
-  });
+  server.close(() => process.exit(0));
 }
 
 process.on("SIGINT", shutdown);

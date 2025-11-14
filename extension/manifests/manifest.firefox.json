@@ -1,15 +1,15 @@
 {
   "manifest_version": 2,
-  "name": "Discord Music RPC Controller",
-  "description": "This extension is used for communication with the Music RPC Server.",
-  "homepage_url": "https://github.com/KanashiiDev",
+  "name": "Discord Music RPC",
+  "description": "Show music from any website on your Discord!",
+  "homepage_url": "https://github.com/KanashiiDev/discord-music-rpc",
 
   "background": {
     "scripts": ["libs/browser-polyfill.js", "libs/pako.js", "background.js"],
     "persistent": false
   },
 
-  "permissions": ["tabs", "storage", "http://localhost:3000/*"],
+  "permissions": ["scripting", "tabs", "storage", "contextMenus", "*://*/*"],
 
   "content_scripts": [
     {
@@ -39,10 +39,11 @@
   "browser_specific_settings": {
     "gecko": {
       "id": "discord-rpc@kanashiidev.local",
-      "strict_min_version": "106.0",
+      "strict_min_version": "136.0",
       "data_collection_permissions": {
         "required": ["websiteContent"]
       }
     }
-  }
+  },
+  "user_scripts": {}
 }

@@ -9,9 +9,11 @@
   </head>
   <body data-theme="dark" data-section="main">
     <div class="header-container">
-      <a id="historyStatsToggle" title="Stats"> </a>
-      <h1 id="mainHeader">Discord Music RPC</h1>
-      <a id="historyToggle" title="History"> </a>
+      <h1 id="mainHeader">
+        <a id="historyStatsToggle" title="Stats"> </a>
+        Discord Music RPC
+        <a id="historyToggle" title="History"> </a>
+      </h1>
     </div>
     <div class="history-controls" style="display: none; position: relative">
       <input type="text" id="historySearchBox" placeholder="Search history..." />
@@ -60,10 +62,13 @@
     <div id="siteList" class="site-list" style="padding-right: 16px">
       <div id="siteListContainer" class="site-list-container"></div>
     </div>
-    <div id="historyHeader" style="display: none">
+    <div id="historyFooter" style="display: none">
       <a id="clearHistoryBtn" class="button" style="cursor: pointer; width: 100%">Clear History</a><a id="cancelCleanBtn" class="button" style="display: none">Cancel</a>
     </div>
-    <a id="openSelector">Add Music Site</a>
+    <div id="mainFooterButtons">
+      <a id="openSelector">Add Music Site</a>
+      <a id="openManager">Open Script Manager</a>
+    </div>
     <div id="tutorialTooltip" class="tutorial-dialog">
       <h2 id="tooltipHeader">Tutorial</h2>
       <p id="tooltipText"></p>
@@ -74,11 +79,8 @@
     <script src="../libs/simplebar.js"></script>
     <script src="../libs/lazysizes.js" async></script>
     <script src="../libs/browser-polyfill.js"></script>
-    <script src="../libs/pako.js"></script>
     <script src="../libs/flatpickr.js"></script>
     <script src="../common/utils.js"></script>
-    <script src="modules/getIcons.js"></script>
-    <script src="modules/history.js"></script>
     <script src="components/renderList.js"></script>
     <script src="components/renderHistory.js"></script>
     <script src="components/renderHistoryStats.js"></script>

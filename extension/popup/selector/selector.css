@@ -61,7 +61,7 @@ a {
   position: fixed;
   top: 15px;
   right: 15px;
-  width: 350px !important;
+  width: 360px !important;
   height: auto;
   max-height: 90vh !important;
   -webkit-box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
@@ -73,7 +73,6 @@ a {
   padding: 16px;
   background-color: #1e1e1e;
   color: #e0e0e0;
-  -webkit-border-radius: 6px;
   border-radius: 6px;
   border: 1px solid #3c3c3c;
 }
@@ -83,7 +82,8 @@ a {
   top: 20px;
   left: 50%;
   -webkit-transform: translateX(-50%);
-  transform: translateX(-50%);
+  -ms-transform: translateX(-50%);
+      transform: translateX(-50%);
   -webkit-box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
   box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
   z-index: 999999;
@@ -93,7 +93,6 @@ a {
   padding: 16px;
   background-color: #1e1e1e;
   color: #e0e0e0;
-  -webkit-border-radius: 6px;
   border-radius: 6px;
   border: 1px solid #3c3c3c;
 }
@@ -159,8 +158,8 @@ h4 {
   -ms-grid-columns: auto auto auto 0;
   grid-template-columns: auto auto auto 0;
   -webkit-box-align: center;
-  -webkit-align-items: center;
-  align-items: center;
+  -ms-flex-align: center;
+      align-items: center;
 }
 
 label[id*="buttonText"],
@@ -189,7 +188,6 @@ br[id*="buttonLink"] {
 .userRpc-selectBtn,
 .userRpc-optionButtons {
   padding: 8px !important;
-  -webkit-border-radius: 8px !important;
   border-radius: 8px !important;
   background-color: #2c2c2c;
   -webkit-box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
@@ -271,7 +269,6 @@ br[id*="buttonLink"] {
 #userRpc-selectorChooser-container-list::-webkit-scrollbar-thumb,
 #userRpc-selectorChooser-container-list::-webkit-scrollbar {
   background: var(--color-background);
-  -webkit-border-radius: 4px;
   border-radius: 4px;
 }
 
@@ -289,14 +286,14 @@ br[id*="buttonLink"] {
 
 #userRpc-selectorChooser-container-list .wrapper {
   display: -webkit-box;
-  display: -webkit-flex;
+  display: -ms-flexbox;
   display: flex;
   -webkit-box-pack: justify;
-  -webkit-justify-content: space-between;
-  justify-content: space-between;
+  -ms-flex-pack: justify;
+      justify-content: space-between;
   -webkit-box-align: center;
-  -webkit-align-items: center;
-  align-items: center;
+  -ms-flex-align: center;
+      align-items: center;
 }
 
 #userRpc-selectorChooser-container-list .selector {
@@ -312,7 +309,6 @@ br[id*="buttonLink"] {
   display: block;
   border: 1px solid rgb(85, 85, 85);
   cursor: pointer;
-  width: -webkit-calc(100% - 10px) !important;
   width: calc(100% - 10px) !important;
   text-align: left;
 }
@@ -327,10 +323,9 @@ br[id*="buttonLink"] {
   color: #4cd95e;
   padding: 12px;
   background: #2c2c2c;
-  -webkit-border-radius: 10px;
   border-radius: 10px;
   border: 1px solid #444444;
-  font-weight: 500;
+  font-weight: 400;
   white-space: pre-line;
   display: none;
 }
@@ -349,17 +344,16 @@ br[id*="buttonLink"] {
 
 .rpc-preview .card {
   background-color: #2a2a2a;
-  -webkit-border-radius: 8px;
   border-radius: 8px;
   width: auto;
   color: #dbdee1;
   display: -webkit-box;
-  display: -webkit-flex;
+  display: -ms-flexbox;
   display: flex;
   -webkit-box-orient: vertical;
   -webkit-box-direction: normal;
-  -webkit-flex-direction: column;
-  flex-direction: column;
+  -ms-flex-direction: column;
+      flex-direction: column;
   overflow: hidden;
   -webkit-box-shadow: 0 1px 5px rgba(0, 0, 0, 0.2);
   box-shadow: 0 1px 5px rgba(0, 0, 0, 0.2);
@@ -374,7 +368,7 @@ br[id*="buttonLink"] {
 
 .rpc-preview .body {
   display: -webkit-box;
-  display: -webkit-flex;
+  display: -ms-flexbox;
   display: flex;
   padding: 12px 16px 16px 16px;
 }
@@ -382,7 +376,6 @@ br[id*="buttonLink"] {
 .rpc-preview .imageContainer img {
   width: 60px;
   height: 60px;
-  -webkit-border-radius: 4px;
   border-radius: 4px;
   overflow: hidden;
 }
@@ -390,8 +383,8 @@ br[id*="buttonLink"] {
 .rpc-preview .details {
   margin-left: 12px;
   -webkit-box-flex: 1;
-  -webkit-flex: 1;
-  flex: 1;
+  -ms-flex: 1;
+      flex: 1;
   word-break: break-word;
 }
 
@@ -410,11 +403,11 @@ br[id*="buttonLink"] {
 
 .rpc-preview .progress-container {
   display: -webkit-box;
-  display: -webkit-flex;
+  display: -ms-flexbox;
   display: flex;
   -webkit-box-align: center;
-  -webkit-align-items: center;
-  align-items: center;
+  -ms-flex-align: center;
+      align-items: center;
   gap: 8px;
   margin-top: 8px;
 }
@@ -428,18 +421,16 @@ br[id*="buttonLink"] {
   position: relative;
   background-color: #404249;
   height: 4px;
-  -webkit-border-radius: 2px;
   border-radius: 2px;
   -webkit-box-flex: 1;
-  -webkit-flex-grow: 1;
-  flex-grow: 1;
+  -ms-flex-positive: 1;
+      flex-grow: 1;
 }
 
 .rpc-preview .progress-bar .progress {
   background-color: #ffffff;
   height: 100%;
   width: 55.49%;
-  -webkit-border-radius: 2px;
   border-radius: 2px;
 }
 
@@ -455,7 +446,6 @@ br[id*="buttonLink"] {
   padding: 6px 12px;
   font-size: 12px;
   font-weight: 500;
-  -webkit-border-radius: 4px;
   border-radius: 4px;
   cursor: pointer;
   width: auto;

@@ -37,7 +37,6 @@ function stopWatching() {
   state.isUpdating = false;
   state.activeTab = false;
   rpcState.reset();
-  sleepWorker();
   // clear keepalive interval
   if (state.rpcKeepAliveIntervalId) {
     clearInterval(state.rpcKeepAliveIntervalId);
@@ -64,6 +63,10 @@ function scheduleNextUpdate(interval = CONSTANTS.ACTIVE_INTERVAL) {
 // Main loop to check for song changes and update RPC
 async function mainLoop() {
   if (state.isUpdating) {
+    if (state.updateTimer) {
+      clearTimeout(state.updateTimer);
+      state.updateTimer = null;
+    }
     scheduleNextUpdate();
     return;
   }
@@ -162,7 +165,8 @@ async function processRPCUpdate(song, progress) {
 // Check if RPC is connected
 async function isRpcConnected() {
   try {
-    return await browser.runtime.sendMessage({ type: "IS_RPC_CONNECTED" });
+    const res = await browser.runtime.sendMessage({ type: "IS_RPC_CONNECTED" });
+    return !!res?.ok;
   } catch {
     return false;
   }
@@ -172,42 +176,6 @@ async function isRpcConnected() {
 async function isHostnameMatch() {
   try {
     return await browser.runtime.sendMessage({ type: "IS_HOSTNAME_MATCH" });
-  } catch {
-    return false;
-  }
-}
-
-// Check if background worker is active
-async function ensureBackgroundAwake() {
-  try {
-    logInfo("Background worker is being awakened...");
-
-    // Continue attempting until the worker responds
-    let retries = 0;
-    const maxRetries = 100;
-    const retryDelay = 1000;
-
-    while (retries < maxRetries) {
-      try {
-        // Send a message to the worker and wait for a reply
-        const result = await browser.runtime.sendMessage({ type: "ENSURE_WORKER_ACTIVE" });
-        return true;
-      } catch (error) {
-        await delay(retryDelay);
-        retries++;
-      }
-    }
-    return false;
-  } catch (error) {
-    logError("ensureBackgroundAwake error:", error);
-    return false;
-  }
-}
-
-// Sleep Background Worker
-async function sleepWorker() {
-  try {
-    if (!state.activeTab) await browser.runtime.sendMessage({ type: "SLEEP_WORKER" });
   } catch {
     return false;
   }
@@ -251,12 +219,6 @@ function init() {
   state.initStarted = true;
 
   const start = async () => {
-    const workerAwake = await ensureBackgroundAwake();
-    if (!workerAwake) {
-      logWarn("Background worker could not be awakened, abort init.");
-      return;
-    }
-
     // polling for getSongInfo to be available
     let tries = 0;
     const maxTries = 30;
@@ -271,9 +233,9 @@ function init() {
     }
 
     const hostMatch = await isHostnameMatch();
-    if (!hostMatch) {
+
+    if (!hostMatch.ok) {
       logInfo("Hostname not allowed, not starting watcher.");
-      sleepWorker();
       return;
     }
 

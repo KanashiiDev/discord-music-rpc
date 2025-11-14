@@ -15,9 +15,13 @@ const state = {
   parserEnabledCache: new Map(),
   parserMap: {},
   pendingClear: new Set(),
+  pendingFetches: new Map(),
+  mainLoopTimer: null,
+  parserReloadDebounce: null,
 };
 
 const getEnabledParsers = () => state.parserList.filter((p) => p.isEnabled);
+const historyData = () => loadHistory();
 
 async function loadParserEnabledCache(parserEnabledCache, parserList) {
   const keys = parserList.map((p) => `enable_${p.id}`);
@@ -54,12 +58,12 @@ async function scheduleHistoryAdd(tabId, songData) {
   // If 15 seconds have passed, add it
   if (now - tracker.startTime >= 15000) {
     try {
-      const history = await loadHistory();
+      const history = await historyData();
 
-      // Control with normalized values
-      const exists = history.some((e) => e.t === normalizedTitle && e.a === normalizedArtist && e.s === sourceText);
+      const last = history[0];
+      const sameAsLast = last && last.t === normalizedTitle && last.a === normalizedArtist && last.s === sourceText;
 
-      if (!exists) {
+      if (!sameAsLast) {
         // Add to History
         await addToHistory({
           image: songData.image,
@@ -84,9 +88,8 @@ async function loadParserList() {
       await state.parserListLoading;
     }
 
-    const { parserList = [], userParserSelectors = [] } = await browser.storage.local.get(["parserList", "userParserSelectors"]);
-
-    logInfo(`Loaded ${parserList.length} parsers and ${userParserSelectors.length} user parsers`);
+    const { parserList = [], userParserSelectors = [], userScriptsList = [] } = await browser.storage.local.get(["parserList", "userParserSelectors", "userScriptsList"]);
+    logInfo(`Loaded ${parserList.length} parsers, ${userParserSelectors.length} user parsers and ${userScriptsList.length} user scripts.`);
 
     const userList = userParserSelectors.map((u, index) => ({
       ...u,
@@ -95,20 +98,22 @@ async function loadParserList() {
       userAdd: true,
     }));
 
-    const fullList = [...parserList, ...userList];
-    const keys = fullList.flatMap(({ id }) => [`enable_${id}`, `settings_${id}`]);
-    const settings = await browser.storage.local.get(keys);
+    const userScriptList = userScriptsList.map((u, index) => ({
+      ...u,
+      id: u.id,
+      urlPatterns: u.urlPatterns || [".*"],
+      userScript: true,
+    }));
 
-    state.parserList = fullList.map((p) => {
-      const fallbackId = Object.keys(settings).find((k) => k.startsWith("settings_") && k === `settings_${p.domain}`);
-      const parserSettings = settings[`settings_${p.id}`] || settings[fallbackId] || {};
-      const parsedSettings = Object.fromEntries(Object.entries(parserSettings).map(([key, obj]) => [key, obj.value]));
-      return {
-        ...p,
-        isEnabled: settings[`enable_${p.id}`] !== false,
-        settings: parsedSettings,
-      };
-    });
+    const fullList = [...parserList, ...userList, ...userScriptList];
+    const enableKeys = fullList.map(({ id }) => `enable_${id}`);
+    const settings = await browser.storage.local.get(enableKeys);
+
+    state.parserList = fullList.map((p) => ({
+      ...p,
+      isEnabled: settings[`enable_${p.id}`] !== false,
+      settings: {},
+    }));
 
     state.parserMap = Object.fromEntries(state.parserList.map((p) => [p.id, p]));
     state.parserListLoaded = true;
@@ -121,6 +126,26 @@ async function loadParserList() {
     throw error;
   }
 }
+async function getParserSettings(parserId) {
+  if (!parserId) return {};
+
+  const cached = state.parserMap[parserId]?.settings;
+  if (cached && Object.keys(cached).length > 0) {
+    return cached;
+  }
+
+  const settingKey = `settings_${parserId}`;
+  const result = await browser.storage.local.get(settingKey);
+  const parserSettings = result[settingKey] || {};
+  const parsedSettings = Object.fromEntries(Object.entries(parserSettings).map(([key, obj]) => [key, obj.value]));
+
+  if (state.parserMap[parserId]) {
+    state.parserMap[parserId].settings = parsedSettings;
+  }
+
+  return parsedSettings;
+}
+
 const parserListMutex = createMutex();
 const loadParserListOnce = async () => {
   return parserListMutex(async () => {
@@ -146,7 +171,9 @@ const loadParserListOnce = async () => {
   });
 };
 
-const parserReady = loadParserListOnce();
+const parserReady = async () => {
+  await loadParserListOnce();
+};
 
 const clearRpcForTab = async (tabId) => {
   // If a clear is already in-progress, skip
@@ -193,17 +220,19 @@ const clearRpcForTab = async (tabId) => {
 };
 
 const updateRpc = async (data, tabId) => {
-  await parserReady;
-  await loadParserListOnce();
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), CONFIG.requestTimeout);
+
+  state.pendingFetches.set(tabId, controller);
   if (!state.parserMap || Object.keys(state.parserMap).length === 0) {
     state.parserListLoaded = false;
     state.parserListLoading = null;
-    await loadParserListOnce();
   }
+
   const base = state.activeTabMap.get(tabId);
   let parserId = base?.parserId;
 
-  if (!parserId || !state.parserMap[parserId]?.settings || Object.keys(state.parserMap[parserId].settings).length === 0) {
+  if (!parserId) {
     try {
       const tab = await browser.tabs.get(tabId);
       if (tab.url) {
@@ -225,7 +254,8 @@ const updateRpc = async (data, tabId) => {
       logError("Error finding correct parser:", e);
     }
   }
-  const parserSettings = state.parserMap?.[parserId]?.settings || {};
+
+  const parserSettings = await getParserSettings(parserId);
 
   const payload = {
     data: {
@@ -243,39 +273,26 @@ const updateRpc = async (data, tabId) => {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
+      signal: controller.signal,
     },
     CONFIG.requestTimeout
   );
+  clearTimeout(timeoutId);
+  state.pendingFetches.delete(tabId);
 };
 
-const isSameData = (a, b) => a && b && a.title === b.title && a.artist === b.artist && Math.floor(a.progress / 10) === Math.floor(b.progress / 10) && a.duration === b.duration;
-
 const scheduleRpcUpdate = (data, tabId) => {
+  const isSameData = (a, b) => a && b && a.title === b.title && a.artist === b.artist && Math.floor(a.progress / 10) === Math.floor(b.progress / 10) && a.duration === b.duration;
   const current = state.pendingUpdates.get(tabId);
   if (current && isSameData(current.data, data)) return;
 
-  clearTimeout(current?.timeout);
+  if (current?.timeout) clearTimeout(current.timeout);
   const timeout = setTimeout(() => {
     state.pendingUpdates.delete(tabId);
     updateRpc(data, tabId).catch(logError);
   }, 500);
 
   state.pendingUpdates.set(tabId, { timeout, data });
-};
-
-const checkServerHealth = async () => {
-  const now = Date.now();
-  if (now - state.serverStatus.lastCheck < CONFIG.serverCacheTime) return state.serverStatus.isHealthy;
-
-  try {
-    const res = await fetchWithTimeout(`http://localhost:${CONFIG.serverPort}/health`, {}, CONFIG.requestTimeout);
-    state.serverStatus.isHealthy = res.ok && (await res.json()).rpcConnected;
-  } catch {
-    state.serverStatus.isHealthy = false;
-  }
-
-  state.serverStatus.lastCheck = now;
-  return state.serverStatus.isHealthy;
 };
 
 async function safePingTab(tabId) {
@@ -300,6 +317,7 @@ const processTab = async (tabId, tabData) => {
     logError(`Invalid response from tab ${tabId}:`, res);
     return;
   }
+
   const newKey = `${res.title}|${res.artist}|${tabData.isAudioPlaying}|${Math.floor(res.progress / 10)}|${res.duration}`;
   if ((res.duration > 0 && tabData.lastKey === newKey) || (res.duration <= 0 && now - tabData.lastUpdated < CONFIG.activeInterval)) return;
 
@@ -314,8 +332,9 @@ const processTab = async (tabId, tabData) => {
 
 const deferredCleanup = async () => {
   if (!state.cleanupQueue.size) return;
-  await Promise.all([...state.cleanupQueue].map(clearRpcForTab));
+  const tabsToClean = [...state.cleanupQueue];
   state.cleanupQueue.clear();
+  await Promise.all(tabsToClean.map(clearRpcForTab));
 };
 
 const markOtherTabsForCleanup = (activeId) => {
@@ -324,151 +343,7 @@ const markOtherTabsForCleanup = (activeId) => {
   });
 };
 
-const setupListeners = () => {
-  browser.runtime.onMessage.addListener(async (req, sender) => {
-    const tab = await getSenderTab(sender);
-    if (!tab) {
-      logWarn("No tab info from sender, skipping:", req);
-      return;
-    }
-
-    const tabId = tab.id;
-
-    try {
-      await parserReady;
-      if (req.type === "ENSURE_WORKER_ACTIVE") {
-        if (!state.isLoopRunning) {
-          logInfo("Waking background loop...");
-          state.isLoopRunning = true;
-          mainLoop().catch(logError);
-        }
-        return true;
-      }
-
-      if (req.type === "SLEEP_WORKER") {
-        logInfo("Putting background loop to sleep...");
-        state.isLoopRunning = false;
-        return true;
-      }
-
-      if (req.type === "UPDATE_RPC") {
-        const tab = await browser.tabs.get(tabId);
-        if (!tab.audible) {
-          const cur = state.activeTabMap.get(tabId);
-          if (!cur || cur.isAudioPlaying === false) return true;
-          return clearRpcForTab(tabId);
-        }
-
-        const now = Date.now();
-        const { title, artist, progress, duration } = req.data;
-        const key = `${title}|${artist}|true|${Math.floor(progress / 10)}|${duration}`;
-        const current = state.activeTabMap.get(tabId) || {};
-
-        if (current.lastKey === key && now - current.lastUpdated < CONFIG.activeInterval && duration > 0 && progress > 0) return true;
-
-        markOtherTabsForCleanup(tabId);
-        await deferredCleanup();
-
-        let parserId = current.parserId;
-        if (tab.url) {
-          const url = new URL(tab.url);
-          const hostname = url.hostname.replace(/^www\./, "");
-
-          const exactMatch = state.parserList.find((parser) => {
-            const domain = normalize(parser.domain);
-            const normHost = normalize(hostname);
-            return domain === normHost;
-          });
-
-          if (exactMatch) {
-            parserId = exactMatch.id;
-            if (parserId !== current.parserId) {
-              logInfo(`Using exact parser match: ${hostname} -> ${parserId}`);
-            }
-          }
-        }
-
-        state.activeTabMap.set(tabId, {
-          ...req.data,
-          isAudioPlaying: true,
-          lastKey: key,
-          lastUpdated: now,
-          parserId: parserId,
-        });
-
-        scheduleRpcUpdate(req.data, tabId);
-        scheduleHistoryAdd(tabId, {
-          image: req.data.image,
-          title: req.data.title,
-          artist: req.data.artist,
-          source: req.data?.source || (tab.url ? new URL(tab.url).hostname.replace(/^www\./, "") : "unknown"),
-          songUrl: req.data?.songUrl || "",
-        });
-
-        return true;
-      }
-
-      if (req.type === "CLEAR_RPC") return clearRpcForTab(tabId);
-      if (req.type === "IS_RPC_CONNECTED") return checkServerHealth();
-      if (req.type === "IS_HOSTNAME_MATCH") {
-        const tab = await browser.tabs.get(tabId);
-        const url = new URL(tab.url);
-        return isAllowedDomain(url.hostname, url.pathname);
-      }
-    } catch (e) {
-      logError("Browser Message Error", e);
-    }
-  });
-  browser.storage.onChanged.addListener((changes, area) => {
-    if (area !== "local") return;
-
-    for (const [key, { newValue }] of Object.entries(changes)) {
-      // enable_ updates the cache with changes
-      if (key.startsWith("enable_")) {
-        const parserId = key.replace("enable_", "");
-        state.parserEnabledCache.set(parserId, newValue !== false);
-      }
-
-      // If the parser list or settings have changed, reload
-      if (key === "parserList" || key === "userParserSelectors" || key.startsWith("settings_")) {
-        loadParserListOnce().catch(logError);
-      }
-    }
-  });
-
-  browser.tabs.onRemoved.addListener((tabId) => {
-    clearRpcForTab(tabId);
-  });
-};
-
-const isAllowedDomain = async (hostname, pathname) => {
-  try {
-    await loadParserListOnce();
-    const normHost = normalize(hostname);
-
-    for (const parser of state.parserList) {
-      const domain = normalize(parser.domain);
-      if (!domain || !(normHost === domain || normHost.endsWith(`.${domain}`))) continue;
-
-      const match = (parser.urlPatterns || []).map(parseUrlPattern).some((re) => re.test(pathname));
-      if (!match) continue;
-
-      const cached = state.parserEnabledCache.has(parser.id) ? state.parserEnabledCache.get(parser.id) : parser.isEnabled !== false;
-      if (cached) {
-        logInfo(`Match: ${hostname}${pathname} (parser: ${parser.title || parser.id})`);
-        return true;
-      }
-    }
-    return false;
-  } catch (err) {
-    logError("Domain Match Error", err);
-    state.parserList = [];
-    return false;
-  }
-};
-
 const updateActiveTabMap = async (state, tabs) => {
-  await loadParserListOnce();
   const enabled = getEnabledParsers();
 
   const matchedTabs = tabs.filter((tab) => {
@@ -522,12 +397,12 @@ const updateActiveTabMap = async (state, tabs) => {
 };
 
 const mainLoop = async () => {
+  if (state.isLoopRunning) return;
+  state.isLoopRunning = true;
   const now = Date.now();
   if (now - state.lastLoopTime < CONFIG.activeInterval) return;
 
   try {
-    await loadParserListOnce();
-
     const tabs = await browser.tabs.query({ audible: true });
     if (!tabs.length) {
       await deferredCleanup();
@@ -549,13 +424,16 @@ const mainLoop = async () => {
   } catch (e) {
     logError("Main Loop Error", e);
   } finally {
+    if (state.mainLoopTimer) clearTimeout(state.mainLoopTimer);
     state.lastLoopTime = Date.now();
-    if (state.isLoopRunning) setTimeout(mainLoop, CONFIG.activeInterval);
+    state.isLoopRunning = false;
+    state.mainLoopTimer = setTimeout(mainLoop, CONFIG.activeInterval);
   }
 };
 
 const init = async () => {
-  await parserReady;
+  scriptManager.registerAllScripts();
+  await parserReady();
   setupListeners();
   await mainLoop();
 };

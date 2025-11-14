@@ -49,21 +49,10 @@ const delay = (ms) => new Promise((res) => setTimeout(res, ms));
 
 // Debounce
 function debounce(fn, delay) {
-  let t = null;
-  let lastArgs = null;
+  let t;
   return (...args) => {
-    lastArgs = args;
     clearTimeout(t);
-    return new Promise((resolve, reject) => {
-      t = setTimeout(async () => {
-        try {
-          const res = await fn(...lastArgs);
-          resolve(res);
-        } catch (e) {
-          reject(e);
-        }
-      }, delay);
-    });
+    t = setTimeout(() => fn(...args), delay);
   };
 }
 
@@ -96,18 +85,20 @@ function createMutex() {
 }
 
 // Waits for a condition to become true
-function waitFor(predicate, timeout = 500, interval = 50) {
-  const start = Date.now();
-  return new Promise((resolve) => {
-    const poll = () => {
-      try {
-        if (predicate()) return resolve(true);
-      } catch (e) {}
+function waitFor(fn, maxWait = 1000, interval = 50) {
+  const start = performance.now();
 
-      if (Date.now() - start >= timeout) return resolve(false);
-      setTimeout(poll, interval);
+  return new Promise((resolve, reject) => {
+    const tick = () => {
+      try {
+        if (fn()) return resolve(true);
+        if (performance.now() - start >= maxWait) return resolve(false);
+        setTimeout(tick, interval);
+      } catch (error) {
+        reject(error);
+      }
     };
-    poll();
+    tick();
   });
 }
 
@@ -262,7 +253,11 @@ const normalizeHost = (url) => {
 
 // Normalize URL string
 function normalize(str) {
-  return str.replace(/^https?:\/\/|^www\./g, "").toLowerCase();
+  return str
+    .replace(/^https?:\/\//i, "")
+    .replace(/^www\./i, "")
+    .replace(/\/.*$/, "")
+    .toLowerCase();
 }
 
 // Url Pattern Regex
@@ -412,8 +407,10 @@ function applyOverridesLoop() {
 
   // Page Freeze API event listener override
   try {
-    window.addEventListener("freeze", (e) => e.stopImmediatePropagation(), true);
-    window.addEventListener("resume", (e) => e.stopImmediatePropagation(), true);
+    if (!overridesApplied) {
+      window.addEventListener("freeze", (e) => e.stopImmediatePropagation(), true);
+      window.addEventListener("resume", (e) => e.stopImmediatePropagation(), true);
+    }
   } catch (e) {
     logInfo("Page Freeze API override loop error:", e);
   }
@@ -448,8 +445,18 @@ function applyOverridesLoop() {
 }
 
 // Create SVG
+const svgCache = new Map();
 function createSVG(paths, options = {}) {
+  // SVG cache
+  const key = paths.join("");
+  if (svgCache.has(key)) return svgCache.get(key).cloneNode(true);
+
   const { width = 16, height = 16, stroke = "var(--icon-color)", strokeWidth = 2, fill = "none", viewBox = "0 0 24 24" } = options;
+  const cacheKey = `${paths.join("|")}|${width}|${height}|${stroke}|${strokeWidth}|${fill}|${viewBox}`;
+
+  if (svgCache.has(cacheKey)) {
+    return svgCache.get(cacheKey).cloneNode(true);
+  }
 
   const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
   svg.setAttribute("width", width);
@@ -465,6 +472,10 @@ function createSVG(paths, options = {}) {
     const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
     path.setAttribute("d", d);
     svg.appendChild(path);
+  }
+
+  if (svgCache.size < 50) {
+    svgCache.set(cacheKey, svg.cloneNode(true));
   }
 
   return svg;
@@ -487,7 +498,15 @@ const svg_paths = {
     "M15 7c0-1.1.9-2 2-2h2c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2h-2c-1.1 0-2-.9-2-2V7z",
   ],
   backIconPaths: ["M19 20l-8-8 8-8"],
+  crossIconPaths: ["M6 6L18 18 M18 6L6 18"],
   filterIconPaths: ["M3 4h18", "M6 12h12", "M10 20h4"],
+  pauseIconPaths: ["M6 5h4v14H6z", "M14 5h4v14h-4z"],
+  startIconPaths: ["M8 5v14l10-7z"],
+  exportIconPaths: [
+    "M20.15,13.1h1.35v6.9a1.9,1.9,0,0,1-1.9,1.9H4.4a1.9,1.9,0,0,1-1.9-1.9V5.6a1.9,1.9,0,0,1,1.9-1.9h6.9v1.35H4.4a0.7,0.7,0,0,0-0.7,0.7V19.8a0.7,0.7,0,0,0,0.7,0.7H19.6a0.7,0.7,0,0,0,0.7-0.7Z",
+    "M17,2.6v1h4L12.7,11.6l0.9,0.9L21.9,4.2v3.4h.7V2.8Z",
+  ],
+  penIconPaths: ["M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25z", "M20.71 7.04a1.003 1.003 0 0 0 0-1.42l-2.34-2.34a1.003 1.003 0 0 0-1.42 0l-1.83 1.83 3.75 3.75 1.84-1.82z"],
 };
 
 // Get Fresh Parser List
@@ -704,7 +723,7 @@ function showInitialSetupDialog() {
   content.appendChild(contentHeader);
 
   const contentText = document.createElement("p");
-  contentText.textContent = "This extension requires a companion windows application to function properly. Please install the required application to continue.";
+  contentText.textContent = "This extension requires a companion application to function properly. Please install the required application to continue.";
   content.appendChild(contentText);
 
   const contentLink = document.createElement("a");
@@ -770,6 +789,10 @@ async function showInitialTutorial() {
       text: 'You can add custom music site by clicking "Add Music Site" button.',
       selector: "#openSelector",
     },
+    {
+      text: 'You can manage your scripts by clicking "Open Script Manager" button.',
+      selector: "#openManager",
+    },
   ];
 
   // References to DOM elements
@@ -779,28 +802,36 @@ async function showInitialTutorial() {
   const nextBtn = document.getElementById("tooltipNextBtn");
   const skipBtn = document.getElementById("tooltipSkipBtn");
   const siteList = document.getElementById("siteList");
-  const siteHeader = document.querySelector(".header-container");
-  const allEntries = document.querySelectorAll(".header-container, .parser-entry, #searchBox, #openSelector, .simplebar-track.simplebar-vertical");
+  const allEntries = document.querySelectorAll(".header-container, .parser-entry, #searchBox, #openSelector, #openManager, .simplebar-track.simplebar-vertical");
 
   // Initial settings
   let currentStep = 0;
   tooltip.style.display = "block";
   siteList.style.pointerEvents = "none";
-  siteHeader.style.pointerEvents = "none";
 
   // Highlight a specific item
   function highlightElement(targetEl) {
-    if (targetEl?.className === "parser-entry") {
-      allEntries.forEach((entry) => {
-        if (entry !== targetEl) entry.classList.add("fading");
-      });
+    // Add fading to all entries
+    allEntries.forEach((entry) => entry.classList.add("fading"));
+
+    // If there is a target element, remove fading from it
+    if (targetEl) {
+      targetEl.classList.remove("fading");
+
+      // If the target element is inside a parser entry, remove it from there as well.
+      const parserParent = targetEl.closest(".parser-entry");
+      if (parserParent) {
+        parserParent.classList.remove("fading");
+      }
     }
 
     // Remove previous highlights
     document.querySelectorAll(".tutorialTooltip-highlight").forEach((el) => el.classList.remove("tutorialTooltip-highlight"));
 
     // Add Highlight
-    if (targetEl) targetEl.classList.add("tutorialTooltip-highlight");
+    if (targetEl) {
+      targetEl.classList.add("tutorialTooltip-highlight");
+    }
   }
 
   // Set the tooltip position relative to the target element
@@ -841,13 +872,6 @@ async function showInitialTutorial() {
 
     // The last step is to show the 'Finish' button
     if (isLastStep) {
-      allEntries.forEach((entry) => {
-        entry.classList.add("fading");
-        if (entry.id === "openSelector") {
-          entry.classList.remove("fading");
-          entry.style.pointerEvents = "none";
-        }
-      });
       nextBtn.classList.add("finish");
       nextBtn.textContent = "Finish";
       skipBtn.remove();
@@ -857,17 +881,10 @@ async function showInitialTutorial() {
   // End the tutorial
   async function endTutorial() {
     tooltip.style.display = "none";
-
-    document.querySelectorAll(".tutorialTooltip-highlight").forEach((el) => el.classList.remove("tutorialTooltip-highlight"));
-
-    allEntries.forEach((entry) => entry.classList.remove("fading"));
-
-    await browser.storage.local.set({ initialTutorialDone: true });
-
-    // Re-enable clickability
     siteList.style.pointerEvents = "";
-    siteHeader.style.pointerEvents = "";
-    document.getElementById("openSelector").style.pointerEvents = "";
+    document.querySelectorAll(".tutorialTooltip-highlight").forEach((el) => el.classList.remove("tutorialTooltip-highlight"));
+    allEntries.forEach((entry) => entry.classList.remove("fading"));
+    await browser.storage.local.set({ initialTutorialDone: true });
   }
 
   // Event Listener
@@ -980,18 +997,25 @@ function getPlainText(text) {
   if (/[\s>+~.#:\[\]]/.test(trimmed)) return null;
   return trimmed;
 }
-
 function openIndexedDB(DB_NAME, STORE_NAME, DB_VERSION) {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open(DB_NAME, DB_VERSION);
+
     request.onupgradeneeded = (e) => {
       const db = e.target.result;
       if (!db.objectStoreNames.contains(STORE_NAME)) {
-        db.createObjectStore(STORE_NAME);
+        db.createObjectStore(STORE_NAME, { keyPath: null });
       }
     };
-    request.onsuccess = (e) => resolve(e.target.result);
-    request.onerror = (e) => reject(e.target.error);
+
+    request.onsuccess = (e) => {
+      resolve(e.target.result);
+    };
+
+    request.onerror = (e) => {
+      console.error("IndexedDB open error:", e.target.error);
+      reject(e.target.error);
+    };
   });
 }
 
@@ -1044,6 +1068,33 @@ const isValidUrl = (url) => {
   }
 };
 
+const isAllowedDomain = async (hostname, pathname) => {
+  try {
+    const normHost = normalize(hostname);
+
+    for (const parser of state.parserList) {
+      const domain = normalize(parser.domain);
+      if (!domain || normHost !== domain) continue;
+
+      const match = (parser.urlPatterns || []).map(parseUrlPattern).some((re) => re.test(pathname));
+      if (!match) continue;
+
+      const cached = state.parserEnabledCache.has(parser.id) ? state.parserEnabledCache.get(parser.id) : parser.isEnabled !== false;
+
+      if (cached) {
+        logInfo(`Match: ${hostname}${pathname} (parser: ${parser.title || parser.id})`);
+        return true;
+      }
+    }
+
+    return false;
+  } catch (err) {
+    logError("Domain Match Error", err);
+    state.parserList = [];
+    return false;
+  }
+};
+
 // Helper function to safely get text content
 const getSafeText = (getFn, key, fallback) => {
   try {
@@ -1075,65 +1126,6 @@ const getSafeHref = (getFn, key, fallback) => {
   }
 };
 
-// HistoryEntry template
-function createHistoryEntry(entry) {
-  const div = document.createElement("div");
-  div.className = "history-entry";
-
-  // Checkbox
-  const checkbox = document.createElement("input");
-  checkbox.type = "checkbox";
-  checkbox.className = "history-checkbox";
-  checkbox.dataset.index = fullHistory.indexOf(entry);
-
-  // Image
-  const img = document.createElement("img");
-  img.width = 46;
-  img.height = 46;
-  img.className = "history-image lazyload";
-  img.dataset.src = entry.i || browser.runtime.getURL("icons/48x48.png");
-  img.onerror = function () {
-    this.onerror = null;
-    this.src = browser.runtime.getURL("icons/48x48.png");
-  };
-
-  // Info
-  const info = document.createElement("div");
-  info.className = "history-info";
-
-  const strong = document.createElement("strong");
-  strong.textContent = entry.t;
-  strong.className = "history-title";
-
-  const link = document.createElement("a");
-  link.className = "song-link";
-  link.title = "Go to The Song";
-  link.appendChild(createSVG(svg_paths.redirectIconPaths));
-  if (entry.u) link.href = entry.u;
-  link.target = "_blank";
-  link.rel = "noopener noreferrer";
-
-  const small = document.createElement("small");
-  small.className = "history-source";
-  const time = new Date(entry.p);
-  small.textContent = `${entry.s}${dateHourMinute(time) ? " • " + dateHourMinute(time) : ""}`;
-
-  info.appendChild(strong);
-  const parts = [];
-  if (entry.a !== "Radio") {
-    const artist = document.createElement("span");
-    artist.className = "history-artist";
-    artist.textContent = entry.a;
-    const br = document.createElement("br");
-    parts.push(artist, br);
-  }
-  parts.push(small);
-  info.append(...parts);
-  div.append(checkbox, img, info, link);
-
-  return div;
-}
-
 // Get Sender Tab
 async function getSenderTab(sender) {
   if (sender?.tab?.id) return sender.tab;
@@ -1152,12 +1144,15 @@ async function getSenderTab(sender) {
 }
 
 // Activate simplebar
-async function activateSimpleBar(targetIds, timeout = 500, interval = 50, maxWaitMs = 1000) {
+const simpleBarInstances = new WeakMap();
+const panelPromises = new WeakMap();
+const allPanels = new Set();
+
+async function activateSimpleBar(targetIds, timeout = 500, interval = 16, maxWaitMs = 1000) {
   if (!Array.isArray(targetIds)) targetIds = [targetIds];
   const ids = targetIds.map((id) => String(id).replace(/^#/, ""));
 
   const results = [];
-  const panelPromises = new WeakMap();
 
   for (const id of ids) {
     try {
@@ -1168,7 +1163,7 @@ async function activateSimpleBar(targetIds, timeout = 500, interval = 50, maxWai
         continue;
       }
 
-      // Wait for visibility
+      // Wait for panel visibility
       const isVisible = await waitFor(
         () => {
           const style = getComputedStyle(panel);
@@ -1184,26 +1179,28 @@ async function activateSimpleBar(targetIds, timeout = 500, interval = 50, maxWai
       }
 
       // Initialize or update SimpleBar
-      if (panel.SimpleBar && typeof panel.SimpleBar.recalculate === "function") {
-        panel.SimpleBar.recalculate();
+      let instance = simpleBarInstances.get(panel);
+      if (instance && typeof instance.recalculate === "function") {
+        instance.recalculate();
         results.push({ id, success: true, action: "recalculated" });
       } else {
         // Clear the old instance
-        if (panel.SimpleBar?.unMount) {
-          try {
-            panel.SimpleBar.unMount();
-          } catch (e) {}
+        if (instance?.unMount) {
+          instance.unMount?.();
+          simpleBarInstances.delete(panel);
+          panelPromises.delete(panel);
+          panel.dataset.sbInit = "";
         }
-
         // Create a new instance
-        const instance = new SimpleBar(panel, { autoHide: false });
-        panel.SimpleBar = instance;
+        instance = new SimpleBar(panel, { autoHide: false });
+        simpleBarInstances.set(panel, instance);
+        allPanels.add(panel);
         panel.dataset.sbInit = "1";
         results.push({ id, success: true, action: "initialized" });
       }
 
       // Update the padding
-      await updatePanelPadding(panel, timeout, interval, panelPromises);
+      await updatePanelPadding(panel, timeout, interval);
     } catch (error) {
       results.push({ id, success: false, reason: "error", error: error.message });
     }
@@ -1212,28 +1209,308 @@ async function activateSimpleBar(targetIds, timeout = 500, interval = 50, maxWai
   return results;
 }
 
-// If simplebar is added, update the element's padding
-async function updatePanelPadding(panel, timeout = 500, interval = 50, panelPromises = new WeakMap()) {
-  // Parallel process control
-  if (panelPromises.has(panel)) {
-    return panelPromises.get(panel);
+function waitForUnmount() {
+  return new Promise((resolve) => {
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        resolve();
+      });
+    });
+  });
+}
+
+async function destroyOtherSimpleBars(keepId) {
+  const keepPanel = document.getElementById(keepId);
+  const unmountPromises = [];
+
+  allPanels.forEach((panel) => {
+    if (panel !== keepPanel) {
+      const instance = simpleBarInstances.get(panel);
+
+      const scrollbar = instance.el.querySelectorAll(":scope > .simplebar-track");
+      scrollbar.forEach((el) => el.remove());
+
+      instance?.unMount?.();
+      unmountPromises.push(waitForUnmount());
+
+      simpleBarInstances.delete(panel);
+      panelPromises.delete(panel);
+      panel.dataset.sbInit = "";
+      panel.style.paddingRight = "2px";
+
+      allPanels.delete(panel);
+    }
+  });
+
+  await Promise.all(unmountPromises);
+
+  if (keepId) {
+    const header = document.getElementById("mainHeader");
+    header.style.pointerEvents = "none";
+    await waitForUnmount();
+    header.style.pointerEvents = "";
   }
+}
+
+// If simplebar is added, update the element's padding
+async function updatePanelPadding(panel, timeout = 1000) {
+  // Parallel process control
+  if (panelPromises.has(panel)) return panelPromises.get(panel);
 
   const promise = (async () => {
     try {
+      const instance = simpleBarInstances.get(panel);
+      if (!instance) return { ok: false, reason: "no_instance" };
+
+      // Recalculate
+      instance.recalculate?.();
+
       // Wait for the scrollbar to appear
-      await waitFor(() => panel.querySelector(".simplebar-vertical"), timeout, interval);
-      const scrollbar = panel.querySelector(".simplebar-vertical");
-      const isVisible = scrollbar && getComputedStyle(scrollbar).visibility === "visible";
-      panel.style.paddingRight = isVisible ? "16px" : "0px";
+      const scrollbar = await waitForScrollbar(instance, timeout);
+
+      if (!scrollbar) {
+        panel.style.paddingRight = "2px";
+        return { ok: false, reason: "scrollbar_not_found" };
+      }
+
+      const isVisible = getComputedStyle(scrollbar).visibility === "visible";
+      if (!panel.style.transition) {
+        panel.style.transition = "padding .1s";
+      }
+      panel.style.paddingRight = isVisible ? "16px" : "2px";
+
       return { ok: true, visible: isVisible };
     } catch (error) {
-      panel.style.paddingRight = "0px";
+      panel.style.paddingRight = "2px";
       return { ok: false, error: error.message };
     } finally {
       panelPromises.delete(panel);
     }
   })();
+
   panelPromises.set(panel, promise);
   return promise;
+}
+
+function waitForScrollbar(instance, timeout = 500) {
+  return new Promise((resolve) => {
+    const startTime = Date.now();
+    const scrollbar = instance.el.querySelector(":scope > .simplebar-vertical");
+
+    // If scrollbar already exists
+    if (scrollbar && scrollbar.offsetHeight > 0) {
+      return resolve(scrollbar);
+    }
+
+    // Monitor DOM changes with MutationObserver
+    const observer = new MutationObserver(() => {
+      const currentScrollbar = instance.el.querySelector(":scope > .simplebar-vertical");
+      if (currentScrollbar && currentScrollbar.offsetHeight > 0) {
+        observer.disconnect();
+        resolve(currentScrollbar);
+      }
+
+      // Timeout control
+      if (Date.now() - startTime > timeout) {
+        observer.disconnect();
+        resolve(null);
+      }
+    });
+
+    observer.observe(instance.el, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ["class", "style"],
+    });
+
+    // Fallback: timeout
+    setTimeout(() => {
+      observer.disconnect();
+      const finalScrollbar = instance.el.querySelector(":scope > .simplebar-vertical");
+      resolve(finalScrollbar);
+    }, timeout);
+  });
+}
+
+async function sendAction(action, payload = {}, retry = 0) {
+  try {
+    const response = await browser.runtime.sendMessage({ action, ...payload });
+
+    // If no response
+    if (!response) {
+      if (retry < 10) {
+        await new Promise((r) => setTimeout(r, 200));
+        return sendAction(action, payload, retry + 1);
+      }
+      return { ok: false, error: "No response from background after retries" };
+    }
+
+    // If the response is not an object or the ok field is missing, fallback
+    if (typeof response !== "object" || response.ok === undefined) {
+      return { ok: false, error: "Invalid response format from background" };
+    }
+
+    return response;
+  } catch (err) {
+    const errMsg = err?.message || JSON.stringify(err);
+
+    // If the background is not ready yet or is reloading
+    if (/Receiving end does not exist|Could not establish connection/i.test(errMsg)) {
+      if (retry < 10) {
+        await new Promise((r) => setTimeout(r, 200));
+        return sendAction(action, payload, retry + 1);
+      }
+      return { ok: false, error: "Receiving end not found after retries" };
+    }
+
+    // Other unexpected errors
+    return { ok: false, error: errMsg };
+  }
+}
+
+async function openUserScriptManager(id) {
+  const url = browser.runtime.getURL(`manager/userScriptManager.html${id ? `?target=${id}` : ""}`);
+  try {
+    const tabs = await browser.tabs.query({ url });
+    if (tabs && tabs.length > 0) {
+      const tab = tabs[0];
+      await browser.tabs.update(tab.id, { active: true });
+      try {
+        await browser.windows.update(tab.windowId, { focused: true });
+      } catch (e) {}
+      window.close();
+      return;
+    }
+
+    await browser.tabs.create({ url });
+    window.close();
+  } catch (err) {
+    console.error("Open manager failed:", err);
+  }
+}
+
+// Load all favicons
+async function loadFavIcons(icons, concurrency = 3, delayMs = 150, slowAfter = 8) {
+  if (!icons || !icons.length) return;
+
+  const queue = Array.from(icons);
+  let loadedCount = 0;
+
+  function loadSingleIcon(icon, domain) {
+    return new Promise((resolve) => {
+      if (!domain) return resolve();
+
+      const proxyUrl = `https://favicons.seadfeng.workers.dev/${domain}.ico`;
+      const googleUrl = `https://www.google.com/s2/favicons?domain=${domain}&sz=32`;
+      const fallback = browser.runtime.getURL("icons/48x48.png");
+      const classRemove = () => {
+        icon.classList.remove("hidden-visibility");
+        icon.parentElement?.classList.remove("spinner");
+      };
+
+      icon.onload = () => {
+        classRemove();
+        icon.onload = icon.onerror = null;
+        resolve();
+      };
+
+      icon.onerror = () => {
+        if (icon.src === proxyUrl) {
+          icon.src = googleUrl;
+        } else {
+          icon.src = fallback;
+          classRemove();
+          icon.onload = icon.onerror = null;
+          resolve();
+        }
+      };
+
+      icon.src = proxyUrl;
+
+      // show immediately
+      if (icon.complete && icon.naturalWidth !== 0) {
+        classRemove();
+        resolve();
+        return;
+      }
+    });
+  }
+
+  async function worker() {
+    while (queue.length > 0) {
+      const icon = queue.shift();
+      if (!icon) return;
+
+      const domain = icon.dataset?.src;
+      await loadSingleIcon(icon, domain);
+      loadedCount++;
+
+      // slow after
+      const slowdown = loadedCount > slowAfter ? delayMs * 2 : delayMs;
+      await delay(slowdown + Math.random() * 60);
+    }
+  }
+
+  const safeConcurrency = Math.min(concurrency, queue.length);
+  const workers = Array.from({ length: safeConcurrency }, worker);
+
+  await Promise.all(workers);
+}
+
+// Popup Message
+let showPopupMessageTimeout = null;
+let currentMessageContainer = null;
+function showPopupMessage(text, type = "info", closeAfter = null) {
+  const section = document.querySelector("body").dataset.section;
+  const footer = section === "main" ? document.getElementById("mainFooterButtons") : document.getElementById("historyFooter");
+
+  if (currentMessageContainer && currentMessageContainer.parentNode) {
+    currentMessageContainer.remove();
+    currentMessageContainer = null;
+  }
+
+  let messageContainer = document.querySelector(".popup-message");
+  if (!messageContainer) {
+    messageContainer = document.createElement("div");
+    messageContainer.className = `popup-message ${type}`;
+    footer.appendChild(messageContainer);
+  }
+
+  const handleMessageClick = () => {
+    hidePopupMessage();
+  };
+
+  messageContainer.addEventListener("click", handleMessageClick, { once: true });
+  currentMessageContainer = messageContainer;
+
+  messageContainer.textContent = text;
+
+  if (closeAfter) {
+    clearTimeout(showPopupMessageTimeout);
+    const loadingIndicator = document.createElement("div");
+    loadingIndicator.className = "popup-message-indicator";
+    messageContainer.appendChild(loadingIndicator);
+    loadingIndicator.style.display = "none";
+    void loadingIndicator.offsetWidth;
+    loadingIndicator.style.display = "block";
+
+    showPopupMessageTimeout = setTimeout(() => {
+      hidePopupMessage();
+    }, closeAfter);
+  }
+}
+
+function hidePopupMessage() {
+  if (currentMessageContainer && currentMessageContainer.parentNode) {
+    currentMessageContainer.classList.add("hide");
+    setTimeout(() => {
+      currentMessageContainer.remove();
+      currentMessageContainer = null;
+    }, 300);
+  }
+  if (showPopupMessageTimeout) {
+    clearTimeout(showPopupMessageTimeout);
+    showPopupMessageTimeout = null;
+  }
 }
