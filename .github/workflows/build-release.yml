@@ -94,6 +94,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Download Windows Artifacts
         uses: actions/download-artifact@v4
@@ -122,12 +124,21 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Prepare & Create Release
+      - name: Prepare Release
         run: npm run prepare-release
+
+      - name: Get latest tag
+        id: get_tag
+        run: |
+          git fetch --tags --prune
+          TAG=$(git describe --tags --abbrev=0)
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+          echo "Latest tag: $TAG"
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ steps.get_tag.outputs.tag }}
           files: |
             release/**/*
           draft: false
