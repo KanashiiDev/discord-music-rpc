@@ -108,6 +108,7 @@
     },
     "mac": {
       "identity": "-",
+      "hardenedRuntime": false,
       "category": "public.app-category.utilities",
       "target": [
         {
@@ -141,12 +142,15 @@
       "scripts/electron-log.js",
       "utils.js",
       "server.js",
-      "LICENSE",
+      "!LICENSE",
       "assets/**/*",
       "package.json"
     ],
-    "extraFiles": [
-      "LICENSE"
+    "extraResources": [
+      {
+        "from": "LICENSE",
+        "to": "LICENSE.txt"
+      }
     ],
     "asarUnpack": [
       "assets/icon/**/*",
