@@ -36,12 +36,11 @@ const server = app.listen(PORT, () => {
   connectRPC().catch(console.error);
 });
 
-// Initial connection
-connectRPC().catch(console.error);
-
 // Create new RPC Client
 function createClient() {
-  if (rpcClient) return rpcClient;
+  if (rpcClient && !rpcClient.destroyed) {
+    return rpcClient;
+  }
 
   rpcClient = new Client({
     clientId: CLIENT_ID,
@@ -50,7 +49,7 @@ function createClient() {
     reconnect: false,
   });
 
-  rpcClient.setMaxListeners(50);
+  rpcClient.setMaxListeners(20);
 
   // Disconnect Event
   rpcClient.once("disconnected", async () => {
@@ -58,8 +57,14 @@ function createClient() {
     isConnecting = false;
     notifyRpcStatus(isRpcConnected);
 
+    const oldClient = rpcClient;
+    rpcClient = null;
+
     if (!isShuttingDown) {
       console.warn("RPC disconnected. Attempting reconnect...");
+      try {
+        await oldClient.destroy();
+      } catch (err) {}
       await connectRPC();
     }
   });
@@ -77,10 +82,13 @@ async function connectRPC() {
     attempt++;
     try {
       const client = createClient();
+      // Clear old connected listeners before each login attempt
+      client.removeAllListeners("connected");
+
       await Promise.race([client.login(), new Promise((_, reject) => setTimeout(() => reject(new Error("Login timed out")), RETRY_DELAY))]);
 
       if (attempt === 1) {
-        logRpcConnection(`Connecting to RPC (attempt ${attempt})`);
+        logRpcConnection(`Connecting to RPC..`);
       }
 
       isRpcConnected = true;
@@ -89,7 +97,7 @@ async function connectRPC() {
       return true;
     } catch (err) {
       if (attempt === 5) {
-        logRpcConnection(`RPC connection failed (attempt #${attempt}): ${err.message}`);
+        logRpcConnection(`RPC connection failed: ${err.message}`);
         logRpcConnection("Waiting for connection..");
       }
 
