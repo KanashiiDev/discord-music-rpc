@@ -726,27 +726,47 @@ function showInitialSetupDialog() {
   contentText.textContent = "This extension requires a companion application to function properly. Please install the required application to continue.";
   content.appendChild(contentText);
 
+  const contentLinkContainer = document.createElement("div");
+  contentLinkContainer.classList.add("setup-link-container");
+  content.appendChild(contentLinkContainer);
+
   const contentLink = document.createElement("a");
-  contentLink.href = "https://github.com/KanashiiDev/discord-music-rpc/releases/latest/download/Discord-Music-RPC-Setup.zip";
-  contentLink.textContent = "Download Application";
+  contentLink.href = "https://github.com/KanashiiDev/discord-music-rpc/releases/latest/download/Discord-Music-RPC-Win.zip";
+  contentLink.textContent = "Windows";
   contentLink.target = "_blank";
   contentLink.rel = "noopener noreferrer";
   contentLink.classList.add("setup-link");
-  content.appendChild(contentLink);
+  contentLinkContainer.appendChild(contentLink);
+
+  const contentLink2 = document.createElement("a");
+  contentLink2.href = "https://github.com/KanashiiDev/discord-music-rpc/releases/latest/download/Discord-Music-RPC-Linux.zip";
+  contentLink2.textContent = "Linux";
+  contentLink2.target = "_blank";
+  contentLink2.rel = "noopener noreferrer";
+  contentLink2.classList.add("setup-link");
+  contentLinkContainer.appendChild(contentLink2);
+
+  const contentLink3 = document.createElement("a");
+  contentLink3.href = "https://github.com/KanashiiDev/discord-music-rpc/releases/latest/download/Discord-Music-RPC-MacOS.zip";
+  contentLink3.textContent = "MacOS";
+  contentLink3.target = "_blank";
+  contentLink3.rel = "noopener noreferrer";
+  contentLink3.classList.add("setup-link");
+  contentLinkContainer.appendChild(contentLink3);
 
   const contentNote = document.createElement("p");
-  contentNote.textContent = "The installer is provided via the latest GitHub release.";
+  contentNote.textContent = "The application is provided via the latest GitHub release.";
   contentNote.classList.add("setup-note");
   content.appendChild(contentNote);
 
   const contentNote2 = document.createElement("p");
-  const noteText = document.createTextNode("Link not working?");
+  const noteText = document.createTextNode("Links not working?");
   const noteLink = document.createElement("a");
   noteLink.href = "https://github.com/KanashiiDev/discord-music-rpc/releases/latest";
   noteLink.target = "_blank";
   noteLink.rel = "noopener noreferrer";
   noteLink.textContent = "GitHub Releases";
-  noteLink.classList.add("setup-link");
+  noteLink.classList.add("setup-link-github");
   noteLink.classList.add("setup-note-link");
 
   contentNote2.appendChild(noteText);

@@ -87,9 +87,9 @@ function zipFile(sourcePath, zipName) {
 }
 
 (async () => {
-  if (exeFilePath) await zipFile(exeFilePath, `Discord-Music-RPC-Setup-${releaseVersion}.zip`);
-  if (appImagePath) await zipFile(appImagePath, `Discord-Music-RPC-Linux-${releaseVersion}.zip`);
-  if (macFilePath) await zipFile(macFilePath, `Discord-Music-RPC-macOS-${releaseVersion}.zip`);
+  if (exeFilePath) await zipFile(exeFilePath, `Discord-Music-RPC-Win.zip`);
+  if (appImagePath) await zipFile(appImagePath, `Discord-Music-RPC-Linux.zip`);
+  if (macFilePath) await zipFile(macFilePath, `Discord-Music-RPC-macOS.zip`);
 })();
 
 // Copy browser extensions

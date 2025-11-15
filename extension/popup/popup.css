@@ -312,7 +312,8 @@ body,
 }
 
 .setup-dialog-open #siteList {
-  min-height: 228px;
+  min-height: 220px;
+  pointer-events: none;
 }
 
 .parser-span,
@@ -454,6 +455,16 @@ footer {
 #historySearchBox {
   width: calc(100% - 44px);
   padding-right: 30px;
+}
+
+#historySearchBox::-webkit-input-placeholder,
+#searchBox::-webkit-input-placeholder {
+  color: var(--text-color-muted);
+}
+
+#historySearchBox::-webkit-input-placeholder,
+#searchBox::-webkit-input-placeholder {
+  color: var(--text-color-muted);
 }
 
 #historySearchBox::-webkit-input-placeholder,
@@ -980,11 +991,11 @@ footer {
   display: grid;
   grid-template-columns: auto auto;
   -webkit-box-pack: justify;
-      -ms-flex-pack: justify;
-          justify-content: space-between;
+  -ms-flex-pack: justify;
+  justify-content: space-between;
   -webkit-box-align: center;
-      -ms-flex-align: center;
-          align-items: center;
+  -ms-flex-align: center;
+  align-items: center;
   gap: 6px;
 }
 
@@ -1144,23 +1155,43 @@ body.cleaning-mode .selected .history-trash {
   background-color: var(--accent-color-bright);
 }
 
-.setup-dialog .setup-link {
+.setup-dialog .setup-link-container {
+  display: -webkit-box;
+  display: -ms-flexbox;
+  display: flex;
+  border-radius: var(--radius-default);
+  padding: 6px;
+  overflow: hidden;
+  background-color: var(--foreground-color-100);
+}
+
+.setup-dialog .setup-link-container .setup-link:nth-child(1),
+.setup-dialog .setup-link-container .setup-link:nth-child(2) {
+  border-right: 1px solid var(--border-color);
+}
+
+.setup-dialog .setup-link,
+.setup-dialog .setup-link-github {
   display: inline-block;
   color: var(--link-color);
   text-decoration: none;
   font-weight: bold;
   width: 100%;
-  margin-top: 10px;
 }
 
-.setup-dialog .setup-link:hover {
+.setup-dialog .setup-link-github {
+  margin-top: 6px;
+}
+
+.setup-dialog .setup-link:hover,
+.setup-dialog .setup-link-github:hover {
   color: var(--link-color-bright);
 }
 
 .setup-dialog .setup-note {
   font-size: 10px;
   color: var(--text-color-muted);
-  margin-bottom: 30px;
+  margin-bottom: 22px;
 }
 
 .setup-dialog .setup-note-link {
