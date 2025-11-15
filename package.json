@@ -107,6 +107,7 @@
       }
     },
     "mac": {
+      "identity": "-",
       "category": "public.app-category.utilities",
       "target": [
         {

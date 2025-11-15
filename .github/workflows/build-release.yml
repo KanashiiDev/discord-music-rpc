@@ -75,6 +75,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Install dmg-license
+        run: npm install --no-save dmg-license
+
       - name: Build macOS App
         run: npm run build:mac
 
