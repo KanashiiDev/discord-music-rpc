@@ -7,7 +7,6 @@ const state = {
   maxErrorCount: 5,
   activeTab: false,
   rpcKeepAliveIntervalId: null,
-  initStarted: false,
   messageListenerRegistered: false,
 };
 
@@ -55,22 +54,18 @@ function scheduleNextUpdate(interval = CONSTANTS.ACTIVE_INTERVAL) {
   }
 
   logInfo(`Next Update Scheduled: ${interval / 1000} seconds later.`);
+
   state.updateTimer = setTimeout(() => {
-    if (state.activeTab) mainLoop();
+    state.updateTimer = null;
+    if (state.activeTab) {
+      mainLoop();
+    }
   }, interval);
 }
 
 // Main loop to check for song changes and update RPC
 async function mainLoop() {
-  if (state.isUpdating) {
-    if (state.updateTimer) {
-      clearTimeout(state.updateTimer);
-      state.updateTimer = null;
-    }
-    scheduleNextUpdate();
-    return;
-  }
-
+  if (state.isUpdating) return;
   state.isUpdating = true;
 
   try {
@@ -80,7 +75,6 @@ async function mainLoop() {
       if (rpcState.lastActivity?.lastUpdated && !rpcState.cleared) {
         await handleNoSong();
       }
-      scheduleNextUpdate();
       return;
     }
 
@@ -120,12 +114,12 @@ async function mainLoop() {
     // Fallback: Pass to the next update with normal flow
     rpcState.lastPosition = song.position;
     state.lastUpdateTime = Date.now();
-    scheduleNextUpdate();
   } catch (e) {
     logError("mainLoop error:", e);
     scheduleNextUpdate();
   } finally {
     state.isUpdating = false;
+    scheduleNextUpdate();
   }
 }
 
@@ -134,7 +128,6 @@ async function processRPCUpdate(song, progress) {
   const rpcOk = await isRpcConnected();
   if (!rpcOk) {
     logInfo("RPC not connected.");
-    scheduleNextUpdate();
     return false;
   }
 
@@ -215,9 +208,11 @@ async function safeGetSongInfo() {
 
 // Initialize the extension
 function init() {
-  if (state.initStarted) return;
-  state.initStarted = true;
-
+  // Prevent multiple injections (SPA reload, iframes)
+  if (window._MUSIC_RPC_LOADED_ || window.top !== window.self) {
+    return;
+  }
+  window._MUSIC_RPC_LOADED_ = true;
   const start = async () => {
     // polling for getSongInfo to be available
     let tries = 0;
@@ -232,14 +227,13 @@ function init() {
       return;
     }
 
+    // hostname match
     const hostMatch = await isHostnameMatch();
-
-    if (!hostMatch.ok) {
+    if (!hostMatch?.ok) {
       logInfo("Hostname not allowed, not starting watcher.");
       return;
     }
 
-    // register message listener
     registerRuntimeMessageListener();
     startWatching();
   };
@@ -264,6 +258,7 @@ function registerRuntimeMessageListener() {
       });
       return true;
     }
+
     if (message.action === "reloadPage") {
       location.reload();
     }

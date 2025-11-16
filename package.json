@@ -27,9 +27,10 @@
   "scripts": {
     "start": "node server.js",
     "start:app": "electron .",
-    "build:win": "electron-builder --win --x64 --publish=never",
-    "build:linux": "electron-builder --linux --x64 --publish=never --config.extraMetadata.productName='discord-music-rpc'",
-    "build:mac": "electron-builder --mac --publish=never",
+    "build:deps": "node scripts/buildDeps.js",
+    "build:win": "npm run build:deps && electron-builder --win --x64 --publish=never",
+    "build:linux": "npm run build:deps && electron-builder --linux --x64 --publish=never --config.extraMetadata.productName='discord-music-rpc'",
+    "build:mac": "npm run build:deps && electron-builder --mac --publish=never",
     "build:chrome": "cross-env TARGET=chrome node scripts/buildExtensions.js",
     "build:firefox": "cross-env TARGET=firefox node scripts/buildExtensions.js",
     "build:extensions": "npm run build:chrome && npm run build:firefox",
@@ -150,15 +151,18 @@
       {
         "from": "LICENSE",
         "to": "LICENSE.txt"
+      },
+      {
+        "from": "build_deps",
+        "to": "build_deps"
+      },
+      {
+        "from": "build_deps/node_modules",
+        "to": "build_deps/node_modules"
       }
     ],
     "asarUnpack": [
-      "assets/icon/**/*",
-      "node_modules/@xhayper/discord-rpc/**",
-      "node_modules/@discordjs/collection/**",
-      "node_modules/@discordjs/rest/**",
-      "server.js",
-      "utils.js"
+      "build_deps/**"
     ],
     "afterPack": "./scripts/buildCleanup.js"
   }

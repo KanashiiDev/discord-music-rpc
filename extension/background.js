@@ -91,33 +91,37 @@ async function loadParserList() {
     const { parserList = [], userParserSelectors = [], userScriptsList = [] } = await browser.storage.local.get(["parserList", "userParserSelectors", "userScriptsList"]);
     logInfo(`Loaded ${parserList.length} parsers, ${userParserSelectors.length} user parsers and ${userScriptsList.length} user scripts.`);
 
-    const userList = userParserSelectors.map((u, index) => ({
+    const builtInList = parserList.filter((p) => !p.userAdd && !p.userScript);
+    
+    const userList = userParserSelectors.map((u) => ({
       ...u,
-      id: u.id,
+      id: u.id || `${u.domain}_${hashFromPatternStrings(u.urlPatterns || [".*"])}`,
       urlPatterns: u.urlPatterns || u.selectors?.regex || [".*"],
       userAdd: true,
     }));
 
-    const userScriptList = userScriptsList.map((u, index) => ({
+    const userScriptList = userScriptsList.map((u) => ({
       ...u,
-      id: u.id,
+      id: u.id || `${u.domain}_${hashFromPatternStrings(u.urlPatterns || [".*"])}`,
       urlPatterns: u.urlPatterns || [".*"],
       userScript: true,
     }));
 
-    const fullList = [...parserList, ...userList, ...userScriptList];
-    const enableKeys = fullList.map(({ id }) => `enable_${id}`);
-    const settings = await browser.storage.local.get(enableKeys);
+    const allParsers = [...builtInList, ...userList, ...userScriptList];
 
-    state.parserList = fullList.map((p) => ({
+    // Get Enable settings
+    const enableKeys = allParsers.map(({ id }) => `enable_${id}`);
+    const settings = enableKeys.length > 0 ? await browser.storage.local.get(enableKeys) : {};
+
+    state.parserList = allParsers.map((p) => ({
       ...p,
       isEnabled: settings[`enable_${p.id}`] !== false,
       settings: {},
     }));
 
-    state.parserMap = Object.fromEntries(state.parserList.map((p) => [p.id, p]));
-    state.parserListLoaded = true;
+    state.parserMap = Object.fromEntries(state.parserList.map((p) => [`${p.id}`, p]));
     await loadParserEnabledCache(state.parserEnabledCache, state.parserList);
+    state.parserListLoaded = true;
   } catch (error) {
     logError("Parser list loading failed:", error);
     state.parserList = [];
@@ -126,6 +130,7 @@ async function loadParserList() {
     throw error;
   }
 }
+
 async function getParserSettings(parserId) {
   if (!parserId) return {};
 
@@ -149,7 +154,9 @@ async function getParserSettings(parserId) {
 const parserListMutex = createMutex();
 const loadParserListOnce = async () => {
   return parserListMutex(async () => {
-    if (state.parserListLoaded && state.parserList.length > 0) return;
+    if (state.parserListLoaded) {
+      return true;
+    }
 
     if (state.parserListLoading) {
       return state.parserListLoading;
@@ -158,9 +165,10 @@ const loadParserListOnce = async () => {
     state.parserListLoading = (async () => {
       try {
         await loadParserList();
+        state.parserListLoaded = true;
         return true;
-      } catch (error) {
-        logError("Critical: Parser list loading failed completely", error);
+      } catch (e) {
+        logError("Critical: Parser load failed", e);
         return false;
       } finally {
         state.parserListLoading = null;
@@ -224,10 +232,6 @@ const updateRpc = async (data, tabId) => {
   const timeoutId = setTimeout(() => controller.abort(), CONFIG.requestTimeout);
 
   state.pendingFetches.set(tabId, controller);
-  if (!state.parserMap || Object.keys(state.parserMap).length === 0) {
-    state.parserListLoaded = false;
-    state.parserListLoading = null;
-  }
 
   const base = state.activeTabMap.get(tabId);
   let parserId = base?.parserId;
@@ -239,10 +243,31 @@ const updateRpc = async (data, tabId) => {
         const url = new URL(tab.url);
         const hostname = url.hostname.replace(/^www\./, "");
 
+        function isDomainMatch(parserDomainRaw, tabHostnameRaw) {
+          const parserDomain = normalizeHost(parserDomainRaw);
+          const tabDomain = normalizeHost(tabHostnameRaw);
+
+          if (!parserDomain || !tabDomain) return false;
+
+          // Exact match
+          if (parserDomain === tabDomain) return true;
+
+          if (parserDomain.startsWith("*.")) {
+            const base = parserDomain.slice(2);
+            return tabDomain === base || tabDomain.endsWith(`.${base}`);
+          }
+          if (tabDomain.endsWith(`.${parserDomain}`)) return true;
+          return false;
+        }
+
         const exactMatch = state.parserList.find((parser) => {
-          const domain = normalize(parser.domain);
-          const normHost = normalize(hostname);
-          return domain === normHost;
+          try {
+            const parserDomain = parser.domain;
+            return isDomainMatch(parserDomain, hostname);
+          } catch (e) {
+            logError("Domain match error:", e);
+            return false;
+          }
         });
 
         if (exactMatch) {
@@ -432,8 +457,9 @@ const mainLoop = async () => {
 };
 
 const init = async () => {
-  scriptManager.registerAllScripts();
+  setupListeners();
   await parserReady();
+  scriptManager.registerAllScripts();
   setupListeners();
   await mainLoop();
 };

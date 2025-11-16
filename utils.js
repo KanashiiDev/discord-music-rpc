@@ -161,6 +161,35 @@ function notifyRpcStatus(isRpcConnected) {
   }
 }
 
+function detectElectronMode() {
+  if (process.env.ELECTRON_MODE !== undefined) {
+    return process.env.ELECTRON_MODE === "true";
+  }
+  if (process.versions.electron) {
+    return true;
+  }
+  if (process.type === "renderer" || process.type === "browser") {
+    return true;
+  }
+  if (process.env.APPIMAGE) {
+    return true;
+  }
+  if (process.execPath.includes("/.mount_") || process.execPath.includes(".AppImage")) {
+    return true;
+  }
+  try {
+    if (require.main && (require.main.filename.includes("electron") || require.main.filename.includes("app.asar"))) {
+      return true;
+    }
+  } catch (err) {
+    // Continue in case of error
+  }
+  if (typeof window !== "undefined" && window.process && window.process.type) {
+    return true;
+  }
+  return false;
+}
+
 module.exports = {
   logRpcConnection,
   getCurrentTime,
@@ -171,4 +200,5 @@ module.exports = {
   normalizeTitleAndArtist,
   isValidUrl,
   notifyRpcStatus,
+  detectElectronMode,
 };

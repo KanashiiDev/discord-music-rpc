@@ -245,7 +245,8 @@ function normalizeArtistName(name) {
 // Normalize host string
 const normalizeHost = (url) => {
   try {
-    return new URL(url).hostname.replace(/^https?:\/\/|^www\./g, "").toLowerCase();
+      if (!d || typeof d !== "string") return "";
+    return new URL(url).hostname.trim().replace(/^https?:\/\/|^www\./g, "").toLowerCase();
   } catch {
     return "";
   }
@@ -706,7 +707,13 @@ function hashFromPatternStrings(patterns) {
 
 // Create ID from domain and patterns
 function makeIdFromDomainAndPatterns(domain, urlPatterns) {
-  const patternStrings = (urlPatterns || []).map((p) => p.toString()).sort();
+  const patternStrings = (urlPatterns || [])
+    .map((p) => {
+      if (typeof p === "string") return p;
+      if (p instanceof RegExp) return p.source;
+      return p.toString();
+    })
+    .sort();
   return `${domain}_${hashFromPatternStrings(patternStrings)}`;
 }
 

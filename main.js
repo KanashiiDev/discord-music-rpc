@@ -50,7 +50,7 @@ const store = new JSONdb(dbPath);
 const log = require("./scripts/electron-log");
 const fs = require("fs");
 const os = require("os");
-const isDev = !process.env.NODE_ENV || process.env.NODE_ENV === "development" || process.defaultApp;
+const isPackaged = app.isPackaged;
 
 const config = {
   server: {
@@ -85,26 +85,31 @@ const updateMenuItemSeparator = new MenuItem({
   visible: false,
 });
 
-function getIconPath(size = null) {
-  let baseDir;
+function getPath(...p) {
+  const targetPath = path.join(...p);
 
-  // Platform-specific base directory
-  if (isDev) {
-    baseDir = path.join(__dirname, "assets", "icon");
-  } else {
-    // Production path handling
-    if (process.platform === "linux" && process.env.APPIMAGE) {
-      // Resources may be in a different location inside the AppImage
-      baseDir = path.join(path.dirname(process.execPath), "resources", "app.asar.unpacked", "assets", "icon");
+  if (!isPackaged) {
+    return path.join(__dirname, targetPath);
+  }
 
-      // Fallback to standard path
-      if (!fs.existsSync(baseDir)) {
-        baseDir = path.join(process.resourcesPath, "app.asar.unpacked", "assets", "icon");
-      }
-    } else {
-      baseDir = path.join(process.resourcesPath, "app.asar.unpacked", "assets", "icon");
+  const possiblePaths = [
+    path.join(process.resourcesPath, "build_deps", targetPath),
+    path.join(process.resourcesPath, targetPath),
+    path.join(path.dirname(process.execPath), "resources", "build_deps", targetPath),
+    path.join(app.getAppPath(), targetPath),
+  ];
+
+  for (const serverPath of possiblePaths) {
+    if (fs.existsSync(serverPath)) {
+      return serverPath;
     }
   }
+
+  throw new Error(`${targetPath} not found`);
+}
+
+function getIconPath(size = null) {
+  let baseDir = getPath("assets", "icon");
   let fileName;
 
   switch (process.platform) {
@@ -198,7 +203,7 @@ app.whenReady().then(async () => {
 // Start Server
 async function startServer() {
   const { fork } = require("child_process");
-  const serverPath = isDev ? path.join(__dirname, "server.js") : path.join(process.resourcesPath, "app.asar.unpacked", "server.js");
+  const serverPath = getPath("server.js");
 
   if (state.serverProcess || state.isServerRunning) {
     log.warn("Server already running");
@@ -216,7 +221,6 @@ async function startServer() {
     state.serverProcess = fork(serverPath, [], {
       env: {
         ...process.env,
-        ELECTRON_MODE: isDev,
         PORT: config.server.PORT,
         NODE_ENV: "production",
         LOG_LEVEL: "debug",

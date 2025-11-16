@@ -13,15 +13,24 @@ function scheduleSave(settingKey) {
   if (saveTimers[settingKey]) clearTimeout(saveTimers[settingKey]);
   saveTimers[settingKey] = setTimeout(async () => {
     try {
-      await browser.storage.local.get(settingKey).then((old) => {
-        const merged = { ...(old?.[settingKey] || {}), ...settingsCache[settingKey] };
-        return browser.storage.local.set({ [settingKey]: merged });
-      });
+      // Snapshot
+      const snapshot = { ...settingsCache[settingKey] };
+
+      if (!snapshot || Object.keys(snapshot).length === 0) {
+        return;
+      }
+
+      // Read from storage
+      const stored = await browser.storage.local.get(settingKey);
+      const current = stored?.[settingKey] || {};
+
+      // Merge
+      const merged = { ...current, ...snapshot };
+
+      // Save
+      await browser.storage.local.set({ [settingKey]: merged });
     } catch (err) {
       logError(`[settings] save error for ${settingKey}:`, err);
-    } finally {
-      clearTimeout(saveTimers[settingKey]);
-      delete saveTimers[settingKey];
     }
   }, 120);
 }
@@ -137,12 +146,8 @@ async function useSetting(id, key, label, type = "text", defaultValue = "", newV
 
 // Initialize all parser settings
 async function initializeAllParserSettings() {
-  const { userScriptsList: storedUserScriptsList = [] } =
-    await browser.storage.local.get("userScriptsList");
-
-  const userScriptsList = Array.isArray(storedUserScriptsList)
-    ? storedUserScriptsList
-    : [];
+  const { userScriptsList: storedUserScriptsList = [] } = await browser.storage.local.get("userScriptsList");
+  const userScriptsList = Array.isArray(storedUserScriptsList) ? storedUserScriptsList : [];
 
   // All available storage
   const allStored = await browser.storage.local.get(null);
@@ -190,20 +195,14 @@ async function initializeAllParserSettings() {
 
     if (Array.isArray(script.settings)) {
       for (const setting of script.settings) {
-        await useSetting(
-          script.id,
-          setting.key,
-          setting.label,
-          setting.type,
-          setting.defaultValue
-        );
+        await useSetting(script.id, setting.key, setting.label, setting.type, setting.defaultValue);
       }
     }
   }
 }
 
 // registerParser
-window.registerParser = async function ({ title, domain, urlPatterns, authors, homepage, fn, userAdd = false, userScript = false, initOnly = false }) {
+window.registerParser = async function ({ title, domain, urlPatterns, authors, homepage, fn, userAdd = false, userScript = false, initOnly = false, ...rest }) {
   if (!domain || typeof fn !== "function") return;
 
   // wait initialSettings ready
@@ -220,7 +219,17 @@ window.registerParser = async function ({ title, domain, urlPatterns, authors, h
   }
   await initLoadPromise;
 
-  const existingUserScript = window.parsers[domain]?.find((p) => p.userScript === userScript && JSON.stringify(p.urlPatterns || p.patterns?.map((r) => r.source || r)) === JSON.stringify(urlPatterns));
+  const patternStrings = (urlPatterns || [])
+    .map((p) => {
+      if (typeof p === "string") return p;
+      if (p instanceof RegExp) return p.source;
+      return p.toString();
+    })
+    .sort();
+
+  const id = makeIdFromDomainAndPatterns(domain, urlPatterns);
+
+  const existingUserScript = window.parsers[domain]?.find((p) => p.id === id && p.userScript === userScript);
 
   if (existingUserScript) {
     existingUserScript.parse = fn;
@@ -228,11 +237,8 @@ window.registerParser = async function ({ title, domain, urlPatterns, authors, h
     return existingUserScript.id;
   }
 
-  const patternStrings = (urlPatterns || []).map((p) => p.toString()).sort();
-  const id = `${domain}_${hashFromPatternStrings(patternStrings)}`;
-
-  if (window.parsers[domain]?.some((p) => p.id === id)) return;
   if (!window.parsers[domain]) window.parsers[domain] = [];
+  if (window.parsers[domain].some((p) => p.id === id)) return;
 
   // bind the id
   const boundUseSetting = (key, label, type = "text", defaultValue = "", newValue) => useSetting(id, key, label, type, defaultValue, newValue);
@@ -327,68 +333,70 @@ window.registerParser = async function ({ title, domain, urlPatterns, authors, h
   if (!userScript) {
     // Metadata Registration
     if (!window.parserMeta.some((m) => m.id === id)) {
-      window.parserMeta.push({ id, title, domain, urlPatterns: patternStrings, authors, homepage, userAdd, userScript });
+      window.parserMeta.push({
+        id,
+        title,
+        domain,
+        urlPatterns: patternStrings,
+        authors,
+        homepage,
+        userAdd,
+        userScript,
+      });
       window.parserMeta.sort((a, b) => (a.title || a.domain).toLowerCase().localeCompare((b.title || b.domain).toLowerCase()));
     }
 
-    await scheduleParserListSave();
+    scheduleParserListSaveOnce();
   }
 };
 
 // Save parser metadata to storage
+let scheduleSaveTimeout = null;
+
+function scheduleParserListSaveOnce(delay = 3000) {
+  if (scheduleSaveTimeout) clearTimeout(scheduleSaveTimeout);
+
+  scheduleSaveTimeout = setTimeout(() => {
+    scheduleParserListSave();
+  }, delay);
+}
+
 async function scheduleParserListSave() {
   try {
-    // Prepare the valid parser metadata
-    const validList = (window.parserMeta || []).filter((p) => p.domain && p.title && p.urlPatterns);
+    const meta = (window.parserMeta || []).filter((p) => p.id && p.domain && p.title && p.urlPatterns);
 
-    // Get the existing data
     let { parserList = [], userScriptsList = [] } = await browser.storage.local.get(["parserList", "userScriptsList"]);
 
-    const isDifferent = JSON.stringify(parserList) !== JSON.stringify(validList);
-    if (isDifferent) {
-      await browser.storage.local.set({ parserList: validList });
-      parserList = validList;
-    }
+    const metaIds = new Set(meta.map((p) => p.id));
+    parserList = parserList.filter((p) => metaIds.has(p.id));
 
     if (userScriptsList.length) {
-      // process userScriptsList
-      const userScriptList = userScriptsList.map((u) => ({
+      userScriptsList = userScriptsList.map((u) => ({
         ...u,
         id: u.id,
         urlPatterns: u.urlPatterns || [".*"],
         userScript: true,
       }));
+    }
 
-      // merge all lists
-      const mergedList = [...parserList, ...validList, ...userScriptList];
+    const mergedList = [...new Map([...parserList, ...meta, ...userScriptsList].map((item) => [`${item.id}|${item.domain}|${item.title}`, item])).values()].sort((a, b) =>
+      (a.title || a.domain).toLowerCase().localeCompare((b.title || b.domain).toLowerCase())
+    );
 
-      // Deduplicate records with the same ID
-      const dedupedList = Object.values(
-        mergedList.reduce((acc, cur) => {
-          acc[cur.domain] = cur;
-          return acc;
-        }, {})
-      );
+    await browser.storage.local.set({ parserList: mergedList });
 
-      // Name sorting
-      dedupedList.sort((a, b) => (a.title || a.domain).toLowerCase().localeCompare((b.title || b.domain).toLowerCase()));
-
-      // Save
-      if (dedupedList.length > 0 && browser?.storage?.local) {
-        await browser.storage.local.set({ parserList: dedupedList });
-      }
-
-      // Apply UserScript Settings
-      const allScripts = await browser.storage.local.get("userScriptsList").then((data) => data.userScriptsList || []);
-      allScripts.forEach(async (script) => {
-        if (processedScripts.has(script.id)) return;
+    // Apply UserScript Settings
+    if (userScriptsList.length) {
+      const allScripts = userScriptsList;
+      for (const script of allScripts) {
+        if (!script?.id || processedScripts.has(script.id)) continue;
         processedScripts.add(script.id);
 
         const settings = script.settings || [];
         for (const setting of settings) {
           await useSetting(script.id, setting.key, setting.label, setting.type, setting.defaultValue);
         }
-      });
+      }
     }
   } catch (error) {
     logError("Error saving parser list:", error);

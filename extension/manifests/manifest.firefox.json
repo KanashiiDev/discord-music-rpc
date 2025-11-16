@@ -9,7 +9,7 @@
     "persistent": false
   },
 
-  "permissions": ["scripting", "tabs", "storage", "contextMenus", "*://*/*"],
+  "permissions": ["tabs", "storage", "contextMenus", "*://*/*"],
 
   "content_scripts": [
     {

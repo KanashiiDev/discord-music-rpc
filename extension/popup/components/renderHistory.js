@@ -55,8 +55,9 @@ async function renderHistory({ reset = true, query = "" } = {}) {
   }
 
   const dataSource = isFiltering ? filteredHistory : fullHistory;
-  const pagedHistory = dataSource.slice(currentOffset, currentOffset + maxHistoryItemLoad);
-  currentOffset += maxHistoryItemLoad;
+  const end = Math.min(currentOffset + maxHistoryItemLoad, dataSource.length);
+  const pagedHistory = dataSource.slice(currentOffset, end);
+  currentOffset = end;
 
   if (reset && !pagedHistory.length) {
     const emptyMsg = document.createElement("i");
@@ -454,14 +455,17 @@ function renderSourceFilterMenu() {
 
   // Checkbox handler
   const handleSourceCheckboxChange = async (e) => {
-    if (e.target.type === "checkbox" && e.target.closest("#historyFilterMenuContent")) {
-      const src = e.target.value;
-      if (e.target.checked) {
-        selectedSources.add(src);
-      } else {
-        selectedSources.delete(src);
+    if (e.target.type === "checkbox") {
+      if (e.target.checked) selectedSources.add(e.target.value);
+      else selectedSources.delete(e.target.value);
+      if (activeScrollCleanup) {
+        activeScrollCleanup();
+        activeScrollCleanup = null;
       }
-      await renderHistory({ query: document.getElementById("historySearchBox").value });
+      await renderHistory({
+        reset: true,
+        query: document.getElementById("historySearchBox").value,
+      });
       await destroyOtherSimpleBars();
       await activateSimpleBar(["historyPanel", "historyFilterMenuContent"]);
       await activateHistoryScroll();

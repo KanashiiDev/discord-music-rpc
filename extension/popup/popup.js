@@ -198,15 +198,6 @@ const popupModule = {
 
     // Document click handler
     this.listeners.documentClick = (e) => {
-      const filterBtn = document.getElementById("historyFilterBtn");
-      const filterMenu = document.getElementById("historyFilterMenu");
-
-      // History filter menu
-      if (filterBtn && filterMenu && !filterBtn.contains(e.target) && !filterMenu.contains(e.target)) {
-        filterMenu.classList.remove("open");
-        filterMenu.style.height = "0";
-      }
-
       // Parser options
       const openOptions = e.target.closest(".parser-options.open");
       if (!openOptions) {
