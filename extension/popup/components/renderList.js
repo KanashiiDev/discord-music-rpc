@@ -15,7 +15,7 @@ async function renderList(filteredList = null, isSearch = null) {
   const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
   const tabUrl = new URL(tab.url);
   const tabPath = tabUrl.pathname;
-  const tabHostname = normalize(tabUrl.hostname);
+  const tabHostname = normalizeHost(tabUrl.hostname);
   const settings = await browser.storage.local.get();
 
   // Spinner
@@ -250,7 +250,7 @@ async function renderList(filteredList = null, isSearch = null) {
       addListener(delBtn, "click", handleDeleteClick);
       entryInner.appendChild(delBtn);
 
-      if (tabHostname === normalize(domain)) {
+      if (tabHostname === normalizeHost(domain)) {
         const regexes = urlPatterns.map(parseUrlPattern);
         if (regexes.some((r) => r.test(tabPath))) {
           document.getElementById("openSelector").textContent = "Edit Music Site";

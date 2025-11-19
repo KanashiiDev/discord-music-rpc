@@ -1,3 +1,5 @@
+// mainParser.js - Controls all parser operations.
+
 window.parsers = {};
 window.parserMeta = [];
 window.latestUserScriptData = window.latestUserScriptData || {};
@@ -64,7 +66,7 @@ async function loadSettingsForId(id) {
 
 // useSettings
 /**
- * Manages settings for a custom user parser.
+ * Manages custom settings for a custom user parser.
  * @async
  * @param {string} id - The identifier for the settings group
  * @param {string} key - The specific setting key within the group
@@ -201,7 +203,7 @@ async function initializeAllParserSettings() {
   }
 }
 
-// registerParser
+// registerParser - Used to process all built-in parsers.
 window.registerParser = async function ({ title, domain, urlPatterns, authors, homepage, fn, userAdd = false, userScript = false, initOnly = false, ...rest }) {
   if (!domain || typeof fn !== "function") return;
 
@@ -353,7 +355,8 @@ window.registerParser = async function ({ title, domain, urlPatterns, authors, h
 // Save parser metadata to storage
 let scheduleSaveTimeout = null;
 
-function scheduleParserListSaveOnce(delay = 3000) {
+// It is used after RegisterParser operations to save to local storage once.
+function scheduleParserListSaveOnce(delay = 1000) {
   if (scheduleSaveTimeout) clearTimeout(scheduleSaveTimeout);
 
   scheduleSaveTimeout = setTimeout(() => {
@@ -364,11 +367,8 @@ function scheduleParserListSaveOnce(delay = 3000) {
 async function scheduleParserListSave() {
   try {
     const meta = (window.parserMeta || []).filter((p) => p.id && p.domain && p.title && p.urlPatterns);
-
-    let { parserList = [], userScriptsList = [] } = await browser.storage.local.get(["parserList", "userScriptsList"]);
-
-    const metaIds = new Set(meta.map((p) => p.id));
-    parserList = parserList.filter((p) => metaIds.has(p.id));
+    let parserList = [];
+    let { userScriptsList = [] } = await browser.storage.local.get(["userScriptsList"]);
 
     if (userScriptsList.length) {
       userScriptsList = userScriptsList.map((u) => ({
@@ -403,7 +403,7 @@ async function scheduleParserListSave() {
   }
 }
 
-// Get current song info based on location and parser list
+// Get current song info based on website and parser list
 window.getSongInfo = async function () {
   try {
     const settings = await browser.storage.local.get();
@@ -414,9 +414,18 @@ window.getSongInfo = async function () {
     if (!domainParsers) return null;
 
     for (const parser of domainParsers) {
-      const isEnabled = settings[`enable_${parser.id}`] !== false;
-      const matches = parser.patterns?.some((re) => re.test(pathname));
-      if (isEnabled && matches) return await parser.parse();
+      try {
+        const isEnabled = settings[`enable_${parser.id}`] !== false;
+        const matches = parser.patterns?.some((re) => re.test(pathname));
+
+        if (isEnabled && matches) {
+          const result = await parser.parse();
+          if (result) return result;
+        }
+      } catch (err) {
+        logError(`Parser ${parser.id} failed:`, err);
+        continue;
+      }
     }
 
     return null;
@@ -491,7 +500,7 @@ window.addEventListener("message", async (event) => {
               ...timestamps,
             };
           } catch (err) {
-            console.error("User script parser error:", err);
+            logError("User script parser error:", err);
             return null;
           }
         },
@@ -608,6 +617,7 @@ async function cleanupOrphanSettingsAndEnables() {
         const id = key.replace("settings_", "");
 
         if (!validIds.has(id)) {
+          logInfo(`Deleted Orphan Setting: ${key}`);
           await browser.storage.local.remove(key);
           delete settingsCache[key];
         }
@@ -618,11 +628,26 @@ async function cleanupOrphanSettingsAndEnables() {
         const id = key.replace("enable_", "");
 
         if (!validIds.has(id)) {
+          logInfo(`Deleted Orphan Enable: ${key}`);
           await browser.storage.local.remove(key);
         }
       }
     }
   } catch (e) {
-    console.error("cleanupOrphanSettingsAndEnables error:", e);
+    logError("cleanupOrphanSettingsAndEnables error:", e);
   }
 }
+
+// Global unhandled promise rejection handler
+window.addEventListener("unhandledrejection", (event) => {
+  if (errorFilter.shouldIgnore(event.reason)) {
+    event.preventDefault();
+  }
+});
+
+// Global error handler
+window.addEventListener("error", (event) => {
+  if (errorFilter.shouldIgnore(event.error || event.message)) {
+    event.preventDefault();
+  }
+});

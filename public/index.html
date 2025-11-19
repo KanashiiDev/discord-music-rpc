@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Discord Music RPC Server Status</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+
+  <body>
+    <header>Discord Music RPC Server Status</header>
+
+    <div class="container">
+      <h2>RPC Status</h2>
+      <div class="status-box">
+        <div class="status">Status: <span id="rpcStatus">Loading...</span></div>
+      </div>
+      <h2 id="musicCardHeader">Listening To</h2>
+      <div class="music-card" id="musicCard" style="display: none">
+        <div class="music-body">
+          <div class="music-cover">
+            <img id="coverImage" src="" alt="cover" />
+          </div>
+
+          <div class="music-info">
+            <h2 id="trackTitle">Title</h2>
+            <div id="trackArtist" class="artist">Artist</div>
+            <div id="trackSource" class="source">Source</div>
+
+            <div class="progress-container">
+              <span id="timePassed">00:00</span>
+              <div class="progress-bar" id="progressBar">
+                <div id="progressFill" class="progress"></div>
+              </div>
+              <span id="duration">00:00</span>
+            </div>
+
+            <div class="link-container" id="linkContainer">
+              <a id="trackLink1" class="link">Button 1</a>
+              <a id="trackLink2" class="link">Button 2</a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <h2 class="collapsible">
+        <span>Current Activity</span>
+        <span class="arrow">➤</span>
+      </h2>
+      <div class="activity-box">
+        <pre id="activityJson">{ }</pre>
+      </div>
+
+      <h2 class="collapsible">
+        <span>Last Update</span>
+        <span class="arrow">➤</span>
+      </h2>
+      <div class="activity-box">
+        <pre id="lastActivityJson">{ }</pre>
+      </div>
+    </div>
+    <footer><a href="https://github.com/KanashiiDev/discord-music-rpc">Discord Music RPC by KanashiiDev</a></footer>
+    <script src="index.js"></script>
+  </body>
+</html>

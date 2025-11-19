@@ -1,4 +1,6 @@
 const { app, Tray, Menu, Notification, MenuItem, nativeImage, dialog, shell } = require("electron");
+let isAppInitialized = false;
+
 // Force English Locale
 app.commandLine.appendSwitch("lang", "en-US");
 
@@ -52,15 +54,35 @@ const fs = require("fs");
 const os = require("os");
 const isPackaged = app.isPackaged;
 
-const config = {
+const defaultConfig = {
   server: {
     PORT: 3000,
-    START_TIMEOUT: 10000,
+    START_TIMEOUT: 15000,
     UPDATE_CHECK_INTERVAL: 3600000,
     MAX_RESTART_ATTEMPTS: 5,
     RESTART_DELAY: 5000,
   },
 };
+
+// Store Config Check
+if (!store.has("server")) {
+  store.set("server", defaultConfig.server);
+} else {
+  const current = store.get("server");
+  let updated = false;
+
+  for (const key in defaultConfig.server) {
+    if (!(key in current)) {
+      current[key] = defaultConfig.server[key];
+      updated = true;
+    }
+  }
+  if (updated) {
+    store.set("server", current);
+  }
+}
+
+const config = store.get("server");
 
 // State Management
 const state = {
@@ -150,50 +172,33 @@ const icons = {
   tray_win: getIconPath("16x16.png"),
 };
 
-// App Ready
-function waitForTraySupport() {
-  return new Promise((resolve) => {
-    if (process.platform !== "linux") {
-      resolve(true);
-      return;
+function setupSingleInstanceLock() {
+  if (!app.requestSingleInstanceLock()) {
+    app.quit();
+    process.exit(0);
+  }
+
+  app.on("second-instance", () => {
+    if (state.tray) {
+      state.tray.popUpContextMenu();
     }
-
-    // Check tray support in Linux
-    let attempts = 0;
-    const maxAttempts = 30;
-    const checkInterval = 100;
-
-    const checkTray = setInterval(() => {
-      attempts++;
-
-      // Check if the Tray class is available
-      try {
-        const testIcon = nativeImage.createFromPath(getIconPath());
-        if (!testIcon.isEmpty()) {
-          clearInterval(checkTray);
-          resolve(true);
-        }
-      } catch (err) {
-        // Not ready yet
-      }
-
-      if (attempts >= maxAttempts) {
-        clearInterval(checkTray);
-        log.warn("Tray support check timed out, proceeding anyway");
-        resolve(false);
-      }
-    }, checkInterval);
   });
 }
 
+setupSingleInstanceLock();
+
 // App Ready
 app.whenReady().then(async () => {
-  try {
-    if (process.platform === "linux") {
-      // Wait until the tray support is ready
-      await waitForTraySupport();
-    }
+  // Prevent restarting a second time
+  if (isAppInitialized) {
+    log.warn("App already initialized, skipping duplicate initialization");
+    return;
+  }
 
+  isAppInitialized = true;
+  log.info("App initialization started");
+
+  try {
     initializeApp();
   } catch (err) {
     handleCriticalError("App initialization failed", err);
@@ -205,35 +210,50 @@ async function startServer() {
   const { fork } = require("child_process");
   const serverPath = getPath("server.js");
 
+  // Do not restart if the server is already running
   if (state.serverProcess || state.isServerRunning) {
-    log.warn("Server already running");
+    log.warn("Server already running or starting, skipping duplicate start");
     return;
   }
 
-  if (state.restartAttempts >= config.server.MAX_RESTART_ATTEMPTS) {
+  if (state.restartAttempts >= config.MAX_RESTART_ATTEMPTS) {
     log.error("Max restart attempts reached. Please check server configuration.");
     return;
   }
 
   log.info(`Starting server (attempt ${state.restartAttempts + 1}) at: ${serverPath}`);
 
+  // Check that the server file is accessible
+  if (!fs.existsSync(serverPath)) {
+    log.error(`Server file not found: ${serverPath}`);
+    return Promise.reject(new Error("Server file not found"));
+  }
+
   return new Promise((resolve, reject) => {
+    const startTime = Date.now();
+
     state.serverProcess = fork(serverPath, [], {
       env: {
         ...process.env,
-        PORT: config.server.PORT,
+        PORT: config.PORT,
         NODE_ENV: "production",
-        LOG_LEVEL: "debug",
+        LOG_LEVEL: log.transports.file.level || "debug",
       },
       stdio: ["pipe", "pipe", "pipe", "ipc"],
       silent: false,
     });
 
+    log.info(`Server process started (PID: ${state.serverProcess.pid})`);
+
     const readyTimeout = setTimeout(() => {
-      log.warn("Server did not signal 'ready' in time");
+      const elapsed = Date.now() - startTime;
+      log.warn(`Server startup timeout after ${elapsed}ms`);
+      if (state.serverProcess && !state.serverProcess.killed) {
+        state.serverProcess.kill("SIGTERM");
+      }
       cleanupProcess();
       reject(new Error("Server startup timeout"));
-    }, config.server.START_TIMEOUT);
+    }, config.START_TIMEOUT);
 
     const cleanupProcess = () => {
       clearTimeout(readyTimeout);
@@ -243,12 +263,13 @@ async function startServer() {
     state.serverProcess.on("message", (msg) => {
       if (msg === "ready") {
         clearTimeout(readyTimeout);
+        const elapsedTime = Date.now() - startTime;
         state.isServerRunning = true;
         state.serverStartTime = Date.now();
         state.restartAttempts = 0;
         updateTrayMenu();
         updateServerSettings();
-        log.info("Server started successfully");
+        log.info(`Server ready in ${elapsedTime}ms`);
         resolve();
       }
       if (msg.type === "RPC_STATUS") {
@@ -279,7 +300,11 @@ async function startServer() {
 
       if (!signal && !state.isStopping) {
         log.warn(`Server exited unexpectedly with code ${code}`);
-        scheduleServerRestart();
+        if (code !== 0 && code !== 1) {
+          scheduleServerRestart();
+        } else if (code === 1) {
+          log.error("Server failed to start (exit code 1). Check logs for details.");
+        }
       } else {
         log.info("Server stopped normally");
       }
@@ -289,25 +314,50 @@ async function startServer() {
 
 // Stop Server
 async function stopServer() {
-  if (!state.serverProcess) return;
+  if (!state.serverProcess) {
+    log.info("No server process to stop");
+    return;
+  }
+
+  log.info("Stopping server...");
   state.isStopping = true;
 
   return new Promise((resolve) => {
     const timeoutDuration = Math.min(3000, state.serverStartTime ? Date.now() - state.serverStartTime : 3000);
     const killTimeout = setTimeout(() => {
-      if (state.serverProcess) {
+      if (state.serverProcess && !state.serverProcess.killed) {
+        log.warn("Server did not stop gracefully, forcing kill");
         state.serverProcess.kill("SIGKILL");
       }
+      state.serverProcess = null;
+      state.isServerRunning = false;
+      state.isStopping = false;
       resolve();
     }, timeoutDuration);
 
     state.serverProcess.once("exit", () => {
       clearTimeout(killTimeout);
+      state.serverProcess = null;
+      state.isServerRunning = false;
       state.isStopping = false;
       resolve();
     });
 
-    state.serverProcess.send("shutdown");
+    // If there is a process and it hasn't died, send a shutdown message
+    if (state.serverProcess && !state.serverProcess.killed) {
+      try {
+        state.serverProcess.send("shutdown");
+      } catch (err) {
+        log.warn("Could not send shutdown message:", err.message);
+        state.serverProcess.kill("SIGTERM");
+      }
+    } else {
+      clearTimeout(killTimeout);
+      state.serverProcess = null;
+      state.isServerRunning = false;
+      state.isStopping = false;
+      resolve();
+    }
   });
 }
 
@@ -326,13 +376,25 @@ async function restartServer() {
 
 // Server Restart Scheduling
 function scheduleServerRestart() {
-  if (state.restartAttempts >= config.server.MAX_RESTART_ATTEMPTS) {
+  if (state.restartAttempts >= config.MAX_RESTART_ATTEMPTS) {
     log.error("Max restart attempts reached. Manual intervention required.");
     return;
   }
 
+  // If the server process still exists, stop it first
+  if (state.serverProcess && !state.serverProcess.killed) {
+    log.info("Cleaning up existing server process before restart");
+    stopServer().then(() => {
+      scheduleActualRestart();
+    });
+  } else {
+    scheduleActualRestart();
+  }
+}
+
+function scheduleActualRestart() {
   state.restartAttempts++;
-  const delay = config.server.RESTART_DELAY * state.restartAttempts;
+  const delay = config.RESTART_DELAY * state.restartAttempts;
 
   log.info(`Scheduling server restart in ${delay / 1000} seconds (attempt ${state.restartAttempts})`);
 
@@ -357,21 +419,6 @@ function updateServerSettings() {
   }
 }
 
-// Single instance lock
-function setupSingleInstanceLock() {
-  if (!app.requestSingleInstanceLock()) {
-    app.quit();
-    process.exit(0);
-  }
-
-  app.on("second-instance", () => {
-    log.info("Another instance attempted to run - focusing existing instance");
-    if (state.tray) {
-      state.tray.popUpContextMenu();
-    }
-  });
-}
-
 // Initialize the application
 function initializeApp() {
   try {
@@ -388,13 +435,45 @@ function initializeApp() {
       app.dock.hide();
     }
     Menu.setApplicationMenu(null);
-    setupSingleInstanceLock();
-    createTrayWithRetry();
+
+    if (process.platform === "linux") {
+      // Wait until the tray support is ready
+      setTimeout(() => {
+        createTrayWithRetry();
+      }, 500);
+    } else {
+      createTrayWithRetry();
+    }
     setupAutoUpdater();
-    startServer().catch((err) => {
-      log.error("Initial server start failed:", err);
-      scheduleServerRestart();
-    });
+
+    if (isPackaged) {
+      try {
+        const serverPath = getPath("server.js");
+        log.info("Pre-warming: Reading server file to cache...");
+        fs.readFileSync(serverPath, "utf8");
+        log.info("Pre-warming completed");
+
+        // Start the server
+        setTimeout(() => {
+          startServer().catch((err) => {
+            log.error("Initial server start failed:", err);
+            scheduleServerRestart();
+          });
+        }, 100);
+      } catch (err) {
+        log.warn("Pre-warming failed, starting server normally:", err.message);
+        startServer().catch((err) => {
+          log.error("Initial server start failed:", err);
+          scheduleServerRestart();
+        });
+      }
+    } else {
+      // Development mode
+      startServer().catch((err) => {
+        log.error("Initial server start failed:", err);
+        scheduleServerRestart();
+      });
+    }
   } catch (err) {
     handleCriticalError("Initialization failed", err);
   }
@@ -535,6 +614,7 @@ function setAutoStart(enable) {
     });
   }
 }
+
 // Tray Menu
 function updateTrayMenu() {
   if (!state.tray) {
@@ -619,7 +699,12 @@ function updateTrayMenu() {
             label: `RPC: ${state.isRPCConnected ? "Connected" : "Disconnected"}`,
             enabled: false,
           },
+          {
+            label: `Port: ${config.PORT || "3000"}`,
+            enabled: false,
+          },
           { type: "separator" },
+          { label: "Open Status", click: () => openStatus(), enabled: state.isServerRunning },
           { label: "Open Logs", click: () => openLogs() },
           {
             label: "Log Song Updates",
@@ -635,6 +720,7 @@ function updateTrayMenu() {
           },
         ],
       },
+      { label: "Config", click: () => openConfig() },
       { type: "separator" },
       {
         label: "Exit",
@@ -649,14 +735,7 @@ function updateTrayMenu() {
         contextMenu.insert(1, updateMenuItemSeparator);
       }
 
-      // Context menu optimization for Linux
-      if (process.platform === "linux") {
-        setTimeout(() => {
-          state.tray.setContextMenu(contextMenu);
-        }, 100);
-      } else {
-        state.tray.setContextMenu(contextMenu);
-      }
+      state.tray.setContextMenu(contextMenu);
 
       state.tray.setToolTip(`Discord Music RPC\nServer: ${state.isServerRunning ? "Running" : "Stopped"}\nRPC: ${state.isRPCConnected ? "Connected" : "Disconnected"}`);
     }
@@ -665,7 +744,7 @@ function updateTrayMenu() {
   }
 }
 
-function createTrayWithRetry(maxAttempts = 15, delay = 1000) {
+function createTrayWithRetry(maxAttempts = 10, delay = 200) {
   let attempts = 0;
 
   function tryCreateTray() {
@@ -675,13 +754,10 @@ function createTrayWithRetry(maxAttempts = 15, delay = 1000) {
       createTray();
       return;
     } catch (err) {
-      log.warn(`Tray creation failed (attempt ${attempts}):`, err.message);
+      log.warn(`Tray creation failed (attempt ${attempts}/${maxAttempts}):`, err.message);
 
       if (attempts < maxAttempts) {
-        // Progressive delay - increase the waiting time with each attempt
-        const nextDelay = delay * (1 + attempts * 0.2);
-        log.log(`Retrying tray creation in ${nextDelay}ms...`);
-        setTimeout(tryCreateTray, nextDelay);
+        setTimeout(tryCreateTray, delay);
       } else {
         log.error("Tray could not be created after multiple attempts");
         showTrayFallbackNotification();
@@ -787,6 +863,11 @@ function showTrayFallbackNotification() {
   });
 }
 
+function openStatus() {
+  const url = `http://localhost:${config.PORT}`;
+  shell.openExternal(url);
+}
+
 // Open Logs
 function openLogs() {
   const logPath = log.transports.file.getFile().path;
@@ -806,6 +887,31 @@ function openLogs() {
     log.error("Failed to open logs:", err);
     dialog.showErrorBox("Error", "Could not open log file. Try viewing it manually at: " + logPath);
   });
+}
+
+function openConfig() {
+  if (!fs.existsSync(dbPath)) {
+    dialog.showMessageBox({
+      type: "info",
+      buttons: ["OK"],
+      title: "Config File",
+      message: "Config file does not exist yet",
+      detail: "The application will create it on first run or after saving settings.",
+    });
+    return;
+  }
+
+  shell
+    .openPath(dbPath)
+    .then((result) => {
+      if (result) {
+        dialog.showErrorBox("Error", "Could not open config file. Try viewing it manually at: " + dbPath);
+      }
+    })
+    .catch((err) => {
+      console.error("Failed to open config:", err);
+      dialog.showErrorBox("Error", "Could not open config file. Try viewing it manually at: " + dbPath);
+    });
 }
 
 // Handle Errors
@@ -848,5 +954,5 @@ process.on("unhandledRejection", (reason, promise) => {
 if (app.isPackaged) {
   setInterval(() => {
     autoUpdater.checkForUpdates().catch((err) => log.error("Background update check failed:", err));
-  }, config.server.UPDATE_CHECK_INTERVAL);
+  }, config.UPDATE_CHECK_INTERVAL);
 }

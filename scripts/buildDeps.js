@@ -4,6 +4,23 @@ const path = require("path");
 const packageJsonPath = path.join(__dirname, "..", "package.json");
 const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, "utf-8"));
 const buildDepsPath = path.resolve(__dirname, "..", "build_deps");
+const platformMap = {
+  win: "win32",
+  linux: "linux",
+  mac: "mac",
+};
+const args = process.argv.slice(2);
+let target;
+for (const arg of args) {
+  if (arg.startsWith("--")) {
+    const key = arg.slice(2);
+    if (platformMap[key]) {
+      target = platformMap[key];
+      break;
+    }
+  }
+}
+const distPath = path.resolve(__dirname, "..", "dist", target);
 
 // Recursive folder deletion
 function removeDir(dirPath) {
@@ -57,6 +74,7 @@ function copyModule(depName, nodeModulesPath, destNodeModulesPath, visited = new
 }
 
 // Cleaning
+removeDir(distPath);
 removeDir(buildDepsPath);
 
 // Copy production dependencies (recursive)
@@ -66,5 +84,6 @@ Object.keys(packageJson.dependencies || {}).forEach((dep) => {
 
 // Necessary files and icons
 copyDir(path.join(__dirname, "..", "assets/icon"), path.join(buildDepsPath, "assets/icon"));
+copyDir(path.join(__dirname, "..", "public"), path.join(buildDepsPath, "public"));
 fs.copyFileSync(path.join(__dirname, "..", "server.js"), path.join(buildDepsPath, "server.js"));
 fs.copyFileSync(path.join(__dirname, "..", "utils.js"), path.join(buildDepsPath, "utils.js"));

@@ -10,8 +10,40 @@ const DEFAULT_PARSER_OPTIONS = {
 };
 
 // Logs
-const logInfo = (...a) => CONFIG.debugMode && console.info("[DISCORD-MUSIC-RPC - INFO]", ...a);
-const logWarn = (...a) => CONFIG.debugMode && console.warn("[DISCORD-MUSIC-RPC - WARN]", ...a);
+const logInfo = async (...args) => {
+  const stored = await browser.storage.local.get("debugMode");
+  const debugMode = stored.debugMode ?? CONFIG.debugMode;
+  if (!debugMode) return;
+
+  const prefix = "[DISCORD-MUSIC-RPC - INFO]";
+  if (typeof args[0] === "string" && args[0].includes("%c")) {
+    console.info(`%c${prefix}%c ${args[0]}`, "color:#2196f3; font-weight:bold;", "color:#fff;", ...args.slice(1));
+  } else {
+    console.info(`%c${prefix}`, "color:#2196f3; font-weight:bold;", ...args);
+  }
+};
+
+const logWarn = async (...args) => {
+  const stored = await browser.storage.local.get("debugMode");
+  const debugMode = stored.debugMode ?? CONFIG.debugMode;
+  if (!debugMode) return;
+
+  const prefix = "%c[DISCORD-MUSIC-RPC - WARN]%c";
+  const prefixCSS = ["color:#ff9800; font-weight:bold;", "color:#fff;"];
+  console.warn(prefix, ...prefixCSS, ...args);
+};
+
+const errorFilter = (() => {
+  const ignorePatterns = [/extension context invalidated/i, /could not establish connection/i, /failed to fetch/i, /update failed after all retries/i, /update failed \(no response\)/i];
+
+  const shouldIgnore = (error) => {
+    const errorString = error?.message?.toLowerCase() || error?.toString?.()?.toLowerCase() || "";
+    return ignorePatterns.some((re) => re.test(errorString));
+  };
+
+  return { shouldIgnore };
+})();
+
 const logError = (...a) => {
   const safeStringify = (obj) => {
     const seen = new WeakSet();
@@ -24,23 +56,20 @@ const logError = (...a) => {
     });
   };
 
-  const errorString = a
-    .map((arg) => {
-      if (arg instanceof Error) {
-        return `${arg.name || ""} ${arg.message || ""} ${arg.stack || ""}`;
-      } else if (typeof arg === "object" && arg !== null) {
-        return safeStringify(arg);
-      }
-      return arg?.toString?.() || "";
-    })
-    .join(" ")
-    .toLowerCase();
+  const shouldIgnoreAny = a.some((arg) => errorFilter.shouldIgnore(arg));
 
-  const ignorePatterns = [/extension context invalidated/i, /could not establish connection/i, /failed to fetch/i, /update failed after all retries/i, /update failed \(no response\)/i];
-  const isIgnorable = ignorePatterns.some((re) => re.test(errorString));
-
-  if (!isIgnorable) {
-    console.error("[DISCORD-MUSIC-RPC - ERROR]", ...a);
+  if (!shouldIgnoreAny) {
+    console.error(
+      "[DISCORD-MUSIC-RPC - ERROR]",
+      ...a.map((arg) => {
+        if (arg instanceof Error) {
+          return `${arg.name || ""} ${arg.message || ""} ${arg.stack || ""}`;
+        } else if (typeof arg === "object" && arg !== null) {
+          return safeStringify(arg);
+        }
+        return arg?.toString?.() || "";
+      })
+    );
   }
 };
 
@@ -243,22 +272,35 @@ function normalizeArtistName(name) {
 }
 
 // Normalize host string
-const normalizeHost = (url) => {
+const normalizeHost = (hostOrUrl) => {
   try {
-      if (!d || typeof d !== "string") return "";
-    return new URL(url).hostname.trim().replace(/^https?:\/\/|^www\./g, "").toLowerCase();
+    if (!hostOrUrl || typeof hostOrUrl !== "string") return "";
+    if (!hostOrUrl.includes("://")) {
+      return hostOrUrl
+        .trim()
+        .replace(/^www\./g, "")
+        .toLowerCase();
+    }
+    return new URL(hostOrUrl).hostname
+      .trim()
+      .replace(/^www\./g, "")
+      .toLowerCase();
   } catch {
     return "";
   }
 };
 
-// Normalize URL string
-function normalize(str) {
-  return str
-    .replace(/^https?:\/\//i, "")
-    .replace(/^www\./i, "")
-    .replace(/\/.*$/, "")
-    .toLowerCase();
+function isDomainMatch(parserDomainRaw, tabHostnameRaw) {
+  const parserDomain = normalizeHost(parserDomainRaw);
+  const tabDomain = normalizeHost(tabHostnameRaw);
+
+  if (!parserDomain || !tabDomain) return false;
+  if (parserDomain === tabDomain) return true;
+  if (parserDomain.startsWith("*.")) {
+    const base = parserDomain.slice(2);
+    return tabDomain.endsWith(`.${base}`) && tabDomain !== base;
+  }
+  return false;
 }
 
 // Url Pattern Regex
@@ -279,7 +321,7 @@ const parseUrlPattern = (pattern) => {
 const findMatchingParsersForUrl = (url, list) => {
   const host = normalizeHost(url);
   return list.filter(({ domain }) => {
-    const d = normalize(domain);
+    const d = normalizeHost(domain);
     return d && host === d;
   });
 };
@@ -1040,7 +1082,7 @@ function openIndexedDB(DB_NAME, STORE_NAME, DB_VERSION) {
     };
 
     request.onerror = (e) => {
-      console.error("IndexedDB open error:", e.target.error);
+      logError("IndexedDB open error:", e.target.error);
       reject(e.target.error);
     };
   });
@@ -1097,15 +1139,18 @@ const isValidUrl = (url) => {
 
 const isAllowedDomain = async (hostname, pathname) => {
   try {
-    const normHost = normalize(hostname);
+    const normHost = normalizeHost(hostname);
 
     for (const parser of state.parserList) {
-      const domain = normalize(parser.domain);
-      if (!domain || normHost !== domain) continue;
+      if (!isDomainMatch(parser.domain, normHost)) continue;
 
-      const match = (parser.urlPatterns || []).map(parseUrlPattern).some((re) => re.test(pathname));
-      if (!match) continue;
+      // URL pattern check
+      const urlPatterns = parser.urlPatterns || [];
+      const hasMatch = urlPatterns.length === 0 || urlPatterns.map(parseUrlPattern).some((re) => re.test(pathname));
 
+      if (!hasMatch) continue;
+
+      // Parser enabled check
       const cached = state.parserEnabledCache.has(parser.id) ? state.parserEnabledCache.get(parser.id) : parser.isEnabled !== false;
 
       if (cached) {
@@ -1117,7 +1162,6 @@ const isAllowedDomain = async (hostname, pathname) => {
     return false;
   } catch (err) {
     logError("Domain Match Error", err);
-    state.parserList = [];
     return false;
   }
 };
@@ -1413,7 +1457,7 @@ async function openUserScriptManager(id) {
     await browser.tabs.create({ url });
     window.close();
   } catch (err) {
-    console.error("Open manager failed:", err);
+    logError("Open manager failed:", err);
   }
 }
 

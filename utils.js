@@ -1,14 +1,3 @@
-// Rate-limited Logging
-const LOG_INTERVAL = 10000; // 10 seconds
-const lastLogMap = new Map();
-function logRpcConnection(message) {
-  const now = Date.now();
-  const lastTime = lastLogMap.get(message) || 0;
-  if (now - lastTime < LOG_INTERVAL) return;
-  console.log(message);
-  lastLogMap.set(message, now);
-}
-
 function getCurrentTime() {
   const now = new Date();
   return [now.getHours().toString().padStart(2, "0"), now.getMinutes().toString().padStart(2, "0"), now.getSeconds().toString().padStart(2, "0")].join(":");
@@ -25,7 +14,8 @@ function isSameActivityIgnore(a, b) {
 function truncate(str, maxLength = 128, { fallback = "Unknown", minLength = 2, maxRegexLength = 512 } = {}) {
   if (typeof str !== "string") return fallback;
   str = str.trim();
-  if (!str || str.length < minLength) return fallback;
+  if (!str) return fallback;
+  if (str.length >= 1 && str.length < minLength) str = `- ${str} -`;
 
   // Limit for regex
   let strForRegex = str.length > maxRegexLength ? str.slice(0, maxRegexLength) : str;
@@ -46,7 +36,7 @@ function truncate(str, maxLength = 128, { fallback = "Unknown", minLength = 2, m
     "hd|hq|4k|8k|1080p|720p|480p|mp3|mp4|flac|wav|aac|320kbps|256kbps|128kbps",
     "free\\s+(download|dl|song|now)|download\\s+(free|now)",
     "official(\\s+(video|music\\s+video|audio|lyric\\s+video|visualizer))?",
-    "/Bonus\s+Track|PATREON|teaser|trailer|promo|lyric\\s+video|lyrics?|music\\s+video|out\\s+now",
+    "/Bonus\\s+Track|PATREON|teaser|trailer|promo|lyric\\s+video|lyrics?|music\\s+video|out\\s+now",
     "mixed\\s+by\\s+dj|karaoke|backing\\s+track|vocals\\s+only|live(\\s+performance)?",
     "now\\s+available|full\\s+song|full\\s+version|complete\\s+version|original\\s+version\\s+version",
     "official\\s+trailer|official\\s+teaser|[\\w\\s'’.\\-]+\\s+premiere",
@@ -147,10 +137,16 @@ function normalizeTitleAndArtist(title, artist, replaceArtist = true) {
 }
 
 const isValidUrl = (url) => {
+  if (typeof url !== "string" || url.trim() === "") return false;
+
   try {
-    const parsed = new URL(url);
-    return parsed.protocol === "https:" || parsed.protocol === "http:";
-  } catch (_) {
+    const u = new URL(url);
+    if (u.protocol === "javascript:" || u.protocol === "data:") {
+      return false;
+    }
+
+    return true;
+  } catch {
     return false;
   }
 };
@@ -191,7 +187,6 @@ function detectElectronMode() {
 }
 
 module.exports = {
-  logRpcConnection,
   getCurrentTime,
   isSameActivity,
   isSameActivityIgnore,

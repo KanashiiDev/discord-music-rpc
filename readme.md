@@ -71,7 +71,7 @@ What sets it apart is its **customizable selector system** — no coding require
 ### 🔧 Setup
 
 1. **Install the Extension** <br>
-   First, make sure the extension is installed in your browser. It usually appears in the window that opens when you click on the extensions icon (like a puzzle piece) next to the address bar.
+   First, make sure the extension is installed in your browser. It usually appears in the window that opens when you click on the extensions icon (like a puzzle piece) next to the address bar. Click on the extension icon and complete the initial setup.
 
 2. **Install the Application** <br>
    [Download the latest release](https://github.com/KanashiiDev/discord-music-rpc/releases). Run the app — it will appear in your system tray.
@@ -95,7 +95,7 @@ What sets it apart is its **customizable selector system** — no coding require
 
 ## 🐞 Troubleshooting
 
-If your status isn't updating:
+**If your status isn't updating:**
 
 - Make sure the local server is running.
 - Confirm that the browser extension is active on the music site.
@@ -104,6 +104,51 @@ If your status isn't updating:
 - Make sure that "Display current activity as a status message" is enabled in Discord.
 - If you run Discord as an administrator, you must also run Discord Music RPC as an administrator.
 - Check the console for errors and logs. For the server, click on the Tray application and click on “open logs” in the debug section.
+- Right-click on the extension icon in your browser and click on the “Toggle Debug Mode” option. Check your browser's developer console for any errors.
+- If nothing works and the problem just appeared, reset the extension to factory settings. To do this, right-click on the extension icon in your browser and click 'Reset to Defaults'.
+
+**Linux:**
+
+- **Run Discord Natively**
+
+  - Gentoo: `emerge discord`
+  - Debian/Ubuntu: `sudo dpkg -i discord.deb`
+  - Arch: `sudo pacman -S discord`
+
+- **Set XDG_RUNTIME_DIR**
+
+  ```bash
+  export XDG_RUNTIME_DIR=/run/user/$(id -u)
+  ```
+
+- **Do Not Run Discord as Root**
+
+  - When run as root, the socket goes under /tmp → RPC doesn't work.
+  - Check: `ps aux | grep discord`
+
+- **Check IPC Socket Permissions**
+
+  ```bash
+  ls -la $XDG_RUNTIME_DIR/discord-ipc-*
+  # expected: "srwxr-xr-x"
+  ```
+
+- **Check RuntimePath if You Are Using systemd / elogind**
+
+  - Run: `loginctl show-session $(loginctl | grep $(whoami) | awk '{print $1}') | grep RuntimePath`
+  - If this output is empty, it means the systemd session is corrupted.
+
+- **If You Use Flatpak Discord, Grant IPC Permission (mandatory)**
+
+  - `flatpak override --user com.discordapp.Discord --filesystem=/run/user/$(id -u)`
+
+- **If you are using Snap Discord, IPC will not work at all**
+
+  - It is completely isolated, so Discord Music RPC does not work.
+
+- **Additional Package May Be Required for Wayland Users**
+  - For some users, IPC is fixed when they install the `xdg-desktop-portal` package.
+  - `sudo pacman -S xdg-desktop-portal xdg-desktop-portal-wlr`
 
 ---
 
@@ -400,23 +445,25 @@ This project is licensed under the MIT License. See the [`LICENSE`](LICENSE) fil
 ### 🧱 Built With
 
 #### Core Framework
-- [Electron](https://www.electronjs.org/) – Cross-platform desktop application framework
-- [Electron Builder](https://www.electron.build/) – Complete solution to package and build Electron apps
+
+- [Electron](https://github.com/electron/electron) – Cross-platform desktop application framework
+- [Electron Builder](https://github.com/electron-userland/electron-builder) – Complete solution to package and build Electron apps
 
 #### Backend & Storage
-- [Express](https://expressjs.com/) – Fast, minimalist web server
-- [simple-json-db](https://www.npmjs.com/package/simple-json-db) – Lightweight JSON-based local storage
+
+- [Express](https://github.com/expressjs/express) – Fast, minimalist web server
+- [simple-json-db](https://github.com/nmaggioni/Simple-JSONdb) – Lightweight JSON-based local storage
 - [Electron Log](https://github.com/megahertz/electron-log) – Simple logging for Electron applications
 
-#### Code Editor
-- [CodeMirror](https://codemirror.net/) – Versatile in-browser code editor
-- [acorn](https://www.npmjs.com/package/acorn) – JavaScript parser
-
 #### UI Components
-- [simplebar](https://grsmto.github.io/simplebar/) – Custom scrollbar library
-- [flatpickr](https://flatpickr.js.org/) – Lightweight date and time picker
+
+- [CodeMirror](https://github.com/codemirror/codemirror5) – Versatile in-browser code editor
+- [simplebar](https://github.com/Grsmto/simplebar) – Custom scrollbar library
+- [flatpickr](https://github.com/flatpickr/flatpickr) – Lightweight date and time picker
 
 #### Utilities
-- [PostCSS](https://postcss.org/) & [Autoprefixer](https://github.com/postcss/autoprefixer) – CSS processing and vendor prefixes
+
+- [PostCSS](https://github.com/postcss/postcss) & [Autoprefixer](https://github.com/postcss/autoprefixer) – CSS processing and vendor prefixes
 - [pako](https://github.com/nodeca/pako) – High-speed compression library
+- [acorn](https://github.com/acornjs/acorn) – JavaScript parser
 - [@xhayper/discord-rpc](https://github.com/xhayper/discord-rpc) – Discord Rich Presence integration

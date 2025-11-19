@@ -11,6 +11,7 @@ window.RPCStateManager = class {
     this.durationTimer = 0;
     this.durationTimerInterval = null;
     this.hasOnlyDuration = null;
+    this.lastCheckTime = null;
   }
 
   setActiveTab(tabId) {
@@ -42,13 +43,19 @@ window.RPCStateManager = class {
 
   isSongChanged(newSong) {
     const prev = this.lastActivity;
-    const changed = !!prev && !!newSong && ((newSong.title || "").trim() !== (prev.title || "").trim() || (newSong.artist || "").trim() !== (prev.artist || "").trim());
+    if (!prev) {
+      this.lastActivity = { ...newSong, lastUpdated: Date.now() };
+      return false;
+    }
 
-    if (!prev || changed) {
+    const changed = (newSong.title || "").trim() !== (prev.title || "").trim() || (newSong.artist || "").trim() !== (prev.artist || "").trim();
+
+    if (changed) {
       this.reset();
       if (this.hasOnlyDuration) this.startDurationTimer();
       return true;
     }
+
     return false;
   }
 
@@ -79,7 +86,7 @@ window.RPCStateManager = class {
 
   reset() {
     this.lastActivity = null;
-    this.lastKnownPosition = 0;
+    this.lastKnownPosition = null;
     this.isCurrentlySeeking = false;
     clearTimeout(this.seekTimeout);
     this.errorCount = 0;

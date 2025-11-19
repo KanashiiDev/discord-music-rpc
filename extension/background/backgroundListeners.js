@@ -280,11 +280,11 @@ const setupListeners = () => {
           if (!tabInfo.audible) {
             const current = state.activeTabMap.get(tabId);
             if (!current || current.isAudioPlaying === false) {
-              sendResponse({ ok: true });
+              sendResponse({ ok: false, error: "Tab is not audible." });
               return;
             }
             await clearRpcForTab(tabId);
-            sendResponse({ ok: true });
+            sendResponse({ ok: false, error: "Tab is not audible." });
             return;
           }
 
@@ -303,14 +303,26 @@ const setupListeners = () => {
 
           let parserId = current.parserId;
           if (tabInfo.url) {
-            const url = new URL(tabInfo.url);
-            const hostname = url.hostname.replace(/^www\./, "");
-            const exactMatch = state.parserList.find((p) => normalize(p.domain) === normalize(hostname));
-            if (exactMatch) {
-              parserId = exactMatch.id;
-              if (parserId !== current.parserId) {
-                logInfo(`Using exact parser match: ${hostname} -> ${parserId}`);
+            try {
+              const url = new URL(tabInfo.url);
+              const hostname = normalizeHost(url.hostname);
+              const exactMatch = state.parserList.find((p) => {
+                try {
+                  return isDomainMatch(p.domain, hostname);
+                } catch (e) {
+                  logError("Domain match error:", e);
+                  return false;
+                }
+              });
+
+              if (exactMatch) {
+                parserId = exactMatch.id;
+                if (parserId !== current.parserId) {
+                  logInfo(`Using parser match: ${hostname} -> ${parserId}`);
+                }
               }
+            } catch (e) {
+              logError("Error parsing URL:", e);
             }
           }
 
@@ -422,39 +434,143 @@ const setupListeners = () => {
     }
   });
 
+  // onRemoved
   browser.tabs.onRemoved.addListener((tabId) => {
-    if (!state.pendingClear.has(tabId)) clearRpcForTab(tabId);
     if (typeof tabId !== "number" || tabId <= 0) return;
-    clearRpcForTab(tabId);
-    state.activeTabMap.delete(tabId);
-    state.pendingUpdates.delete(tabId);
-    state.historyCounters.delete(tabId);
+
+    const controller = state.pendingFetches.get(tabId);
+    if (controller) controller.abort();
+
+    clearRpcForTab(tabId).catch(logError);
   });
 
-  // Context Menu Restart Option
+  // onUpdated
+  browser.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+    // Tab mute status
+    if (changeInfo.mutedInfo?.muted === true && state.activeTabMap.has(tabId)) {
+      logInfo(`Tab ${tabId} muted, clearing RPC`);
+      clearRpcForTab(tabId).catch(logError);
+    }
+
+    // Tab reload / URL change
+    if ((changeInfo.status === "loading" || changeInfo.url) && state.activeTabMap.has(tabId)) {
+      logInfo(`Tab ${tabId} reloaded or URL changed, clearing RPC`);
+      clearRpcForTab(tabId).catch(logError);
+    }
+  });
+
+  // onSuspend
+  browser.runtime.onSuspend.addListener(async () => {
+    const allTabs = Array.from(state.activeTabMap.keys());
+    for (const tabId of allTabs) {
+      const controller = state.pendingFetches.get(tabId);
+      if (controller) controller.abort();
+      await cleanupRpcForTab(tabId);
+    }
+    state.activeTabMap.clear();
+    state.pendingFetches.clear();
+  });
+
+  // Context Menu
   const manifestVersion = browser.runtime.getManifest().manifest_version;
   const contextType = manifestVersion === 3 ? "action" : "browser_action";
+  let factoryResetConfirm = false;
+  let factoryResetTimer = null;
+  const factoryResetTimeout = 8000;
 
   // Create Menu
   try {
     browser.contextMenus.removeAll().finally(() => {
+      // Restart Extension
       browser.contextMenus.create({
         id: "reloadExtension",
         title: "Restart the extension (Page Reload Required)",
+        contexts: [contextType],
+      });
+
+      // Toggle Debug Mode
+      browser.contextMenus.create({
+        id: "toggleDebugMode",
+        title: "Toggle Debug Mode (Check Developer Console)",
+        contexts: [contextType],
+      });
+
+      // Reset to Defaults
+      browser.contextMenus.create({
+        id: "factoryReset",
+        title: "Reset to Defaults (Click > Open Menu Again > Confirm)",
         contexts: [contextType],
       });
     });
   } catch (err) {}
 
   // Handle click on menu
-  browser.contextMenus.onClicked.addListener((info, tab) => {
+  browser.contextMenus.onClicked.addListener(async (info, tab) => {
+    // Restart Extension Action
     if (info.menuItemId === "reloadExtension") {
-      if (tab && tab.id) {
-        browser.tabs.reload(tab.id).then(() => {
+      try {
+        if (tab && tab.id) {
+          browser.tabs.reload(tab.id).then(() => {
+            browser.runtime.reload();
+          });
+        } else {
           browser.runtime.reload();
-        });
-      } else {
+        }
+      } catch (err) {
+        logError("Restart the extension error:", err);
+      }
+    }
+
+    // Toggle Debug Mode Action
+    if (info.menuItemId === "toggleDebugMode") {
+      try {
+        const stored = (await browser.storage.local.get("debugMode")).debugMode;
+        const current = stored ?? CONFIG.debugMode;
+        const newValue = current === 0 ? 1 : 0;
+        await browser.storage.local.set({ debugMode: newValue });
+        CONFIG.debugMode = newValue;
+
+        if (tab && tab.id) {
+          browser.tabs.reload(tab.id);
+        }
+      } catch (err) {
+        logError("Toggle Debug Mode error:", err);
+      }
+    }
+
+    // Reset to Defaults Action
+    if (info.menuItemId === "factoryReset") {
+      const ORIGINAL_FACTORY_TITLE = "Reset to Defaults (Click > Open Menu Again > Confirm)";
+      const CONFIRM_FACTORY_TITLE = "❗ Confirm Reset to Defaults (Click)";
+      // FIRST CLICK: Ask for confirmation
+      if (!factoryResetConfirm) {
+        factoryResetConfirm = true;
+
+        browser.contextMenus.update("factoryReset", { title: CONFIRM_FACTORY_TITLE });
+        // timeout to reset confirmation
+        factoryResetTimer = setTimeout(() => {
+          factoryResetConfirm = false;
+          browser.contextMenus.update("factoryReset", { title: ORIGINAL_FACTORY_TITLE });
+        }, factoryResetTimeout);
+
+        return;
+      }
+
+      // SECOND CLICK: execute reset
+      factoryResetConfirm = false;
+      clearTimeout(factoryResetTimer);
+      browser.contextMenus.update("factoryReset", { title: ORIGINAL_FACTORY_TITLE });
+
+      try {
+        await browser.storage.local.clear();
+
+        if (tab && tab.id) {
+          await browser.tabs.reload(tab.id);
+        }
+
         browser.runtime.reload();
+      } catch (err) {
+        logError("Reset to Defaults error:", err);
       }
     }
   });

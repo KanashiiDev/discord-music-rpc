@@ -339,14 +339,14 @@ const pendingInlines = {};
     }
   }
 
-  inlineUtilsFunctions(["background.js", "main.js", "common/utils.js"], "config.js", []);
+  inlineUtilsFunctions(["background.js", "common/utils.js", "mainParser.js"], "config.js", []);
   inlineUtilsFunctions(["common/utils.js", "popup/selector/selector.js", "popup/selector/components/preview.js", "background.js"], "../utils.js", [
     "truncate",
     "cleanTitle",
     "normalizeTitleAndArtist",
   ]);
   inlineUtilsFunctions("main.js", "common/utils.js", ["overridesApplied", "applyOverrides", "applyOverridesLoop"]);
-  inlineUtilsFunctions(["background.js", "main.js"], "common/utils.js", ["logInfo", "logWarn", "logError", "delay"]);
+  inlineUtilsFunctions(["background.js"], "common/utils.js", ["logInfo", "logWarn", "errorFilter", "shouldIgnore", "logError", "delay"]);
   inlineUtilsFunctions("background.js", "common/utils.js", [
     "parseUrlPattern",
     "normalizeHost",
@@ -358,6 +358,7 @@ const pendingInlines = {};
     "fetchWithTimeout",
     "getSenderTab",
     "isAllowedDomain",
+    "isDomainMatch",
   ]);
   inlineUtilsFunctions("background.js", ["manager/userScriptWorker.js", "background/historyBackground.js", "background/backgroundListeners.js"], []);
   inlineUtilsFunctions("popup/selector/selector.js", "common/utils.js", ["throttle", "formatLabel", "getExistingElementSelector", "getPlainText", "getIconAsDataUrl", "parseRegexArray"]);
@@ -376,6 +377,11 @@ const pendingInlines = {};
   );
 
   inlineUtilsFunctions("mainParser.js", "common/utils.js", [
+    "logInfo",
+    "logWarn",
+    "errorFilter",
+    "shouldIgnore",
+    "logError",
     "DEFAULT_PARSER_OPTIONS",
     "extractTimeParts",
     "parseTime",

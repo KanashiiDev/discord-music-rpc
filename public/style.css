@@ -1,0 +1,261 @@
+:root {
+  --bg-body: #0d0d0d;
+  --bg-header: #191919;
+  --bg-container: #191919;
+  --bg-card: #242424;
+  --text-primary: #e5e5e5;
+  --text-h2: #cbcbcb;
+  --text-header: #ddd;
+  --text-connected: #3cff7b;
+  --text-disconnected: #ff4f4f;
+  --text-button: #eeeeee;
+  --bg-button: #00545e;
+  --bg-button-hover: #00626d;
+  --card-shadow: rgba(0, 0, 0, 0.4);
+  --container-shadow: rgba(0, 0, 0, 0.5);
+  --border-radius: 12px;
+  --progress-bg: #1a1a1a;
+  --progress-fill: #959595;
+  --transition-speed: 0.3s;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: "Segoe UI", Arial, sans-serif;
+  background: var(--bg-body);
+  color: var(--text-primary);
+  line-height: 1.4;
+  padding: 0;
+}
+
+header {
+  background: var(--bg-header);
+  padding: 20px;
+  text-align: center;
+  font-size: 28px;
+  font-weight: bold;
+  color: var(--text-header);
+  box-shadow: 0 2px 10px var(--card-shadow);
+}
+
+.container {
+  max-width: 850px;
+  margin: 30px auto 3px auto;
+  background: var(--bg-container);
+  padding: 25px;
+  border-radius: var(--border-radius);
+  box-shadow: 0 0 15px var(--container-shadow);
+}
+
+pre {
+  overflow-x: auto;
+  white-space: pre;
+}
+
+h2 {
+  color: var(--text-h2);
+  margin-bottom: 8px;
+}
+
+.status-box,
+.activity-box {
+  background: var(--bg-card);
+  padding: 15px;
+  border-radius: 8px;
+  margin-bottom: 15px;
+  box-shadow: 0 0 10px var(--card-shadow);
+}
+
+.activity-box {
+  max-height: 185px;
+  overflow: hidden;
+  transition: max-height 0.25s ease;
+  font-size: 12px;
+}
+
+.activity-box.open {
+  max-height: 700px;
+}
+
+h2.collapsible {
+  cursor: pointer;
+  user-select: none;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: color 0.2s;
+}
+
+h2.collapsible:hover {
+  color: var(--accent);
+}
+
+h2 .arrow {
+  display: inline-block;
+  transition: transform 0.25s ease;
+  font-size: 18px;
+}
+
+h2.open .arrow {
+  transform: rotate(90deg);
+}
+
+.status {
+  font-size: 20px;
+}
+
+.connected {
+  color: var(--text-connected);
+}
+
+.disconnected {
+  color: var(--text-disconnected);
+}
+
+footer {
+  text-align: center;
+  padding: 20px 0;
+  opacity: 0.5;
+  font-size: 14px;
+}
+
+footer a {
+  text-decoration: none;
+  color: var(--text-header);
+  transition: color var(--transition-speed);
+}
+
+footer a:hover {
+  color: var(--bg-button-hover);
+}
+
+.music-card {
+  background: var(--bg-card);
+  border-radius: var(--border-radius);
+  padding: 18px;
+  margin: 0 0 20px 0;
+  box-shadow: 0 0 10px var(--card-shadow);
+}
+
+.music-header {
+  font-size: 18px;
+  font-weight: bold;
+  margin-bottom: 15px;
+  color: var(--text-header);
+}
+
+.music-body {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.music-cover img {
+  width: 110px;
+  height: 110px;
+  border-radius: var(--border-radius);
+  object-fit: cover;
+  box-shadow: 0 0 6px var(--card-shadow);
+}
+
+.music-info {
+  flex: 1;
+  min-width: 200px;
+}
+
+.music-info h2 {
+  margin: 0;
+  font-size: 20px;
+  color: var(--text-primary);
+}
+
+.artist {
+  font-size: 15px;
+  color: #bbbbbb;
+  margin-top: 2px;
+}
+
+.source {
+  font-size: 13px;
+  color: #777777;
+  margin-top: 5px;
+}
+
+.progress-container {
+  display: flex;
+  align-items: center;
+  margin-top: 10px;
+  gap: 10px;
+}
+
+.progress-bar {
+  flex: 1;
+  height: 6px;
+  background: var(--progress-bg);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.progress {
+  height: 100%;
+  width: 0%;
+  background: var(--progress-fill);
+  transition: width 0.3s linear;
+}
+
+#timePassed,
+#duration {
+  font-size: 13px;
+  width: 45px;
+  text-align: center;
+  color: #aaaaaa;
+}
+
+.link-container {
+  margin-top: 12px;
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.link-container a {
+  display: inline-block;
+  background: var(--bg-button);
+  color: var(--text-button);
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  text-align: center;
+  text-decoration: none;
+  width: 100%;
+  transition: background var(--transition-speed);
+}
+
+.link-container a:hover {
+  background: var(--bg-button-hover);
+}
+
+@media (max-width: 500px) {
+  .music-body {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .music-cover img {
+    width: 90px;
+    height: 90px;
+  }
+
+  .music-info {
+    text-align: center;
+  }
+
+  .link-container {
+    justify-content: center;
+  }
+}
