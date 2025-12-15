@@ -1,13 +1,42 @@
 # <img align="center" src="assets/icon/icon.png" alt="Extension Icon" width="48" height="48"> Discord Music RPC
 
 <p align="center">
-  <a href="https://chromewebstore.google.com/detail/discord-music-rpc-control/mpnijlpiepmpgoamimfmbdmglpdjmoic" target="_blank"><img src="https://img.shields.io/badge/Get%20it%20on-Chrome%20Web%20Store-brightgreen?logo=googlechrome&logoColor=white&style=for-the-badge" alt="Get it on Chrome Web Store"></a>
-  <a href="https://addons.mozilla.org/en-US/firefox/addon/discord-music-rpc/" target="_blank"><img src="https://img.shields.io/badge/Get%20it%20on-Firefox%20Addons-orange?logo=firefox-browser&logoColor=white&style=for-the-badge" alt="Get it on Firefox Add-ons"></a>
+  <strong>🎵 Show what you're listening to on Discord — from ANY music website 🎵 </strong>
+</p>
+<p align="center">
+   <a href="https://www.star-history.com/#kanashiiDev/discord-music-rpc&type=date&legend=top-left" target="_blank"><img src="https://img.shields.io/github/stars/KanashiiDev/discord-music-rpc?style=for-the-badge&logo=github&color=yellow&cacheSeconds=3600" alt="GitHub Stars"></a>
+  <a href="https://github.com/KanashiiDev/discord-music-rpc/releases" target="_blank"><img src="https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fgist.githubusercontent.com%2FKanashiiDev%2Faf52962d2844e33de8e0bbbb11040b54%2Fraw%2Fdiscord-music-rpc-stats.json&query=%24.total&style=for-the-badge&label=Downloads&color=blue&cacheSeconds=3600" alt="Total Downloads"></a>
+  <a href="https://github.com/KanashiiDev/discord-music-rpc/releases/latest" target="_blank"><img src="https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fgist.githubusercontent.com%2FKanashiiDev%2Faf52962d2844e33de8e0bbbb11040b54%2Fraw%2Fdiscord-music-rpc-stats.json&query=%24.latest&style=for-the-badge&label=Downloads%40Latest&color=green&cacheSeconds=3600" alt="Latest Release"></a>
+</p>
+<p align="center">
+
+**Discord Music RPC** is an <ins>open-source</ins> project that pairs a browser extension with a lightweight desktop app to display what you’re listening to on supported websites directly in your Discord Rich Presence. What makes it unique is its **fully customizable selector system**, allowing anyone to add support for almost any music site without coding, complemented by an advanced userscript engine for complex integrations.
+
+## Download
+
+_You need to install both the **browser extension** and the **desktop application** for it to work._
+
+**Browser Extension**
+
+It is required for detecting music on websites and sending the data to the desktop app.
+
+<p>
+  <a href="https://chromewebstore.google.com/detail/discord-music-rpc-control/mpnijlpiepmpgoamimfmbdmglpdjmoic" target="_blank"><img src="https://img.shields.io/badge/-Chrome%20Web%20Store-555?logo=googlechrome&logoColor=white&style=for-the-badge&label=%20" alt="Get it on Chrome Web Store"><img src="https://img.shields.io/chrome-web-store/users/mpnijlpiepmpgoamimfmbdmglpdjmoic?style=for-the-badge&label=users&color=4285F4&labelColor=4285F4&cacheSeconds=3600"></a>
+  <a href="https://addons.mozilla.org/en-US/firefox/addon/discord-music-rpc/" target="_blank"><img src="https://img.shields.io/badge/-Firefox%20Addons-555?logo=firefox-browser&logoColor=white&style=for-the-badge&label=%20" alt="Get it on Firefox Add-ons"><img src="https://img.shields.io/amo/users/discord-music-rpc?style=for-the-badge&label=users&color=orange&labelColor=orange&cacheSeconds=3600"></a>
 </p>
 
-**Discord Music RPC** is an open-source project that combines a **Chrome extension** with an **Electron-based desktop application**, allowing users to display their currently playing music from supported websites directly in their Discord status via Rich Presence.
+**Desktop App**
 
-What sets it apart is its **customizable selector system** — no coding required. Users can easily create their own music parsers for any website by simply selecting elements on the page. This makes it possible to support virtually any music platform, even those not officially integrated.
+It is required for communicating with Discord and displaying the music status.
+
+<p>
+  <a href="https://github.com/KanashiiDev/discord-music-rpc/releases/latest/download/Discord-Music-RPC-Win.zip">
+    <img src="https://img.shields.io/badge/Windows-EXE-0078D6?logo=windows11&logoColor=white&style=for-the-badge" alt="Windows"></a>
+  <a href="https://github.com/KanashiiDev/discord-music-rpc/releases/latest/download/Discord-Music-RPC-Linux.zip">
+    <img src="https://img.shields.io/badge/Linux-AppImage-FCC624?logo=linux&logoColor=black&style=for-the-badge" alt="Linux"></a>
+  <a href="https://github.com/KanashiiDev/discord-music-rpc/releases/latest/download/Discord-Music-RPC-MacOS.zip">
+    <img src="https://img.shields.io/badge/macOS-DMG-111?logo=apple&logoColor=white&style=for-the-badge" alt="macOS"></a>
+</p>
 
 ## 📚 Table of Contents
 
@@ -22,37 +51,15 @@ What sets it apart is its **customizable selector system** — no coding require
 
 ## 🚀 Features
 
-- Real-time Discord Rich Presence updates
-- Support for multiple platforms (e.g., YouTube, YouTube Music, Deezer, SoundCloud)
-- Lightweight, modular architecture
+- No login required — works locally on your machine
+- Support for popular music platforms,
 - Easy to extend — add support for any music site using the built-in selector system or using userscripts.
-- Cross-platform Electron desktop app (Windows / Linux / MacOS)
-- Automatic updates with seamless integration between the Electron app and Chrome extension
+- Cross-platform Electron desktop app [Windows / Linux / MacOS](#-compatibility)
+- System tray integration for easy access and control
+- Automatic updates for both the extension and the desktop app
+- Customizable settings and options (custom covers, buttons, etc.)
+- Support buttons and timestamps.
 - Open-source and community-driven project
-
----
-
-## 💻 Compatibility
-
-**Operating System**:
-
-- **Windows 10/11** Full support with system tray integration and auto-updater.
-- **macOS (11+)** Full support for macOS 11+ (Big Sur and later) with native system tray integration via menu bar.
-  - **Important:** Drag the App to `/Applications` before first launch to ensure menu bar icon and auto-updates work correctly.
-- **Linux (AppImage)** Works on most modern distributions (Ubuntu, Debian, Fedora, Arch, etc).
-  - GNOME users must enable the _AppIndicator / KStatusNotifierItem_ extension.
-  - **Required packages on some distributions:**
-    - `libayatana-appindicator3-1` (or `libappindicator3-1`)
-  - **If the tray icon doesn’t appear:**
-    - Install [AppImageLauncher](https://github.com/TheAssassin/AppImageLauncher) or run once from terminal.
-    - If using GNOME on Wayland, switch to an X11 session or ensure AppIndicator support is enabled.
-  - **Auto-start note:** Moving the AppImage after first launch may require re-enabling “Run at Startup” in the tray menu.
-
-**Supported Browsers**:
-
-- Chrome
-- Firefox
-- Chromium-based browsers (Opera, Brave, etc.)
 
 ---
 
@@ -71,11 +78,11 @@ What sets it apart is its **customizable selector system** — no coding require
 ### 🔧 Setup
 
 1. **Install the Extension** <br>
-   First, make sure the extension is installed in your browser. It usually appears in the window that opens when you click on the extensions icon (like a puzzle piece) next to the address bar. Click on the extension icon and complete the initial setup.
+   First, make sure the extension is installed in your browser. Click on the extension icon and complete the initial setup.
 
 2. **Install the Application** <br>
-   [Download the latest release](https://github.com/KanashiiDev/discord-music-rpc/releases). Run the app — it will appear in your system tray.
-
+   Install and Run the app — it will appear in your system tray.
+   
    <b>Important:</b> If you run Discord as an administrator, you must also run Discord Music RPC as an administrator. Otherwise, it will not function properly.
 
 3. **Play Music** <br>
@@ -93,62 +100,92 @@ What sets it apart is its **customizable selector system** — no coding require
 
 ---
 
+## 💻 Compatibility
+
+**Browser Extension**:
+
+- Chrome
+- Firefox
+- Chromium-based browsers (Opera, Brave, etc.)
+
+**Desktop App**:
+
+- **Windows 10/11** Full support with system tray integration and auto-updater.
+- **macOS (11+)** Full support for macOS 11+ (Big Sur and later) with native system tray integration via menu bar.
+  - **Important:** Drag the App to `/Applications` before first launch to ensure menu bar icon and auto-updates work correctly.
+- **Linux (AppImage)** Works on most modern distributions (Ubuntu, Debian, Fedora, Arch, etc).
+  - GNOME users must enable the _AppIndicator / KStatusNotifierItem_ extension.
+  - **Required packages on some distributions:**
+    - `libayatana-appindicator3-1` (or `libappindicator3-1`)
+  - **If the tray icon doesn’t appear:**
+    - Install [AppImageLauncher](https://github.com/TheAssassin/AppImageLauncher) or run once from terminal.
+    - If using GNOME on Wayland, switch to an X11 session or ensure AppIndicator support is enabled.
+  - **Auto-start note:** Moving the AppImage after first launch may require re-enabling “Run at Startup” in the tray menu.
+
+---
+
 ## 🐞 Troubleshooting
 
 **If your status isn't updating:**
 
-- Make sure the local server is running.
+- Ensure that Discord Music RPC desktop app is running in the system tray.
+- Make sure the website you are using is supported.
 - Confirm that the browser extension is active on the music site.
-- Make sure the song is playing and not muted.
-- Make sure the tab playing music is not minimized.
-- Make sure that "Display current activity as a status message" is enabled in Discord.
+- Ensure that a song is playing and not muted.
+- The tab playing music should not be minimized.
+- **"Share my activity"** must be enabled in Discord. to check this:
+  - Go to User Settings (gear icon)
+  - Navigate to "Activity Privacy"
+  - Ensure "Share my activity" is toggled on.
 - If you run Discord as an administrator, you must also run Discord Music RPC as an administrator.
-- Check the console for errors and logs. For the server, click on the Tray application and click on “open logs” in the debug section.
-- Right-click on the extension icon in your browser and click on the “Toggle Debug Mode” option. Check your browser's developer console for any errors.
-- If nothing works and the problem just appeared, reset the extension to factory settings. To do this, right-click on the extension icon in your browser and click 'Reset to Defaults'.
+- If nothing works and the problem just appeared, reset the extension to factory settings. To do this, Open extension popup, click settings and click "Factory Reset" at the bottom.
+- Check the console for errors and logs:
+  - For the server: Click on the Tray application and click on “open logs” in the debug section.
+  - For the extension: Open extension popup, click settings, click toggle "Activate Debug Mode" then check your browser's developer console for any errors.
 
 **Linux:**
 
-- **Run Discord Natively**
+- **Use Native Discord**
 
-  - Gentoo: `emerge discord`
-  - Debian/Ubuntu: `sudo dpkg -i discord.deb`
-  - Arch: `sudo pacman -S discord`
-
-- **Set XDG_RUNTIME_DIR**
-
-  ```bash
-  export XDG_RUNTIME_DIR=/run/user/$(id -u)
-  ```
+  - Snap Discord is isolated → IPC will not work.
+  - Flatpak Discord may require extra filesystem permissions:
+    ```bash
+    flatpak override --user com.discordapp.Discord --filesystem=/run/user/$(id -u)
+    ```
+  - Recommended: install Discord via your distribution’s package manager.
 
 - **Do Not Run Discord as Root**
 
-  - When run as root, the socket goes under /tmp → RPC doesn't work.
-  - Check: `ps aux | grep discord`
+  - IPC sockets under `/tmp` won’t be accessible.
+  - Check with:
+    ```bash
+    ps aux | grep discord
+    ```
 
-- **Check IPC Socket Permissions**
+- **XDG_RUNTIME_DIR & RuntimePath**
 
-  ```bash
-  ls -la $XDG_RUNTIME_DIR/discord-ipc-*
-  # expected: "srwxr-xr-x"
-  ```
+  - Ensure `XDG_RUNTIME_DIR` is set and owned by your user:
+    ```bash
+    echo $XDG_RUNTIME_DIR
+    ls -la $XDG_RUNTIME_DIR
+    ```
+  - For systemd/elogind users, RuntimePath should not be empty:
+    ```bash
+    loginctl show-session $(loginctl | grep $(whoami) | awk '{print $1}') | grep RuntimePath
+    ```
 
-- **Check RuntimePath if You Are Using systemd / elogind**
+- **Wayland Users**
 
-  - Run: `loginctl show-session $(loginctl | grep $(whoami) | awk '{print $1}') | grep RuntimePath`
-  - If this output is empty, it means the systemd session is corrupted.
+  - May need `xdg-desktop-portal` installed for IPC:
+    ```bash
+    sudo apt install xdg-desktop-portal      # Debian/Ubuntu
+    sudo pacman -S xdg-desktop-portal        # Arch
+    sudo dnf install xdg-desktop-portal      # Fedora
+    ```
 
-- **If You Use Flatpak Discord, Grant IPC Permission (mandatory)**
-
-  - `flatpak override --user com.discordapp.Discord --filesystem=/run/user/$(id -u)`
-
-- **If you are using Snap Discord, IPC will not work at all**
-
-  - It is completely isolated, so Discord Music RPC does not work.
-
-- **Additional Package May Be Required for Wayland Users**
-  - For some users, IPC is fixed when they install the `xdg-desktop-portal` package.
-  - `sudo pacman -S xdg-desktop-portal xdg-desktop-portal-wlr`
+- **Use Automatic Diagnostic Tool**
+  - Use the Tray → Debug → “Run IPC Diagnostic (Linux)” to automatically check your Discord setup.
+  - The diagnostic script will detect installation type, socket permissions, session issues, and Wayland/Root restrictions.
 
 ---
 
@@ -270,7 +307,9 @@ registerParser({
   title: "Example", // Display title
   homepage: "https://example.com/homepage", // The page the user will be redirected to when they click on the parser image in the pop-up window (optional)
   urlPatterns: [/.*/], // Only run on specific paths (Regex)
-  authors: [""], // Contributors GitHub names for the code to be displayed in the parser's settings (optional)
+  authors: [""], // Contributors names for the code to be displayed in the parser's settings (optional)
+  authorsLinks: [""], // Contributors links (optional)
+  description: "", // Short description of the parser (optional)
 
   fn: function () {
     // To use custom settings in your parser (checkbox, text, or select), include useSetting in the parser function parameters: async function ({ useSetting })

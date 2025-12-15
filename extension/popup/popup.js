@@ -10,10 +10,12 @@ const sectionManager = {
   setupEventListeners() {
     const historyToggleBtn = document.getElementById("historyToggle");
     const historyStatsToggleBtn = document.getElementById("historyStatsToggle");
+    const settingsToggleBtn = document.getElementById("settingsToggle");
 
     // Add SVG icons
     historyToggleBtn.appendChild(createSVG(svg_paths.historyIconPaths));
     historyStatsToggleBtn.appendChild(createSVG(svg_paths.historyStatsIconPaths));
+    settingsToggleBtn.appendChild(createSVG(svg_paths.gearIconPaths));
 
     // History toggle
     this.listeners.historyToggle = async () => {
@@ -29,8 +31,13 @@ const sectionManager = {
       await this.switchTo("stats");
     };
 
+    this.listeners.settingsToggle = async () => {
+      await this.switchTo("settings");
+    };
+
     historyToggleBtn.addEventListener("click", this.listeners.historyToggle);
     historyStatsToggleBtn.addEventListener("click", this.listeners.statsToggle);
+    settingsToggleBtn.addEventListener("click", this.listeners.settingsToggle);
   },
 
   async switchTo(sectionName) {
@@ -58,12 +65,13 @@ const sectionManager = {
       main: "Discord Music RPC",
       history: "History",
       stats: "Stats",
+      settings: "Settings",
     };
 
     mainHeader.textContent = titles[sectionName];
     mainHeader.appendChild(historyToggleBtn);
     mainHeader.prepend(historyStatsToggleBtn);
-    
+
     // Update icon
     historyToggleBtn.innerHTML = "";
     if (sectionName === "main") {
@@ -113,6 +121,7 @@ const sectionManager = {
       case "history":
         await renderHistory();
         await activateSimpleBar("historyPanel");
+        await destroyOtherSimpleBars("historyPanel");
         activateHistoryScroll();
         break;
 
@@ -121,6 +130,13 @@ const sectionManager = {
         fullHistory = res.data;
         await renderTopStats(fullHistory, "day");
         await activateSimpleBar("historyStatsPanel");
+        break;
+
+      case "settings":
+        exitCleaningMode();
+        await renderSettings();
+        await activateSimpleBar("settingsPanel");
+        await destroyOtherSimpleBars("settingsPanel");
         break;
     }
   },
@@ -159,7 +175,9 @@ const popupModule = {
 
     // Open userScript Manager
     this.listeners.openManager = async () => {
-      await openUserScriptManager();
+      const themeStorage = await browser.storage.local.get("theme");
+      const theme = themeStorage.theme || "dark";
+      await openUserScriptManager(null, theme);
     };
     document.getElementById("openManager").addEventListener("click", this.listeners.openManager);
 
@@ -171,6 +189,8 @@ const popupModule = {
       button.disabled = true;
 
       try {
+        let theme = await browser.storage.local.get("theme");
+        document.body.dataset.theme = theme.theme || "dark";
         clearTimeout(buttonDisableTimeout);
         const isEdit = button.textContent.includes("Edit");
         const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
@@ -179,6 +199,7 @@ const popupModule = {
           await browser.tabs.sendMessage(tab.id, {
             action: "startSelectorUI",
             editMode: isEdit,
+            theme: theme.theme || "dark",
           });
           window.close();
         } else {
@@ -228,6 +249,10 @@ let domLoadedListener = null;
 
 domLoadedListener = async () => {
   try {
+    // Set Theme
+    let theme = await browser.storage.local.get("theme");
+    document.body.dataset.theme = theme.theme || "dark";
+
     // Initial Setup
     const setup = await browser.storage.local.get("initialSetupDone");
     if (!setup.initialSetupDone) {
@@ -262,6 +287,10 @@ domLoadedListener = async () => {
   } catch (error) {
     logError("Error loading settings:", error);
   }
+
+  // Apply Custom Colors
+  await new Promise((resolve) => requestAnimationFrame(() => resolve()));
+  applyColorSettings();
 };
 
 document.addEventListener("DOMContentLoaded", domLoadedListener);

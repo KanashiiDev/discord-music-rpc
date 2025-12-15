@@ -45,44 +45,16 @@ app.commandLine.appendSwitch("disable-dev-shm-usage");
 const { autoUpdater } = require("electron-updater");
 const semver = require("semver");
 const path = require("path");
-const JSONdb = require("simple-json-db");
-const userDataPath = app.getPath("userData");
-const dbPath = path.join(userDataPath, "config.json");
-const store = new JSONdb(dbPath);
-const log = require("./scripts/electron-log");
+let userDataPath;
+let dbPath;
+let logFilePath;
+let historyFilePath;
+const ConfigManager = require("./scripts/configManagement");
+const { log, configureLogging } = require("./scripts/electron-log");
+let config;
 const fs = require("fs");
 const os = require("os");
 const isPackaged = app.isPackaged;
-
-const defaultConfig = {
-  server: {
-    PORT: 3000,
-    START_TIMEOUT: 15000,
-    UPDATE_CHECK_INTERVAL: 3600000,
-    MAX_RESTART_ATTEMPTS: 5,
-    RESTART_DELAY: 5000,
-  },
-};
-
-// Store Config Check
-if (!store.has("server")) {
-  store.set("server", defaultConfig.server);
-} else {
-  const current = store.get("server");
-  let updated = false;
-
-  for (const key in defaultConfig.server) {
-    if (!(key in current)) {
-      current[key] = defaultConfig.server[key];
-      updated = true;
-    }
-  }
-  if (updated) {
-    store.set("server", current);
-  }
-}
-
-const config = store.get("server");
 
 // State Management
 const state = {
@@ -90,9 +62,11 @@ const state = {
   serverProcess: null,
   isServerRunning: false,
   isStopping: false,
+  isStoppingPromise: null,
+  isRestarting: false,
+  isRestartingPromise: null,
   restartAttempts: 0,
   serverStartTime: null,
-  logSongUpdate: store.get("logSongUpdate") || false,
   isRPCConnected: false,
 };
 
@@ -172,6 +146,27 @@ const icons = {
   tray_win: getIconPath("16x16.png"),
 };
 
+function logToFile(error, type = "UnknownError") {
+  let errors = [];
+  if (fs.existsSync(logFilePath)) {
+    try {
+      errors = JSON.parse(fs.readFileSync(logFilePath, "utf-8"));
+    } catch {
+      errors = [];
+    }
+  }
+
+  const entry = {
+    timestamp: new Date().toISOString(),
+    type,
+    message: error.message || String(error),
+    stack: error.stack || null,
+  };
+
+  errors.push(entry);
+  fs.writeFileSync(logFilePath, JSON.stringify(errors, null, 2));
+}
+
 function setupSingleInstanceLock() {
   if (!app.requestSingleInstanceLock()) {
     app.quit();
@@ -199,7 +194,16 @@ app.whenReady().then(async () => {
   log.info("App initialization started");
 
   try {
-    initializeApp();
+    await initializeApp();
+    // Start background update checks
+    if (app.isPackaged && config.AUTO_UPDATE_CHECK) {
+      setInterval(() => {
+        autoUpdater.checkForUpdates().catch((err) => {
+          const msg = typeof err?.message === "string" ? err.message.split("\n")[0].trim() : String(err);
+          log.error("Background update check failed: " + msg);
+        });
+      }, config.UPDATE_CHECK_INTERVAL);
+    }
   } catch (err) {
     handleCriticalError("App initialization failed", err);
   }
@@ -209,6 +213,10 @@ app.whenReady().then(async () => {
 async function startServer() {
   const { fork } = require("child_process");
   const serverPath = getPath("server.js");
+  if (!config.KEEP_LOGS) fs.writeFileSync(logFilePath, JSON.stringify([], null, 2));
+  if (!config.KEEP_HISTORY) fs.writeFileSync(historyFilePath, JSON.stringify([], null, 2));
+
+  ConfigManager.refreshConfig();
 
   // Do not restart if the server is already running
   if (state.serverProcess || state.isServerRunning) {
@@ -238,6 +246,9 @@ async function startServer() {
         PORT: config.PORT,
         NODE_ENV: "production",
         LOG_LEVEL: log.transports.file.level || "debug",
+        LOG_FILE_PATH: logFilePath,
+        HISTORY_FILE_PATH: historyFilePath,
+        SETTINGS_FILE_PATH: dbPath,
       },
       stdio: ["pipe", "pipe", "pipe", "ipc"],
       silent: false,
@@ -276,18 +287,31 @@ async function startServer() {
         state.isRPCConnected = msg.value;
         updateTrayMenu();
       }
+      if (msg === "RESTART_SERVER") {
+        restartServer();
+      }
+      if (msg === "RESET_CONFIG") {
+        ConfigManager.resetConfig();
+      }
     });
 
     state.serverProcess.stdout.on("data", (data) => {
-      if (data) log.info("SERVER:", data.toString().trim());
+      if (data) {
+        log.info("SERVER:", data.toString().trim());
+        logToFile(data.toString().trim(), "info");
+      }
     });
 
     state.serverProcess.stderr.on("data", (data) => {
-      if (data) log.info("SERVER ERROR:", data.toString().trim());
+      if (data) {
+        log.info("SERVER ERROR:", data.toString().trim());
+        logToFile(data.toString().trim(), "error");
+      }
     });
 
     state.serverProcess.on("error", (err) => {
       log.error("Server process error:", err);
+      logToFile(err.stack || err.message, "error");
       cleanupProcess();
       reject(err);
       scheduleServerRestart();
@@ -315,63 +339,103 @@ async function startServer() {
 // Stop Server
 async function stopServer() {
   if (!state.serverProcess) {
-    log.info("No server process to stop");
+    log.info("No server process to stop.");
     return;
+  }
+
+  if (state.isStopping) {
+    log.info("Stop already in progress...");
+    return state.isStoppingPromise;
   }
 
   log.info("Stopping server...");
   state.isStopping = true;
 
-  return new Promise((resolve) => {
-    const timeoutDuration = Math.min(3000, state.serverStartTime ? Date.now() - state.serverStartTime : 3000);
-    const killTimeout = setTimeout(() => {
-      if (state.serverProcess && !state.serverProcess.killed) {
-        log.warn("Server did not stop gracefully, forcing kill");
-        state.serverProcess.kill("SIGKILL");
-      }
-      state.serverProcess = null;
-      state.isServerRunning = false;
-      state.isStopping = false;
-      resolve();
-    }, timeoutDuration);
+  state.isStoppingPromise = new Promise((resolve) => {
+    const proc = state.serverProcess;
 
-    state.serverProcess.once("exit", () => {
-      clearTimeout(killTimeout);
-      state.serverProcess = null;
-      state.isServerRunning = false;
-      state.isStopping = false;
-      resolve();
-    });
+    let resolved = false;
 
-    // If there is a process and it hasn't died, send a shutdown message
-    if (state.serverProcess && !state.serverProcess.killed) {
-      try {
-        state.serverProcess.send("shutdown");
-      } catch (err) {
-        log.warn("Could not send shutdown message:", err.message);
-        state.serverProcess.kill("SIGTERM");
-      }
-    } else {
-      clearTimeout(killTimeout);
+    function safeResolve() {
+      if (resolved) return;
+      resolved = true;
+      state.isStopping = false;
       state.serverProcess = null;
       state.isServerRunning = false;
-      state.isStopping = false;
       resolve();
     }
+
+    // Wait for the server to exit
+    proc.once("exit", (code, signal) => {
+      log.info(`Server exited (code=${code}, signal=${signal}).`);
+      safeResolve();
+    });
+
+    // send the shutdown message
+    try {
+      if (!proc.killed) {
+        proc.send("shutdown");
+      }
+    } catch (err) {
+      log.warn("Could not send shutdown message:", err.message);
+    }
+
+    // 4-second shutdown wait
+    const shutdownTimeout = 4000;
+    // If the process doesn't exit within this time, SIGTERM → SIGKILL fallback
+    setTimeout(() => {
+      if (resolved) return;
+
+      log.warn("Graceful shutdown timeout — sending SIGTERM...");
+      try {
+        if (!proc.killed) proc.kill("SIGTERM");
+      } catch (err) {
+        log.warn("SIGTERM failed:", err.message);
+      }
+
+      // Short wait for SIGTERM → if it still doesn't close, SIGKILL
+      setTimeout(() => {
+        if (resolved) return;
+
+        log.warn("Server did not terminate — forcing SIGKILL!");
+        try {
+          if (!proc.killed) proc.kill("SIGKILL");
+        } catch (err) {
+          log.warn("SIGKILL failed:", err.message);
+        }
+
+        safeResolve();
+      }, 500);
+    }, shutdownTimeout);
   });
+
+  return state.isStoppingPromise;
 }
 
 // Restart Server
 async function restartServer() {
-  log.info("Initiating server restart...");
-  try {
-    await stopServer();
-    await startServer();
-    log.info("Server restarted successfully");
-  } catch (err) {
-    log.error("Server restart failed:", err);
-    throw err;
+  if (state.isRestarting) {
+    log.info("Restart already in progress...");
+    return state.isRestartingPromise;
   }
+
+  state.isRestarting = true;
+  log.info("Restarting server...");
+  state.isRestartingPromise = (async () => {
+    try {
+      await stopServer();
+      await startServer();
+      log.info("Server restarted successfully.");
+      return true;
+    } catch (err) {
+      log.error("Restart failed:", err);
+      return false;
+    } finally {
+      state.isRestarting = false;
+    }
+  })();
+
+  return state.isRestartingPromise;
 }
 
 // Server Restart Scheduling
@@ -409,7 +473,7 @@ function scheduleActualRestart() {
 function updateServerSettings() {
   if (state.serverProcess) {
     const settings = {
-      logSongUpdate: state.logSongUpdate,
+      logSongUpdate: config.LOG_SONG_UPDATE,
     };
 
     state.serverProcess.send({
@@ -420,8 +484,24 @@ function updateServerSettings() {
 }
 
 // Initialize the application
-function initializeApp() {
+async function initializeApp() {
   try {
+    // Set up paths and configuration
+    userDataPath = app.getPath("userData");
+    dbPath = path.join(userDataPath, "config.json");
+    logFilePath = path.join(userDataPath, "logs.json");
+    historyFilePath = path.join(userDataPath, "history.json");
+    ConfigManager.initialize(userDataPath, log);
+    config = ConfigManager.config;
+
+    // Configure logging
+    configureLogging({
+      logDir: path.join(userDataPath, "logs"),
+      maxSize: config.MAX_LOG_SIZE,
+      rotationInterval: config.LOG_ROTATION_INTERVAL,
+    });
+
+    // Set app user model id
     if (app.setAppUserModelId) {
       app.setAppUserModelId("com.kanashiidev.discord.music.rpc");
     }
@@ -518,7 +598,8 @@ function setupAutoUpdater() {
     updateTrayMenu();
   });
   autoUpdater.checkForUpdates().catch((err) => {
-    log.error("Update check failed:", err);
+    const msg = typeof err?.message === "string" ? err.message.split("\n")[0].trim() : String(err);
+    log.error("Update check failed: " + msg);
   });
 }
 
@@ -703,24 +784,56 @@ function updateTrayMenu() {
             label: `Port: ${config.PORT || "3000"}`,
             enabled: false,
           },
+          { label: "Config", click: () => openConfig() },
           { type: "separator" },
-          { label: "Open Status", click: () => openStatus(), enabled: state.isServerRunning },
+
           { label: "Open Logs", click: () => openLogs() },
+          {
+            label: "Run IPC Diagnostic (Linux)",
+            click: () => {
+              // Run IPC Diagnostic
+              const { exec } = require("child_process");
+              const scriptPath = getPath("discord_ipc_diagnostic.sh");
+              const outputFile = path.join(userDataPath, "discord_ipc_diagnostic_result.txt");
+              exec(`bash "${scriptPath}" > "${outputFile}" 2>&1`, (err) => {
+                if (err) {
+                  dialog.showErrorBox("IPC Diagnostic Error", err.message);
+                  return;
+                }
+                // Show Open File Dialog
+                dialog
+                  .showMessageBox({
+                    type: "info",
+                    title: "IPC Diagnostic Output",
+                    message: `Output written to ${outputFile}`,
+                    buttons: ["Open File", "Close"],
+                  })
+                  .then((res) => {
+                    if (res.response === 0) {
+                      require("electron").shell.openPath(outputFile);
+                    }
+                  });
+              });
+            },
+            visible: process.platform === "linux",
+            enabled: process.platform === "linux",
+          },
           {
             label: "Log Song Updates",
             type: "checkbox",
-            checked: state.logSongUpdate,
+            checked: config.LOG_SONG_UPDATE,
             click: (item) => {
-              state.logSongUpdate = item.checked;
-              store.set("logSongUpdate", state.logSongUpdate);
-              log.info(`Log Song Updates ${state.logSongUpdate ? "enabled" : "disabled"} succesfully.`);
+              config.LOG_SONG_UPDATE = !!item.checked;
+              updateConfig();
+              log.info(`Log Song Updates ${config.LOG_SONG_UPDATE ? "enabled" : "disabled"} succesfully.`);
               updateServerSettings();
               updateTrayMenu();
             },
           },
         ],
       },
-      { label: "Config", click: () => openConfig() },
+
+      { label: "Open Dashboard", click: () => openStatus(), enabled: state.isServerRunning },
       { type: "separator" },
       {
         label: "Exit",
@@ -949,10 +1062,3 @@ process.on("uncaughtException", (err) => {
 process.on("unhandledRejection", (reason, promise) => {
   log.error("Unhandled rejection at:", promise, "reason:", reason);
 });
-
-// Background update checks
-if (app.isPackaged) {
-  setInterval(() => {
-    autoUpdater.checkForUpdates().catch((err) => log.error("Background update check failed:", err));
-  }, config.UPDATE_CHECK_INTERVAL);
-}

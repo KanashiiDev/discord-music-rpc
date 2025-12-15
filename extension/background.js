@@ -2,10 +2,12 @@ import "./libs/browser-polyfill.js";
 import "./libs/pako.js";
 
 const state = {
+  serverPort: CONFIG.serverPort,
   isLoopRunning: false,
   activeTabMap: new Map(),
+  tabUrlMap: new Map(),
+  audibleTimers: new Map(),
   cleanupQueue: new Set(),
-  serverStatus: { lastCheck: 0, isHealthy: false },
   pendingUpdates: new Map(),
   historyCounters: new Map(),
   lastLoopTime: 0,
@@ -195,7 +197,7 @@ const parserReady = async () => {
 };
 
 // RPC and Tab Cleaning operations
-const clearRpcForTab = async (tabId) => {
+const clearRpcForTab = async (tabId, reason = "Tab closed") => {
   // If a clear is already in-progress, skip
   if (!state.activeTabMap.has(tabId) && !state.pendingClear.has(tabId)) {
     return;
@@ -216,6 +218,12 @@ const clearRpcForTab = async (tabId) => {
     if (pending?.timeout) clearTimeout(pending.timeout);
     state.pendingUpdates.delete(tabId);
 
+    // if there is an audible timer, cancel it
+    if (state.audibleTimers?.has(tabId)) {
+      clearTimeout(state.audibleTimers.get(tabId));
+      state.audibleTimers.delete(tabId);
+    }
+
     // Abort the pending fetch
     const controller = state.pendingFetches.get(tabId);
     if (controller) {
@@ -229,26 +237,56 @@ const clearRpcForTab = async (tabId) => {
     state.activeTabMap.delete(tabId);
 
     if (wasActive) {
-      logInfo(`Clearing RPC for tab ${tabId}`);
+      let tab;
+      try {
+        tab = await browser.tabs.get(tabId);
+      } catch (err) {
+        if (err.message.includes("No tab with id")) {
+          logInfo(`Tab ${tabId} is already closed, RPC cleanup skipped.`);
+        }
+      }
 
-      await fetchWithTimeout(
-        `http://localhost:${CONFIG.serverPort}/clear-rpc`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ clientId: `tab_${tabId}` }),
-        },
-        CONFIG.requestTimeout
-      ).catch((err) => {
-        logError(`Backend clear failed for tab ${tabId}:`, err);
-      });
+      const title = tab?.title || "";
+      const url = tab?.url || "";
+      const domain = url ? new URL(url).host : "";
 
-      logInfo(`Cleared RPC for tab ${tabId}`);
+      console.groupCollapsed(
+        `%c[DISCORD-MUSIC-RPC - INFO] Clearing RPC for tab ${tabId}%c ${url ? "| " + url : ""}`,
+        "color: ddd; background-color: #2a4645ff; padding: 2px 4px; border-radius: 3px;",
+        "color: #5bc0de; font-weight: bold;"
+      );
+      if (tab) {
+        console.log(`Title: %c${title}`, "color: #f0ad4e; font-weight: bold;");
+        console.log(`Domain: %c${domain}`, "color: #5cb85c; text-decoration: underline;");
+      }
+      console.log(`Reason: %c${reason}`, "color: #0275d8; font-weight: bold;");
+      console.groupEnd();
+
+      try {
+        const response = await fetchWithTimeout(
+          `http://localhost:${state.serverPort}/clear-rpc`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ clientId: `tab_${tabId}` }),
+          },
+          CONFIG.requestTimeout
+        );
+
+        logInfo(`✅ Cleared RPC for tab ${tabId}`);
+      } catch (err) {
+        logError(`❌ RPC clear failed for tab ${tabId}:`, err.message);
+      }
     }
   } catch (e) {
-    logError(`Clear RPC failed [${tabId}]`, e);
+    logError(`Clear RPC failed tab ${tabId}`, e);
   } finally {
     state.pendingClear.delete(tabId);
+
+    if (state.activeTabMap.size === 0) {
+      if (state.mainLoopTimer) clearTimeout(state.mainLoopTimer);
+      setTimeout(mainLoop, 0);
+    }
   }
 };
 
@@ -259,7 +297,7 @@ const deferredCleanup = async () => {
   const tabsToClean = [...state.cleanupQueue];
   state.cleanupQueue.clear();
   for (const tabId of tabsToClean) {
-    await clearRpcForTab(tabId);
+    await clearRpcForTab(tabId, "deferred Cleanup");
   }
 };
 
@@ -272,8 +310,9 @@ const markOtherTabsForCleanup = (activeId) => {
 // Finds the Active Tab that matches with the Parser.
 const updateActiveTabMap = async (state, tabs) => {
   const enabled = getEnabledParsers();
-
   const matchedTabsMap = new Map();
+
+  // 1️) Match the tabs with the parser
   tabs.forEach((tab) => {
     try {
       if (!tab.url) return;
@@ -306,19 +345,35 @@ const updateActiveTabMap = async (state, tabs) => {
   if (matchedTabsMap.size === 0) return;
 
   const matchedTabs = Array.from(matchedTabsMap.values()).map((v) => v.tab);
-  const mainTab = matchedTabs.find((t) => t.active) || matchedTabs[0];
 
-  markOtherTabsForCleanup(mainTab.id);
+  // 2) If there is an active tab in activeTabMap
+  if (state.activeTabMap.size > 0) {
+    const firstWinnerId = state.activeTabMap.keys().next().value;
+    const winnerTab = tabs.find((t) => t.id === firstWinnerId);
 
-  if (!state.activeTabMap.has(mainTab.id)) {
-    const matchedData = matchedTabsMap.get(mainTab.id);
-    state.activeTabMap.set(mainTab.id, {
-      lastUpdated: 0,
-      lastKey: "",
-      isAudioPlaying: mainTab.audible ?? false,
-      parserId: matchedData?.matched[0]?.id ?? null,
-    });
+    if (winnerTab) {
+      // If the active tab is still open, send the others to cleanup
+      markOtherTabsForCleanup(firstWinnerId);
+      return winnerTab;
+    } else {
+      // The active tab has been closed or released with clear-rpc
+      state.activeTabMap.clear();
+    }
   }
+
+  // 3️) Choose a new active tab
+  const mainTab = matchedTabs.find((t) => t.active) || matchedTabs[0];
+  const matchedData = matchedTabsMap.get(mainTab.id);
+
+  state.activeTabMap.set(mainTab.id, {
+    lastUpdated: 0,
+    lastKey: "",
+    isAudioPlaying: mainTab.audible ?? false,
+    parserId: matchedData?.matched[0]?.id ?? null,
+  });
+
+  // Send the other tabs to cleanup
+  markOtherTabsForCleanup(mainTab.id);
 
   return mainTab;
 };
@@ -331,7 +386,6 @@ const updateRpc = async (data, tabId) => {
   }
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), CONFIG.requestTimeout);
   state.pendingFetches.set(tabId, controller);
 
   try {
@@ -376,7 +430,7 @@ const updateRpc = async (data, tabId) => {
     };
 
     await fetchWithTimeout(
-      `http://localhost:${CONFIG.serverPort}/update-rpc`,
+      `http://localhost:${state.serverPort}/update-rpc`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -391,7 +445,6 @@ const updateRpc = async (data, tabId) => {
     }
     throw err;
   } finally {
-    clearTimeout(timeoutId);
     if (state.pendingFetches.get(tabId) === controller) {
       state.pendingFetches.delete(tabId);
     }
@@ -400,11 +453,10 @@ const updateRpc = async (data, tabId) => {
 
 // Schedule RPC Update - It is used on the backgroundListeners.js SetupListeners side.
 const scheduleRpcUpdate = (data, tabId) => {
-  const isSameData = (a, b) => a && b && a.title === b.title && a.artist === b.artist && Math.floor(a.progress / 10) === Math.floor(b.progress / 10) && a.duration === b.duration;
   const current = state.pendingUpdates.get(tabId);
-  if (current && isSameData(current.data, data)) return;
 
   if (current?.timeout) clearTimeout(current.timeout);
+
   const timeout = setTimeout(() => {
     state.pendingUpdates.delete(tabId);
     updateRpc(data, tabId).catch(logError);
@@ -428,41 +480,39 @@ const processTab = async (tabId, tabData) => {
   if (!state.activeTabMap.has(tabId)) return;
 
   const now = Date.now();
+
   if (now - tabData.lastUpdated < CONFIG.activeInterval) return;
 
   const res = await safePingTab(tabId);
+
   if (!res || typeof res !== "object") {
     if (!tabData.lastUpdated || now - tabData.lastUpdated > CONFIG.stuckThreshold) {
       logInfo(`Tab ${tabId} did not respond, clearing RPC`);
-      await clearRpcForTab(tabId).catch(logError);
-      return;
+      await clearRpcForTab(tabId, "tab did not respond").catch(logError);
     }
-  }
-
-  // Title/artist validation
-  if (!res.title || !res.artist) {
-    logError(`Invalid response from tab ${tabId}: missing title/artist`);
     return;
   }
 
-  const newKey = `${res.title}|${res.artist}|${tabData.isAudioPlaying}|${Math.floor(res.progress / 10)}|${res.duration}`;
+  if (!res.title || !res.artist) return;
 
-  // Check for duplicate updates
-  if (res.duration > 0 && tabData.lastKey === newKey) {
+  // Radio / stream check (duration = 0)
+  if (res.duration <= 0) {
+    if (now - tabData.lastUpdated >= CONFIG.activeInterval) {
+      state.activeTabMap.set(tabId, {
+        ...res,
+        lastUpdated: now,
+        isAudioPlaying: true,
+      });
+    }
     return;
   }
 
-  // Radio/stream check (duration = 0)
-  if (res.duration <= 0 && now - tabData.lastUpdated < CONFIG.activeInterval) {
-    return;
-  }
-
+  // Normal update
   state.activeTabMap.set(tabId, {
     ...res,
-    isAudioPlaying: true,
-    lastKey: newKey,
     lastUpdated: now,
-    parserId: tabData.parserId ?? null,
+    isAudioPlaying: true,
+    progress: res.progress,
   });
 };
 
@@ -523,6 +573,11 @@ const mainLoop = async () => {
 
 // Start
 const init = async () => {
+  await browser.storage.local.get("serverPort").then((result) => {
+    if (result.serverPort !== undefined) {
+      state.serverPort = result.serverPort;
+    }
+  });
   setupListeners();
   await parserReady();
   scriptManager.registerAllScripts();

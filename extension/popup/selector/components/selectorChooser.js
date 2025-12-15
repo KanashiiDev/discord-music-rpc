@@ -25,8 +25,7 @@ function showSelectorChooser(scoredOptions, field, shadowDoc) {
       selSpan.textContent = sel;
 
       const scoreSpan = document.createElement("span");
-      scoreSpan.className = "score";
-      scoreSpan.style.color = score >= 80 ? "#4CAF50" : score >= 50 ? "#FFC107" : "#F44336";
+      scoreSpan.className = `score ${score >= 80 ? "green" : score >= 50 ? "orange" : "red"}`;
       scoreSpan.title = score >= 80 ? "Highly Reliable" : score >= 50 ? "Moderately Reliable" : "Unreliable";
       scoreSpan.textContent = `(${score})`;
 

@@ -336,7 +336,7 @@ function updatePreview(shadow, editMode) {
     let currentSec = getSeconds(timeEl.textContent);
 
     // If there is timePassed but no duration, or if timePassed equals duration, hide the duration.
-    if ((selectors.timePassed.length > 1 && selectors.duration.length < 1) || texts.timePassed >= texts.duration && !/^[-–—]/.test(texts.duration.trim())) {
+    if ((selectors.timePassed.length > 1 && selectors.duration.length < 1) || (texts.timePassed >= texts.duration && !/^[-–—]/.test(texts.duration.trim()))) {
       durEl.style.opacity = "0";
       if (!timeEl.hasAttribute("reset")) {
         timeEl.textContent = "00:00";
@@ -387,10 +387,21 @@ function updatePreview(shadow, editMode) {
       let totalSec;
 
       if (isRemaining) {
-        const remaining = Math.abs(currentDurationSec);
-        totalSec = getSeconds(timeEl.textContent) + remaining;
-      } else {
-        totalSec = currentDurationSec;
+        const durationInSeconds = getSeconds(timeEl.textContent) + currentDurationSec;
+        if (currentDurationSec > 0) {
+          const ratio = durationInSeconds / currentDurationSec;
+          if (ratio > 1.5 || ratio < 0.5) {
+            totalSec = formatTime(currentDurationSec);
+          } else {
+            totalSec = formatTime(durationInSeconds);
+          }
+        } else {
+          if (durationInSeconds > currentDurationSec * 1.5) {
+            totalSec = formatTime(currentDurationSec);
+          } else {
+            totalSec = formatTime(durationInSeconds);
+          }
+        }
       }
 
       durEl.textContent = formatTime(totalSec);

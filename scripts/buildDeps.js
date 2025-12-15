@@ -85,5 +85,6 @@ Object.keys(packageJson.dependencies || {}).forEach((dep) => {
 // Necessary files and icons
 copyDir(path.join(__dirname, "..", "assets/icon"), path.join(buildDepsPath, "assets/icon"));
 copyDir(path.join(__dirname, "..", "public"), path.join(buildDepsPath, "public"));
+fs.copyFileSync(path.join(__dirname, "..", "scripts", "discord_ipc_diagnostic.sh"), path.join(buildDepsPath, "discord_ipc_diagnostic.sh"));
 fs.copyFileSync(path.join(__dirname, "..", "server.js"), path.join(buildDepsPath, "server.js"));
 fs.copyFileSync(path.join(__dirname, "..", "utils.js"), path.join(buildDepsPath, "utils.js"));

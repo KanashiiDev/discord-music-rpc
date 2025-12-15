@@ -339,13 +339,33 @@ const pendingInlines = {};
     }
   }
 
+  function applyCssConfig(configFile, targetFiles) {
+    const configContent = fs.readFileSync(path.join(EXTENSION_DIR, configFile), "utf8");
+
+    targetFiles.forEach((file) => {
+      const filePath = path.join(DIST_DIR, file);
+      const originalContent = fs.readFileSync(filePath, "utf8");
+
+      const marker = "/*CSS-CONFIG*/";
+      let newContent;
+
+      if (originalContent.includes(marker)) {
+        newContent = originalContent.replace(marker, marker + "\n" + configContent);
+      } else {
+        newContent = configContent + "\n" + originalContent;
+      }
+
+      fs.writeFileSync(filePath, newContent, "utf8");
+    });
+  }
+
   inlineUtilsFunctions(["background.js", "common/utils.js", "mainParser.js"], "config.js", []);
   inlineUtilsFunctions(["common/utils.js", "popup/selector/selector.js", "popup/selector/components/preview.js", "background.js"], "../utils.js", [
     "truncate",
     "cleanTitle",
     "normalizeTitleAndArtist",
   ]);
-  inlineUtilsFunctions("main.js", "common/utils.js", ["overridesApplied", "applyOverrides", "applyOverridesLoop"]);
+  inlineUtilsFunctions("main.js", "common/utils.js", ["delay", "overridesApplied", "applyOverrides", "applyOverridesLoop"]);
   inlineUtilsFunctions(["background.js"], "common/utils.js", ["logInfo", "logWarn", "errorFilter", "shouldIgnore", "logError", "delay"]);
   inlineUtilsFunctions("background.js", "common/utils.js", [
     "parseUrlPattern",
@@ -404,9 +424,14 @@ const pendingInlines = {};
   // Build CodeMirror 5
   inlineUtilsFunctions("libs/codemirror/codemirror.js", ["libs/codemirror/libs/jshint.js", "libs/codemirror/addons/", "libs/beautify.js"], [], "end");
 
+  // User Script Manager
   inlineUtilsFunctions("manager/userScriptManager.js", "manager/components/UseSettingEditor.js", []);
 
+  // Build the inlined functions
   buildInlineFunctions();
+
+  // Apply CSS Configurations
+  applyCssConfig("css-config.css", ["popup/popup.css", "popup/selector/selector.css", "manager/userScriptManager.css", "backup/backup.css"]);
 
   // 7. Write the manifest in the dist folder
   fs.writeJsonSync(path.join(DIST_DIR, "manifest.json"), manifest, {

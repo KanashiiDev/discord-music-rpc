@@ -2,28 +2,45 @@ const state = {
   updateTimer: null,
   lastUpdateTime: 0,
   isUpdating: false,
-  lastSongInfo: null,
-  maxErrorCount: 5,
   activeTab: false,
   rpcKeepAliveIntervalId: null,
   messageListenerRegistered: false,
   isConnected: false,
+  lastRawPosition: null,
+  lastRPCStatus: null,
+  lastPrintedLog: null,
+  lastUpdateStatus: null,
+  lastSeekDetected: 0,
+  debugStats: {
+    failedUpdates: 0,
+    connectionLost: 0,
+  },
 };
 
 const CONSTANTS = {
   ACTIVE_INTERVAL: CONFIG.activeInterval ?? 5000,
-  IDLE_INTERVAL: CONFIG?.idleInterval ?? 10000,
+  NORMAL_UPDATE_INTERVAL: CONFIG?.idleInterval ?? 10000,
+  SEEK_CHECK_INTERVAL: 5000,
+  MIN_SEEK_COOLDOWN: 3000,
 };
 
 // Start watching tab activity and song changes
 function startWatching() {
   if (state.isUpdating || state.updateTimer) {
+    logInfo("startWatching called but already active");
     return;
   }
-  logInfo("Started watching.");
+
+  logInfo("%c╔══════════════════════════════════════╗", "color:#4caf50; font-weight:bold;");
+  logInfo("%c║    MUSIC RPC STARTED WATCHING        ║", "color:#4caf50; font-weight:bold;");
+  logInfo("%c╚══════════════════════════════════════╝", "color:#4caf50; font-weight:bold;");
+
   state.activeTab = true;
-  // ensure no leftover intervals
+  state.lastRawPosition = null;
+  state.lastSeekDetected = 0;
+
   if (state.rpcKeepAliveIntervalId) {
+    logInfo("Clearing existing keepAlive interval");
     clearInterval(state.rpcKeepAliveIntervalId);
     state.rpcKeepAliveIntervalId = null;
   }
@@ -32,14 +49,20 @@ function startWatching() {
 
 // Stop watching tab activity and song changes
 function stopWatching() {
-  logInfo("Stopped watching.");
+  logInfo("%c╔══════════════════════════════════════╗", "color:#ff5252; font-weight:bold;");
+  logInfo("%c║    MUSIC RPC STOPPED WATCHING        ║", "color:#ff5252; font-weight:bold;");
+  logInfo("%c╚══════════════════════════════════════╝", "color:#ff5252; font-weight:bold;");
+
   clearTimeout(state.updateTimer);
   state.updateTimer = null;
   state.isUpdating = false;
   state.activeTab = false;
+  state.lastRawPosition = null;
+  state.lastSeekDetected = 0;
   rpcState.reset();
-  // clear keepalive interval
+
   if (state.rpcKeepAliveIntervalId) {
+    logInfo("Clearing keepAlive interval on stop");
     clearInterval(state.rpcKeepAliveIntervalId);
     state.rpcKeepAliveIntervalId = null;
     window._rpcKeepActiveInjected = false;
@@ -47,27 +70,41 @@ function stopWatching() {
 }
 
 // Schedule the next update based on activity
-function scheduleNextUpdate(interval = CONSTANTS.ACTIVE_INTERVAL) {
-  if (!state.activeTab) return;
+function scheduleNextUpdate(interval = CONSTANTS.ACTIVE_INTERVAL, log) {
+  if (!state.activeTab) {
+    logInfo("scheduleNextUpdate: tab not active, skipping");
+    return;
+  }
 
   if (state.updateTimer) {
+    logInfo("scheduleNextUpdate: clearing existing timer");
     clearTimeout(state.updateTimer);
     state.updateTimer = null;
   }
 
-  logInfo(`%cNext Update Check Scheduled:%c ${interval / 1000} seconds later.`, "color:#999; font-weight:bold;", "color:#4caf50;");
+  if (!log) {
+    logInfo(`%cNext Update Check Scheduled:%c ${interval / 1000} seconds later.`, "color:#999; font-weight:bold;", "color:#4caf50;");
+  }
 
   state.updateTimer = setTimeout(() => {
     state.updateTimer = null;
     if (state.activeTab) {
       mainLoop();
+    } else {
+      logInfo("Timer fired but tab not active");
     }
   }, interval);
 }
 
 // Main loop to check for song changes and update RPC
 async function mainLoop() {
+  const hostMatch = await waitForHostname();
+  if (!hostMatch) {
+    scheduleNextUpdate(CONSTANTS.ACTIVE_INTERVAL, true);
+    return;
+  }
   if (state.isUpdating) {
+    logInfo("mainLoop: already updating, returning");
     return;
   }
 
@@ -78,107 +115,325 @@ async function mainLoop() {
     const song = await safeGetSongInfo();
 
     if (!song?.title || !song?.artist) {
+      logInfo("mainLoop: no valid song data", song);
+
       if (rpcState.lastActivity?.lastUpdated && !rpcState.cleared) {
+        logInfo("mainLoop: had previous activity, handling no song");
         await handleNoSong();
       }
+      state.lastRawPosition = null;
       return;
     }
+
+    // Initialize last update time
+    if (!state.lastUpdateTime) {
+      state.lastUpdateTime = Date.now();
+      logInfo("mainLoop: initializing lastUpdateTime");
+    }
+
+    if (!state.lastSeekDetected) {
+      state.lastSeekDetected = Date.now();
+    }
+
+    // Save First position
+    if (state.lastRawPosition === null) {
+      logInfo("mainLoop: initializing lastRawPosition:", song.position);
+      state.lastRawPosition = song.position;
+    }
+
+    if (rpcState.lastPosition === null) {
+      logInfo("mainLoop: initializing rpcState.lastPosition:", song.position);
+      rpcState.lastPosition = song.position;
+    }
+
+    if (rpcState.lastKnownPosition === 0 || rpcState.lastKnownPosition === null) {
+      rpcState.lastKnownPosition = song.position;
+    }
+
+    // Calculate derived states
+    const hasValidDuration = typeof song.duration === "number" && song.duration > 0;
+    const hasValidPosition = typeof song.position === "number" && song.position >= 0;
+    const progress = hasValidDuration && hasValidPosition ? Math.min(100, (song.position / song.duration) * 100) : 0;
+    const positionStable = typeof rpcState.lastPosition === "number" && Math.abs(song.position - rpcState.lastPosition) < 1;
+    const stuckAtZero = typeof rpcState.lastPosition === "number" && song.position === 0 && rpcState.lastPosition === 0 && song.duration === 0;
+    const isPaused = positionStable && !stuckAtZero;
+
+    // Change of position
+    const rawPositionDiff = Math.abs(song.position - state.lastRawPosition);
+    const timeSinceLastUpdate = Date.now() - (state.lastUpdateTime || Date.now());
 
     // Validate song data
     const isFirstUpdate = !rpcState.lastActivity;
     const isChanged = rpcState.isSongChanged(song);
-    const isSeeking = rpcState.isSeekDetected(song.position, song.duration);
-    const hasValidDuration = typeof song.duration === "number" && song.duration > 0;
-    const hasValidPosition = typeof song.position === "number" && song.position >= 0;
-    const progress = hasValidDuration && hasValidPosition ? Math.min(100, (song.position / song.duration) * 100) : 0;
-    const positionStable = typeof rpcState.lastPosition === "number" && Math.abs(song.position - rpcState.lastPosition) < 0.5;
-    const stuckAtZero = typeof rpcState.lastPosition === "number" && song.position === 0 && rpcState.lastPosition === 0 && song.duration === 0;
-    const idleTime = rpcState.lastActivity?.lastUpdated ? Math.floor((Date.now() - rpcState.lastActivity.lastUpdated) / 1000) * 1000 : 0;
-    const isIdle = idleTime < 100 || idleTime > CONSTANTS.ACTIVE_INTERVAL;
-    const listeningStatus = idleTime <= CONSTANTS.IDLE_INTERVAL && idleTime >= CONSTANTS.ACTIVE_INTERVAL;
-    if (state.isConnected) {
-      logInfo(
-        `%cActive:%c ${listeningStatus}  %c| Paused:%c ${!stuckAtZero && positionStable}  %c| Changed:%c ${isChanged}  %c| Seeking:%c ${isSeeking}`,
-        "color:#999",
-        listeningStatus ? "color:#2196f3" : "color:#999",
-        "color:#999",
-        !stuckAtZero && positionStable ? "color:#2196f3" : "color:#999",
-        "color:#999",
-        isChanged ? "color:#2196f3" : "color:#999",
-        "color:#999",
-        isSeeking ? "color:#2196f3" : "color:#999"
-      );
-      logInfo(
-        `%cCurrent:%c %c${song.title}%c - %c${song.artist}%c | Pos: %c${song.position} / ${song.duration}`,
-        "color:#999; font-weight:bold;",
-        "color:#fff;",
-        "color:#d8b800ff;",
-        "color:#fff;",
-        "color:#b99e00ff;",
-        "color:#999;",
-        "color:#6db9f8ff;"
-      );
+    const isRadioOrStream = !song.duration || song.duration <= 0;
+
+    // Seek detection
+    let isSeeking = false;
+
+    // Detect if the user is seeking within the track
+    if (!isRadioOrStream && !isPaused) {
+      const expectedProgress = timeSinceLastUpdate / 1000;
+      const actualProgress = song.position - (rpcState.lastPosition || 0);
+      const progressDeviation = Math.abs(actualProgress - expectedProgress);
+      const timeSinceLastSeek = Date.now() - state.lastSeekDetected;
+      const managerSeekDetection = rpcState.isSeekDetected(song.position, song.duration);
+      const deviationSeekDetection = progressDeviation > 5 && timeSinceLastUpdate > 2000;
+      isSeeking = (managerSeekDetection || deviationSeekDetection) && timeSinceLastSeek > CONSTANTS.MIN_SEEK_COOLDOWN;
+
+      if (isSeeking) {
+        state.lastSeekDetected = Date.now();
+      }
     }
-    const shouldSkipUpdate = !isFirstUpdate && !rpcState.hasOnlyDuration && positionStable && !isChanged && !isSeeking && !stuckAtZero && isIdle;
-    if (shouldSkipUpdate) {
-      logInfo(`%cSkipping update:%c no change detected.`, "color:#ff9800; font-weight:bold;", "color:#fff;");
-      rpcState.lastPosition = song.position;
+
+    if (state.isConnected) {
+      // State Log
+      const lastSeekSeconds = state.lastSeekDetected ? Math.floor((Date.now() - state.lastSeekDetected) / 1000) : "Never";
+      const statusLabel = isRadioOrStream ? "🔴 RADIO" : "🎵 SONG";
+      const positionText = isRadioOrStream ? "RADIO" : `Pos: ${song.position.toFixed(1)} / ${song.duration}`;
+      const positionColor = isRadioOrStream ? "#e91e63" : "#6db9f8";
+
+      // Log Colors
+      const colors = {
+        title: "#d8b800",
+        artist: "#b99e00",
+        header: "#999",
+        value: "#fff",
+        success: "#4caf50",
+        warning: "#ff9800",
+        error: "#f44336",
+        info: "#2196f3",
+        accent1: "#cc00f0ff",
+        accent2: "#00e1ffff",
+        accent3: "#ff5722",
+        neutral: "#7d7d7dff",
+      };
+
+      // Create log sections
+      const sections = [
+        // Current Track Section
+        {
+          title: "Current Track",
+          lines: [
+            [`${song.title} - ${song.artist}`, colors.title, colors.artist, colors.value],
+            [positionText, positionColor, colors.neutral],
+            [`Δ: ${rawPositionDiff.toFixed(1)}s`, colors.accent2, colors.neutral],
+            [`Δt: ${(timeSinceLastUpdate / 1000).toFixed(1)}s`, colors.accent2, colors.neutral],
+          ],
+        },
+
+        // Status Section
+        {
+          title: "Status",
+          lines: [
+            [statusLabel, colors.info, colors.neutral],
+            [`Paused: ${isPaused}`, isPaused ? colors.warning : colors.success, colors.neutral],
+            [`Changed: ${isChanged}`, isChanged ? colors.info : colors.neutral, colors.neutral],
+            [`Seeking: ${isSeeking}`, isSeeking ? colors.warning : colors.neutral, colors.neutral],
+          ],
+        },
+
+        // Playback Section
+        {
+          title: "Playback",
+          lines: [
+            [`Valid Duration: ${hasValidDuration}`, hasValidDuration ? colors.success : colors.error, colors.neutral],
+            [`Valid Position: ${hasValidPosition}`, hasValidPosition ? colors.success : colors.error, colors.neutral],
+            [`Progress: ${progress.toFixed(2)}`, colors.accent1, colors.neutral],
+            [`Position Stable: ${positionStable}`, positionStable ? colors.warning : colors.neutral, colors.neutral],
+            [`Stuck at Zero: ${stuckAtZero}`, stuckAtZero ? colors.error : colors.neutral, colors.neutral],
+          ],
+        },
+
+        // Seek Detection Section
+        {
+          title: "Seek Detection",
+          lines: [
+            [`Expected: ${(timeSinceLastUpdate / 1000).toFixed(2)}s`, colors.accent1, colors.neutral],
+            [`Actual: ${(song.position - (rpcState.lastPosition || 0)).toFixed(2)}s`, colors.accent1, colors.neutral],
+            [`Deviation: ${Math.abs(song.position - (rpcState.lastPosition || 0) - timeSinceLastUpdate / 1000).toFixed(2)}s`, colors.accent1, colors.neutral],
+            [`Last Seek: ${lastSeekSeconds}s`, colors.neutral, colors.neutral],
+          ],
+        },
+
+        // Statistics Section
+        {
+          title: "Statistics",
+          lines: [
+            [`Failed Updates: ${state.debugStats.failedUpdates}`, colors.info, colors.neutral],
+            [`Connection Lost: ${state.debugStats.connectionLost}`, colors.error, colors.neutral],
+          ],
+        },
+      ];
+
+      // Build the log message
+      const stored = await browser.storage.local.get("debugMode");
+      const debugMode = stored.debugMode ?? CONFIG.debugMode;
+      if (debugMode && state.lastUpdateStatus !== "skipped") {
+        let logMessage = "";
+        let styles = [];
+
+        sections.forEach((section, sectionIndex) => {
+          // Section header
+          logMessage += `%c${section.title}%c\n`;
+          styles.push(`font-weight: bold; color: ${colors.header};`);
+          styles.push("");
+
+          // Section content
+          section.lines.forEach((line, lineIndex) => {
+            const isLastInSection = lineIndex === section.lines.length - 1;
+            const isLastSection = sectionIndex === sections.length - 1;
+            const separator = isLastInSection ? (isLastSection ? "" : "\n\n") : " | ";
+
+            logMessage += `%c${line[0]}%c${separator}`;
+            styles.push(`color: ${line[1]};`);
+            styles.push("");
+          });
+        });
+
+        // Final log output
+        console.groupCollapsed(
+          `%c[DISCORD-MUSIC-RPC - INFO] %c${statusLabel}%c | %c${song.title.substring(0, 120)}${song.title.length > 120 ? "..." : ""}%c | %c${song.artist.substring(0, 120)}${
+            song.artist.length > 120 ? "..." : ""
+          }%c | Paused: %c${isPaused}%c | Seek: %c${isSeeking}%c | Δ: %c${rawPositionDiff.toFixed(1)}s`,
+          "color:#2196f3; font-weight:bold;",
+          `font-weight:bold; color:${isRadioOrStream ? "#e91e63" : "#4caf50"}`,
+          "",
+          `color:${colors.title}`,
+          "",
+          `color:${colors.artist}`,
+          "",
+          isPaused ? "color:#ff9800" : "color:#4caf50",
+          "",
+          isSeeking ? "color:#ff9800" : "color:#666",
+          "",
+          rawPositionDiff > 5 ? "color:#f44336" : "color:#4caf50",
+          ""
+        );
+        console.log(logMessage, ...styles);
+        console.groupEnd();
+      }
+    }
+
+    // Update Rules
+    let shouldUpdate = false;
+    let updateReason = "";
+
+    if (isFirstUpdate) {
+      shouldUpdate = true;
+      updateReason = "First Update";
+    } else if (isChanged) {
+      shouldUpdate = true;
+      updateReason = "Song Changed";
+    } else if (isSeeking) {
+      shouldUpdate = true;
+      updateReason = "Seek Detected";
+    } else if (isPaused) {
+      shouldUpdate = false;
+      updateReason = "Paused (no update)";
+    } else if (isRadioOrStream) {
+      if (timeSinceLastUpdate >= CONSTANTS.NORMAL_UPDATE_INTERVAL) {
+        shouldUpdate = true;
+        updateReason = "Radio/Stream (10s interval)";
+      }
+    } else {
+      if (timeSinceLastUpdate >= CONSTANTS.NORMAL_UPDATE_INTERVAL) {
+        shouldUpdate = true;
+        updateReason = "Normal Progress (10s interval)";
+      }
+    }
+
+    if (!shouldUpdate) {
+      if (!updateReason) updateReason = "Update skipped (interval not reached)";
+      if (state.lastUpdateStatus !== "skipped") {
+        logInfo(`%cSkipping update:%c ${updateReason} (Δpos: ${rawPositionDiff.toFixed(1)}s, Δtime: ${(timeSinceLastUpdate / 1000).toFixed(1)}s).`, "color:#ff9800; font-weight:bold;", "color:#fff;");
+      }
+      state.lastRawPosition = song.position;
+      state.lastUpdateStatus = "skipped";
       return;
     }
 
-    if (isChanged || isSeeking || isIdle) {
-      if (state.isConnected && idleTime > 1000 && idleTime < 11000) {
-        logInfo(`%cRPC Update triggered by:%c ${isChanged ? "Song Change" : isSeeking ? "Seek" : "Active"}`, "color:#4caf50; font-weight:bold;", "color:#fff;");
-      }
-      let updatedProgress = progress;
-      const didUpdate = await processRPCUpdate(song, updatedProgress);
-      if (didUpdate) {
-        rpcState.lastPosition = song.position;
-        state.lastUpdateTime = Date.now();
-        return;
-      }
+    // Send Update
+    logInfo(`%c🚀 RPC Update triggered by:%c ${updateReason}`, "color:#4caf50; font-weight:bold;", "color:#fff;");
+
+    let updatedProgress = Math.max(progress, 1);
+    const didUpdate = await processRPCUpdate(song, updatedProgress);
+
+    if (didUpdate) {
+      state.lastRawPosition = song.position;
+      state.lastUpdateStatus = "updated";
+      return;
     }
 
-    // Fallback: Pass to the next update with normal flow
+    // Fallback - always update last positions
+    state.lastRawPosition = song.position;
     rpcState.lastPosition = song.position;
     state.lastUpdateTime = Date.now();
   } catch (e) {
     logError("mainLoop error:", e);
+    logError("Stack trace:", e.stack);
   } finally {
     state.isUpdating = false;
-    scheduleNextUpdate();
+    if (!state.updateTimer) {
+      scheduleNextUpdate(CONSTANTS.ACTIVE_INTERVAL, hostMatch);
+    } else {
+      logInfo("mainLoop: update timer already exists");
+    }
   }
 }
 
 // Process the RPC update and handle connection
 async function processRPCUpdate(song, progress) {
-  const rpcOk = await isRpcConnected();
-  if (!rpcOk) {
-    logInfo("RPC not connected.");
+  const rpcHealth = await isRpcConnected();
+  if (!rpcHealth.ok) {
+    logInfo(rpcHealth.reason ? `RPC health check failed: ${rpcHealth.reason}` : "processRPCUpdate: RPC not connected");
+    if (state.isConnected) {
+      state.debugStats.connectionLost++;
+      logError("🔌 RPC CONNECTION LOST!");
+    }
     state.isConnected = false;
     return false;
   }
+
+  if (!state.isConnected) {
+    logInfo("🔌 RPC CONNECTION ESTABLISHED!");
+  }
   state.isConnected = true;
+
   let res = null;
   try {
     res = await browser.runtime.sendMessage({
       type: "UPDATE_RPC",
       data: { ...song, progress, lastUpdated: Date.now() },
     });
+    rpcState.lastPosition = song.position;
+    state.lastUpdateTime = Date.now();
   } catch (e) {
-    logError("RPC update failed:", e);
+    logError("processRPCUpdate: RPC update failed:", e);
+    logError("Stack trace:", e.stack);
+    state.debugStats.failedUpdates++;
     return false;
   }
 
-  if (!!res?.ok) {
-    if (!window._rpcKeepActiveInjected) rtcKeepAliveTab();
-    else window._rpcKeepAliveActive?.();
+  if (res?.waiting) {
+    logInfo("processRPCUpdate: RPC waiting (tab not audible yet)");
+    return false;
+  }
+
+  if (res?.ok) {
+    if (!window._rpcKeepActiveInjected) {
+      logInfo("processRPCUpdate: injected keepAlive");
+      rtcKeepAliveTab();
+    } else {
+      window._rpcKeepAliveActive?.();
+    }
+
     rpcState.clearError();
     rpcState.updateLastActivity(song, progress);
-    logInfo(`RPC Updated!`);
+    logInfo(`✅ RPC Updated Successfully!`);
     return true;
   }
 
+  logInfo("processRPCUpdate: unexpected response state:", res);
   return false;
 }
 
@@ -186,8 +441,9 @@ async function processRPCUpdate(song, progress) {
 async function isRpcConnected() {
   try {
     const res = await browser.runtime.sendMessage({ type: "IS_RPC_CONNECTED" });
-    return !!res?.ok;
-  } catch {
+    return { ok: res?.ok, reason: res?.reason || null };
+  } catch (e) {
+    logError("isRpcConnected: error:", e);
     return false;
   }
 }
@@ -195,114 +451,161 @@ async function isRpcConnected() {
 // Check if the current hostname matches
 async function isHostnameMatch() {
   try {
-    return await browser.runtime.sendMessage({ type: "IS_HOSTNAME_MATCH" });
-  } catch {
+    const result = await browser.runtime.sendMessage({ type: "IS_HOSTNAME_MATCH" });
+    return result;
+  } catch (e) {
+    logError("isHostnameMatch: error:", e);
     return false;
   }
 }
 
 // Handle scenario when no song is playing
 async function handleNoSong() {
-  if (!rpcState.lastActivity) return;
-  logInfo(`No song played. RPC is being cleaned ...`);
-  await browser.runtime.sendMessage({ type: "CLEAR_RPC" }).catch(logError);
+  if (!rpcState.lastActivity) {
+    logInfo("handleNoSong: no last activity to clear");
+    return;
+  }
+
+  logInfo(`%c⏹️  No song playing - clearing RPC...`, "color:#ff9800; font-weight:bold;");
+
+  try {
+    await browser.runtime.sendMessage({ type: "CLEAR_RPC" });
+    logInfo("handleNoSong: RPC cleared successfully");
+  } catch (e) {
+    logError("handleNoSong: failed to clear RPC:", e);
+  }
+
   rpcState.reset();
 }
 
 // Safely get song info with error handling and caching
-async function safeGetSongInfo(retryCount = 0) {
-  const MAX_RETRIES = 10;
-  const RETRY_DELAY = 500;
+async function safeGetSongInfo(maxRetries = 10, retryDelay = 500) {
+  for (let i = 0; i < maxRetries; i++) {
+    if (typeof window.getSongInfo === "function") {
+      try {
+        const song = await window.getSongInfo();
 
-  if (typeof window.getSongInfo !== "function") {
-    if (retryCount < MAX_RETRIES) {
-      logInfo(`getSongInfo not ready, retrying... (${retryCount + 1}/${MAX_RETRIES})`);
-      await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY));
-      return safeGetSongInfo(retryCount + 1);
+        if (song?.title && song?.artist) {
+          return song;
+        }
+      } catch (e) {
+        logError(`safeGetSongInfo: attempt ${i + 1} failed:`, e);
+      }
+    } else {
+      logInfo(`safeGetSongInfo: getSongInfo not available (attempt ${i + 1})`);
     }
 
-    logError("getSongInfo never loaded!");
-    return null;
+    await new Promise((r) => setTimeout(r, retryDelay));
   }
 
-  try {
-    const song = await window.getSongInfo();
+  logInfo("safeGetSongInfo: all retries exhausted, returning null");
+  return null;
+}
 
-    //  Validation
-    if (!song) {
-      return null;
-    }
-
-    if (!song.title || !song.artist) {
-      return null;
-    }
-
-    // Successful
-    state.lastSongInfo = song;
-    return song;
-  } catch (error) {
-    logError("Song info error:", error);
-    return null;
+function logOnce(msg) {
+  if (msg !== state.lastPrintedLog) {
+    logInfo(msg);
+    state.lastPrintedLog = msg;
   }
 }
 
+const waitForHostname = async () => {
+  while (true) {
+    const hostMatch = await isHostnameMatch();
+
+    if (hostMatch?.ok) {
+      logOnce(hostMatch.match || "✅ Hostname Match!");
+      return true;
+    }
+
+    if (hostMatch.error?.code === 1) {
+      logOnce("⏸️  Another tab active. Waiting...");
+      await delay(CONSTANTS.ACTIVE_INTERVAL);
+      continue;
+    }
+
+    logOnce(`❌ ${hostMatch.error?.message}`);
+    return false;
+  }
+};
+
 // Initialize the extension
 function init() {
+  logInfo("%c╔════════════════════════════════════════════════╗", "color:#2196f3; font-weight:bold;");
+  logInfo("%c║       MUSIC RPC EXTENSION INITIALIZING         ║", "color:#2196f3; font-weight:bold;");
+  logInfo("%c╚════════════════════════════════════════════════╝", "color:#2196f3; font-weight:bold;");
+
   // Prevent multiple injections (SPA reload, iframes)
   if (window._MUSIC_RPC_LOADED_ || window.top !== window.self) {
+    logInfo("init: already loaded or in iframe, aborting");
     return;
   }
+
   window._MUSIC_RPC_LOADED_ = true;
   const start = async () => {
     // polling for getSongInfo to be available
     let tries = 0;
     const maxTries = 30;
+
     while (typeof window.getSongInfo !== "function" && tries < maxTries) {
+      logInfo(`init: getSongInfo not available (attempt ${tries + 1}/${maxTries})`);
       await delay(2000);
       tries++;
     }
 
     if (typeof window.getSongInfo !== "function") {
-      logWarn("getSongInfo not available after retries, abort init.");
+      logError("init: getSongInfo not available after retries, aborting");
       return;
     }
-
-    // hostname match
-    const hostMatch = await isHostnameMatch();
-    if (!hostMatch?.ok) {
-      logInfo("Hostname not allowed, not starting watcher.");
-      return;
-    }
-
     registerRuntimeMessageListener();
     startWatching();
   };
 
-  if (document.readyState !== "loading") start();
-  else document.addEventListener("DOMContentLoaded", start, { once: true });
+  if (document.readyState !== "loading") {
+    logInfo("Document ready, starting immediately");
+    start();
+  } else {
+    logInfo("init: waiting for DOMContentLoaded");
+    document.addEventListener("DOMContentLoaded", start, { once: true });
+  }
 
   window.addEventListener("beforeunload", () => {
+    logInfo("init: beforeunload event - stopping");
     stopWatching();
   });
 }
 
 // Listen for messages from the background script
+function messageHandler(message, sender, sendResponse) {
+  if (message.type === "PING_FOR_DATA") {
+    safeGetSongInfo().then((info) => {
+      const response = info?.title && info?.artist ? info : null;
+      sendResponse(response);
+    });
+    return true;
+  }
+
+  if (message.action === "reloadPage") {
+    logInfo("messageHandler: reloading page as requested");
+    location.reload();
+  }
+}
+
 function registerRuntimeMessageListener() {
-  if (state.messageListenerRegistered) return;
-  state.messageListenerRegistered = true;
+  logInfo("registerRuntimeMessageListener: registering listener...");
 
-  browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
-    if (message.type === "PING_FOR_DATA") {
-      safeGetSongInfo().then((info) => {
-        sendResponse(info?.title && info?.artist ? info : null);
-      });
-      return true;
-    }
+  try {
+    browser.runtime.onMessage.removeListener(messageHandler);
+  } catch (e) {
+    logInfo("registerRuntimeMessageListener: no old listener to remove");
+  }
 
-    if (message.action === "reloadPage") {
-      location.reload();
-    }
-  });
+  try {
+    browser.runtime.onMessage.addListener(messageHandler);
+  } catch (e) {
+    logError("registerRuntimeMessageListener: failed to add listener:", e);
+    return;
+  }
 }
 
 // Apply overrides to keep the tab active
@@ -310,11 +613,12 @@ function rtcKeepAliveTab() {
   try {
     applyOverrides();
   } catch (e) {
-    logError("applyOverrides failed:", e);
+    logError("rtcKeepAliveTab: applyOverrides failed:", e);
   }
 
-  // clear any existing interval first
+  // Clear any existing interval first
   if (state.rpcKeepAliveIntervalId) {
+    logInfo("rtcKeepAliveTab: clearing existing interval");
     clearInterval(state.rpcKeepAliveIntervalId);
   }
 
@@ -323,11 +627,12 @@ function rtcKeepAliveTab() {
     try {
       applyOverridesLoop();
     } catch (e) {
-      logError("applyOverridesLoop error:", e);
+      logError("rtcKeepAliveTab: applyOverridesLoop error:", e);
     }
   }, 5000);
 
   window._rpcKeepActiveInjected = true;
+  logInfo("✅ KeepAlive system activated");
 }
 
 init();

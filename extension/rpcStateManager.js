@@ -33,7 +33,7 @@ window.RPCStateManager = class {
     const elapsedTime = (now - this.lastCheckTime) / 1000;
     const expectedPosition = this.lastKnownPosition + elapsedTime;
     const drift = Math.abs(currentPosition - expectedPosition);
-    const minSeekThreshold = 7;
+    const minSeekThreshold = 6;
     const threshold = Math.min(minSeekThreshold, duration / 3);
 
     this.lastCheckTime = now;
@@ -86,7 +86,7 @@ window.RPCStateManager = class {
 
   reset() {
     this.lastActivity = null;
-    this.lastKnownPosition = null;
+    this.lastKnownPosition = 0;
     this.isCurrentlySeeking = false;
     clearTimeout(this.seekTimeout);
     this.errorCount = 0;

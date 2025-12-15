@@ -187,6 +187,9 @@ class UserScriptManager {
               id: "${script.id}",
               domain: "${script.domain}",
               authors: ${JSON.stringify(script.authors || [])},
+              authorsLinks: ${JSON.stringify(script.authorsLinks || [])},
+              homepage: "${script.homepage || ""}",
+              description: "${script.description || ""}",
               urlPatterns: [${patternString}],
               title: "${script.title || "Unknown"}",
               song: { ...trackState }

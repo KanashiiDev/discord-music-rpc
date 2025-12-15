@@ -1,0 +1,105 @@
+:root, :host {
+  /*Transitions*/
+  --transition-normal: 0.3s;
+  --transition-slow: 0.6s;
+  /*Border Radius*/
+  --radius-sm: 4px;
+  --radius-default: 6px;
+  --radius-md: 8px;
+  --radius-lg: 10px;
+  /*Fonts*/
+  --font-xs: 10.5px;
+  --font-sm: 11.5px;
+  --font-md: 12px;
+  --font-md-lg: 13.5px;
+  --font-lg: 14px;
+  --font-h1: 18px;
+  --font-h2: 16px;
+  --font-h3: 14px;
+  --font-h4: 12px;
+}
+
+/* Default Dark Theme */
+[data-theme="dark"] {
+  /*Background*/
+  --background-color: #1e1e1e;
+  /*Foreground*/
+  --foreground-color-100: #262626;
+  --foreground-color-200: #303030;
+  --foreground-color-300: #383838;
+  --foreground-color-400: #464646;
+  --foreground-color-500: #565656;
+  --foreground-color-600: #686868;
+  /*Texts*/
+  --text-color-btn: #ddd;
+  --text-color-primary: #ddd;
+  --text-color-secondary: #c5c5c5;
+  --text-color-muted: #999;
+  --text-color-button: #ddd;
+  /*Scrollbar*/
+  --scrollbar-color: #474747;
+  --scrollbar-color-hover: #666;
+  /*Link*/
+  --link-color: #62c9d5;
+  --link-color-bright: #6bdae6;
+  /*Shadow*/
+  --shadow-color: rgba(0, 0, 0, 0.5);
+  /*Border*/
+  --border-color: #464646;
+  --border-color-bright: #666;
+  /*Others*/
+  --history-entry-delete-color: #4e1b1b;
+  --warning-color: #7a6508;
+  --alert-color: #782020;
+  --accent-color: #00545e;
+  --accent-color-bright: #00626d;
+  --switch-toggle-color: #ddd;
+  --icon-color: #ddd;
+  --red-color: #f44336;
+  --orange-color: #ffc107;
+  --green-color: #4caf50;
+}
+
+/* Light Theme */
+[data-theme="light"] {
+  /*Background*/
+  --background-color: #fafafa;
+
+  /* Foreground */
+  --foreground-color-100: #f5f5f5;
+  --foreground-color-200: #eeeeee;
+  --foreground-color-300: #e0e0e0;
+  --foreground-color-400: #cecece;
+  --foreground-color-500: #c5c5c5;
+  --foreground-color-600: #b3b3b3;
+  /*Texts*/
+  --text-color-btn: #ddd;
+  --text-color-primary: #1a1a1a;
+  --text-color-secondary: #333333;
+  --text-color-muted: #666666;
+  --text-color-button: #1a1a1a;
+  /*Scrollbar*/
+  --scrollbar-color: #d8d8d8;
+  --scrollbar-color-hover: #c5c5c5;
+  /*Link*/
+  --link-color: #0891b2;
+  --link-color-bright: #0e7490;
+  /*Shadow*/
+  --shadow-color: rgba(0, 0, 0, 0.5);
+  /*Border*/
+  --border-color: #b5b5b5;
+  --border-color-bright: #929292;
+  /*Others*/
+  --history-entry-delete-color: #4e1b1b;
+  --warning-color: #7a6508;
+  --alert-color: #782020;
+  --switch-toggle-color: #ddd;
+  --icon-color: #1a1a1a;
+  --blue-color: #2e6386;
+  --blue-color-bright: #36739c;
+  --red-color: #c90000;
+  --orange-color: #c99000;
+  --green-color: #28c900;
+  --accent-color: #00545e;
+  --accent-color-bright: #00626d;
+}

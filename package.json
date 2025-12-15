@@ -28,7 +28,7 @@
     "start": "node server.js",
     "start:app": "electron .",
     "build:win": "node scripts/buildDeps.js --win && electron-builder --win --x64 --publish=never",
-    "build:linux": "node scripts/buildDeps.js --linux && electron-builder --linux --x64 --publish=never --config.extraMetadata.productName='discord-music-rpc'",
+    "build:linux": "chmod +x $(pwd)/scripts/discord_ipc_diagnostic.sh && node scripts/buildDeps.js --linux && electron-builder --linux --x64 --publish=never --config.extraMetadata.productName='discord-music-rpc'",
     "build:mac": "node scripts/buildDeps.js --mac && electron-builder --mac --publish=never",
     "build:chrome": "cross-env TARGET=chrome node scripts/buildExtensions.js",
     "build:firefox": "cross-env TARGET=firefox node scripts/buildExtensions.js",
@@ -140,6 +140,7 @@
     "files": [
       "main.js",
       "scripts/electron-log.js",
+      "scripts/configManagement.js",
       "utils.js",
       "server.js",
       "!LICENSE",

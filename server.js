@@ -4,12 +4,16 @@ const path = require("path");
 const fs = require("fs");
 const cors = require("cors");
 const { Client, StatusDisplayType } = require("@xhayper/discord-rpc");
-const { getCurrentTime, isSameActivity, isSameActivityIgnore, truncate, normalizeTitleAndArtist, isValidUrl, notifyRpcStatus, detectElectronMode } = require("./utils.js");
+const { addHistoryEntry, getCurrentTime, isSameActivity, isSameActivityIgnore, truncate, normalizeTitleAndArtist, isValidUrl, notifyRpcStatus, detectElectronMode } = require("./utils.js");
 let PORT = 3000;
 const CLIENT_ID = "1366752683628957767";
 const RETRY_DELAY = 10000; // 10 seconds
 const CLIENT_TIMEOUT = 30000; // 30 seconds
 const STUCK_TIMEOUT = 40000; // 40 seconds
+let historyTimeout = null;
+const settingsFilePath = process.env.SETTINGS_FILE_PATH;
+const logFilePath = process.env.LOG_FILE_PATH;
+const historyFilePath = process.env.HISTORY_FILE_PATH;
 const IS_ELECTRON = detectElectronMode();
 process.env.ELECTRON_MODE = IS_ELECTRON ? "true" : "false";
 
@@ -121,13 +125,16 @@ let rpcClient = null;
 let isRpcConnected = false;
 let isConnecting = false;
 let isShuttingDown = false;
+let shutdownPromise = null;
 let currentActivity = null;
 let lastActiveClient = null;
+let lastSavedHistoryEntry = null;
 let healthCheckInterval = null;
 let serverInstance = null;
 let hasLoggedRpcFailure = false;
 let lastUpdateRequest = null;
 let lastClearRpcResult = null;
+let historySaveLock = false;
 
 // Settings
 let serverSettings = {
@@ -329,13 +336,44 @@ app.post("/update-rpc", async (req, res) => {
       }
     }
 
+    // Add to history if type is not watching
+    if (activity.type !== 3) {
+      if (!isSameActivityIgnore(activity, currentActivity)) {
+        // The song changed - cancel the previous timeout
+        if (historyTimeout) {
+          clearTimeout(historyTimeout);
+          historyTimeout = null;
+        }
+        historySaveLock = false;
+
+        // Save song after 25 seconds.
+        historyTimeout = setTimeout(() => {
+          if (!isSameActivityIgnore(activity, lastSavedHistoryEntry)) {
+            addHistoryEntry(activity, historyFilePath);
+            lastSavedHistoryEntry = activity;
+          }
+          historyTimeout = null;
+          historySaveLock = false;
+        }, 25000);
+      } else if (!historySaveLock && !historyTimeout) {
+        // The song is the same, but the timeout hasn't started yet
+        historySaveLock = true;
+        historyTimeout = setTimeout(() => {
+          if (!isSameActivityIgnore(activity, lastSavedHistoryEntry)) {
+            addHistoryEntry(activity, historyFilePath);
+            lastSavedHistoryEntry = activity;
+          }
+          historyTimeout = null;
+          historySaveLock = false;
+        }, 25000);
+      }
+    }
+
     // Update activity
     const isSame = typeof isSameActivity === "function" ? isSameActivity(activity, currentActivity) : false;
-
     if (!isSame) {
-      const isSameIgnore = typeof isSameActivityIgnore === "function" ? isSameActivityIgnore(activity, currentActivity) : false;
-
-      if (!isSameIgnore && serverSettings.logSongUpdate) {
+      // If the logSongUpdate setting is enabled, log the song change.
+      if (serverSettings.logSongUpdate) {
         console.log(`RPC Updated: ${activity.details} by ${activity.state} - ${getCurrentTime()}`);
       }
 
@@ -379,6 +417,10 @@ app.post("/clear-rpc", express.json(), async (req, res) => {
     } else {
       if (!req.body || typeof req.body !== "object") {
         return res.status(400).json({ error: "Invalid request body" });
+      }
+
+      if (historyTimeout) {
+        clearTimeout(historyTimeout);
       }
 
       const { clientId } = req.body;
@@ -451,6 +493,129 @@ app.get("/activity", (req, res) => {
     activity: currentActivity,
     rpcConnected: isRpcConnected,
     lastUpdateRequest,
+  });
+});
+
+// History - GET
+app.get("/history", (req, res) => {
+  const history = fs.existsSync(historyFilePath) ? JSON.parse(fs.readFileSync(historyFilePath, "utf-8")) : [];
+
+  res.json(history);
+});
+
+// LOGS - GET
+app.get("/logs", (req, res) => {
+  const logs = fs.existsSync(logFilePath) ? JSON.parse(fs.readFileSync(logFilePath, "utf-8")) : [];
+  res.json(logs);
+});
+
+// SETTINGS - GET
+app.get("/settings", (req, res) => {
+  fs.readFile(settingsFilePath, "utf8", (err, data) => {
+    if (err) return res.status(500).json({ error: "The file could not be read" });
+    res.json(JSON.parse(data));
+  });
+});
+
+// SETTINGS - POST
+app.post("/update-settings", (req, res) => {
+  const incoming = req.body;
+
+  fs.readFile(settingsFilePath, "utf8", (err, data) => {
+    if (err) {
+      return res.status(500).json({ error: "Settings Read Failed: " + err });
+    }
+
+    let settings;
+    try {
+      settings = JSON.parse(data);
+    } catch (e) {
+      return res.status(500).json({ error: "Settings Parse Failed: " + e });
+    }
+
+    let updated = false;
+
+    for (const key in incoming.server) {
+      if (!settings.server[key]) continue;
+
+      // value-only update
+      settings.server[key].value = incoming.server[key];
+      updated = true;
+    }
+
+    if (!updated) {
+      return res.status(400).json({ error: "No valid settings to update" });
+    }
+
+    fs.writeFile(settingsFilePath, JSON.stringify(settings, null, 4), "utf8", (err) => {
+      if (err) {
+        return res.status(500).json({ error: "Settings Update Failed: " + err });
+      }
+
+      res.json({ success: true, message: "Settings Updated" });
+      console.log("The server is restarting to apply new settings..");
+      sendRestart();
+    });
+  });
+});
+
+// Reset Settings - POST
+app.post("/reset-settings", (req, res) => {
+  sendResetConfig();
+  res.json({ success: true, message: "Config reset initiated" });
+});
+
+// UPDATE PORT - POST
+app.post("/update-port", (req, res) => {
+  const { newPort } = req.body;
+
+  if (typeof newPort !== "number" || isNaN(newPort)) {
+    return res.status(400).json({ error: "Invalid port value" });
+  }
+
+  fs.readFile(settingsFilePath, "utf8", (err, data) => {
+    if (err) {
+      return res.status(500).json({ error: "Settings Read Failed: " + err });
+    }
+
+    let settings;
+    try {
+      settings = JSON.parse(data);
+    } catch (e) {
+      return res.status(500).json({ error: "Settings Parse Failed: " + e });
+    }
+
+    const portSchema = settings?.server?.PORT;
+
+    if (!portSchema || portSchema.type !== "number") {
+      return res.status(500).json({ error: "PORT setting schema not found" });
+    }
+
+    // Schema-based validation
+    if ((portSchema.min && newPort < portSchema.min) || (portSchema.max && newPort > portSchema.max)) {
+      return res.status(400).json({
+        error: `Port must be between ${portSchema.min} and ${portSchema.max}`,
+      });
+    }
+
+    // Update
+    portSchema.value = newPort;
+
+    fs.writeFile(settingsFilePath, JSON.stringify(settings, null, 4), "utf8", (err) => {
+      if (err) {
+        return res.status(500).json({ error: "Settings Update Failed: " + err });
+      }
+
+      res.json({
+        success: true,
+        message: "Port updated successfully",
+        updatedPort: newPort,
+      });
+
+      console.log(`Server port changed: ${newPort}`);
+      console.log(`Restarting server to apply port change...`);
+      sendRestart();
+    });
   });
 });
 
@@ -608,52 +773,121 @@ function startHealthCheckTimer() {
   }, STUCK_TIMEOUT);
 }
 
+// Send Ready
+function sendReady() {
+  if (process.env.ELECTRON_MODE === "true") {
+    if (typeof process.send === "function") {
+      try {
+        process.send("ready");
+      } catch (err) {
+        console.error("[FAIL] Failed to send ready signal:", err.message);
+      }
+    } else {
+      console.error("[FAIL] CRITICAL: process.send is not available!");
+    }
+  }
+}
+
+// Send Restart
+function sendRestart() {
+  setTimeout(() => {
+    if (process.env.ELECTRON_MODE === "true") {
+      if (typeof process.send === "function") {
+        try {
+          process.send("RESTART_SERVER");
+        } catch (err) {
+          console.error("[FAIL] Failed to send restart signal:", err.message);
+        }
+      } else {
+        console.error("[FAIL] CRITICAL: process.send is not available!");
+      }
+    }
+  }, 1000);
+}
+
+// Send Reset Config
+function sendResetConfig() {
+  setTimeout(() => {
+    if (process.env.ELECTRON_MODE === "true") {
+      if (typeof process.send === "function") {
+        try {
+          process.send("RESET_CONFIG");
+        } catch (err) {
+          console.error("[FAIL] Failed to send reset config signal:", err.message);
+        }
+      } else {
+        console.error("[FAIL] CRITICAL: process.send is not available!");
+      }
+    }
+  }, 1000);
+}
+
 // Shutdown
 async function shutdown() {
   if (isShuttingDown) {
-    console.log("Shutdown already in progress...");
-    return;
+    return shutdownPromise;
   }
 
-  console.log("Shutting down server...");
   isShuttingDown = true;
 
-  try {
-    // Clear health check
-    if (healthCheckInterval) {
-      clearInterval(healthCheckInterval);
-      healthCheckInterval = null;
-    }
+  shutdownPromise = (async () => {
+    console.log("[Server] Shutdown initiated...");
 
-    // Cleanup RPC
-    if (rpcClient) {
-      if (rpcClient.user) {
-        await rpcClient.user.clearActivity();
+    try {
+      // Stop HealthCheck interval
+      if (healthCheckInterval) {
+        clearInterval(healthCheckInterval);
+        healthCheckInterval = null;
+        console.log("[Server] Health check interval cleared.");
       }
-      await rpcClient.destroy();
-      rpcClient = null;
-    }
 
-    currentActivity = null;
-    lastActiveClient = null;
-    hasLoggedRpcFailure = false;
-    lastUpdateRequest = null;
-    lastClearRpcResult = null;
+      // RPC Cleanup
+      if (rpcClient) {
+        try {
+          console.log("[Server] Clearing RPC activity...");
+          if (rpcClient.user) {
+            await rpcClient.user.clearActivity().catch(() => {});
+          }
 
-    // Close server
-    if (serverInstance) {
-      await new Promise((resolve) => {
-        serverInstance.close(() => {
-          console.log("Server closed successfully");
-          resolve();
+          console.log("[Server] Destroying RPC client...");
+          await rpcClient.destroy().catch(() => {});
+        } catch (err) {
+          console.warn("[Server] RPC cleanup failed (ignored):", err.message);
+        } finally {
+          rpcClient = null;
+        }
+      }
+
+      // Express server shutdown
+      if (serverInstance) {
+        console.log("[Server] Closing HTTP server...");
+
+        await new Promise((resolve) => {
+          serverInstance.close((err) => {
+            if (err) {
+              console.warn("[Server] Error closing HTTP server:", err);
+            } else {
+              console.log("[Server] HTTP server closed.");
+            }
+            resolve();
+          });
         });
-      });
+
+        serverInstance = null;
+      }
+
+      console.log("[Server] Cleanup complete. Exiting...");
+    } catch (err) {
+      console.error("[Server] Shutdown error:", err);
+    } finally {
+      setTimeout(() => {
+        console.log("[Server] shutdown complete.");
+        process.exit(0);
+      }, 50);
     }
-  } catch (err) {
-    console.error("Error during shutdown:", err);
-  } finally {
-    process.exit(0);
-  }
+  })();
+
+  return shutdownPromise;
 }
 
 process.on("SIGINT", shutdown);
@@ -691,17 +925,7 @@ process.on("unhandledRejection", (reason) => {
 console.log("Starting server...");
 serverInstance = app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
-  if (process.env.ELECTRON_MODE === "true") {
-    if (typeof process.send === "function") {
-      try {
-        process.send("ready");
-      } catch (err) {
-        console.error("[FAIL] Failed to send ready signal:", err.message);
-      }
-    } else {
-      console.error("[FAIL] CRITICAL: process.send is not available!");
-    }
-  }
+  sendReady();
 
   // Start the RPC connection
   connectRPC().catch((err) => {

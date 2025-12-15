@@ -1,0 +1,123 @@
+* {
+  -webkit-box-sizing: border-box;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  padding: 20px;
+  background: var(--background-color);
+  color: var(--text-color-primary);
+  line-height: 1.6;
+  min-width: 800px;
+  font-size: 75%;
+}
+
+.header {
+  margin-bottom: 20px;
+  color: var(--text-color-primary);
+  border-bottom: 2px solid var(--border-color);
+  padding-bottom: 10px;
+  display: -webkit-box;
+  display: -ms-flexbox;
+  display: flex;
+  width: 100%;
+  -webkit-box-pack: justify;
+  -ms-flex-pack: justify;
+  justify-content: space-between;
+}
+
+.header h3 {
+  font-size: 20px;
+}
+
+.header-desc {
+  font-size: 14px;
+  color: var(--text-color-secondary);
+}
+
+#listControls {
+  display: -webkit-box;
+  display: -ms-flexbox;
+  display: flex;
+  gap: 10px;
+
+  -ms-flex-wrap: wrap;
+
+  flex-wrap: wrap;
+}
+
+button {
+  padding: 8px 16px;
+  border: none;
+  outline: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: var(--font-md);
+  -webkit-transition: background var(--transition-normal) ease;
+  transition: background var(--transition-normal) ease;
+  color: var(--text-color-primary);
+  background: var(--foreground-color-400);
+}
+
+button[disabled] {
+  opacity: 0.5;
+  cursor: default;
+}
+
+button:not([disabled]):hover {
+  background: var(--foreground-color-500);
+}
+
+#btnNew,
+#btnImport,
+#btnExport {
+  background: var(--accent-color);
+  position: relative;
+  color: var(--text-color-btn);
+}
+
+#btnNew:hover,
+#btnImport:hover,
+#btnExport:hover {
+  background: var(--accent-color-bright);
+}
+
+#log {
+  display: none;
+}
+
+#log.visible {
+  display: block;
+  padding: 10px;
+  background: var(--foreground-color-100);
+  border-radius: var(--radius-default);
+  white-space: pre-wrap;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.container {
+  margin: 0 auto;
+  background-color: var(--foreground-color-200);
+  -webkit-box-shadow: 0 2px 8px var(--shadow-color);
+  box-shadow: 0 2px 8px var(--shadow-color);
+  border-radius: var(--radius-md);
+  padding: 20px;
+  display: -webkit-box;
+  display: -ms-flexbox;
+  display: flex;
+  -webkit-box-align: center;
+      -ms-flex-align: center;
+          align-items: center;
+  -webkit-box-pack: center;
+      -ms-flex-pack: center;
+          justify-content: center;
+  -webkit-box-orient: vertical;
+  -webkit-box-direction: normal;
+      -ms-flex-direction: column;
+          flex-direction: column;
+  gap: 10px;
+}

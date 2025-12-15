@@ -24,7 +24,7 @@ async function renderList(filteredList = null, isSearch = null) {
   container.appendChild(spinner);
 
   const updateMinHeight = () => {
-    document.getElementById("siteList").style.minHeight = `${container.scrollHeight < 404 ? container.scrollHeight : 404}px`;
+    document.getElementById("siteList").style.minHeight = `${container.scrollHeight < 402 ? container.scrollHeight : 402}px`;
   };
 
   const list = filteredList || (await getFreshParserList());
@@ -48,7 +48,7 @@ async function renderList(filteredList = null, isSearch = null) {
   const fragment = document.createDocumentFragment();
 
   for (const entry of list) {
-    const { id, domain, title, userAdd, userScript, urlPatterns = [], authors, homepage } = entry;
+    const { id, domain, title, userAdd, userScript, urlPatterns = [], authors, authorsLinks, homepage, description } = entry;
     const key = `enable_${id}`;
     const isEnabled = settings[key] !== false;
 
@@ -118,15 +118,18 @@ async function renderList(filteredList = null, isSearch = null) {
     const authorDiv = document.createElement("div");
     const authorHeader = document.createElement("h4");
 
-    if (authors?.length > 0) {
+    if (authors?.length > 0 && authors[0].trim() !== "") {
       authorDiv.className = "parser-entry-authors";
       authorHeader.textContent = authors.length > 1 ? "Authors" : "Author";
-
-      authors.forEach((author) => {
+      authorDiv.appendChild(authorHeader);
+      authors.forEach((author, index) => {
         const authorContainer = document.createElement("div");
         authorContainer.className = "author-container";
+        if (!authorsLinks?.[index] || authorsLinks?.[index] === "") {
+          authorContainer.classList.add("no-link");
+        }
         const link = document.createElement("a");
-        link.href = `https://github.com/${encodeURIComponent(author)}`;
+        link.href = authorsLinks?.[index] ? authorsLinks[index] : "";
         link.textContent = author;
         link.target = "_blank";
         link.rel = "noopener noreferrer";
@@ -135,13 +138,28 @@ async function renderList(filteredList = null, isSearch = null) {
       });
     }
 
+    // Description
+    const descriptionDiv = document.createElement("div");
+    const descriptionHeader = document.createElement("h4");
+
+    if (description && description.trim() !== "") {
+      descriptionDiv.className = "parser-entry-description";
+      descriptionHeader.textContent = "Description";
+      descriptionDiv.appendChild(descriptionHeader);
+      const descriptionContent = document.createElement("p");
+      descriptionContent.textContent = description;
+      descriptionDiv.appendChild(descriptionContent);
+    }
+
     // Options Container
     const optionsContainer = document.createElement("div");
     optionsContainer.id = `options-${id}`;
     optionsContainer.className = "parser-options";
 
-    // Headers
-    optionsContainer.append(authorHeader, authorDiv);
+    // Sections
+    optionsContainer.append(descriptionDiv, authorDiv);
+
+    // Options Header
     const optionsHeader = document.createElement("h4");
     optionsHeader.textContent = "Settings";
     optionsContainer.appendChild(optionsHeader);

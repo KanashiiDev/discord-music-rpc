@@ -1,3 +1,5 @@
+const fs = require("fs");
+
 function getCurrentTime() {
   const now = new Date();
   return [now.getHours().toString().padStart(2, "0"), now.getMinutes().toString().padStart(2, "0"), now.getSeconds().toString().padStart(2, "0")].join(":");
@@ -37,7 +39,7 @@ function truncate(str, maxLength = 128, { fallback = "Unknown", minLength = 2, m
     "free\\s+(download|dl|song|now)|download\\s+(free|now)",
     "official(\\s+(video|music\\s+video|audio|lyric\\s+video|visualizer))?",
     "/Bonus\\s+Track|PATREON|teaser|trailer|promo|lyric\\s+video|lyrics?|music\\s+video|out\\s+now",
-    "mixed\\s+by\\s+dj|karaoke|backing\\s+track|vocals\\s+only|live(\\s+performance)?",
+    "subbed|mixed\\s+by\\s+dj|karaoke|backing\\s+track|vocals\\s+only|live(\\s+performance)?",
     "now\\s+available|full\\s+song|full\\s+version|complete\\s+version|original\\s+version\\s+version",
     "official\\s+trailer|official\\s+teaser|[\\w\\s'’.\\-]+\\s+premiere",
   ];
@@ -48,16 +50,28 @@ function truncate(str, maxLength = 128, { fallback = "Unknown", minLength = 2, m
 
   // Optional remove (only in brackets)
   const optionalRegexStr = optionalRemoveKeywords.join("|");
-  const optionalRemoveRegex = new RegExp(`([\\[\\(（]\\s*(${optionalRegexStr})\\s*[\\]\\)）])|(\\s*-\\s*(${optionalRegexStr})\\s*$)`, "gi");
+  const optionalRemoveRegex = new RegExp(`\\b${optionalRegexStr}\\b|\\s*-\\s*${optionalRegexStr}\\s*$`, "gi");
   strForRegex = strForRegex.replace(optionalRemoveRegex, "");
+  strForRegex = strForRegex.replace(/[\[\(（]\s*-\s*([^\]\)）]+)[\]\)）]/g, "[$1]");
+  strForRegex = strForRegex.replace(/[\[\(（]([^\]\)）]+?)\s*-\s*[\]\)）]/g, "[$1]");
 
-  // Clean unnecessary parentheses
-  const safeParenthesesRegex = new RegExp(`[\[\(（【][^\[\]()（）【】]{0,500}[\)\]）】]`, "g");
-  strForRegex = strForRegex.replace(safeParenthesesRegex, "");
-
-  // Empty parentheses
+  // Empty parentheses (run twice to catch newly emptied ones)
   strForRegex = strForRegex.replace(/[\[\(（【]\s*[\]\)）】]/g, "");
+  strForRegex = strForRegex.replace(/[\[\(（【]\s*[\]\)）】]/g, "");
+
+  // Normalize whitespace
   strForRegex = strForRegex.replace(/\s+/g, " ").trim();
+
+  // Remove problematic characters, control characters and broken surrogates
+  try {
+    strForRegex = strForRegex.replace(/[\u0000-\u001F\u007F]/g, "");
+    strForRegex = strForRegex.replace(/[\u200B-\u200D\uFEFF\u180E]/g, "");
+    strForRegex = strForRegex.normalize("NFC");
+    strForRegex = strForRegex.replace(/[\uD800-\uDFFF](?![\uDC00-\uDFFF])/g, "").replace(/(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g, "");
+    strForRegex = strForRegex.replace(/[^\u0020-\uD7FF\uE000-\uFFFD]/g, "");
+  } catch (e) {
+    // Continue without removing problematic characters
+  }
 
   // Max length
   let result = strForRegex;
@@ -67,7 +81,7 @@ function truncate(str, maxLength = 128, { fallback = "Unknown", minLength = 2, m
     if (chars.length > maxLength) {
       let truncateIndex = maxLength - 3;
 
-      // Try not to leave the last word unfinished.
+      // Try not to leave the last word unfinished
       for (let i = Math.min(maxLength - 3, chars.length - 1); i > maxLength / 2; i--) {
         if (/[\s\p{P}\p{Z}]/u.test(chars[i])) {
           truncateIndex = i;
@@ -118,19 +132,48 @@ function normalizeTitleAndArtist(title, artist, replaceArtist = true) {
   let dataTitle = title?.trim() || "";
   let dataArtist = artist?.trim() || "";
 
-  const dashMatch = dataTitle.match(/^(.+?)\s[-–—]\s(.+)$/);
+  const calculateSimilarity = (str1, str2) => {
+    const s1 = str1.toLowerCase().replace(/[^\w\s]/g, "");
+    const s2 = str2.toLowerCase().replace(/[^\w\s]/g, "");
+
+    if (s1 === s2) return 1;
+
+    const longer = s1.length > s2.length ? s1 : s2;
+    const shorter = s1.length > s2.length ? s2 : s1;
+
+    if (longer.length === 0) return 1;
+
+    // Check if shorter is contained in longer
+    if (longer.includes(shorter)) {
+      return shorter.length / longer.length;
+    }
+
+    return 0;
+  };
+
+  const parenIndex = dataTitle.search(/[(\[\(（【]/);
+  const titleBeforeParen = parenIndex !== -1 ? dataTitle.substring(0, parenIndex) : dataTitle;
+  const parenPart = parenIndex !== -1 ? dataTitle.substring(parenIndex) : "";
+  const dashMatch = titleBeforeParen.match(/^(.+?)\s[-–—]\s(.+)$/);
   if (dashMatch && replaceArtist) {
     const extractedArtist = dashMatch[1].trim();
-    const newTitle = dashMatch[2].trim();
+    const newTitle = dashMatch[2].trim() + parenPart;
+
+    // Check if the two parts are similar (repetitive title)
+    const similarity = calculateSimilarity(extractedArtist, newTitle);
+
+    // If similarity is high , use the first part as title and keep original artist
+    if (similarity > 0.7) {
+      return { title: extractedArtist, artist: dataArtist };
+    }
 
     const extractedLower = extractedArtist.toLowerCase();
     const artistLower = dataArtist.toLowerCase();
 
     if (!(dataArtist.length > extractedArtist.length && artistLower.includes(extractedLower) && dataArtist !== dataTitle)) {
       dataArtist = extractedArtist;
+      dataTitle = newTitle;
     }
-
-    dataTitle = newTitle;
   }
 
   return { title: dataTitle, artist: dataArtist };
@@ -186,14 +229,46 @@ function detectElectronMode() {
   return false;
 }
 
-module.exports = {
-  getCurrentTime,
-  isSameActivity,
-  isSameActivityIgnore,
-  truncate,
-  cleanTitle,
-  normalizeTitleAndArtist,
-  isValidUrl,
-  notifyRpcStatus,
-  detectElectronMode,
-};
+function addHistoryEntry(song, historyPath) {
+  if (!song || !song.details || !song.state) {
+    return;
+  }
+
+  let history = [];
+
+  if (fs.existsSync(historyPath)) {
+    const data = fs.readFileSync(historyPath, "utf8");
+    try {
+      history = JSON.parse(data);
+      if (!Array.isArray(history)) history = [];
+    } catch {
+      history = [];
+    }
+  }
+
+  // LAST RECORD COMPARISON
+  const last = history[history.length - 1];
+  if (last) {
+    const sameTitle = last.title === song.details;
+    const sameArtist = last.artist === song.state;
+
+    if (sameTitle && sameArtist) {
+      return;
+    }
+  }
+
+  // Add new entry
+  const entry = {
+    title: song.details,
+    artist: song.state,
+    image: song.largeImageKey || "",
+    source: song.largeImageText || "",
+    songUrl: song.detailsUrl || "",
+    date: Date.now(),
+  };
+
+  history.push(entry);
+  fs.writeFileSync(historyPath, JSON.stringify(history, null, 2), "utf8");
+}
+
+module.exports = { addHistoryEntry, getCurrentTime, isSameActivity, isSameActivityIgnore, truncate, cleanTitle, normalizeTitleAndArtist, isValidUrl, notifyRpcStatus, detectElectronMode };

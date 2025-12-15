@@ -30,11 +30,18 @@ const logWarn = async (...args) => {
 
   const prefix = "%c[DISCORD-MUSIC-RPC - WARN]%c";
   const prefixCSS = ["color:#ff9800; font-weight:bold;", "color:#fff;"];
-  console.warn(prefix, ...prefixCSS, ...args);
+  console.log(prefix, ...prefixCSS, ...args);
 };
 
 const errorFilter = (() => {
-  const ignorePatterns = [/extension context invalidated/i, /could not establish connection/i, /failed to fetch/i, /update failed after all retries/i, /update failed \(no response\)/i];
+  const ignorePatterns = [
+    /No tab with id/i,
+    /extension context invalidated/i,
+    /could not establish connection/i,
+    /failed to fetch/i,
+    /update failed after all retries/i,
+    /update failed \(no response\)/i,
+  ];
 
   const shouldIgnore = (error) => {
     const errorString = error?.message?.toLowerCase() || error?.toString?.()?.toLowerCase() || "";
@@ -72,6 +79,39 @@ const logError = (...a) => {
     );
   }
 };
+
+// Settings Panel - Color Settings
+function getColorSettings() {
+  return [
+    {
+      key: "accentColor",
+      label: "Accent Color",
+      cssVar: "--accent-color",
+      default: getComputedStyle(document.body).getPropertyValue("--accent-color").trim(),
+    },
+    {
+      key: "accentColorBright",
+      label: "Accent Color Hover",
+      cssVar: "--accent-color-bright",
+      default: getComputedStyle(document.body).getPropertyValue("--accent-color-bright").trim(),
+    },
+  ];
+}
+
+async function applyColorSettings() {
+  const stored = await browser.storage.local.get("colorSettings");
+  const config = stored.colorSettings || {};
+  const COLORS = getColorSettings();
+
+  for (const item of COLORS) {
+    const val = config[item.key];
+    if (val) {
+      document.body.style.setProperty(item.cssVar, val);
+    } else {
+      document.body.style.removeProperty(item.cssVar);
+    }
+  }
+}
 
 // Delay
 const delay = (ms) => new Promise((res) => setTimeout(res, ms));
@@ -332,16 +372,17 @@ const fetchWithTimeout = async (url, options = {}, timeout = 5000) => {
   const timer = setTimeout(() => controller.abort(), timeout);
 
   try {
-    return await fetch(url, { ...options, signal: controller.signal });
-  } catch (err) {
-    if (err.name === "AbortError") {
-      logInfo(`Request timed out after ${timeout / 1000} seconds`);
-    } else {
-      logError(err);
-    }
-    return null;
-  } finally {
+    const response = await fetch(url, { ...options, signal: controller.signal });
     clearTimeout(timer);
+    return response;
+  } catch (err) {
+    clearTimeout(timer);
+    if (err.name === "AbortError") {
+      logError(`Request timed out after ${timeout / 1000} seconds: ${url}`);
+    } else {
+      logError(`Fetch error: ${url}`, err);
+    }
+    throw err;
   }
 };
 
@@ -483,8 +524,6 @@ function applyOverridesLoop() {
 
   const keyboardEvent = new KeyboardEvent("keydown", { bubbles: true, key: "Shift" });
   document.dispatchEvent(keyboardEvent);
-
-  logInfo("RPC Keep Alive Overrides Loop Applied");
 }
 
 // Create SVG
@@ -1066,6 +1105,7 @@ function getPlainText(text) {
   if (/[\s>+~.#:\[\]]/.test(trimmed)) return null;
   return trimmed;
 }
+
 function openIndexedDB(DB_NAME, STORE_NAME, DB_VERSION) {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open(DB_NAME, DB_VERSION);
@@ -1084,6 +1124,111 @@ function openIndexedDB(DB_NAME, STORE_NAME, DB_VERSION) {
     request.onerror = (e) => {
       logError("IndexedDB open error:", e.target.error);
       reject(e.target.error);
+    };
+  });
+}
+
+function encodeValue(value) {
+  if (value instanceof Uint8Array) {
+    return {
+      __type: "uint8array",
+      data: btoa(String.fromCharCode(...value))
+    };
+  }
+  if (value instanceof ArrayBuffer) {
+    const uint8 = new Uint8Array(value);
+    return {
+      __type: "arraybuffer",
+      data: btoa(String.fromCharCode(...uint8))
+    };
+  }
+  return value;
+}
+
+async function exportIndexedDB(dbName) {
+  return new Promise((resolve, reject) => {
+    const openReq = indexedDB.open(dbName);
+
+    openReq.onerror = () => reject(openReq.error);
+
+    openReq.onsuccess = () => {
+      const db = openReq.result;
+      const tx = db.transaction(db.objectStoreNames, "readonly");
+
+      const result = {};
+      let pending = db.objectStoreNames.length;
+
+      for (const storeName of db.objectStoreNames) {
+        const store = tx.objectStore(storeName);
+
+        const keysReq = store.getAllKeys();
+        const valsReq = store.getAll();
+
+        keysReq.onsuccess = () => {
+          valsReq.onsuccess = () => {
+            const entries = {};
+            keysReq.result.forEach((key, i) => {
+              entries[key] = encodeValue(valsReq.result[i]);
+            });
+
+            result[storeName] = entries;
+
+            pending--;
+            if (pending === 0) resolve(result);
+          };
+        };
+      }
+    };
+  });
+}
+
+function decodeValue(value) {
+  if (value?.__type === "uint8array") {
+    const binary = atob(value.data);
+    const arr = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) arr[i] = binary.charCodeAt(i);
+    return arr;
+  }
+  
+  if (value?.__type === "arraybuffer") {
+    const binary = atob(value.data);
+    const arr = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) arr[i] = binary.charCodeAt(i);
+    return arr.buffer;
+  }
+
+  return value;
+}
+
+async function importIndexedDB(dbName, data) {
+  await indexedDB.deleteDatabase(dbName);
+
+  return new Promise((resolve, reject) => {
+    const openReq = indexedDB.open(dbName);
+
+    openReq.onupgradeneeded = () => {
+      const db = openReq.result;
+
+      for (const storeName of Object.keys(data)) {
+        db.createObjectStore(storeName);
+      }
+    };
+
+    openReq.onsuccess = () => {
+      const db = openReq.result;
+
+      const tx = db.transaction(Object.keys(data), "readwrite");
+
+      for (const [storeName, entries] of Object.entries(data)) {
+        const store = tx.objectStore(storeName);
+
+        for (const [key, value] of Object.entries(entries)) {
+          store.put(decodeValue(value), key);
+        }
+      }
+
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
     };
   });
 }
@@ -1140,10 +1285,8 @@ const isValidUrl = (url) => {
 const isAllowedDomain = async (hostname, pathname) => {
   try {
     const normHost = normalizeHost(hostname);
-
     for (const parser of state.parserList) {
       if (!isDomainMatch(parser.domain, normHost)) continue;
-
       // URL pattern check
       const urlPatterns = parser.urlPatterns || [];
       const hasMatch = urlPatterns.length === 0 || urlPatterns.map(parseUrlPattern).some((re) => re.test(pathname));
@@ -1152,17 +1295,15 @@ const isAllowedDomain = async (hostname, pathname) => {
 
       // Parser enabled check
       const cached = state.parserEnabledCache.has(parser.id) ? state.parserEnabledCache.get(parser.id) : parser.isEnabled !== false;
-
       if (cached) {
-        logInfo(`Match: ${hostname}${pathname} (parser: ${parser.title || parser.id})`);
-        return true;
+        return { ok: true, match: `Match: ${hostname}${pathname} (parser: ${parser.title || parser.id})` };
       }
     }
 
-    return false;
+    return { ok: false, error: { code: 2, message: "Hostname not allowed, not starting watcher." } };
   } catch (err) {
     logError("Domain Match Error", err);
-    return false;
+    return { ok: false, error: { code: 3, message: "Domain Match Error" } };
   }
 };
 
@@ -1219,7 +1360,7 @@ const simpleBarInstances = new WeakMap();
 const panelPromises = new WeakMap();
 const allPanels = new Set();
 
-async function activateSimpleBar(targetIds, timeout = 500, interval = 16, maxWaitMs = 1000) {
+async function activateSimpleBar(targetIds, timeout = 500, interval = 30, maxWaitMs = 1000) {
   if (!Array.isArray(targetIds)) targetIds = [targetIds];
   const ids = targetIds.map((id) => String(id).replace(/^#/, ""));
 
@@ -1280,7 +1421,8 @@ async function activateSimpleBar(targetIds, timeout = 500, interval = 16, maxWai
   return results;
 }
 
-function waitForUnmount() {
+// Wait for unmount simplebar
+function waitForUnmountSimplebars() {
   return new Promise((resolve) => {
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
@@ -1290,36 +1432,52 @@ function waitForUnmount() {
   });
 }
 
+// Destroy other simplebars except the one with keepId
+let destroyingSimplebars = false;
+let destroyQueue = Promise.resolve();
+async function destroyOtherSimpleBarsQueued(keepId) {
+  destroyQueue = destroyQueue.then(() => destroyOtherSimpleBars(keepId));
+  return destroyQueue;
+}
+
 async function destroyOtherSimpleBars(keepId) {
-  const keepPanel = document.getElementById(keepId);
-  const unmountPromises = [];
+  if (destroyingSimplebars) return;
+  destroyingSimplebars = true;
 
-  allPanels.forEach((panel) => {
-    if (panel !== keepPanel) {
-      const instance = simpleBarInstances.get(panel);
+  try {
+    const keepPanel = document.getElementById(keepId);
+    const unmountPromises = [];
 
-      const scrollbar = instance.el.querySelectorAll(":scope > .simplebar-track");
-      scrollbar.forEach((el) => el.remove());
+    allPanels.forEach((panel) => {
+      if (panel !== keepPanel) {
+        const instance = simpleBarInstances.get(panel);
 
-      instance?.unMount?.();
-      unmountPromises.push(waitForUnmount());
+        const scrollbar = instance.el.querySelectorAll(":scope > .simplebar-track");
+        scrollbar.forEach((el) => el.remove());
 
-      simpleBarInstances.delete(panel);
-      panelPromises.delete(panel);
-      panel.dataset.sbInit = "";
-      panel.style.paddingRight = "2px";
+        instance?.unMount?.();
+        unmountPromises.push(waitForUnmountSimplebars());
 
-      allPanels.delete(panel);
+        simpleBarInstances.delete(panel);
+        panelPromises.delete(panel);
+        panel.dataset.sbInit = "";
+        panel.style.paddingRight = "2px";
+
+        allPanels.delete(panel);
+      }
+    });
+
+    await Promise.all(unmountPromises);
+
+    if (keepId) {
+      const header = document.getElementById("mainHeader");
+      header.style.pointerEvents = "none";
+      await waitForUnmountSimplebars();
+      await new Promise((r) => setTimeout(r, 30));
+      header.style.pointerEvents = "";
     }
-  });
-
-  await Promise.all(unmountPromises);
-
-  if (keepId) {
-    const header = document.getElementById("mainHeader");
-    header.style.pointerEvents = "none";
-    await waitForUnmount();
-    header.style.pointerEvents = "";
+  } finally {
+    destroyingSimplebars = false;
   }
 }
 
@@ -1363,7 +1521,8 @@ async function updatePanelPadding(panel, timeout = 1000) {
   return promise;
 }
 
-function waitForScrollbar(instance, timeout = 500) {
+// Wait for scrollbar to appear
+function waitForScrollbar(instance, timeout = 1000) {
   return new Promise((resolve) => {
     const startTime = Date.now();
     const scrollbar = instance.el.querySelector(":scope > .simplebar-vertical");
@@ -1404,6 +1563,7 @@ function waitForScrollbar(instance, timeout = 500) {
   });
 }
 
+// Send Action to background with retry
 async function sendAction(action, payload = {}, retry = 0) {
   try {
     const response = await browser.runtime.sendMessage({ action, ...payload });
@@ -1440,8 +1600,9 @@ async function sendAction(action, payload = {}, retry = 0) {
   }
 }
 
-async function openUserScriptManager(id) {
-  const url = browser.runtime.getURL(`manager/userScriptManager.html${id ? `?target=${id}` : ""}`);
+// Open User Script Manager
+async function openUserScriptManager(id, theme) {
+  const url = browser.runtime.getURL(`manager/userScriptManager.html${theme ? `?theme=${theme}` : ""}${id ? `?target=${id}` : ""}`);
   try {
     const tabs = await browser.tabs.query({ url });
     if (tabs && tabs.length > 0) {
@@ -1583,5 +1744,81 @@ function hidePopupMessage() {
   if (showPopupMessageTimeout) {
     clearTimeout(showPopupMessageTimeout);
     showPopupMessageTimeout = null;
+  }
+}
+
+// Restart Extension
+async function restartExtension(tab) {
+  try {
+    if (tab && tab.id) {
+      await browser.tabs.reload(tab.id);
+      browser.runtime.reload();
+    } else {
+      browser.runtime.reload();
+    }
+  } catch (err) {
+    logError("Restart the extension error:", err);
+  }
+}
+
+// Toggle Debug Mode
+async function toggleDebugMode(tab) {
+  try {
+    const stored = (await browser.storage.local.get("debugMode")).debugMode;
+    const current = stored ?? CONFIG.debugMode;
+    const newValue = current === 0 ? 1 : 0;
+
+    await browser.storage.local.set({ debugMode: newValue });
+    CONFIG.debugMode = newValue;
+
+    if (tab && tab.id) browser.tabs.reload(tab.id);
+  } catch (err) {
+    logError("Toggle Debug Mode error:", err);
+  }
+}
+
+// Factory Reset
+let factoryResetConfirm = false;
+let factoryResetTimer = null;
+const factoryResetTimeout = 5000;
+
+async function factoryReset(tab, fromSettings = false) {
+  const ORIGINAL_FACTORY_TITLE = "Reset to Defaults (Click > Open Menu Again > Confirm)";
+  const CONFIRM_FACTORY_TITLE = "❗ Confirm Reset to Defaults (Click)";
+
+  // Settings Section Action
+  if (fromSettings && !factoryResetConfirm) {
+    factoryResetConfirm = true;
+
+    setTimeout(() => {
+      factoryResetConfirm = false;
+    }, factoryResetTimeout);
+
+    return { needConfirm: true };
+  }
+
+  // Context Menu Action
+  if (!fromSettings && !factoryResetConfirm) {
+    factoryResetConfirm = true;
+
+    browser.contextMenus.update("factoryReset", { title: CONFIRM_FACTORY_TITLE });
+
+    factoryResetTimer = setTimeout(() => {
+      factoryResetConfirm = false;
+      browser.contextMenus.update("factoryReset", { title: ORIGINAL_FACTORY_TITLE });
+    }, factoryResetTimeout);
+
+    return;
+  }
+
+  // Factory Reset Action
+  factoryResetConfirm = false;
+  clearTimeout(factoryResetTimer);
+  try {
+    await browser.storage.local.clear();
+    if (tab && tab.id) await browser.tabs.reload(tab.id);
+    browser.runtime.reload();
+  } catch (err) {
+    logError("Reset to Defaults error:", err);
   }
 }

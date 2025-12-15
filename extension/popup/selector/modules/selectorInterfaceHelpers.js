@@ -41,9 +41,10 @@ function getFieldList() {
   return ["name", "title", "artist", "timePassed", "duration", "image", "link", "source", "buttonText", "buttonLink", "buttonText2", "buttonLink2", "regex"];
 }
 
-function createRootElement() {
+function createRootElement(theme) {
   const root = document.createElement("div");
   root.id = "userRpc-selectorRoot";
+  root.dataset.theme = theme || "dark";
   return root;
 }
 

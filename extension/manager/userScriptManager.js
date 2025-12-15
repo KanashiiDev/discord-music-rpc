@@ -234,6 +234,10 @@ class UserScriptUI {
 
     // Popup Gear Click
     const params = new URLSearchParams(window.location.search);
+    const theme = params.get("theme");
+    if (theme) {
+      document.body.dataset.theme = theme || "dark";
+    }
     const target = params.get("target");
     if (target) {
       const targetEl = document.querySelector(`.btnEdit[data-id="${target}"`);
@@ -279,6 +283,32 @@ class UserScriptUI {
       title.className = "script-title";
       title.textContent = this.escapeHtml(script.title);
 
+      // FavIcon
+      const favIconContainer = document.createElement("div");
+      favIconContainer.className = "parser-icon-container spinner";
+
+      const favIcon = document.createElement("img");
+      favIcon.className = "parser-icon hidden-visibility";
+      favIcon.title = `Open ${script.title || script.domain}`;
+      favIcon.dataset.src = script.domain;
+      favIcon.loading = "lazy";
+      favIcon.decoding = "async";
+      favIconContainer.appendChild(favIcon);
+
+      // Favicon click
+      const handleFavIconClick = () => {
+        const url = script.homepage || `https://${script.domain}`;
+        window.open(url, "_blank", "noopener,noreferrer");
+      };
+      const listeners = [];
+      const addListener = (el, event, handler, options = {}) => {
+        if (!el) return;
+        el.addEventListener(event, handler, options);
+        listeners.push({ el, event, handler, options });
+      };
+      addListener(favIcon, "click", handleFavIconClick);
+      header.prepend(favIconContainer);
+
       const status = document.createElement("span");
       status.className = "script-status";
       status.classList.toggle("status-active", !!script.registered);
@@ -303,24 +333,11 @@ class UserScriptUI {
       details.appendChild(domain);
 
       // script-meta
-      const meta = document.createElement("div");
-      meta.className = "script-meta";
-
-      if (script.authors && Array.isArray(script.authors) && script.authors.length > 0) {
-        const authors = document.createElement("small");
-        authors.className = "script-authors";
-        authors.textContent = `${script.authors.length > 1 ? "Authors" : "Author"}: ${script.authors.join(", ")}`;
-        meta.appendChild(authors);
-      }
-
-      if (script.lastUpdated) {
-        const updated = document.createElement("small");
-        updated.className = "script-updated";
-        updated.textContent = ` • Updated: ${new Date(script.lastUpdated).toLocaleDateString()}`;
-        meta.appendChild(updated);
-      }
-
-      info.append(header, details, meta);
+      const authors = script.authors && Array.isArray(script.authors) && script.authors.length > 0 ? `${script.authors.length > 1 ? "Authors" : "Author"}: ${script.authors.join(", ")}` : "";
+      const updated = script.lastUpdated ? `Updated: ${new Date(script.lastUpdated).toLocaleDateString()}` : "";
+      const meta = `${authors}\n${updated}`.trim();
+      title.title = meta;
+      info.append(header, details);
 
       // script-actions
       const actions = document.createElement("div");
@@ -360,6 +377,9 @@ class UserScriptUI {
       li.append(info, actions);
       ul.appendChild(li);
     });
+    // Favicon lazy load
+    const allFavIcons = document.querySelectorAll(".parser-icon");
+    loadFavIcons(allFavIcons);
   }
 
   formatPatterns(patterns) {
@@ -416,7 +436,9 @@ class UserScriptUI {
     $("inTitle").value = script?.title || "";
     $("inDesc").value = script?.description || "";
     $("inAuthors").value = script?.authors || "";
+    $("inAuthorsLinks").value = script?.authorsLinks || "";
     $("inDomain").value = script?.domain || "";
+    $("inHomepage").value = script?.homepage || "";
     $("inDebug").checked = script?.debug || false;
     $("inUrlPatterns").value = this.formatPatterns(script?.urlPatterns) || ".*";
     $("inUrlPatterns").dispatchEvent(new Event("input"));
@@ -535,7 +557,12 @@ class UserScriptUI {
         .split(",")
         .map((a) => a.trim())
         .filter(Boolean),
+      authorsLinks: $("inAuthorsLinks")
+        .value.trim()
+        .split(",")
+        .map((a) => a.trim()),
       domain,
+      homepage: $("inHomepage").value.trim(),
       urlPatterns: normalizedList,
       lastUpdated: Date.now(),
       runAt: "document_idle",
@@ -687,6 +714,7 @@ class UserScriptUI {
         return `registerParser({
         domain: "${script.domain}",
         authors: "${script.authors}",
+        authorsLinks: "${script.authorsLinks}",
         title: "${script.title}",
         description: "${script.description}",
         lastUpdated: "${script.lastUpdated}",
@@ -721,6 +749,10 @@ class UserScriptUI {
       const domain = /domain:\s*["'`](.*?)["'`]/.exec(block)?.[1] || "";
       const title = /title:\s*["'`](.*?)["'`]/.exec(block)?.[1] || "";
       const description = /description:\s*["'`](.*?)["'`]/.exec(block)?.[1] || "";
+      const lastUpdated = /lastUpdated:\s*["'`](.*?)["'`]/.exec(block)?.[1] || "";
+      const homepage = /homepage:\s*["'`](.*?)["'`]/.exec(block)?.[1] || "";
+      const authors = /authors:\s*["'`](.*?)["'`]/.exec(block)?.[1] || "";
+      const authorsLinks = /authorsLinks:\s*["'`](.*?)["'`]/.exec(block)?.[1] || "";
       const urlPatternsRaw = /\burlPatterns:\s*\[([\s\S]*?)\]/.exec(block)?.[1] || "";
       const urlPatterns = urlPatternsRaw
         .split(",")
@@ -734,6 +766,9 @@ class UserScriptUI {
         title,
         description,
         domain,
+        homepage,
+        authors: authors ? authors.split(",").map((a) => a.trim()) : [],
+        authorsLinks: authorsLinks ? authorsLinks.split(",").map((a) => a.trim()) : [],
         urlPatterns,
         code,
         id: `${domain}_${Math.random().toString(36).slice(2, 8)}`,

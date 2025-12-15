@@ -2,63 +2,121 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <title>Discord Music RPC Server Status</title>
+    <title>Discord Music RPC Server Dashboard</title>
+    <link rel="shortcut icon" href="/favicon.ico" />
+    <link rel="stylesheet" href="libs/simplebar.css" />
     <link rel="stylesheet" href="style.css" />
   </head>
 
   <body>
-    <header>Discord Music RPC Server Status</header>
+    <header>Discord Music RPC Server Dashboard</header>
 
     <div class="container">
-      <h2>RPC Status</h2>
-      <div class="status-box">
-        <div class="status">Status: <span id="rpcStatus">Loading...</span></div>
+      <span id="actions">
+        <span id="toggleContainer" title="Change View"></span>
+        <span id="settingsToggle" title="Settings"></span>
+        <span id="settingsBack" title="Back" style="display: none"></span>
+      </span>
+
+      <div id="settingsContainer" style="display: none">
+        <h2>Settings</h2>
+        <form id="settingsForm"></form>
+        <div class="buttons">
+          <button id="saveSettingsBtn" class="save-settings-btn">Save</button>
+          <button id="resetSettingsBtn" class="reset-settings-btn">Reset to Default</button>
+        </div>
       </div>
-      <h2 id="musicCardHeader">Listening To</h2>
-      <div class="music-card" id="musicCard" style="display: none">
-        <div class="music-body">
-          <div class="music-cover">
-            <img id="coverImage" src="" alt="cover" />
-          </div>
-
-          <div class="music-info">
-            <h2 id="trackTitle">Title</h2>
-            <div id="trackArtist" class="artist">Artist</div>
-            <div id="trackSource" class="source">Source</div>
-
-            <div class="progress-container">
-              <span id="timePassed">00:00</span>
-              <div class="progress-bar" id="progressBar">
-                <div id="progressFill" class="progress"></div>
+      <div class="main">
+        <div class="theme">
+          <div class="left">
+            <h2>RPC Status</h2>
+            <div class="status-box">
+              <div class="status">Status: <span id="rpcStatus">Loading...</span></div>
+            </div>
+            <h2 class="collapsible">
+              <span>Current Activity</span>
+              <span class="arrow"></span>
+            </h2>
+            <div class="activity activity-box">
+              <div id="activityWrapper" data-simplebar>
+                <pre id="activityJson">{ }</pre>
               </div>
-              <span id="duration">00:00</span>
             </div>
 
-            <div class="link-container" id="linkContainer">
-              <a id="trackLink1" class="link">Button 1</a>
-              <a id="trackLink2" class="link">Button 2</a>
+            <h2 class="collapsible">
+              <span>Last Update</span>
+              <span class="arrow"></span>
+            </h2>
+            <div class="last-activity activity-box">
+              <div id="lastActivityWrapper" data-simplebar>
+                <pre id="lastActivityJson">{ }</pre>
+              </div>
+            </div>
+          </div>
+          <div class="right">
+            <div id="musicCardContainer">
+              <h2 id="musicCardHeader">Listening To</h2>
+              <div class="music-card" id="musicCard">
+                <div class="music-body">
+                  <div class="music-cover">
+                    <img id="coverImage" src="assets/icon.png" alt="cover" />
+                  </div>
+
+                  <div class="music-info">
+                    <h2 id="trackTitle">Title</h2>
+                    <p id="trackArtist" class="artist">Artist</p>
+                    <p id="trackSource" class="source">Source</p>
+
+                    <div class="progress-container">
+                      <span id="timePassed">00:00</span>
+                      <div class="progress-bar" id="progressBar">
+                        <div id="progressFill" class="progress"></div>
+                      </div>
+                      <span id="duration">00:00</span>
+                    </div>
+
+                    <div class="link-container" id="linkContainer">
+                      <a id="trackLink1" class="link" style="display: none">Button 1</a>
+                      <a id="trackLink2" class="link" style="display: none">Button 2</a>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <h2 class="collapsible history">
+              <span>Last Songs</span>
+              <span class="arrow"></span>
+            </h2>
+            <div class="history activity-box">
+              <div id="historyWrapper" data-simplebar>
+                <div id="historyContainer"></div>
+              </div>
             </div>
           </div>
         </div>
-      </div>
-
-      <h2 class="collapsible">
-        <span>Current Activity</span>
-        <span class="arrow">➤</span>
-      </h2>
-      <div class="activity-box">
-        <pre id="activityJson">{ }</pre>
-      </div>
-
-      <h2 class="collapsible">
-        <span>Last Update</span>
-        <span class="arrow">➤</span>
-      </h2>
-      <div class="activity-box">
-        <pre id="lastActivityJson">{ }</pre>
+        <h2 class="collapsible logs">
+          <span>Last Logs</span>
+          <label class="log-select">
+            <select id="errorFilter" onchange="updateDashboard()">
+              <option value="all">All</option>
+              <option value="error">Error</option>
+              <option value="info">Info</option>
+            </select>
+          </label>
+          <span class="arrow"></span>
+        </h2>
+        <div class="logs activity-box">
+          <div id="logsWrapper" data-simplebar>
+            <div id="logsContainer"></div>
+          </div>
+        </div>
+        <small class="note">The data is updated every second</small>
       </div>
     </div>
     <footer><a href="https://github.com/KanashiiDev/discord-music-rpc">Discord Music RPC by KanashiiDev</a></footer>
+    <script src="libs/simplebar.js"></script>
+    <script src="utils.js"></script>
+    <script src="settings.js"></script>
     <script src="index.js"></script>
   </body>
 </html>

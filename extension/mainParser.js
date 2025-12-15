@@ -204,7 +204,20 @@ async function initializeAllParserSettings() {
 }
 
 // registerParser - Used to process all built-in parsers.
-window.registerParser = async function ({ title, domain, urlPatterns, authors, homepage, fn, userAdd = false, userScript = false, initOnly = false, ...rest }) {
+window.registerParser = async function ({
+  title,
+  domain,
+  urlPatterns = [],
+  authors = [""],
+  authorsLinks = [""],
+  homepage = "",
+  description = "",
+  fn,
+  userAdd = false,
+  userScript = false,
+  initOnly = false,
+  ...rest
+}) {
   if (!domain || typeof fn !== "function") return;
 
   // wait initialSettings ready
@@ -249,7 +262,9 @@ window.registerParser = async function ({ title, domain, urlPatterns, authors, h
     id,
     patterns: patternRegexes,
     authors,
+    authorsLinks,
     homepage,
+    description,
     parse: async (...args) => {
       if (initOnly) return null;
       const rawData = await fn({ useSetting: boundUseSetting });
@@ -314,7 +329,20 @@ window.registerParser = async function ({ title, domain, urlPatterns, authors, h
 
       if (remainingMode) {
         const durationInSeconds = tpSec + durSec;
-        effectiveDuration = formatTime(durationInSeconds);
+        if (lastDurationSec > 0) {
+          const ratio = durationInSeconds / lastDurationSec;
+          if (ratio > 1.5 || ratio < 0.5) {
+            effectiveDuration = formatTime(lastDurationSec);
+          } else {
+            effectiveDuration = formatTime(durationInSeconds);
+          }
+        } else {
+          if (durationInSeconds > durSec * 1.5) {
+            effectiveDuration = formatTime(durSec);
+          } else {
+            effectiveDuration = formatTime(durationInSeconds);
+          }
+        }
       }
 
       const { currentPosition, totalDuration, currentProgress, timestamps } = processPlaybackInfo(effectiveTimePassed, effectiveDuration);
@@ -341,6 +369,8 @@ window.registerParser = async function ({ title, domain, urlPatterns, authors, h
         domain,
         urlPatterns: patternStrings,
         authors,
+        authorsLinks,
+        description,
         homepage,
         userAdd,
         userScript,
@@ -475,9 +505,12 @@ window.addEventListener("message", async (event) => {
 
     if (typeof window.registerParser === "function") {
       window.registerParser?.({
+        title: msg.data.title,
         domain: msg.data.domain,
         authors: msg.data.authors,
-        title: msg.data.title,
+        authorsLinks: msg.data.authorsLinks,
+        homepage: msg.data.homepage,
+        description: msg.data.description,
         urlPatterns: msg.data.urlPatterns,
         userAdd: false,
         userScript: true,

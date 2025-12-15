@@ -37,16 +37,22 @@
           <div class="container">
             <p>Description:</p>
             <input type="text" id="inDesc" placeholder="My Userscript for Music Website." />
+          <small>A brief description of what your script does.</small>
           </div>
           <div class="container">
             <p>Authors (comma separated):</p>
             <input type="text" id="inAuthors" placeholder="kanashiiDev,KanashiiDev2" />
           </div>
+          <div class="container">
+            <p>Authors Links (comma separated, Optional):</p>
+            <input type="text" id="inAuthorsLinks" placeholder="https://github.com/KanashiiDev" />
+            <small>Links to the authors' profiles.</small>
+          </div>
 
           <div class="container">
             <p>Domain:</p>
             <input type="text" id="inDomain" placeholder="musicwebsite.com" />
-            <small>Enter the domain where this script should run</small>
+            <small>Enter the domain where this script should run.</small>
           </div>
 
           <div class="container">
@@ -56,6 +62,11 @@
             <small>Regex patterns to match specific URLs. (Optional)</small>
             <br />
             <small>Example: <code>home.*</code> will match URLs that start with "home"</small>
+          </div>
+          <div class="container">
+            <p>Homepage (Optional):</p>
+            <input type="text" id="inHomepage" placeholder="https://musicwebsite.com" />
+            <small>The site that will open when the icon is clicked.</small>
           </div>
           <div class="container debug">
             <p>Debug Mode</p>
