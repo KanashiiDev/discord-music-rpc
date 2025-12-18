@@ -6,11 +6,13 @@ window.RPCStateManager = class {
     this.isCurrentlySeeking = false;
     this.seekTimeout = null;
     this.errorCount = 0;
-    this.isRecovering = false;
     this.lastTabId = null;
     this.durationTimer = 0;
     this.durationTimerInterval = null;
-    this.hasOnlyDuration = null;
+    this.hasOnlyDuration = false;
+    this.hasOnlyDurationCount = 0;
+    this.isRemainingMode = false;
+    this.remainingNegativeCount = 0;
     this.lastCheckTime = null;
   }
 
@@ -86,11 +88,22 @@ window.RPCStateManager = class {
 
   reset() {
     this.lastActivity = null;
+    this.lastPosition = 0;
     this.lastKnownPosition = 0;
     this.isCurrentlySeeking = false;
     clearTimeout(this.seekTimeout);
     this.errorCount = 0;
+
+    this.hasOnlyDuration = false;
+    this.hasOnlyDurationCount = 0;
+
     this.resetDurationTimer();
+    this.resetRemainingState();
+  }
+
+  resetRemainingState() {
+    this.isRemainingMode = false;
+    this.remainingNegativeCount = 0;
   }
 
   startDurationTimer() {
@@ -103,6 +116,7 @@ window.RPCStateManager = class {
 
   resetDurationTimer() {
     clearInterval(this.durationTimerInterval);
+    this.hasOnlyDurationCount = 0;
     this.durationTimer = 0;
   }
 

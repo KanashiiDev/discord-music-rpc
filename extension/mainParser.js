@@ -278,11 +278,13 @@ window.registerParser = async function ({
         return null;
       };
 
+      // Extract time parts
       const [tp, dur] = extractTimeParts(timePassed);
       if (tp && dur) {
         timePassed = tp;
         durationElem = dur;
       } else {
+        // Extract from duration if timePassed failed
         const [tp2, dur2] = extractTimeParts(durationElem);
         if (tp2 && dur2) {
           timePassed = tp2;
@@ -295,11 +297,16 @@ window.registerParser = async function ({
 
       // Has only duration Mode
       if (!effectiveTimePassed && effectiveDuration) {
-        if (!rpcState.hasOnlyDuration || rpcState.isSongChanged(rest)) {
+        if (rpcState.hasOnlyDurationCount < 5) {
+          rpcState.hasOnlyDurationCount++;
+        }
+        // Enter Has only duration Mode if timePassed is missing but duration exists
+        if (!rpcState.hasOnlyDuration || (rpcState.isSongChanged(rest) && rpcState.hasOnlyDurationCount > 2)) {
           rpcState.hasOnlyDuration = true;
           rpcState.startDurationTimer();
         }
       } else {
+        // Reset Has only duration Mode
         if (rpcState.hasOnlyDuration) {
           rpcState.hasOnlyDuration = false;
           rpcState.resetDurationTimer();
@@ -314,34 +321,50 @@ window.registerParser = async function ({
       const tpSec = parseTime(effectiveTimePassed);
       const durSec = parseTime(effectiveDuration);
 
-      const isRemaining = durSec < 0;
+      const isRemainingSignal = durSec < 0;
       let totalDurationSec = Math.abs(durSec);
 
-      if (isRemaining) {
+      if (isRemainingSignal) {
         totalDurationSec = tpSec + Math.abs(durSec);
         effectiveDuration = formatTime(totalDurationSec);
       }
 
       const lastAct = rpcState.lastActivity;
-      const lastDurationSec = parseTime(lastAct?.duration || "");
+      const lastDurationSec = lastAct && lastAct.duration ? parseTime(lastAct.duration) : null;
       const sameTrack = lastAct && lastAct.title === rest.title && lastAct.artist === rest.artist;
-      const remainingMode = sameTrack && !isRemaining && durSec !== lastDurationSec;
+      const remainingMode = sameTrack && !isRemainingSignal && lastDurationSec && durSec !== lastDurationSec;
 
       if (remainingMode) {
-        const durationInSeconds = tpSec + durSec;
-        if (lastDurationSec > 0) {
-          const ratio = durationInSeconds / lastDurationSec;
-          if (ratio > 1.5 || ratio < 0.5) {
-            effectiveDuration = formatTime(lastDurationSec);
+        if (rpcState.remainingNegativeCount < 5) {
+          rpcState.remainingNegativeCount++;
+        }
+        if (rpcState.remainingNegativeCount > 2) {
+          rpcState.isRemainingMode = true;
+          const calculatedDuration = tpSec + durSec;
+
+          if (lastDurationSec && lastDurationSec > 0) {
+            // Compare with the previously known duration
+            const ratio = calculatedDuration / lastDurationSec;
+
+            if (ratio > 1.5 || ratio < 0.5) {
+              // If there is a lot of deviation, use the old reliable duration
+              effectiveDuration = formatTime(lastDurationSec);
+            } else {
+              effectiveDuration = formatTime(calculatedDuration);
+            }
           } else {
-            effectiveDuration = formatTime(durationInSeconds);
+            const changeRatio = calculatedDuration / durSec;
+
+            if (changeRatio > 1.5 || changeRatio < 0.5) {
+              effectiveDuration = formatTime(durSec);
+            } else {
+              effectiveDuration = formatTime(calculatedDuration);
+            }
           }
-        } else {
-          if (durationInSeconds > durSec * 1.5) {
-            effectiveDuration = formatTime(durSec);
-          } else {
-            effectiveDuration = formatTime(durationInSeconds);
-          }
+        }
+      } else {
+        if (rpcState.remainingNegativeCount > 0) {
+          rpcState.resetRemainingState();
         }
       }
 
@@ -449,8 +472,29 @@ window.getSongInfo = async function () {
         const matches = parser.patterns?.some((re) => re.test(pathname));
 
         if (isEnabled && matches) {
-          const result = await parser.parse();
-          if (result) return result;
+          const song = await parser.parse();
+
+          if (song) {
+            // String Extraction
+            let dataTitle = String(song.title || "").trim();
+            let dataArtist = String(song.artist || "").trim();
+            let dataSource = String(song.source || "").trim();
+
+            // Normalization
+            if (dataTitle && dataArtist) {
+              const normalized = normalizeTitleAndArtist(dataTitle, dataArtist);
+              dataTitle = normalized?.title || dataTitle;
+              dataArtist = normalized?.artist || dataArtist;
+            }
+
+            dataTitle = truncate(dataTitle, 128, { fallback: "Unknown Song" });
+            dataArtist = truncate(dataArtist, 128, { fallback: "Unknown Artist" });
+            dataSource = truncate(dataSource, 32, { fallback: "Unknown Source" });
+            song.title = dataTitle;
+            song.artist = dataArtist;
+            song.source = dataSource;
+            return song;
+          }
         }
       } catch (err) {
         logError(`Parser ${parser.id} failed:`, err);
