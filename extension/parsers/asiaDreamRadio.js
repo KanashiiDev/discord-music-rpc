@@ -14,20 +14,26 @@ registerParser({
     }
 
     async function fetchSongInfo() {
-      const iframe = document.querySelector("iframe");
-      if (!iframe) return;
+      const iframeSrc = document.querySelector("iframe[src*=samcloudmedia]")?.src;
+      if (!iframeSrc) return;
 
-      const iframeSrc = iframe.src;
-      const params = new URLSearchParams(iframeSrc.split("?")[1]);
-      const sid = params.get("sid");
-      const token = params.get("token");
+      const url = new URL(iframeSrc);
+
+      let sid = url.searchParams.get("sid");
+      let token = url.searchParams.get("token");
+
+      if (!sid || !token) {
+        const hashParams = new URLSearchParams(url.hash.substring(1));
+        sid ??= hashParams.get("sid");
+        token ??= hashParams.get("token");
+      }
 
       if (!sid || !token) return;
 
-      const url = `https://listen.samcloud.com/webapi/station/${sid}/history/npe?token=${token}&format=json`;
+      const fetchUrl = `https://listen.samcloud.com/webapi/station/${sid}/history/npe?token=${token}&format=json`;
 
       try {
-        const response = await fetch(url);
+        const response = await fetch(fetchUrl);
         if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
 
         const data = await response.json();
@@ -50,23 +56,41 @@ registerParser({
       }
     }
 
-    const isPlaying = document.querySelector("#button_play_stop-1.active");
-    if (!isPlaying) {
-      return;
+    function getPageSongInfo() {
+      const main = document.querySelector(".sc-status-widget");
+      if (main) {
+        const t = main.querySelector(".track_st_track-meta").textContent;
+        const a = main.querySelector(".track_st_track-meta").textContent;
+        const c = main.querySelector("img").src;
+        const p = main.querySelector(".track_st_progress-text")?.textContent;
+        return { title: t, artist: a, cover: c, duration: p };
+      }
+      return null;
     }
-    const data = await fetchSongInfo();
+
+    let data = await fetchSongInfo();
     if (!data) {
-      return;
+      data = getPageSongInfo();
+      if (!data) {
+        return;
+      }
     }
-    const durationText = data.duration?.trim();
+
+    // Station
+    let station = "Asia Dream Radio";
+    document.querySelectorAll(".paraWrap").forEach((e) => {
+      if (e.textContent.includes("Station")) {
+        station = `${station}${e.textContent.replace("Station:", "")}`;
+      }
+    });
 
     return {
       title: data.title,
       artist: data.artist,
       image: data.cover,
-      source: "Asia Dream Radio",
+      source: station,
       songUrl: location.href,
-      duration: durationText,
+      duration: data.duration?.trim(),
     };
   },
 });

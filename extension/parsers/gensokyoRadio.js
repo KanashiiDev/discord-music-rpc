@@ -1,6 +1,7 @@
 registerParser({
   domain: "gensokyoradio.net",
   title: "Gensokyo Radio",
+  homepage: "https://gensokyoradio.net/playing/",
   urlPatterns: [/\/playing\//],
   fn: function () {
     const title = getText("#playerTitle");

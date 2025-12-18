@@ -3,8 +3,10 @@ registerParser({
   title: "ANISON.FM",
   urlPatterns: [/.*/],
   fn: function () {
+    const titleText = getText(".track_info span:last-child");
+    if (titleText === "Отбивочка") return;
     return {
-      title: getText(".track_info span:last-child"),
+      title: titleText,
       artist: getText(".track_info span:first-child"),
       image: getImage("#current_poster_img"),
       source: "ANISON.FM",
