@@ -1,6 +1,6 @@
 const state = {
   updateTimer: null,
-  lastUpdateTime: 0,
+  lastUpdateTime: null,
   isUpdating: false,
   activeTab: false,
   rpcKeepAliveIntervalId: null,
@@ -113,8 +113,7 @@ async function mainLoop() {
 
   try {
     const song = await safeGetSongInfo();
-
-    if (!song?.title || !song?.artist) {
+    if (!song) {
       logInfo("mainLoop: no valid song data", song);
 
       if (rpcState.lastActivity?.lastUpdated && !rpcState.cleared) {
@@ -241,6 +240,8 @@ async function mainLoop() {
             [`Progress: ${progress.toFixed(2)}`, colors.accent1, colors.neutral],
             [`Position Stable: ${positionStable}`, positionStable ? colors.warning : colors.neutral, colors.neutral],
             [`Stuck at Zero: ${stuckAtZero}`, stuckAtZero ? colors.error : colors.neutral, colors.neutral],
+            [`Has Only Duration Mode: ${rpcState.hasOnlyDuration}`, colors.neutral],
+            [`Remaining Mode: ${rpcState.isRemainingMode}`, colors.neutral],
           ],
         },
 
@@ -484,10 +485,10 @@ async function safeGetSongInfo(maxRetries = 10, retryDelay = 500) {
     if (typeof window.getSongInfo === "function") {
       try {
         const song = await window.getSongInfo();
-
-        if (song?.title && song?.artist) {
+        if (song && song.title !== "Unknown Title" && song.artist !== "Unknown Artist" && song.source !== "Unknown Source") {
           return song;
         }
+        return null;
       } catch (e) {
         logError(`safeGetSongInfo: attempt ${i + 1} failed:`, e);
       }

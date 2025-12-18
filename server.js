@@ -202,17 +202,9 @@ app.post("/update-rpc", async (req, res) => {
     // String Extraction
     let dataTitle = String(data.title || "").trim();
     let dataArtist = String(data.artist || "").trim();
+    let dataSource = String(data.source || "").trim();
+    const artistIsMissingOrSame = !dataArtist || dataArtist === dataTitle;
     let dataSettings = data.settings;
-
-    // Normalization
-    if (dataTitle && dataArtist) {
-      const normalized = normalizeTitleAndArtist(dataTitle, dataArtist);
-      dataTitle = normalized?.title || dataTitle;
-      dataArtist = normalized?.artist || dataArtist;
-    }
-
-    dataTitle = truncate(dataTitle, 128, { fallback: "Unknown Song" });
-    dataArtist = truncate(dataArtist, 128, { fallback: "Unknown Artist" });
 
     // Default settings
     const defaultSettings = {
@@ -253,13 +245,10 @@ app.post("/update-rpc", async (req, res) => {
       }
     }
 
-    const sourceText = truncate(data.source, 32, { fallback: "Unknown Source" });
-    const artistIsMissingOrSame = !dataArtist || dataArtist === dataTitle;
-
     // Activity
     const activity = {
       details: dataTitle,
-      state: artistIsMissingOrSame ? sourceText : dataArtist,
+      state: artistIsMissingOrSame ? dataSource : dataArtist,
       type: data.watching ? 3 : 2,
       instance: false,
     };
@@ -272,13 +261,13 @@ app.post("/update-rpc", async (req, res) => {
     // Large image
     if (activitySettings.customCover && activitySettings.customCoverUrl) {
       activity.largeImageKey = String(activitySettings.customCoverUrl);
-    } else if (activitySettings.showCover && data.image) {
+    } else if (activitySettings.showCover && data.image && !/\.webp(\?.*)?$/i.test(data.image)) {
       activity.largeImageKey = String(data.image);
     }
 
     // Large image text
-    if (activitySettings.showSource && dataTitle !== dataArtist && dataTitle !== sourceText) {
-      activity.largeImageText = sourceText;
+    if (activitySettings.showSource && dataTitle !== dataArtist && dataTitle !== dataSource) {
+      activity.largeImageText = dataSource;
     }
 
     // Small image
@@ -288,7 +277,7 @@ app.post("/update-rpc", async (req, res) => {
 
     // Small image text
     if (serverSettings.showSmallIcon) {
-      activity.smallImageText = sourceText;
+      activity.smallImageText = dataSource;
     } else {
       activity.smallImageText = data.watching ? "Watching" : "Listening";
     }

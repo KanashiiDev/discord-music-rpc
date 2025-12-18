@@ -17,7 +17,7 @@ function truncate(str, maxLength = 128, { fallback = "Unknown", minLength = 2, m
   if (typeof str !== "string") return fallback;
   str = str.trim();
   if (!str) return fallback;
-  if (str.length >= 1 && str.length < minLength) str = `- ${str} -`;
+  if (str.length >= 1 && str.length < minLength) str = `[ ${str} ]`;
 
   // Limit for regex
   let strForRegex = str.length > maxRegexLength ? str.slice(0, maxRegexLength) : str;
@@ -157,7 +157,7 @@ function normalizeTitleAndArtist(title, artist, replaceArtist = true) {
   const dashMatch = titleBeforeParen.match(/^(.+?)\s[-–—]\s(.+)$/);
   if (dashMatch && replaceArtist) {
     const extractedArtist = dashMatch[1].trim();
-    const newTitle = dashMatch[2].trim() + parenPart;
+    const newTitle = dashMatch[2] + parenPart;
 
     // Check if the two parts are similar (repetitive title)
     const similarity = calculateSimilarity(extractedArtist, newTitle);
