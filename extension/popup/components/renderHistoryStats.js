@@ -6,7 +6,7 @@ function filterHistoryByRange(history, range, customStart = null, customEnd = nu
 
 // Get Top Artists
 async function getFilteredTopArtists(filteredHistory) {
-  const allArtists = [...new Set(filteredHistory.map((e) => e.a))].filter(Boolean);
+  const allArtists = [...new Set(filteredHistory.map((e) => e.a))].filter(Boolean).filter((artist) => !artist.includes("Unknown Artist"));
   const list = await getFreshParserList();
   const parserTexts = list.map((entry) => ((entry.title || "") + " " + (entry.domain || "")).toLowerCase());
   return allArtists.filter((artist) => {
@@ -34,10 +34,10 @@ async function getTopSongs(filteredHistory, topN = 5) {
 
   const songCounts = Object.create(null);
   for (const e of filteredHistory) {
-    if (allowedArtists.includes(e.a)) {
-      const key = `${e.t} - ${normalizeArtistName(e.a)}`;
-      songCounts[key] = (songCounts[key] || 0) + 1;
-    }
+    if (!allowedArtists.includes(e.a)) continue;
+    if (!e.t || e.t.includes("Unknown Song")) continue;
+    const key = `${e.t} - ${normalizeArtistName(e.a)}`;
+    songCounts[key] = (songCounts[key] || 0) + 1;
   }
 
   const topSongs = Object.entries(songCounts)
