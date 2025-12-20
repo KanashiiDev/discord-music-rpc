@@ -204,11 +204,10 @@ const clearRpcForTab = async (tabId, reason = "Tab closed") => {
       return;
     }
 
+    const wasActive = state.activeTabMap.has(tabId);
     state.pendingClear.add(tabId);
 
     try {
-      const wasActive = state.activeTabMap.has(tabId);
-
       // Clear pending update timeouts
       const pending = state.pendingUpdates.get(tabId);
       if (pending?.timeout) clearTimeout(pending.timeout);
@@ -225,12 +224,6 @@ const clearRpcForTab = async (tabId, reason = "Tab closed") => {
       if (controller) {
         controller.abort();
       }
-      state.pendingFetches.delete(tabId);
-
-      // State cleanup
-      state.historyCounters.delete(tabId);
-      state.cleanupQueue.delete(tabId);
-      state.activeTabMap.delete(tabId);
 
       if (wasActive) {
         let tab;
@@ -259,7 +252,7 @@ const clearRpcForTab = async (tabId, reason = "Tab closed") => {
         console.groupEnd();
 
         try {
-          const response = await fetchWithTimeout(
+          await fetchWithTimeout(
             `http://localhost:${state.serverPort}/clear-rpc`,
             {
               method: "POST",
@@ -268,7 +261,6 @@ const clearRpcForTab = async (tabId, reason = "Tab closed") => {
             },
             CONFIG.requestTimeout
           );
-
           logInfo(`✅ Cleared RPC for tab ${tabId}`);
         } catch (err) {
           logError(`❌ RPC clear failed for tab ${tabId}:`, err.message);
@@ -277,7 +269,11 @@ const clearRpcForTab = async (tabId, reason = "Tab closed") => {
     } catch (e) {
       logError(`Clear RPC failed tab ${tabId}`, e);
     } finally {
+      state.activeTabMap.delete(tabId);
       state.pendingClear.delete(tabId);
+      state.pendingFetches.delete(tabId);
+      state.cleanupQueue.delete(tabId);
+      state.historyCounters.delete(tabId);
 
       if (state.activeTabMap.size === 0) {
         if (state.mainLoopTimer) clearTimeout(state.mainLoopTimer);
@@ -479,7 +475,7 @@ const processTab = async (tabId, tabData) => {
   if (!state.activeTabMap.has(tabId)) return;
 
   const now = Date.now();
-    // If being processed for the first time, wait a bit for the content script to load
+  // If being processed for the first time, wait a bit for the content script to load
   if (!tabData.lastUpdated) {
     state.activeTabMap.set(tabId, {
       ...tabData,

@@ -389,7 +389,7 @@ async function processRPCUpdate(song, progress) {
     logInfo(rpcHealth.reason ? `RPC health check failed: ${rpcHealth.reason}` : "processRPCUpdate: RPC not connected");
     if (state.isConnected) {
       state.debugStats.connectionLost++;
-      logError("🔌 RPC CONNECTION LOST!");
+      logInfo("🔌 RPC CONNECTION LOST!");
     }
     state.isConnected = false;
     return false;
