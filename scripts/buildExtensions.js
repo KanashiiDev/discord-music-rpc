@@ -360,11 +360,7 @@ const pendingInlines = {};
   }
 
   inlineUtilsFunctions(["background.js", "common/utils.js", "mainParser.js"], "config.js", []);
-  inlineUtilsFunctions(["common/utils.js", "popup/selector/selector.js", "popup/selector/components/preview.js", "background.js"], "../utils.js", [
-    "truncate",
-    "cleanTitle",
-    "normalizeTitleAndArtist",
-  ]);
+  inlineUtilsFunctions(["common/utils.js", "popup/selector/selector.js", "popup/selector/components/preview.js", "background.js"], "../utils.js", ["truncate", "normalizeTitleAndArtist"]);
   inlineUtilsFunctions("main.js", "common/utils.js", ["delay", "overridesApplied", "applyOverrides", "applyOverridesLoop"]);
   inlineUtilsFunctions(["background.js"], "common/utils.js", ["logInfo", "logWarn", "errorFilter", "shouldIgnore", "logError", "delay"]);
   inlineUtilsFunctions("background.js", "common/utils.js", [

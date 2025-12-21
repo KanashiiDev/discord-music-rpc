@@ -1,30 +1,10 @@
 const fs = require("fs");
-
-function getCurrentTime() {
-  const now = new Date();
-  return [now.getHours().toString().padStart(2, "0"), now.getMinutes().toString().padStart(2, "0"), now.getSeconds().toString().padStart(2, "0")].join(":");
-}
-
-function isSameActivity(a, b) {
-  return a && b && a.details === b.details && a.state === b.state && a.startTimestamp === b.startTimestamp && a.endTimestamp === b.endTimestamp;
-}
-
-function isSameActivityIgnore(a, b) {
-  return a && b && a.details === b.details && a.state === b.state;
-}
-
 function truncate(str, maxLength = 128, { fallback = "Unknown", minLength = 2, maxRegexLength = 512 } = {}) {
-  if (typeof str !== "string") return fallback;
-  str = str.trim();
-  if (!str) return fallback;
-  if (str.length >= 1 && str.length < minLength) str = `[ ${str} ]`;
-
-  // Limit for regex
-  let strForRegex = str.length > maxRegexLength ? str.slice(0, maxRegexLength) : str;
+if (typeof str !== "string" || !str.trim()) return fallback;
 
   // Keywords that need to be cleaned
   const alwaysRemoveKeywords = [
-    "FLASH WARNING",
+    "(flash|flicker|strobe|epilepsy|seizure|photosensitiv)\\s+warn(ing)?",
     "copyright free|royalty free|no copyright|creative commons|free download|download free",
     "download now|new release|official site|official page|buy now|available now|stream now|link in bio|link below",
     "official video|music video|MusicVideo|lyric video|full video|video clip|full version|full ver.|official mv",
@@ -35,14 +15,20 @@ function truncate(str, maxLength = 128, { fallback = "Unknown", minLength = 2, m
 
   // Keywords that need to be cleaned if they are in parentheses
   const optionalRemoveKeywords = [
-    "hd|hq|4k|8k|1080p|720p|480p|mp3|mp4|flac|wav|aac|320kbps|256kbps|128kbps",
+    "hd|hq|4k|8k|1080p|720p|480p|\\.mp3|\\.mp4|\\.flac|\\.wav|\\.aac|320kbps|256kbps|128kbps",
     "free\\s+(download|dl|song|now)|download\\s+(free|now)",
     "official(\\s+(video|music\\s+video|audio|lyric\\s+video|visualizer))?",
-    "/Bonus\\s+Track|PATREON|teaser|trailer|promo|lyric\\s+video|lyrics?|music\\s+video|out\\s+now",
+    "Bonus\\s+Track|PATREON|teaser|trailer|promo|lyric\\s+video|lyrics?|music\\s+video|out\\s+now",
     "subbed|mixed\\s+by\\s+dj|karaoke|backing\\s+track|vocals\\s+only|live(\\s+performance)?",
-    "now\\s+available|full\\s+song|full\\s+version|complete\\s+version|original\\s+version\\s+version",
+    "now\\s+available|full\\s+song|full\\s+version|complete\\s+version|original\\s+version",
     "official\\s+trailer|official\\s+teaser|[\\w\\s'’.\\-]+\\s+premiere",
   ];
+
+  str = str.trim();
+  if (str.length >= 1 && str.length < minLength) str = `[ ${str} ]`;
+
+  // Limit for regex
+  let strForRegex = str.length > maxRegexLength ? str.slice(0, maxRegexLength) : str;
 
   // Always remove
   const alwaysRemoveRegex = new RegExp(alwaysRemoveKeywords.join("|"), "gi");
@@ -50,8 +36,16 @@ function truncate(str, maxLength = 128, { fallback = "Unknown", minLength = 2, m
 
   // Optional remove (only in brackets)
   const optionalRegexStr = optionalRemoveKeywords.join("|");
-  const optionalRemoveRegex = new RegExp(`\\b${optionalRegexStr}\\b|\\s*-\\s*${optionalRegexStr}\\s*$`, "gi");
-  strForRegex = strForRegex.replace(optionalRemoveRegex, "");
+  strForRegex = strForRegex.replace(/([\[\(（【])([^\]\)）】]+)([\]\)）】])/g, (match, open, content, close) => {
+    const cleanedContent = content
+      .replace(new RegExp(`\\b(${optionalRegexStr})\\b`, "gi"), "")
+      .replace(/\s{2,}/g, " ")
+      .trim();
+
+    return cleanedContent ? `${open}${cleanedContent}${close}` : "";
+  });
+
+  // Remove the dash marks inside the parentheses
   strForRegex = strForRegex.replace(/[\[\(（]\s*-\s*([^\]\)）]+)[\]\)）]/g, "[$1]");
   strForRegex = strForRegex.replace(/[\[\(（]([^\]\)）]+?)\s*-\s*[\]\)）]/g, "[$1]");
 
@@ -68,7 +62,7 @@ function truncate(str, maxLength = 128, { fallback = "Unknown", minLength = 2, m
     strForRegex = strForRegex.replace(/[\u200B-\u200D\uFEFF\u180E]/g, "");
     strForRegex = strForRegex.normalize("NFC");
     strForRegex = strForRegex.replace(/[\uD800-\uDFFF](?![\uDC00-\uDFFF])/g, "").replace(/(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g, "");
-    strForRegex = strForRegex.replace(/[^\u0020-\uD7FF\uE000-\uFFFD]/g, "");
+    strForRegex = strForRegex.replace(/[^\u0020-\u007E\u00A0-\uD7FF\uE000-\uFFFD]/g, "");
   } catch (e) {
     // Continue without removing problematic characters
   }
@@ -100,32 +94,6 @@ function truncate(str, maxLength = 128, { fallback = "Unknown", minLength = 2, m
   if (/^[\s\p{P}\p{S}]+$/u.test(result)) return fallback;
 
   return result;
-}
-
-function cleanTitle(title, artist) {
-  const trimmedTitle = title.trim();
-  const trimmedArtist = artist.trim();
-
-  if (trimmedTitle.toLowerCase() === trimmedArtist.toLowerCase()) {
-    return trimmedTitle;
-  }
-
-  // Separate the artist list
-  const artistListRaw = trimmedArtist
-    .split(/\s*(?:,|&|feat\.?|featuring|ft\.?|with)\s*/i)
-    .map((a) => a.trim())
-    .filter((a) => a.length >= 2);
-
-  if (artistListRaw.length === 0) return trimmedTitle;
-
-  // Escape and lowercase
-  const artistList = artistListRaw.map((a) => a.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
-
-  // Create a pattern
-  const pattern = new RegExp(`^(${artistList.join("|")})(\\s*[&+,xX×]\\s*(${artistList.join("|")}))*\\s[-–—:]+\\s`, "i");
-  const cleaned = trimmedTitle.replace(pattern, "").trim();
-  const finalCleaned = cleaned.replace(/^[-–—:]+\s*/, "").trim();
-  return finalCleaned.length > 0 ? finalCleaned : trimmedTitle;
 }
 
 function normalizeTitleAndArtist(title, artist, replaceArtist = true) {
@@ -176,7 +144,35 @@ function normalizeTitleAndArtist(title, artist, replaceArtist = true) {
     }
   }
 
-  return { title: dataTitle, artist: dataArtist };
+  function cleanTitle(title, artist) {
+    if (!title || !artist) return title;
+
+    const artistList = artist
+      .split(/\s*(?:,|&|feat\.?|featuring|ft\.?|with)\s*/i)
+      .map((a) => a.trim())
+      .filter((a) => a.length >= 2);
+
+    if (!artistList.length) return title;
+
+    const escaped = artistList.map((a) => a.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|");
+    const prefixPattern = new RegExp(`^\\s*(?:${escaped})(?:\\s*[&+,xX×]\\s*(?:${escaped}))*\\s*[-–—:]\\s*`, "i");
+    return title.replace(prefixPattern, "").trim();
+  }
+
+  return { title: cleanTitle(dataTitle, dataArtist), artist: dataArtist };
+}
+
+function getCurrentTime() {
+  const now = new Date();
+  return [now.getHours().toString().padStart(2, "0"), now.getMinutes().toString().padStart(2, "0"), now.getSeconds().toString().padStart(2, "0")].join(":");
+}
+
+function isSameActivity(a, b) {
+  return a && b && a.details === b.details && a.state === b.state && a.startTimestamp === b.startTimestamp && a.endTimestamp === b.endTimestamp;
+}
+
+function isSameActivityIgnore(a, b) {
+  return a && b && a.details === b.details && a.state === b.state;
 }
 
 const isValidUrl = (url) => {
@@ -271,4 +267,4 @@ function addHistoryEntry(song, historyPath) {
   fs.writeFileSync(historyPath, JSON.stringify(history, null, 2), "utf8");
 }
 
-module.exports = { addHistoryEntry, getCurrentTime, isSameActivity, isSameActivityIgnore, truncate, cleanTitle, normalizeTitleAndArtist, isValidUrl, notifyRpcStatus, detectElectronMode };
+module.exports = { addHistoryEntry, getCurrentTime, isSameActivity, isSameActivityIgnore, truncate, normalizeTitleAndArtist, isValidUrl, notifyRpcStatus, detectElectronMode };
