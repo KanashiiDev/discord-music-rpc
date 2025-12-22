@@ -217,6 +217,7 @@ function updateLogs(logs, filter) {
     const dateAgo = nativeTimeElement(unixSeconds);
     time.className = "time";
     time.textContent = `${dateAgo} (${dateLong})`;
+    time.dataset.songDate = Date.parse(log.timestamp);
 
     const type = document.createElement("span");
     type.className = `type ${log.type}`;
@@ -244,16 +245,25 @@ function updateLogs(logs, filter) {
   domCache.logsContainer.style.paddingRight = document.querySelector("#logsWrapper .simplebar-track[style='visibility: visible;']") ? "" : "0";
 }
 
-// HISTORY
+// Song History
 function updateHistory(history) {
   if (JSON.stringify(history) === JSON.stringify(previousHistory)) {
     return;
   }
+
+  // Find newly added songs
+  const newSongs = history.slice(previousHistory.length);
   previousHistory = history;
+
+  // If there’s no new song, leave.
+  if (newSongs.length === 0) {
+    return;
+  }
 
   const fragment = document.createDocumentFragment();
 
-  history
+  // Add the new songs
+  newSongs
     .slice()
     .reverse()
     .forEach((song) => {
@@ -269,7 +279,9 @@ function updateHistory(history) {
       }
 
       const img = document.createElement("img");
-      img.src = song.image || "assets/icon.png";
+      img.className = "song-image lazyload";
+      img.dataset.src = song.image || "assets/icon.png";
+      img.src = "assets/icon.png";
       img.alt = song.title;
 
       const infoDiv = document.createElement("div");
@@ -294,7 +306,7 @@ function updateHistory(history) {
       date.textContent = dateAgo;
       date.title = dateLong;
       date.classList.add("date");
-      date.dataset.songId = song.date;
+      date.dataset.songDate = song.date;
 
       imageLink.append(img);
       infoDiv.append(date, title, artist, source);
@@ -302,9 +314,8 @@ function updateHistory(history) {
       fragment.appendChild(songDiv);
     });
 
-  // Update The Dom
-  domCache.historyContainer.innerHTML = "";
-  domCache.historyContainer.appendChild(fragment);
+  // Add new songs to the top
+  domCache.historyContainer.insertBefore(fragment, domCache.historyContainer.firstChild);
 
   // Simplebar Recalculate
   historySimpleBar.recalculate();
@@ -346,9 +357,9 @@ async function updateDashboard() {
     updateHistory(history);
 
     // Update Song Dates
-    const dateElements = document.querySelectorAll(".song .date");
+    const dateElements = document.querySelectorAll(".song-info > .date, .logEntry > .header > .time");
     dateElements.forEach((el) => {
-      const timestamp = Number(el.dataset.songId);
+      const timestamp = Number(el.dataset.songDate);
       const unixSeconds = Math.floor(timestamp / 1000);
       const newText = nativeTimeElement(unixSeconds);
       if (el.textContent !== newText) {
@@ -357,6 +368,8 @@ async function updateDashboard() {
     });
   } catch (err) {
     console.error(err);
+    domCache.rpcStatus.textContent = "Server Offline";
+    domCache.rpcStatus.className = "disconnected";
   }
 }
 
