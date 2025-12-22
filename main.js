@@ -4,6 +4,25 @@ let isAppInitialized = false;
 // Force English Locale
 app.commandLine.appendSwitch("lang", "en-US");
 
+// App Optimizations
+app.commandLine.appendSwitch("disable-renderer-backgrounding");
+app.commandLine.appendSwitch("disable-background-timer-throttling");
+app.commandLine.appendSwitch("disable-backgrounding-occluded-windows");
+app.commandLine.appendSwitch("disable-ipc-flooding-protection");
+app.commandLine.appendSwitch("disable-extensions");
+app.commandLine.appendSwitch("disable-component-update");
+app.commandLine.appendSwitch("disable-breakpad");
+app.commandLine.appendSwitch("disable-sync");
+app.commandLine.appendSwitch("disable-default-apps");
+app.commandLine.appendSwitch("disable-translate");
+app.commandLine.appendSwitch("disable-plugins");
+app.commandLine.appendSwitch("disable-speech-api");
+app.commandLine.appendSwitch("disable-print-preview");
+app.commandLine.appendSwitch("disable-pdf-extension");
+app.commandLine.appendSwitch("no-default-browser-check");
+app.commandLine.appendSwitch("disable-hang-monitor");
+app.commandLine.appendSwitch("js-flags", "--max-old-space-size=192 --optimize-for-size --expose-gc --gc-interval=100");
+
 // Linux-specific optimizations
 if (process.platform === "linux") {
   // Wayland/X11 handling
@@ -12,35 +31,24 @@ if (process.platform === "linux") {
     app.commandLine.appendSwitch("ozone-platform", "wayland");
   } else {
     app.commandLine.appendSwitch("ozone-platform", "x11");
+    app.disableHardwareAcceleration();
+    app.commandLine.appendSwitch("disable-gpu");
   }
-
   // Tray icon support
   app.commandLine.appendSwitch("enable-features", "AppIndicator,Unity");
+  app.commandLine.appendSwitch("disable-dev-shm-usage");
 }
 
-// App Optimizations
-app.commandLine.appendSwitch("no-sandbox");
-app.commandLine.appendSwitch("no-zygote");
-app.commandLine.appendSwitch("disable-gpu");
-app.commandLine.appendSwitch("disable-gpu-sandbox");
-app.commandLine.appendSwitch("disable-software-rasterizer");
-app.commandLine.appendSwitch("disable-gpu-compositing");
-app.commandLine.appendSwitch("disable-gpu-vsync");
-app.disableHardwareAcceleration();
-app.commandLine.appendSwitch("disable-gpu-memory-buffer-compositor-resources");
-app.commandLine.appendSwitch("disable-background-timer-throttling");
-app.commandLine.appendSwitch("disable-renderer-backgrounding");
-app.commandLine.appendSwitch("disable-ipc-flooding-protection");
-app.commandLine.appendSwitch("disable-backgrounding-occluded-windows");
-app.commandLine.appendSwitch("js-flags", "--max-old-space-size=128 --expose-gc");
-app.commandLine.appendSwitch("high-dpi-support", "1");
-app.commandLine.appendSwitch("force-device-scale-factor", "1");
-app.commandLine.appendSwitch("disable-extensions");
-app.commandLine.appendSwitch("disable-breakpad");
-app.commandLine.appendSwitch("no-default-browser-check");
-app.commandLine.appendSwitch("disable-component-update");
-app.commandLine.appendSwitch("disable-logging");
-app.commandLine.appendSwitch("disable-dev-shm-usage");
+// Windows-specific optimizations
+if (process.platform === "win32") {
+  app.disableHardwareAcceleration();
+  app.commandLine.appendSwitch("disable-gpu");
+}
+
+// MacOS-specific optimizations
+if (process.platform === "darwin") {
+  app.appNap.disable();
+}
 
 const { autoUpdater } = require("electron-updater");
 const semver = require("semver");
