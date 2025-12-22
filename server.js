@@ -1,5 +1,4 @@
 const express = require("express");
-const net = require("net");
 const path = require("path");
 const fs = require("fs");
 const cors = require("cors");
@@ -17,6 +16,14 @@ const historyFilePath = process.env.HISTORY_FILE_PATH;
 const IS_ELECTRON = detectElectronMode();
 process.env.ELECTRON_MODE = IS_ELECTRON ? "true" : "false";
 
+if (IS_ELECTRON) {
+  PORT = process.env.PORT || PORT;
+}
+
+const isRpcReady = (client) => {
+  return Boolean(isRpcConnected && client && !client.destroyed && client.user && typeof client.user.setActivity === "function");
+};
+
 if (global.__SERVER_INSTANCE_RUNNING__) {
   console.error("Server already running in this process!");
   process.exit(1);
@@ -26,109 +33,20 @@ process.on("exit", () => {
   global.__SERVER_INSTANCE_RUNNING__ = false;
 });
 
-if (IS_ELECTRON) {
-  PORT = process.env.PORT || PORT;
-}
-
-// Expected Discord IPC Socket Paths
-const expectedPaths = [];
-if (process.platform === "win32") {
-  expectedPaths.push("\\\\.\\pipe\\discord-ipc-0");
-} else if (process.platform === "linux") {
-  const uid = process.getuid ? process.getuid() : 1000;
-  const xdgRuntime = process.env.XDG_RUNTIME_DIR;
-
-  // Standard native Discord location
-  if (xdgRuntime) {
-    expectedPaths.push(`${xdgRuntime}/discord-ipc-0`);
-  }
-  expectedPaths.push(`/run/user/${uid}/discord-ipc-0`);
-  expectedPaths.push("/tmp/discord-ipc-0");
-
-  // Flatpak Discord locations
-  if (xdgRuntime) {
-    expectedPaths.push(`${xdgRuntime}/app/com.discordapp.Discord/discord-ipc-0`);
-  }
-  expectedPaths.push(`/run/user/${uid}/app/com.discordapp.Discord/discord-ipc-0`);
-
-  // Snap Discord locations
-  if (xdgRuntime) {
-    expectedPaths.push(`${xdgRuntime}/snap.discord/discord-ipc-0`);
-  }
-  expectedPaths.push(`/run/user/${uid}/snap.discord/discord-ipc-0`);
-
-  // Alternative Discord clients (Vesktop, WebCord, etc.)
-  if (xdgRuntime) {
-    expectedPaths.push(`${xdgRuntime}/app/dev.vencord.Vesktop/discord-ipc-0`);
-    expectedPaths.push(`${xdgRuntime}/app/io.github.spacingbat3.webcord/discord-ipc-0`);
-  }
-
-  // Legacy locations (for older installations)
-  expectedPaths.push("/var/run/discord-ipc-0");
-  if (process.env.TMPDIR) {
-    expectedPaths.push(`${process.env.TMPDIR}/discord-ipc-0`);
-  }
-} else if (process.platform === "darwin") {
-  expectedPaths.push("/tmp/discord-ipc-0");
-  if (process.env.TMPDIR) {
-    expectedPaths.push(`${process.env.TMPDIR}/discord-ipc-0`);
-  }
-}
-
-// Socket entity status
-const socketStatus = expectedPaths.map((path) => ({
-  path,
-  exists: fs.existsSync(path),
-}));
-
-const hasValidSocket = socketStatus.some((s) => s.exists);
-
 // Title and general info
 console.log("Starting Discord MUSIC RPC Server");
 console.log("Server Configuration: " + `Port: ${PORT} - Electron Mode: ${process.env.ELECTRON_MODE} - Platform: ${process.platform} - Node Version: ${process.version}`);
-if (process.platform === "linux") {
-  console.log(`XDG_RUNTIME_DIR: ${process.env.XDG_RUNTIME_DIR || "⚠️  NOT SET"}`);
-}
-
-// Socket status
-const socketCheckResults = [];
-socketStatus.forEach((s) => {
-  const message = `Discord IPC Socket Found: [${s.path}]`;
-
-  if (s.exists) {
-    console.log(message);
-    socketCheckResults.push(s.path);
-  }
-});
-
-if (!socketCheckResults.length > 0) {
-  console.log("No Discord IPC socket found! Will retry when Discord is running.");
-}
-
-// IPC connection test
-if (hasValidSocket) {
-  const validPath = socketStatus.find((s) => s.exists).path;
-  console.log(`Testing IPC connection to: ${validPath}`);
-  const testSocket = net.createConnection(validPath);
-
-  testSocket.on("connect", () => {
-    console.log(`IPC connection test successful`);
-    testSocket.end();
-  });
-
-  testSocket.on("error", (err) => {
-    console.log(`[FAIL] IPC connection test failed: ${err.message}`);
-  });
-}
 
 let rpcClient = null;
 let isRpcConnected = false;
 let isConnecting = false;
+let connectPromise = null;
 let isShuttingDown = false;
 let shutdownPromise = null;
 let currentActivity = null;
 let lastActiveClient = null;
 let lastSavedHistoryEntry = null;
+let lastUpdateAt = null;
 let healthCheckInterval = null;
 let serverInstance = null;
 let hasLoggedRpcFailure = false;
@@ -162,6 +80,10 @@ app.use(express.json());
 
 // RPC update - POST
 app.post("/update-rpc", async (req, res) => {
+  if (Date.now() - lastUpdateAt < 2000) {
+    return res.status(429).json({ error: "Too many updates" });
+  }
+  lastUpdateAt = Date.now();
   try {
     const { data, clientId } = req.body || {};
     lastUpdateRequest = data;
@@ -339,7 +261,7 @@ app.post("/update-rpc", async (req, res) => {
         historyTimeout = setTimeout(() => {
           if (!isSameActivityIgnore(activity, lastSavedHistoryEntry)) {
             addHistoryEntry(activity, historyFilePath);
-            lastSavedHistoryEntry = activity;
+            lastSavedHistoryEntry = JSON.parse(JSON.stringify(activity));
           }
           historyTimeout = null;
           historySaveLock = false;
@@ -350,7 +272,7 @@ app.post("/update-rpc", async (req, res) => {
         historyTimeout = setTimeout(() => {
           if (!isSameActivityIgnore(activity, lastSavedHistoryEntry)) {
             addHistoryEntry(activity, historyFilePath);
-            lastSavedHistoryEntry = activity;
+            lastSavedHistoryEntry = JSON.parse(JSON.stringify(activity));
           }
           historyTimeout = null;
           historySaveLock = false;
@@ -366,13 +288,20 @@ app.post("/update-rpc", async (req, res) => {
         console.log(`RPC Updated: ${activity.details} by ${activity.state} - ${getCurrentTime()}`);
       }
 
+      const client = rpcClient;
+
       // RPC client check
-      if (rpcClient?.user?.setActivity) {
-        await rpcClient.user.setActivity(activity);
-        currentActivity = activity;
+      if (isRpcReady(client)) {
+        try {
+          await client.user.setActivity(activity);
+          currentActivity = activity;
+        } catch (err) {
+          console.error("setActivity failed:", err.message);
+          isRpcConnected = false;
+        }
       } else {
         console.error("RPC client or setActivity method not available");
-        return res.status(500).json({ error: "RPC client not ready" });
+        return res.status(503).json({ error: "RPC client not ready" });
       }
     }
 
@@ -617,29 +546,51 @@ function createClient() {
 
   console.log("Creating new RPC Client...");
 
+  if (rpcClient) {
+    rpcClient.removeAllListeners();
+    rpcClient = null;
+  }
+
   rpcClient = new Client({
     clientId: CLIENT_ID,
-    transport: process.env.ELECTRON_MODE === "true" ? "ipc" : "websocket",
+    transport: "ipc",
     useSteam: false,
     reconnect: false,
   });
 
+  console.log("RPC Client ready");
+  setupClientEvents();
+  return rpcClient;
+}
+
+function setupClientEvents() {
+  if (!rpcClient) return;
+
   rpcClient.setMaxListeners(20);
 
+  // Ready Event
+  rpcClient.once("ready", () => {
+    isRpcConnected = true;
+    isConnecting = false;
+    hasLoggedRpcFailure = false;
+    notifyRpcStatus(isRpcConnected);
+  });
+
   // Disconnect Event
-  rpcClient.once("disconnected", async () => {
+  rpcClient.on("disconnected", async () => {
     console.log("RPC disconnected event triggered");
     isRpcConnected = false;
     isConnecting = false;
     notifyRpcStatus(isRpcConnected);
 
-    const oldClient = rpcClient;
-    rpcClient = null;
-
     if (!isShuttingDown) {
-      console.warn("RPC disconnected. Attempting reconnect...");
+      console.warn("Attempting reconnect in 3 seconds...");
+
+      const oldClient = rpcClient;
+      rpcClient = null;
+
       try {
-        await oldClient.destroy();
+        await oldClient?.destroy();
       } catch (err) {
         console.warn("Error destroying old client:", err.message);
       }
@@ -655,72 +606,72 @@ function createClient() {
       console.error("IPC Socket error - Discord may not be running or socket path incorrect");
     }
   });
-
-  return rpcClient;
 }
 
 // Connect to RPC
 async function connectRPC() {
-  if (isRpcConnected || isConnecting) {
-    return true;
-  }
+  if (connectPromise) return connectPromise;
 
-  isConnecting = true;
-  let attempt = 0;
+  connectPromise = (async () => {
+    if (isRpcConnected || isConnecting) {
+      return true;
+    }
 
-  while (!isRpcConnected && !isShuttingDown) {
-    attempt++;
-    try {
-      const client = createClient();
+    isConnecting = true;
+    let attempt = 0;
 
-      if (client.user) {
-        console.log("RPC Client already has user, skipping login");
-        isRpcConnected = true;
+    while (!isRpcConnected && !isShuttingDown) {
+      attempt++;
+      try {
+        const client = createClient();
+
+        // Clear old connected listeners before each login attempt
+        client.removeAllListeners("connected");
+
+        await Promise.race([client.login(), new Promise((_, reject) => setTimeout(() => reject(new Error("Login timed out")), RETRY_DELAY))]);
+
+        if (attempt === 1) {
+          console.log(`Connecting to RPC..`);
+        }
+
+        isRpcConnected = isRpcReady(client);
+        hasLoggedRpcFailure = false;
         isConnecting = false;
         notifyRpcStatus(isRpcConnected);
+        console.log("RPC connected successfully");
         return true;
-      }
+      } catch (err) {
+        isRpcConnected = false;
+        isConnecting = false;
 
-      // Clear old connected listeners before each login attempt
-      client.removeAllListeners("connected");
-
-      await Promise.race([client.login(), new Promise((_, reject) => setTimeout(() => reject(new Error("Login timed out")), RETRY_DELAY))]);
-
-      if (attempt === 1) {
-        console.log(`Connecting to RPC..`);
-      }
-
-      isRpcConnected = !!(client && !client.destroyed && client.user);
-      hasLoggedRpcFailure = false;
-      isConnecting = false;
-      notifyRpcStatus(isRpcConnected);
-      console.log("RPC connected successfully");
-      return true;
-    } catch (err) {
-      isRpcConnected = false;
-      isConnecting = false;
-
-      if (!hasLoggedRpcFailure) {
-        console.error(`RPC connection failed: ${err.message}`);
-        if (err.message?.includes("ENOENT")) {
-          console.error("Discord IPC socket not found. Is Discord running?");
-        } else if (err.message?.includes("EACCES")) {
-          console.error("Permission denied accessing IPC socket");
-        } else if (err.message?.includes("ECONNREFUSED")) {
-          console.error("Discord refused connection. Try restarting Discord.");
+        if (!hasLoggedRpcFailure) {
+          console.error(`RPC connection failed: ${err.message}`);
+          if (err.message?.includes("ENOENT")) {
+            console.error("Discord IPC socket not found. Is Discord running?");
+          } else if (err.message?.includes("EACCES")) {
+            console.error("Permission denied accessing IPC socket");
+          } else if (err.message?.includes("ECONNREFUSED")) {
+            console.error("Discord refused connection. Try restarting Discord.");
+          }
+          console.log("Waiting for connection..");
+          hasLoggedRpcFailure = true;
         }
-        console.log("Waiting for connection..");
-        hasLoggedRpcFailure = true;
+
+        await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY));
       }
-
-      await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY));
     }
-  }
 
-  if (!isRpcConnected && !isShuttingDown) {
-    console.error("RPC could not connect.");
+    if (!isRpcConnected && !isShuttingDown) {
+      console.error("RPC could not connect.");
+    }
+    return false;
+  })();
+
+  try {
+    return await connectPromise;
+  } finally {
+    connectPromise = null;
   }
-  return false;
 }
 
 // Health check timer
