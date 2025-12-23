@@ -175,10 +175,11 @@ select {
   margin-bottom: 15px;
   box-shadow: 0 0 10px var(--card-shadow);
   color: var(--text-color-primary);
+  display: -webkit-box;
 }
 
 .activity-box {
-  max-height: 195px;
+  max-height: 216px;
   overflow: hidden;
   transition: max-height 0.25s ease;
   font-size: 12px;
@@ -200,6 +201,10 @@ select {
 
 .activity-box.open::after {
   opacity: 0;
+}
+
+.activity-box > div[data-simplebar] {
+  width: 100%;
 }
 
 .grid .activity.activity-box,
@@ -370,7 +375,8 @@ footer a:hover {
 
 .link-container {
   margin-top: 12px;
-  display: flex;
+  display: none;
+  /*display: flex*/
   gap: 10px;
   flex-wrap: wrap;
 }
@@ -394,12 +400,8 @@ footer a:hover {
 
 #historyWrapper,
 #logsWrapper {
-  max-height: 165px;
+  max-height: 195px;
   transition: max-height 0.25s ease;
-}
-
-#logsWrapper {
-  max-height: 200px;
 }
 
 .open #historyWrapper,
@@ -445,8 +447,10 @@ footer a:hover {
 #historyContainer {
   display: flex;
   flex-direction: column;
+  align-items: stretch;
   gap: 15px;
   padding-right: 20px;
+  overflow-y: hidden;
   transition: padding var(--transition-normal) ease;
 }
 
@@ -457,6 +461,7 @@ footer a:hover {
   gap: 15px;
   padding: 10px;
   border-radius: 8px;
+  overflow: hidden;
   background-color: var(--bg-card-bright);
   transition: background-color 0.2s;
 }
@@ -744,7 +749,7 @@ input[type="number"] {
   }
 }
 
-@media (max-width: 700px) {
+@media (max-width: 720px) {
   .music-body {
     flex-direction: column;
     align-items: center;
