@@ -38,7 +38,16 @@ module.exports = async function (context) {
     ];
   } else if (platform === "linux") {
     if (platform === "linux") {
-      toRemove = ["LICENSES.chromium.html", "vk_swiftshader_icd.json", "swiftshader", "chrome-sandbox", "libEGL.so", "libGLESv2.so", "libvk_swiftshader.so", "libvulkan.so.1"];
+      toRemove = [
+        "LICENSES.chromium.html",
+        "vk_swiftshader_icd.json",
+        "swiftshader",
+        "chrome-sandbox",
+        "libEGL.so",
+        "libGLESv2.so",
+        "libvk_swiftshader.so",
+        "libvulkan.so.1",
+      ];
     }
   }
 
@@ -53,5 +62,53 @@ module.exports = async function (context) {
         tryRemove(path.join("locales", file));
       }
     });
+  }
+  if (platform === "linux") {
+    try {
+      const iconsSrcDir = path.join(__dirname, "..", "assets", "icon");
+      const iconSizes = [
+        { size: "16x16", file: "16x16.png" },
+        { size: "24x24", file: "24x24.png" },
+        { size: "32x32", file: "32x32.png" },
+        { size: "48x48", file: "48x48.png" },
+        { size: "256x256", file: "icon.png" },
+      ];
+
+      iconSizes.forEach(({ size, file }) => {
+        const destDir = path.join(
+          appOutDir,
+          "usr",
+          "share",
+          "icons",
+          "hicolor",
+          size,
+          "apps",
+        );
+        try {
+          fs.mkdirSync(destDir, { recursive: true });
+          const src = path.join(iconsSrcDir, file);
+          const dest = path.join(destDir, "discord-music-rpc.png");
+          if (fs.existsSync(src)) {
+            fs.copyFileSync(src, dest);
+          } else {
+            // fallback: try icon.png if a size-specific file is missing
+            const fallback = path.join(iconsSrcDir, "icon.png");
+            if (fs.existsSync(fallback)) {
+              fs.copyFileSync(fallback, dest);
+            } else {
+              console.warn(
+                `  • icon source missing: ${src} and fallback ${fallback}`,
+              );
+            }
+          }
+        } catch (err) {
+          console.warn(
+            `  • warning copying icon ${file} to ${destDir}: ${err.message}`,
+          );
+        }
+      });
+    } catch (err) {
+      console.warn(`  • warning preparing icons for RPM: ${err.message}`);
+    }
   }
 };
