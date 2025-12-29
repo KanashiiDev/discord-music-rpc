@@ -1,16 +1,38 @@
-const params = new URLSearchParams(window.location.search);
-const theme = params.get("theme");
-if (theme) {
-  document.body.dataset.theme = theme || "dark";
+async function initApplyAttrs() {
+  const { styleAttrs } = await browser.storage.local.get("styleAttrs");
+  if (styleAttrs) {
+    document.body.setAttribute("style", styleAttrs);
+  }
+
+  const { theme } = await browser.storage.local.get("theme");
+  if (theme) {
+    document.body.dataset.theme = theme;
+  }
+}
+
+function initStorageListener() {
+  browser.storage.onChanged.addListener((changes, area) => {
+    if (area !== "local") return;
+    if (changes.styleAttrs) {
+      const styleString = changes.styleAttrs.newValue || "";
+      document.body.setAttribute("style", styleString);
+    }
+    if (changes.theme) {
+      document.body.dataset.theme = changes.theme.newValue || "dark";
+    }
+  });
 }
 
 // Export Button
 document.getElementById("exportBtn").onclick = async () => {
   const storageDump = await browser.storage.local.get(null);
   const historyDump = await exportIndexedDB("HistoryDB");
+  const now = new Date();
+  const pad = (n) => n.toString().padStart(2, "0");
+  const dateString = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
 
   const fullBackup = {
-    time: new Date().toISOString(),
+    time: now.toISOString(),
     storage: storageDump,
     indexedDB: {
       HistoryDB: historyDump,
@@ -24,7 +46,7 @@ document.getElementById("exportBtn").onclick = async () => {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = "backup.json";
+  a.download = `discord-music-rpc-backup-${dateString}.json`;
   a.click();
   URL.revokeObjectURL(url);
   log("Export completed.");
@@ -64,3 +86,6 @@ function log(msg) {
   logEl.classList.add("visible");
   logEl.textContent += msg + "\n";
 }
+
+initApplyAttrs();
+initStorageListener();
