@@ -16,7 +16,6 @@ async function renderList(filteredList = null, isSearch = null) {
   const tabUrl = new URL(tab.url);
   const tabPath = tabUrl.pathname;
   const tabHostname = normalizeHost(tabUrl.hostname);
-  const settings = await browser.storage.local.get();
 
   // Spinner
   const spinner = document.createElement("div");
@@ -46,11 +45,11 @@ async function renderList(filteredList = null, isSearch = null) {
   };
 
   const fragment = document.createDocumentFragment();
+  const { parserEnabledState = {} } = await browser.storage.local.get("parserEnabledState");
 
   for (const entry of list) {
     const { id, domain, title, userAdd, userScript, urlPatterns = [], authors, authorsLinks, homepage, description } = entry;
-    const key = `enable_${id}`;
-    const isEnabled = settings[key] !== false;
+    const isEnabled = parserEnabledState[`enable_${id}`] !== false;
 
     // Wrapper
     const wrapper = document.createElement("div");
@@ -105,20 +104,33 @@ async function renderList(filteredList = null, isSearch = null) {
       const parserId = e.target.dataset.parserId;
       const isUserScript = e.target.dataset.isUserScript === "true";
       const enabled = e.target.checked;
-      const newSetting = { [`enable_${parserId}`]: enabled };
-      await browser.storage.local.set(newSetting);
-      settings[`enable_${parserId}`] = enabled;
+
+      // Update storage
+      const { parserEnabledState = {} } = await browser.storage.local.get("parserEnabledState");
+      parserEnabledState[`enable_${parserId}`] = enabled;
+      await browser.storage.local.set({ parserEnabledState });
+
       if (isUserScript) {
         await this.sendAction("toggleUserScript", { id: parserId, enabled });
+      }
+      // remove setting if enabled to reduce storage usage
+      if (enabled) {
+        const { parserEnabledState = {} } = await browser.storage.local.get("parserEnabledState");
+        delete parserEnabledState[`enable_${parserId}`];
+        await browser.storage.local.set({ parserEnabledState });
       }
     };
     addListener(checkbox, "change", handleCheckboxChange);
 
-    // Authors
-    const authorDiv = document.createElement("div");
-    const authorHeader = document.createElement("h4");
+    // Options Container
+    const optionsContainer = document.createElement("div");
+    optionsContainer.id = `options-${id}`;
+    optionsContainer.className = "parser-options";
 
+    // Authors
     if (authors?.length > 0 && authors[0].trim() !== "") {
+      const authorDiv = document.createElement("div");
+      const authorHeader = document.createElement("h4");
       authorDiv.className = "parser-entry-authors";
       authorHeader.textContent = authors.length > 1 ? "Authors" : "Author";
       authorDiv.appendChild(authorHeader);
@@ -135,46 +147,49 @@ async function renderList(filteredList = null, isSearch = null) {
         link.rel = "noopener noreferrer";
         authorContainer.appendChild(link);
         authorDiv.appendChild(authorContainer);
+        optionsContainer.appendChild(authorDiv);
       });
     }
 
     // Description
-    const descriptionDiv = document.createElement("div");
-    const descriptionHeader = document.createElement("h4");
-
     if (description && description.trim() !== "") {
+      const descriptionDiv = document.createElement("div");
+      const descriptionHeader = document.createElement("h4");
       descriptionDiv.className = "parser-entry-description";
       descriptionHeader.textContent = "Description";
       descriptionDiv.appendChild(descriptionHeader);
       const descriptionContent = document.createElement("p");
       descriptionContent.textContent = description;
       descriptionDiv.appendChild(descriptionContent);
+      optionsContainer.appendChild(descriptionDiv);
     }
 
-    // Options Container
-    const optionsContainer = document.createElement("div");
-    optionsContainer.id = `options-${id}`;
-    optionsContainer.className = "parser-options";
-
-    // Sections
-    optionsContainer.append(descriptionDiv, authorDiv);
-
-    // Options Header
+    // Parser Options Header
     const optionsHeader = document.createElement("h4");
     optionsHeader.textContent = "Settings";
     optionsContainer.appendChild(optionsHeader);
 
     // Parser Options
     const settingKey = `settings_${id}`;
-    const stored = await browser.storage.local.get(settingKey);
-    let parserOptions = stored[settingKey] || {};
 
+    // Get parserSettings root
+    const { parserSettings = {} } = await browser.storage.local.get("parserSettings");
+    let parserOptions = parserSettings[settingKey] || {};
+
+    // Fill missing defaults
     for (const [key, def] of Object.entries(DEFAULT_PARSER_OPTIONS)) {
       if (parserOptions[key] === undefined) {
         parserOptions[key] = { ...def };
       }
     }
-    await browser.storage.local.set({ [settingKey]: parserOptions });
+
+    // Persist back
+    await browser.storage.local.set({
+      parserSettings: {
+        ...parserSettings,
+        [settingKey]: parserOptions,
+      },
+    });
 
     // renderOptions
     await renderOptions(optionsContainer, parserOptions, settingKey, addListener);
@@ -253,7 +268,10 @@ async function renderList(filteredList = null, isSearch = null) {
         const updatedUserList = (storage.userParserSelectors || []).filter((p) => p.id !== parserId);
         const updatedParserList = (storage.parserList || []).filter((p) => p.id !== parserId);
 
-        await browser.storage.local.remove(`enable_${parserId}`);
+        const { parserEnabledState = {} } = await browser.storage.local.get("parserEnabledState");
+        delete parserEnabledState[`enable_${parserId}`];
+        await browser.storage.local.set({ parserEnabledState });
+
         await browser.storage.local.set({
           userParserSelectors: updatedUserList,
           parserList: updatedParserList,
@@ -367,11 +385,11 @@ async function renderOption(key, data, container, settingKey, addListener) {
       const optKey = e.target.dataset.optionKey;
       const setKey = e.target.dataset.settingKey;
       const selectedValue = e.target.value;
-      const stored = await browser.storage.local.get(setKey);
-      const opts = stored[setKey] || {};
+      const { parserSettings = {} } = await browser.storage.local.get("parserSettings");
+      const opts = parserSettings[setKey] || {};
       const arr = Array.isArray(opts[optKey]?.value) ? opts[optKey].value : [];
       opts[optKey].value = arr.map((o) => ({ ...o, selected: o.value === selectedValue }));
-      await browser.storage.local.set({ [setKey]: opts });
+      await browser.storage.local.set({ parserSettings: { ...parserSettings, [setKey]: opts } });
       settingRefreshMessage();
     };
     addListener(input, "change", handler);
@@ -393,10 +411,10 @@ async function renderOption(key, data, container, settingKey, addListener) {
     addListener(checkbox, "change", async (e) => {
       const optKey = e.target.dataset.optionKey;
       const setKey = e.target.dataset.settingKey;
-      const stored = await browser.storage.local.get(setKey);
-      const opts = stored[setKey] || {};
+      const { parserSettings = {} } = await browser.storage.local.get("parserSettings");
+      const opts = parserSettings[setKey] || {};
       opts[optKey].value = e.target.checked;
-      await browser.storage.local.set({ [setKey]: opts });
+      await browser.storage.local.set({ parserSettings: { ...parserSettings, [setKey]: opts } });
       settingRefreshMessage();
     });
   } else if (data.type === "text") {
@@ -409,10 +427,10 @@ async function renderOption(key, data, container, settingKey, addListener) {
     const debounced = debounce(async (e) => {
       const optKey = e.target.dataset.optionKey;
       const setKey = e.target.dataset.settingKey;
-      const stored = await browser.storage.local.get(setKey);
-      const opts = stored[setKey] || {};
+      const { parserSettings = {} } = await browser.storage.local.get("parserSettings");
+      const opts = parserSettings[setKey] || {};
       opts[optKey].value = e.target.value;
-      await browser.storage.local.set({ [setKey]: opts });
+      await browser.storage.local.set({ parserSettings: { ...parserSettings, [setKey]: opts } });
       settingRefreshMessage();
     }, 300);
 

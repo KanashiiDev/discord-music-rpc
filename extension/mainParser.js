@@ -11,28 +11,37 @@ const saveTimers = {};
 let initLoadPromise = null;
 
 // Save settings
-function scheduleSave(settingKey) {
-  if (saveTimers[settingKey]) clearTimeout(saveTimers[settingKey]);
-  saveTimers[settingKey] = setTimeout(async () => {
+function scheduleSave(parserId) {
+  if (saveTimers[parserId]) clearTimeout(saveTimers[parserId]);
+
+  saveTimers[parserId] = setTimeout(async () => {
     try {
-      // Snapshot
-      const snapshot = { ...settingsCache[settingKey] };
+      const snapshot = { ...settingsCache[parserId] };
 
       if (!snapshot || Object.keys(snapshot).length === 0) {
         return;
       }
 
-      // Read from storage
-      const stored = await browser.storage.local.get(settingKey);
-      const current = stored?.[settingKey] || {};
+      // Read all parserSettings
+      const { parserSettings = {} } = await browser.storage.local.get("parserSettings");
 
-      // Merge
-      const merged = { ...current, ...snapshot };
+      const current = parserSettings[parserId] || {};
 
-      // Save
-      await browser.storage.local.set({ [settingKey]: merged });
+      // Merge parser-specific settings
+      const merged = {
+        ...current,
+        ...snapshot,
+      };
+
+      // Write back
+      await browser.storage.local.set({
+        parserSettings: {
+          ...parserSettings,
+          [parserId]: merged,
+        },
+      });
     } catch (err) {
-      logError(`[settings] save error for ${settingKey}:`, err);
+      logError(`[settings] save error for ${parserId}:`, err);
     }
   }, 120);
 }
@@ -40,18 +49,29 @@ function scheduleSave(settingKey) {
 // Load settings
 async function loadSettingsForId(id) {
   const settingKey = `settings_${id}`;
-  if (settingsCache[settingKey]) return settingsCache[settingKey];
-  if (loadingPromises[settingKey]) return loadingPromises[settingKey];
+
+  // Cache hit
+  if (settingsCache[settingKey]) {
+    return settingsCache[settingKey];
+  }
+
+  // In-flight request
+  if (loadingPromises[settingKey]) {
+    return loadingPromises[settingKey];
+  }
 
   loadingPromises[settingKey] = (async () => {
     try {
-      const stored = await browser.storage.local.get(settingKey);
-      const value = stored?.[settingKey];
+      const { parserSettings = {} } = await browser.storage.local.get("parserSettings");
+
+      const value = parserSettings[settingKey];
+
       if (value && typeof value === "object" && !Array.isArray(value)) {
         settingsCache[settingKey] = value;
       } else {
         settingsCache[settingKey] = {};
       }
+
       return settingsCache[settingKey];
     } catch (err) {
       settingsCache[settingKey] = {};
@@ -151,16 +171,49 @@ async function initializeAllParserSettings() {
   const { userScriptsList: storedUserScriptsList = [] } = await browser.storage.local.get("userScriptsList");
   const userScriptsList = Array.isArray(storedUserScriptsList) ? storedUserScriptsList : [];
 
-  // All available storage
+  // Get all storage data
   const allStored = await browser.storage.local.get(null);
+
+  // Extract settings_*
+  const merged = {};
+  for (const [key, value] of Object.entries(allStored)) {
+    if (key.startsWith("settings_")) {
+      merged[key] = value;
+    }
+  }
+
+  // If nothing to migrate, exit early
+  if (!Object.keys(merged).length) {
+    return;
+  }
+
+  // Get existing parserSettings (if any)
+  const { parserSettings: existing = {} } = await browser.storage.local.get("parserSettings");
+
+  // Merge without overwriting existing entries
+  const nextParserSettings = {
+    ...existing,
+    ...merged,
+  };
+
+  // Save merged parserSettings
+  await browser.storage.local.set({
+    parserSettings: nextParserSettings,
+  });
+
+  // Remove old individual settings_* keys
+  await browser.storage.local.remove(Object.keys(merged));
+
+  // Load all existing settings into cache
+  const { parserSettings = {} } = await browser.storage.local.get("parserSettings");
 
   // initialSettings is located in global
   const initial = window.initialSettings || {};
 
   // Synchronize settingsCache with the current storage
-  for (const key of Object.keys(allStored)) {
+  for (const key of Object.keys(parserSettings)) {
     if (key.startsWith("settings_")) {
-      settingsCache[key] = allStored[key] || {};
+      settingsCache[key] = parserSettings[key];
     }
   }
 
@@ -173,7 +226,7 @@ async function initializeAllParserSettings() {
 
     // If there is no settingsCache for this parser, get it from storage
     if (!settingsCache[settingKey]) {
-      settingsCache[settingKey] = allStored[settingKey] || {};
+      settingsCache[settingKey] = parserSettings[settingKey] || {};
     }
 
     // Process all the settings in the parser
@@ -192,7 +245,7 @@ async function initializeAllParserSettings() {
 
     // otherwise, create
     if (!settingsCache[settingKey]) {
-      settingsCache[settingKey] = allStored[settingKey] || {};
+      settingsCache[settingKey] = parserSettings[settingKey] || {};
     }
 
     if (Array.isArray(script.settings)) {
@@ -459,7 +512,6 @@ async function scheduleParserListSave() {
 // Get current song info based on website and parser list
 window.getSongInfo = async function () {
   try {
-    const settings = await browser.storage.local.get();
     const hostname = location.hostname.replace(/^www\./, "").toLowerCase();
     const pathname = location.pathname;
 
@@ -468,32 +520,35 @@ window.getSongInfo = async function () {
 
     for (const parser of domainParsers) {
       try {
-        const isEnabled = settings[`enable_${parser.id}`] !== false;
         const matches = parser.patterns?.some((re) => re.test(pathname));
+        if (matches) {
+          const { parserEnabledState = {} } = await browser.storage.local.get("parserEnabledState");
+          const isEnabled = parserEnabledState[`enable_${parser.id}`] !== false;
 
-        if (isEnabled && matches) {
-          const song = await parser.parse();
+          if (isEnabled) {
+            const song = await parser.parse();
 
-          if (song) {
-            // String Extraction
-            let dataTitle = String(song.title || "").trim();
-            let dataArtist = String(song.artist || "").trim();
-            let dataSource = String(song.source || "").trim();
+            if (song) {
+              // String Extraction
+              let dataTitle = String(song.title || "").trim();
+              let dataArtist = String(song.artist || "").trim();
+              let dataSource = String(song.source || "").trim();
 
-            // Normalization
-            if (dataTitle && dataArtist) {
-              const normalized = normalizeTitleAndArtist(dataTitle, dataArtist);
-              dataTitle = normalized?.title || dataTitle;
-              dataArtist = normalized?.artist || dataArtist;
+              // Normalization
+              if (dataTitle && dataArtist) {
+                const normalized = normalizeTitleAndArtist(dataTitle, dataArtist);
+                dataTitle = normalized?.title || dataTitle;
+                dataArtist = normalized?.artist || dataArtist;
+              }
+
+              dataTitle = truncate(dataTitle, 128, { fallback: "Unknown Song" });
+              dataArtist = truncate(dataArtist, 128, { fallback: "Unknown Artist" });
+              dataSource = truncate(dataSource, 32, { fallback: "Unknown Source" });
+              song.title = dataTitle;
+              song.artist = dataArtist;
+              song.source = dataSource;
+              return song;
             }
-
-            dataTitle = truncate(dataTitle, 128, { fallback: "Unknown Song" });
-            dataArtist = truncate(dataArtist, 128, { fallback: "Unknown Artist" });
-            dataSource = truncate(dataSource, 32, { fallback: "Unknown Source" });
-            song.title = dataTitle;
-            song.artist = dataArtist;
-            song.source = dataSource;
-            return song;
           }
         }
       } catch (err) {

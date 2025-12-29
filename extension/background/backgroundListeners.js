@@ -1,11 +1,10 @@
 // Action Handlers
 const handleListUserScripts = async () => {
   const scripts = await scriptManager.storage.getScripts();
-  const settings = await scriptManager.storage.getScriptSettings();
-
+  const { parserEnabledState = {} } = await browser.storage.local.get("parserEnabledState");
   const scriptsWithStatus = scripts.map((script) => ({
     ...script,
-    enabled: settings[`enable_${script.id}`] !== false,
+    enabled: parserEnabledState[`enable_${script.id}`] !== false,
   }));
 
   return { ok: true, list: scriptsWithStatus };
@@ -21,7 +20,15 @@ const handleSaveUserScript = async (req) => {
     const prevIndex = scriptsList.findIndex((s) => s.id === previousId);
     if (prevIndex >= 0) {
       await scriptManager.unregisterUserScript(scriptsList[prevIndex]);
-      const oldSettings = await browser.storage.local.get([`enable_${previousId}`, `settings_${previousId}`]);
+
+      // Transfer old settings
+      const { parserSettings = {}, parserEnabledState = {} } = await browser.storage.local.get(["parserSettings", "parserEnabledState"]);
+
+      const enableSettings = parserEnabledState[`enable_${previousId}`] !== false;
+      const oldSettings = {
+        [`enable_${previousId}`]: enableSettings,
+        [`settings_${previousId}`]: parserSettings[`settings_${previousId}`],
+      };
 
       scriptsList.splice(prevIndex, 1);
       await scriptManager.storage.saveScripts(scriptsList);
@@ -56,28 +63,27 @@ const handleSaveUserScript = async (req) => {
   await scriptManager.storage.saveScripts(scriptsList);
 
   // Enable Settings
-  const settings = await scriptManager.storage.getScriptSettings();
-  const enableKey = `enable_${scriptData.id}`;
-  const isEnabled = settings[enableKey] !== false;
-
-  // If not, it is active by default
-  if (!(enableKey in settings)) {
-    await browser.storage.local.set({ [enableKey]: true });
-  }
+  const { parserEnabledState = {} } = await browser.storage.local.get("parserEnabledState");
+  const isEnabled = parserEnabledState[`enable_${scriptData.id}`] !== false;
 
   // Transfer old settings
   if (scriptData._oldSettings) {
     const { _oldSettings } = scriptData;
+
+    // Enable flag
     if (_oldSettings[`enable_${previousId}`] !== undefined) {
-      await browser.storage.local.set({
-        [`enable_${scriptData.id}`]: _oldSettings[`enable_${previousId}`],
-      });
+      const { parserEnabledState = {} } = await browser.storage.local.get("parserEnabledState");
+      parserEnabledState[`enable_${scriptData.id}`] = _oldSettings[`enable_${previousId}`];
+      await browser.storage.local.set({ parserEnabledState });
     }
+
+    // Parser settings
     if (_oldSettings[`settings_${previousId}`]) {
-      await browser.storage.local.set({
-        [`settings_${scriptData.id}`]: _oldSettings[`settings_${previousId}`],
-      });
+      const { parserSettings = {} } = await browser.storage.local.get("parserSettings");
+      parserSettings[`settings_${scriptData.id}`] = _oldSettings[`settings_${previousId}`];
+      await browser.storage.local.set({ parserSettings });
     }
+
     delete scriptData._oldSettings;
   }
 
@@ -123,8 +129,20 @@ const handleDeleteUserScript = async (req) => {
   const filteredParserList = parserList.filter((p) => !(p.domain === scriptsList[deleteIndex].domain && p.title === scriptsList[deleteIndex].title));
   await browser.storage.local.set({ parserList: filteredParserList });
 
-  await browser.storage.local.remove(`enable_${scriptsList[deleteIndex].id}`);
-  await browser.storage.local.remove(`settings_${scriptsList[deleteIndex].id}`);
+  // Remove enable flag
+  const { parserEnabledState = {} } = await browser.storage.local.get("parserEnabledState");
+  const enableKey = `enable_${scriptsList[deleteIndex].id}`;
+  delete parserEnabledState[enableKey];
+  await browser.storage.local.set({ parserEnabledState });
+
+  // Remove settings from parserSettings
+  const { parserSettings = {} } = await browser.storage.local.get("parserSettings");
+  const settingsKey = `settings_${scriptsList[deleteIndex].id}`;
+
+  if (settingsKey in parserSettings) {
+    delete parserSettings[settingsKey];
+    await browser.storage.local.set({ parserSettings });
+  }
 
   // Delete from the list
   scriptsList.splice(deleteIndex, 1);
@@ -179,13 +197,13 @@ const handleUnregisterUserScript = async (req) => {
 };
 
 const handleToggleUserScript = async (req) => {
-  const settings = await scriptManager.storage.getScriptSettings();
-  const newEnabledState = req.enabled !== undefined ? req.enabled : !settings[`enable_${req.id}`];
+  const { parserEnabledState = {} } = await browser.storage.local.get("parserEnabledState");
+  const enableKey = `enable_${req.id}`;
+  const isEnabled = parserEnabledState[enableKey] !== false;
+  const newEnabledState = req.enabled !== undefined ? req.enabled : !isEnabled;
 
-  // Save the enable status
-  await browser.storage.local.set({
-    [`enable_${req.id}`]: newEnabledState,
-  });
+  parserEnabledState[enableKey] = newEnabledState;
+  await browser.storage.local.set({ parserEnabledState });
 
   const scriptsList = await scriptManager.storage.getScripts();
   const script = scriptsList.find((s) => s.id === req.id);
@@ -195,7 +213,7 @@ const handleToggleUserScript = async (req) => {
       const result = await scriptManager.registerUserScript(script);
       script.registered = result.ok && !result.skipped;
     } else {
-      await scriptManager.unregisterUserScript(script);
+      await scriptManager.unregisterUserScript(script, true);
       script.registered = false;
     }
 
@@ -470,17 +488,22 @@ const setupListeners = () => {
   browser.storage.onChanged.addListener((changes, area) => {
     if (area !== "local") return;
 
-    for (const [key, { newValue }] of Object.entries(changes)) {
-      // enable_ updates the cache with changes
-      if (key.startsWith("enable_")) {
-        const parserId = key.replace("enable_", "");
-        state.parserEnabledCache.set(parserId, newValue !== false && newValue !== undefined);
-      }
+    for (const [key, change] of Object.entries(changes)) {
+      // Update parser enabled cache
+      if (key === "parserEnabledState") {
+        const enabledState = change.newValue || {};
 
+        for (const [enableKey, isEnabled] of Object.entries(enabledState)) {
+          const parserId = enableKey.startsWith("enable_");
+          state.parserEnabledCache.set(parserId, isEnabled !== false);
+        }
+      }
       // If the parser list or settings have changed, reload
-      if (key === "parserList" || key === "userParserSelectors" || key === "userScriptsList" || key.startsWith("settings_")) {
-        // Force reload, bypass the flag
-        if (state.parserReloadDebounce) clearTimeout(state.parserReloadDebounce);
+      if (key === "parserList" || key === "userParserSelectors" || key === "userScriptsList" || key === "parserSettings" || key === "parserEnabledState") {
+        if (state.parserReloadDebounce) {
+          clearTimeout(state.parserReloadDebounce);
+        }
+
         state.parserReloadDebounce = setTimeout(() => {
           parserListMutex(async () => {
             state.parserListLoaded = false;

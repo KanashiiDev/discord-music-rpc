@@ -25,14 +25,13 @@ const state = {
 const getEnabledParsers = () => state.parserList.filter((p) => p.isEnabled);
 const historyData = () => loadHistory();
 
-// Retrieves the 'enabled_' data from the local storage.
+// Retrieves the 'enable_' data from the local storage.
 async function loadParserEnabledCache(parserEnabledCache, parserList) {
-  const keys = parserList.map((p) => `enable_${p.id}`);
-  const settings = await browser.storage.local.get(keys);
-
   parserEnabledCache.clear();
+  const { parserEnabledState = {} } = await browser.storage.local.get("parserEnabledState");
   parserList.forEach((p) => {
-    parserEnabledCache.set(p.id, settings[`enable_${p.id}`] !== false);
+    const enableKey = `enable_${p.id}`;
+    parserEnabledCache.set(p.id, parserEnabledState[enableKey] !== false);
   });
 }
 
@@ -113,13 +112,12 @@ async function loadParserList() {
     // Merge the lists
     const allParsers = [...builtInList, ...userList, ...userScriptList];
 
-    // Get Enable settings
-    const enableKeys = allParsers.map(({ id }) => `enable_${id}`);
-    const settings = enableKeys.length > 0 ? await browser.storage.local.get(enableKeys) : {};
+    // Get Enable settings from storage and apply them to the parsers
+    const { parserEnabledState = {} } = await browser.storage.local.get("parserEnabledState");
 
     state.parserList = allParsers.map((p) => ({
       ...p,
-      isEnabled: settings[`enable_${p.id}`] !== false,
+      isEnabled: parserEnabledState[`enable_${p.id}`] !== false,
       settings: {},
     }));
 
@@ -145,10 +143,10 @@ async function getParserSettings(parserId) {
     return cached;
   }
 
-  const settingKey = `settings_${parserId}`;
-  const result = await browser.storage.local.get(settingKey);
-  const parserSettings = result[settingKey] || {};
-  const parsedSettings = Object.fromEntries(Object.entries(parserSettings).map(([key, obj]) => [key, obj.value]));
+  const { parserSettings = {} } = await browser.storage.local.get("parserSettings");
+  const parserKey = `settings_${parserId}`;
+  const rawSettings = parserSettings[parserKey] || {};
+  const parsedSettings = Object.fromEntries(Object.entries(rawSettings).map(([key, obj]) => [key, obj.value]));
 
   if (state.parserMap[parserId]) {
     state.parserMap[parserId].settings = parsedSettings;

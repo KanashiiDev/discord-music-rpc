@@ -99,15 +99,6 @@ class ScriptStorage {
       throw error;
     }
   }
-
-  async getScriptSettings() {
-    try {
-      return await browser.storage.local.get();
-    } catch (error) {
-      logError("Failed to get script settings:", error);
-      return {};
-    }
-  }
 }
 
 // UserScript management
@@ -232,8 +223,8 @@ class UserScriptManager {
       const isMV3 = manifest.manifest_version === 3;
       const patterns = Array.isArray(script.urlPatterns) ? script.urlPatterns : [script.urlPatterns];
       const matches = patterns.map((p) => PatternValidator.toChromeMatch(script.domain, p));
-      const settings = await this.storage.getScriptSettings();
-      const isEnabled = settings[`enable_${script.id}`] !== false;
+      const { parserEnabledState = {} } = await browser.storage.local.get("parserEnabledState");
+      const isEnabled = parserEnabledState[`enable_${script.id}`] !== false;
 
       if (!isEnabled) return { ok: true, skipped: true, reason: "Script is disabled" };
 
@@ -271,12 +262,13 @@ class UserScriptManager {
     }
   }
 
-  async unregisterUserScript(script) {
+  async unregisterUserScript(script, skipStorageUpdate = false) {
     if (!script?.id) return { ok: true, skipped: true, reason: "No script ID provided" };
 
     try {
       const manifest = browser.runtime.getManifest();
       const isMV3 = manifest.manifest_version === 3;
+
       if (isMV3) {
         const existingScripts = await browser.userScripts.getScripts();
         const scriptExists = existingScripts.some((s) => s.id === script.id);
@@ -292,11 +284,13 @@ class UserScriptManager {
 
       this.registeredScripts.delete(script.id);
 
-      const scripts = await this.storage.getScripts();
-      const scriptIndex = scripts.findIndex((s) => s.id === script.id);
-      if (scriptIndex >= 0) {
-        scripts[scriptIndex].registered = false;
-        await this.storage.saveScripts(scripts);
+      if (!skipStorageUpdate) {
+        const scripts = await this.storage.getScripts();
+        const scriptIndex = scripts.findIndex((s) => s.id === script.id);
+        if (scriptIndex >= 0) {
+          scripts[scriptIndex].registered = false;
+          await this.storage.saveScripts(scripts);
+        }
       }
 
       await this.delay(50);
@@ -311,15 +305,16 @@ class UserScriptManager {
 
   async registerAllScripts() {
     const scripts = await this.storage.getScripts();
-    const settings = await this.storage.getScriptSettings();
+    const { parserEnabledState = {} } = await browser.storage.local.get("parserEnabledState");
     const results = { successful: [], failed: [], disabled: [] };
 
     for (const script of scripts) {
       try {
         if (!script.id) script.id = this.generateScriptId(script.domain, script.urlPatterns);
-        await this.unregisterUserScript(script);
 
-        if (settings[`enable_${script.id}`] === false) {
+        await this.unregisterUserScript(script, true);
+
+        if (parserEnabledState[`enable_${script.id}`] === false) {
           script.registered = false;
           results.disabled.push(script.id);
           continue;
