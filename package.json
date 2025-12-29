@@ -1,6 +1,6 @@
 {
   "name": "discord-music-rpc",
-  "version": "0.8.0",
+  "version": "0.8.1",
   "description": "Discord Music RPC Application",
   "homepage": "https://github.com/KanashiiDev/discord-music-rpc",
   "main": "main.js",
@@ -29,10 +29,17 @@
     "start:app": "electron .",
     "build:win": "node scripts/buildDeps.js --win && electron-builder --win --x64 --publish=never",
     "build:linux": "chmod +x $(pwd)/scripts/discord_ipc_diagnostic.sh && node scripts/buildDeps.js --linux && electron-builder --linux --x64 --publish=never --config.extraMetadata.productName='discord-music-rpc'",
+    "build:linux:arm64": "chmod +x $(pwd)/scripts/discord_ipc_diagnostic.sh && node scripts/buildDeps.js --linux && electron-builder --linux --arm64 --publish=never --config.extraMetadata.productName='discord-music-rpc'",
     "build:mac": "node scripts/buildDeps.js --mac && electron-builder --mac --publish=never",
     "build:chrome": "cross-env TARGET=chrome node scripts/buildExtensions.js",
     "build:firefox": "cross-env TARGET=firefox node scripts/buildExtensions.js",
     "build:extensions": "npm run build:chrome && npm run build:firefox",
+    "build:rpm": "chmod +x $(pwd)/scripts/discord_ipc_diagnostic.sh && node scripts/buildDeps.js --linux && electron-builder --linux rpm --x64 --publish=never --config.extraMetadata.productName='discord-music-rpc'",
+    "build:deb": "chmod +x $(pwd)/scripts/discord_ipc_diagnostic.sh && node scripts/buildDeps.js --linux && electron-builder --linux deb --x64 --publish=never --config.extraMetadata.productName='discord-music-rpc'",
+    "build:rpm:arm64": "chmod +x $(pwd)/scripts/discord_ipc_diagnostic.sh && node scripts/buildDeps.js --linux && electron-builder --linux rpm --arm64 --publish=never --config.extraMetadata.productName='discord-music-rpc'",
+    "build:deb:arm64": "chmod +x $(pwd)/scripts/discord_ipc_diagnostic.sh && node scripts/buildDeps.js --linux && electron-builder --linux deb --arm64 --publish=never --config.extraMetadata.productName='discord-music-rpc'",
+    "build:fedora": "npm run build:rpm",
+    "build:all": "npm run build:linux && npm run build:linux:arm64",
     "pack": "electron-builder --dir",
     "pack:chrome": "cross-env TARGET=chrome node scripts/packExtensions.js",
     "pack:firefox": "cross-env TARGET=firefox node scripts/packExtensions.js",
@@ -85,14 +92,29 @@
         {
           "target": "AppImage",
           "arch": [
-            "x64"
+            "x64",
+            "arm64"
+          ]
+        },
+        {
+          "target": "rpm",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        },
+        {
+          "target": "deb",
+          "arch": [
+            "x64",
+            "arm64"
           ]
         }
       ],
-      "artifactName": "discord-music-rpc-${version}.AppImage",
+      "artifactName": "discord-music-rpc-${version}.${ext}",
       "executableName": "discord-music-rpc",
       "category": "Audio;Music",
-      "icon": "assets/icon/",
+      "icon": "assets/icon",
       "maintainer": "KanashiiDev <kanashiidev0@gmail.com>",
       "synopsis": "Show music from ANY website on your Discord!",
       "description": "Discord Music RPC Application - Show music from ANY website on your Discord!",
@@ -102,9 +124,38 @@
           "Comment": "Show music from ANY website on your Discord!",
           "Keywords": "discord;music;rpc;presence;",
           "Categories": "Audio;Music;",
-          "Icon": "assets/icon/icon.png"
+          "Icon": "discord-music-rpc"
         }
       }
+    },
+    "rpm": {
+      "artifactName": "discord-music-rpc-${version}.rpm",
+      "packageName": "discord-music-rpc",
+      "category": "Audio",
+      "description": "Discord Music RPC Application - Show music from ANY website on your Discord!",
+      "maintainer": "KanashiiDev <kanashiidev0@gmail.com>",
+      "depends": [
+        "glibc",
+        "libX11",
+        "libXrender",
+        "libXrandr",
+        "libxcb"
+      ]
+    },
+    "deb": {
+      "artifactName": "discord-music-rpc-${version}.deb",
+      "packageName": "discord-music-rpc",
+      "category": "Audio",
+      "description": "Discord Music RPC Application - Show music from ANY website on your Discord!",
+      "maintainer": "KanashiiDev <kanashiidev0@gmail.com>",
+      "depends": [
+        "libc6",
+        "libx11-6",
+        "libxrender1",
+        "libxrandr2",
+        "libxcb1"
+      ],
+      "priority": "optional"
     },
     "mac": {
       "identity": "-",
