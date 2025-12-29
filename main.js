@@ -58,11 +58,43 @@ let dbPath;
 let logFilePath;
 let historyFilePath;
 const ConfigManager = require("./scripts/configManagement");
-const { log, configureLogging } = require("./scripts/electron-log");
+const { log, configureLogging, logStartupTimeout } = require("./scripts/electron-log");
 let config;
 const fs = require("fs");
 const os = require("os");
 const isPackaged = app.isPackaged;
+
+// Wrap console methods to avoid uncaught write errors (EIO) in packaged environments.
+// This will swallow EIO write errors and attempt to surface a short warning via electron-log (if available).
+(function safeConsoleWrap() {
+  const methods = ["log", "info", "error"];
+  for (const m of methods) {
+    const orig = console[m];
+    if (!orig || typeof orig !== "function") continue;
+    console[m] = function (...args) {
+      try {
+        return orig.apply(console, args);
+      } catch (err) {
+        try {
+          if (err && err.code === "EIO") {
+            // Suppress EIO - try to record it to electron-log without throwing.
+            if (log && typeof log.warn === "function") {
+              try {
+                // convert args to short string
+                const msg = args.map(a => (typeof a === "string" ? a : String(a))).join(" ");
+                log.warn(`Console write EIO suppressed: ${msg}`);
+              } catch (_) {}
+            }
+            return;
+          }
+        } catch (_) {
+          // ignore any secondary errors while attempting diagnostics
+        }
+        // If it's a different error or we couldn't handle it, swallow to avoid crashing the app.
+      }
+    };
+  }
+})();
 
 // State Management
 const state = {
@@ -266,9 +298,24 @@ async function startServer() {
 
     const readyTimeout = setTimeout(() => {
       const elapsed = Date.now() - startTime;
+      try {
+        const pid = state.serverProcess && state.serverProcess.pid ? state.serverProcess.pid : null;
+        logStartupTimeout({ elapsed, serverPath, pid, env: { PORT: config.PORT } });
+      } catch (diagErr) {
+        // If diagnostics fail, ensure we still continue with shutdown and log a short warning.
+        try {
+          log.warn("Failed to record startup diagnostic:", diagErr && diagErr.message);
+        } catch (_) {}
+      }
       log.warn(`Server startup timeout after ${elapsed}ms`);
       if (state.serverProcess && !state.serverProcess.killed) {
-        state.serverProcess.kill("SIGTERM");
+        try {
+          state.serverProcess.kill("SIGTERM");
+        } catch (err) {
+          try {
+            log.warn("Failed to kill server process on startup timeout:", err && err.message);
+          } catch (_) {}
+        }
       }
       cleanupProcess();
       reject(new Error("Server startup timeout"));
