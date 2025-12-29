@@ -69,14 +69,16 @@ a {
   -webkit-box-shadow: 0 0 10px var(--shadow-color);
   box-shadow: 0 0 10px var(--shadow-color);
   z-index: 999999;
-  max-height: 90vh !important;
   font-family: "Segoe UI", sans-serif !important;
   margin: 0;
-  padding: 16px;
-  background-color: var(--background-color);
+  background: var(--background-color);
   color: var(--text-color-primary);
   border-radius: var(--radius-default);
   border: 1px solid var(--border-color);
+}
+
+#userRpc-selectorRoot .content {
+  padding: 16px;
 }
 
 #userRpc-selectorChooser-container {
@@ -93,7 +95,7 @@ a {
   font-family: "Segoe UI", sans-serif !important;
   margin: 0;
   padding: 16px;
-  background-color: var(--background-color);
+  background: var(--background-color);
   color: var(--text-color-primary);
   border-radius: var(--radius-default);
   border: 1px solid var(--border-color);
@@ -191,7 +193,7 @@ br[id*="buttonLink"] {
 .userRpc-optionButtons {
   padding: 8px !important;
   border-radius: 8px !important;
-  background-color: var(--foreground-color-300);
+  background: var(--foreground-color-300);
   cursor: pointer;
   -webkit-transition: background 0.2s;
   transition: background 0.2s;
@@ -250,7 +252,7 @@ br[id*="buttonLink"] {
 
 .userRpc-selectBtn:hover,
 .userRpc-optionButtons:hover {
-  background-color: var(--foreground-color-400) !important;
+  background: var(--foreground-color-400) !important;
 }
 
 #userRpc-selectorRoot,
@@ -353,7 +355,7 @@ br[id*="buttonLink"] {
 }
 
 .rpc-preview .card {
-  background-color: var(--foreground-color-200);
+  background: var(--foreground-color-200);
   border-radius: 8px;
   width: auto;
   color: var(--text-color-primary);
@@ -429,7 +431,7 @@ br[id*="buttonLink"] {
 
 .rpc-preview .progress-bar {
   position: relative;
-  background-color: var(--foreground-color-400);
+  background: var(--foreground-color-400);
   height: 4px;
   border-radius: 2px;
   -webkit-box-flex: 1;
@@ -438,7 +440,7 @@ br[id*="buttonLink"] {
 }
 
 .rpc-preview .progress-bar .progress {
-  background-color: var(--text-color-primary);
+  background: var(--text-color-primary);
   height: 100%;
   width: 55.49%;
   border-radius: 2px;
@@ -450,7 +452,7 @@ br[id*="buttonLink"] {
 
 .rpc-preview .link,
 .rpc-preview .custom-button {
-  background-color: var(--foreground-color-400);
+  background: var(--foreground-color-400);
   border: none;
   color: var(--text-color-primary);
   padding: 6px 12px;
@@ -468,7 +470,7 @@ br[id*="buttonLink"] {
 
 .rpc-preview .link:hover,
 .rpc-preview .custom-button:hover {
-  background-color: var(--foreground-color-500);
+  background: var(--foreground-color-500);
 }
 
 .rpc-preview .custom-button {

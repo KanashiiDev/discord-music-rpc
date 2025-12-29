@@ -71,7 +71,19 @@ const pendingInlines = {};
   manifest.version = pkgVersion;
 
   // 4. Update manifest content_scripts to use compiledParsers.js and <all_urls>
-  const defaultJSFiles = ["libs/browser-polyfill.js", "libs/pako.js", "libs/flatpickr.js", "rpcStateManager.js", "mainParser.js", "compiledParsers.js", "popup/selector/selector.js", "main.js"];
+  const defaultJSFiles = [
+    "libs/browser-polyfill.js",
+    "libs/pako.js",
+    "libs/flatpickr.js",
+    "libs/tinycolor.js",
+    "libs/iro@5.js",
+    "rpcStateManager.js",
+    "keepAliveManager.js",
+    "mainParser.js",
+    "compiledParsers.js",
+    "popup/selector/selector.js",
+    "main.js",
+  ];
 
   if (!manifest.content_scripts) {
     manifest.content_scripts = [];
@@ -359,10 +371,21 @@ const pendingInlines = {};
     });
   }
 
+  // --- INLINE UTILITIES REGISTRATION START ---
+
+  // CONFIG
   inlineUtilsFunctions(["background.js", "common/utils.js", "mainParser.js"], "config.js", []);
+
+  // Truncate
   inlineUtilsFunctions(["common/utils.js", "popup/selector/selector.js", "popup/selector/components/preview.js", "background.js"], "../utils.js", ["truncate", "normalizeTitleAndArtist"]);
-  inlineUtilsFunctions("main.js", "common/utils.js", ["delay", "overridesApplied", "applyOverrides", "applyOverridesLoop"]);
+
+  // Delay
+  inlineUtilsFunctions("main.js", "common/utils.js", ["delay"]);
+
+  // Logs
   inlineUtilsFunctions(["background.js"], "common/utils.js", ["logInfo", "logWarn", "errorFilter", "shouldIgnore", "logError", "delay"]);
+
+  // Background Utils
   inlineUtilsFunctions("background.js", "common/utils.js", [
     "parseUrlPattern",
     "normalizeHost",
@@ -375,8 +398,18 @@ const pendingInlines = {};
     "getSenderTab",
     "isAllowedDomain",
     "isDomainMatch",
+    "sendAction",
+    "restartExtension",
+    "toggleDebugMode",
+    "factoryResetConfirm",
+    "factoryResetTimer",
+    "factoryResetTimeout",
+    "factoryReset",
   ]);
+
   inlineUtilsFunctions("background.js", ["manager/userScriptWorker.js", "background/historyBackground.js", "background/backgroundListeners.js"], []);
+
+  // Popup Selector Utils
   inlineUtilsFunctions("popup/selector/selector.js", "common/utils.js", ["throttle", "formatLabel", "getExistingElementSelector", "getPlainText", "getIconAsDataUrl", "parseRegexArray"]);
   inlineUtilsFunctions(
     "popup/selector/selector.js",
@@ -392,6 +425,7 @@ const pendingInlines = {};
     []
   );
 
+  // Main Parser Utils
   inlineUtilsFunctions("mainParser.js", "common/utils.js", [
     "logInfo",
     "logWarn",
@@ -422,6 +456,8 @@ const pendingInlines = {};
 
   // User Script Manager
   inlineUtilsFunctions("manager/userScriptManager.js", "manager/components/UseSettingEditor.js", []);
+
+  // --- INLINE UTILITIES REGISTRATION END ---
 
   // Build the inlined functions
   buildInlineFunctions();

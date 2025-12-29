@@ -175,9 +175,7 @@ const popupModule = {
 
     // Open userScript Manager
     this.listeners.openManager = async () => {
-      const themeStorage = await browser.storage.local.get("theme");
-      const theme = themeStorage.theme || "dark";
-      await openUserScriptManager(null, theme);
+      await openUserScriptManager();
     };
     document.getElementById("openManager").addEventListener("click", this.listeners.openManager);
 
@@ -191,6 +189,7 @@ const popupModule = {
       try {
         let theme = await browser.storage.local.get("theme");
         document.body.dataset.theme = theme.theme || "dark";
+        document.documentElement.dataset.theme = theme.theme || "dark";
         clearTimeout(buttonDisableTimeout);
         const isEdit = button.textContent.includes("Edit");
         const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
@@ -200,6 +199,7 @@ const popupModule = {
             action: "startSelectorUI",
             editMode: isEdit,
             theme: theme.theme || "dark",
+            style: getCurrentStyleAttributes(),
           });
           window.close();
         } else {
@@ -252,6 +252,7 @@ domLoadedListener = async () => {
     // Set Theme
     let theme = await browser.storage.local.get("theme");
     document.body.dataset.theme = theme.theme || "dark";
+    document.documentElement.dataset.theme = theme.theme || "dark";
 
     // Initial Setup
     const setup = await browser.storage.local.get("initialSetupDone");
@@ -291,6 +292,7 @@ domLoadedListener = async () => {
   // Apply Custom Colors
   await new Promise((resolve) => requestAnimationFrame(() => resolve()));
   applyColorSettings();
+  applyBackgroundSettings();
 };
 
 document.addEventListener("DOMContentLoaded", domLoadedListener);

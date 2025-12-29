@@ -7,9 +7,10 @@ async function renderSettings() {
 
   // Theme Switch
   let themeStorage = await browser.storage.local.get("theme");
-  let themeConfig = themeStorage.theme || {};
+  let themeConfig = themeStorage.theme || "dark";
   const themeWrap = document.createElement("div");
   themeWrap.className = "settings-option theme-wrapper";
+
   // Theme Label
   const themeLabel = document.createElement("label");
   themeLabel.textContent = "Theme";
@@ -18,20 +19,31 @@ async function renderSettings() {
   const themeInput = document.createElement("select");
   const themes = ["dark", "light"];
   themeInput.className = "settings-select";
-  themeInput.value = themeConfig || "dark";
+  themeInput.value = themeConfig;
 
   const themeDebounce = debounce(async () => {
     themeConfig = themeInput.value;
-    await browser.storage.local.set({ theme: themeConfig });
-    document.body.dataset.theme = themeInput.value;
-    const COLORS = getColorSettings();
-    const colorInputs = document.querySelectorAll("#settingsContainer [type='color']");
 
-    for (const input of colorInputs) {
-      const key = input.dataset.key || input.id.replace("Input", "");
-      const item = COLORS.find((x) => x.key === key);
-      if (item) input.value = item.default;
-    }
+    await browser.storage.local.set({ theme: themeConfig });
+
+    document.documentElement.setAttribute("data-theme", themeConfig);
+    document.body.setAttribute("data-theme", themeConfig);
+    document.body.style = "";
+
+    colorConfig = {};
+    await browser.storage.local.remove("colorSettings");
+    await applyColorSettings();
+    await applyBackgroundSettings();
+
+    // Wait for two animation frames to ensure styles are applied
+    await new Promise((resolve) =>
+      requestAnimationFrame(() => {
+        requestAnimationFrame(resolve);
+      })
+    );
+
+    // Update all swatches and picker if open
+    await updateAllSwatchesForTheme();
   }, 300);
 
   themeInput.addEventListener("input", themeDebounce);
@@ -50,7 +62,213 @@ async function renderSettings() {
   themeWrap.appendChild(themeInput);
   panelContainer.appendChild(themeWrap);
 
-  // Color Settings
+  // BACKGROUND IMAGE SETTINGS
+  // Load saved background settings
+  let bgStorage = await browser.storage.local.get("backgroundSettings");
+  let bgSettings = bgStorage.backgroundSettings || {
+    image: null,
+    blur: 0,
+    brightness: 100,
+    saturation: 100,
+  };
+
+  // Helper functions
+  async function saveBgSettings() {
+    await browser.storage.local.set({ backgroundSettings: bgSettings });
+  }
+
+  // Background Image URL
+  const bgUrlWrapper = document.createElement("div");
+  bgUrlWrapper.className = "settings-option bg-url-wrapper";
+
+  const bgUrlLabel = document.createElement("label");
+  bgUrlLabel.textContent = "Background Image";
+
+  const bgUrlControl = document.createElement("div");
+  bgUrlControl.className = "bg-url-control";
+
+  const urlInput = document.createElement("input");
+  urlInput.type = "text";
+  urlInput.placeholder = "image URL...";
+  urlInput.className = "bg-url-input settings-input";
+  urlInput.value = bgSettings.image || "";
+
+  // Expand button
+  const btnExpand = document.createElement("span");
+  btnExpand.appendChild(createSVG(svg_paths.gearIconPaths));
+  btnExpand.className = "bg-expand-btn button";
+  btnExpand.title = "Show/Hide Options";
+
+  // URL input handler
+  const urlInputDebounce = debounce(async () => {
+    const url = urlInput.value.trim();
+
+    if (!url) {
+      bgSettings.image = null;
+      btnDeleteBg.classList.add("disabled");
+    } else {
+      bgSettings.image = url;
+      btnDeleteBg.classList.remove("disabled");
+    }
+
+    await saveBgSettings();
+    applyBackgroundSettings();
+  }, 500);
+
+  urlInput.addEventListener("input", urlInputDebounce);
+
+  bgUrlControl.appendChild(urlInput);
+  bgUrlControl.appendChild(btnExpand);
+
+  bgUrlWrapper.appendChild(bgUrlLabel);
+  bgUrlWrapper.appendChild(bgUrlControl);
+
+  // Delete button for URL
+  const btnDeleteBg = document.createElement("span");
+  btnDeleteBg.appendChild(createSVG(svg_paths.crossIconPaths));
+  btnDeleteBg.className = "color-delete-btn button";
+  btnDeleteBg.title = "Remove Background";
+  if (!bgSettings.image) {
+    btnDeleteBg.classList.add("disabled");
+  }
+
+  btnDeleteBg.addEventListener("click", async () => {
+    bgSettings = {
+      image: null,
+      blur: 0,
+      brightness: 100,
+      saturation: 100,
+      positionX: 50,
+    };
+    await saveBgSettings();
+
+    urlInput.value = "";
+    btnDeleteBg.classList.add("disabled");
+
+    // Reset slider values
+    blurWrapper.querySelector("input").value = 0;
+    blurWrapper.querySelector(".slider-value").textContent = "0px";
+    brightnessWrapper.querySelector("input").value = 100;
+    brightnessWrapper.querySelector(".slider-value").textContent = "100%";
+    saturationWrapper.querySelector("input").value = 100;
+    saturationWrapper.querySelector(".slider-value").textContent = "100%";
+
+    applyBackgroundSettings();
+  });
+
+  bgUrlWrapper.appendChild(btnDeleteBg);
+  panelContainer.appendChild(bgUrlWrapper);
+
+  // Expandable section container
+  const bgExpandableSection = document.createElement("div");
+  bgExpandableSection.className = "bg-expandable-section hidden";
+
+  // Blur control
+  const blurWrapper = document.createElement("div");
+  blurWrapper.className = "settings-option";
+
+  const blurLabel = document.createElement("label");
+  blurLabel.textContent = "Blur";
+
+  const blurControl = createSliderControl(0, 20, 1, bgSettings.blur, "px", async (value) => {
+    bgSettings.blur = value;
+    await saveBgSettings();
+    applyBackgroundSettings();
+  });
+
+  blurWrapper.appendChild(blurLabel);
+  blurWrapper.appendChild(blurControl);
+  bgExpandableSection.appendChild(blurWrapper);
+
+  // Brightness control
+  const brightnessWrapper = document.createElement("div");
+  brightnessWrapper.className = "settings-option";
+
+  const brightnessLabel = document.createElement("label");
+  brightnessLabel.textContent = "Brightness";
+
+  const brightnessControl = createSliderControl(0, 200, 1, bgSettings.brightness, "%", async (value) => {
+    bgSettings.brightness = value;
+    await saveBgSettings();
+    applyBackgroundSettings();
+  });
+
+  brightnessWrapper.appendChild(brightnessLabel);
+  brightnessWrapper.appendChild(brightnessControl);
+  bgExpandableSection.appendChild(brightnessWrapper);
+
+  // Saturation control
+  const saturationWrapper = document.createElement("div");
+  saturationWrapper.className = "settings-option";
+
+  const saturationLabel = document.createElement("label");
+  saturationLabel.textContent = "Saturation";
+
+  const saturationControl = createSliderControl(0, 200, 1, bgSettings.saturation, "%", async (value) => {
+    bgSettings.saturation = value;
+    await saveBgSettings();
+    applyBackgroundSettings();
+  });
+
+  saturationWrapper.appendChild(saturationLabel);
+  saturationWrapper.appendChild(saturationControl);
+  bgExpandableSection.appendChild(saturationWrapper);
+
+  // Position X control
+  const posXWrapper = document.createElement("div");
+  posXWrapper.className = "settings-option";
+  const posXLabel = document.createElement("label");
+  posXLabel.textContent = "Position";
+  const posXControl = createSliderControl(0, 100, 1, bgSettings.positionX || 50, "%", async (value) => {
+    bgSettings.positionX = value;
+    await saveBgSettings();
+    applyBackgroundSettings();
+  });
+  posXWrapper.appendChild(posXLabel);
+  posXWrapper.appendChild(posXControl);
+  bgExpandableSection.appendChild(posXWrapper);
+
+  bgUrlWrapper.appendChild(bgExpandableSection);
+
+  // Expand button click handler
+  btnExpand.addEventListener("click", () => {
+    bgExpandableSection.classList.toggle("hidden");
+    btnExpand.classList.toggle("expanded");
+  });
+
+  function createSliderControl(min, max, step, value, unit, onChange) {
+    const controlRow = document.createElement("div");
+    controlRow.className = "slider-row";
+
+    const slider = document.createElement("input");
+    slider.type = "range";
+    slider.min = min;
+    slider.max = max;
+    slider.step = step;
+    slider.value = value;
+    slider.className = "slider-input";
+
+    const valueDisplay = document.createElement("span");
+    valueDisplay.className = "slider-value";
+    valueDisplay.textContent = `${value}${unit}`;
+
+    const sliderDebounce = debounce(async () => {
+      const val = Number(slider.value);
+      valueDisplay.textContent = `${val}${unit}`;
+      await onChange(val);
+    }, 150);
+
+    slider.addEventListener("input", () => {
+      valueDisplay.textContent = `${slider.value}${unit}`;
+    });
+
+    slider.addEventListener("input", sliderDebounce);
+
+    controlRow.appendChild(slider);
+    controlRow.appendChild(valueDisplay);
+
+    return controlRow;
+  }
   let COLOR_SETTINGS = getColorSettings();
   let colorStorage = await browser.storage.local.get("colorSettings");
   let colorConfig = colorStorage.colorSettings || {};
@@ -59,25 +277,17 @@ async function renderSettings() {
     const wrap = document.createElement("div");
     wrap.className = "settings-option color-wrapper";
 
-    // Label
     const lbl = document.createElement("label");
     lbl.textContent = item.label;
-    lbl.setAttribute("for", item.key + "Input");
 
-    // Color Input
-    const inp = document.createElement("input");
-    inp.type = "color";
-    inp.id = item.key + "Input";
-    inp.className = "settings-input";
-    inp.value = colorConfig[item.key] || item.default;
+    const control = document.createElement("div");
+    control.className = "color-control";
 
-    const inpDebounce = debounce(async () => {
-      colorConfig[item.key] = inp.value;
-      await browser.storage.local.set({ colorSettings: colorConfig });
-      applyColorSettings();
-    }, 300);
+    const swatch = document.createElement("div");
+    swatch.className = "color-swatch";
 
-    inp.addEventListener("input", inpDebounce);
+    const initialColor = colorConfig[item.key] || item.default;
+    swatch.style.background = initialColor;
 
     // Delete Button
     const btnDelete = document.createElement("span");
@@ -85,22 +295,63 @@ async function renderSettings() {
     btnDelete.className = "color-delete-btn button";
     btnDelete.title = "Revert";
 
-    btnDelete.addEventListener("click", async () => {
-      delete colorConfig[item.key];
-      await browser.storage.local.set({ colorSettings: colorConfig });
-      document.body.style.removeProperty(item.cssVar);
-      const COLOR_SETTINGS = getColorSettings();
-      for (const item of COLOR_SETTINGS) {
-        inp.value = item.default;
+    // Update delete button initially
+    (async () => {
+      const storage = await browser.storage.local.get("colorSettings");
+      const config = storage.colorSettings || {};
+      const currentValue = config[item.key];
+
+      if (!currentValue || currentValue === item.default) {
+        btnDelete.classList.add("disabled");
+      } else {
+        btnDelete.classList.remove("disabled");
       }
-      applyColorSettings();
+    })();
+
+    // Delete button click
+    btnDelete.addEventListener("click", async (e) => {
+      document.body.style.transition = "none";
+      e.stopPropagation();
+
+      const storage = await browser.storage.local.get("colorSettings");
+      const config = storage.colorSettings || {};
+      delete config[item.key];
+      await browser.storage.local.set({ colorSettings: config });
+
+      const def = getDefaultCSSValue(item);
+      swatch.style.background = def;
+
+      await applyColorSettings();
+      await applyBackgroundSettings();
+      closePicker();
+      if (!def || def === item.default) {
+        btnDelete.classList.add("disabled");
+      } else {
+        btnDelete.classList.remove("disabled");
+      }
+      setTimeout(() => {
+        document.body.style.transition = "";
+      }, 50);
     });
 
+    // Swatch click → open picker
+    swatch.addEventListener("click", (e) => {
+      e.stopPropagation();
+      openPickerForSwatch(item, swatch, btnDelete);
+    });
+
+    control.appendChild(swatch);
     wrap.appendChild(lbl);
-    wrap.appendChild(inp);
+    wrap.appendChild(control);
     wrap.appendChild(btnDelete);
+
     panelContainer.appendChild(wrap);
   }
+
+  // Close picker when clicking outside
+  document.addEventListener("click", () => {
+    closePicker();
+  });
 
   // Port
   const portWrapper = document.createElement("div");
@@ -157,6 +408,7 @@ async function renderSettings() {
 
   panelContainer.appendChild(portWrapper);
   portWrapper.insertAdjacentElement("afterend", portInfo);
+
   // Buttons
   const createButton = (text, id) => {
     const btn = document.createElement("a");
@@ -165,6 +417,7 @@ async function renderSettings() {
     btn.id = id;
     return btn;
   };
+
   const stored = (await browser.storage.local.get("debugMode")).debugMode;
   const debugState = stored ?? CONFIG.debugMode;
   const btnRestart = createButton("Restart Extension", "restart");
@@ -231,7 +484,7 @@ async function renderSettings() {
       btnFactory.textContent = "This will reset this extension. Confirm.";
       btnFactory.classList.add("active");
       setTimeout(() => {
-        btnFactory.textContent = "Factory Reset";
+        btnFactory.textContent = "Factory Reset (Default Settings)";
         btnFactory.classList.remove("active");
       }, 5000);
     }
@@ -240,4 +493,7 @@ async function renderSettings() {
   // Add to panel
   panelContainer.append(btnBackup, btnRestart, btnDebug, btnFactory);
   panel.appendChild(panelContainer);
+
+  // Apply background settings on load
+  applyBackgroundSettings();
 }

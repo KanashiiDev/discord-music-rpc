@@ -3,16 +3,16 @@ body {
   font-size: 75%;
   margin: 0;
   padding: 16px;
-  background-color: #696969;
+  background: #1e1e1e;
   width: 325px;
   color: var(--text-color-primary);
   opacity: 0;
-  -webkit-transition: opacity .6s;
-  transition: opacity .6s;
+  -webkit-transition: opacity 0.6s, background-color var(--transition-normal);
+  transition: opacity 0.6s, background-color var(--transition-normal);
 }
 
-body[data-theme] { 
-  background-color: var(--background-color);
+body[data-theme] {
+  background: var(--background-color);
   opacity: 1;
 }
 
@@ -228,7 +228,7 @@ a:hover {
 
 .simplebar-scrollbar:before,
 .simplebar-scrollbar.simplebar-visible:before {
-  background-color: var(--scrollbar-color);
+  background: var(--scrollbar-color);
   border-radius: var(--radius-lg);
   border: 1px solid var(--border-color);
   opacity: 1;
@@ -239,11 +239,11 @@ a:hover {
 }
 
 .simplebar-scrollbar:hover:before {
-  background-color: var(--scrollbar-color-hover) !important;
+  background: var(--scrollbar-color-hover) !important;
 }
 
 #historyFilterMenuContent .simplebar-scrollbar:before {
-  background-color: var(--foreground-color-500);
+  background: var(--foreground-color-500);
 }
 
 .simplebar-horizontal .simplebar-scrollbar:before {
@@ -270,7 +270,8 @@ body,
 #historyPanel,
 #siteList,
 #historyStatsPanel,
-#historyFilterMenuContent {
+#historyFilterMenuContent,
+#gradientColorList {
   scrollbar-width: none;
   -ms-overflow-style: none;
 }
@@ -278,7 +279,8 @@ body,
 #historyPanel::-webkit-scrollbar,
 #siteList::-webkit-scrollbar,
 #historyStatsPanel::-webkit-scrollbar,
-#historyFilterMenuContent::-webkit-scrollbar {
+#historyFilterMenuContent::-webkit-scrollbar,
+#gradientColorList::-webkit-scrollbar {
   display: none;
 }
 
@@ -315,11 +317,31 @@ body,
   padding: 8px;
   margin: 2px;
   border-radius: var(--radius-md);
-  background-color: var(--foreground-color-200);
+  background: var(--foreground-color-200);
   -webkit-box-shadow: 0 1px 3px var(--shadow-color);
   box-shadow: 0 1px 3px var(--shadow-color);
   -webkit-transition: background var(--transition-normal);
   transition: background var(--transition-normal);
+}
+
+.bg-expand-btn,
+.color-delete-btn,
+.port-apply-btn {
+  opacity: 1;
+  padding: 5px;
+  margin: 0;
+  height: 17px;
+  width: 17px;
+  pointer-events: auto;
+  -webkit-transition: opacity 0.2s ease, width 0.2s ease, padding 0.2s ease, margin 0.2s ease;
+  transition: opacity 0.2s ease, width 0.2s ease, padding 0.2s ease, margin 0.2s ease;
+}
+
+.color-delete-btn.disabled {
+  opacity: 0;
+  pointer-events: none;
+  width: 0;
+  padding: 5px 0;
 }
 
 .settings-btn.active,
@@ -339,19 +361,19 @@ body,
 #openManager:hover,
 #clearHistoryBtn:hover,
 #cancelCleanBtn:hover {
-  background-color: var(--foreground-color-300);
+  background: var(--foreground-color-300);
 }
 
 .settings-btn#debugMode.active {
-  background-color: var(--accent-color);
+  background: var(--accent-color);
 }
 
 .settings-btn#debugMode.active:hover {
-  background-color: var(--accent-color-bright);
+  background: var(--accent-color-bright);
 }
 
 .settings-btn#factoryReset.active {
-  background-color: var(--alert-color);
+  background: var(--alert-color);
 }
 
 .button,
@@ -391,7 +413,7 @@ body,
   position: relative;
   width: 34px;
   height: 20px;
-  background-color: var(--foreground-color-500);
+  background: var(--foreground-color-400);
   border-radius: 20px;
   -webkit-transition: var(--transition-normal);
   transition: var(--transition-normal);
@@ -399,7 +421,7 @@ body,
 }
 
 .slider:hover {
-  background-color: var(--foreground-color-500);
+  background: var(--foreground-color-400);
 }
 
 .slider::before {
@@ -412,14 +434,14 @@ body,
   -webkit-transform: translateY(-50%);
   -ms-transform: translateY(-50%);
   transform: translateY(-50%);
-  background-color: var(--switch-toggle-color);
+  background: var(--switch-toggle-color);
   border-radius: 50%;
   -webkit-transition: var(--transition-normal);
   transition: var(--transition-normal);
 }
 
 .switch-label input:checked + .slider {
-  background-color: var(--accent-color);
+  background: var(--accent-color);
 }
 
 .switch-label input:checked + .slider::before {
@@ -465,7 +487,7 @@ body[data-section="history"] footer {
   max-height: 20px;
   margin-bottom: 12px;
   font-size: var(--font-lg);
-  background-color: var(--foreground-color-100);
+  background: var(--foreground-color-200);
   color: var(--text-color-primary);
   -webkit-box-shadow: var(--shadow-color) 0px 0px 3px;
   box-shadow: var(--shadow-color) 0px 0px 3px;
@@ -483,6 +505,101 @@ body[data-section="history"] footer {
 #historySearchBox {
   width: calc(100% - 44px);
   padding-right: 30px;
+}
+
+#historySearchBox::-webkit-input-placeholder,
+#searchBox::-webkit-input-placeholder {
+  color: var(--text-color-muted);
+}
+
+#historySearchBox::-webkit-input-placeholder,
+#searchBox::-webkit-input-placeholder {
+  color: var(--text-color-muted);
+}
+
+#historySearchBox::-webkit-input-placeholder,
+#searchBox::-webkit-input-placeholder {
+  color: var(--text-color-muted);
+}
+
+#historySearchBox::-webkit-input-placeholder,
+#searchBox::-webkit-input-placeholder {
+  color: var(--text-color-muted);
+}
+
+#historySearchBox::-webkit-input-placeholder,
+#searchBox::-webkit-input-placeholder {
+  color: var(--text-color-muted);
+}
+
+#historySearchBox::-webkit-input-placeholder,
+#searchBox::-webkit-input-placeholder {
+  color: var(--text-color-muted);
+}
+
+#historySearchBox::-webkit-input-placeholder,
+#searchBox::-webkit-input-placeholder {
+  color: var(--text-color-muted);
+}
+
+#historySearchBox::-webkit-input-placeholder,
+#searchBox::-webkit-input-placeholder {
+  color: var(--text-color-muted);
+}
+
+#historySearchBox::-webkit-input-placeholder,
+#searchBox::-webkit-input-placeholder {
+  color: var(--text-color-muted);
+}
+
+#historySearchBox::-webkit-input-placeholder,
+#searchBox::-webkit-input-placeholder {
+  color: var(--text-color-muted);
+}
+
+#historySearchBox::-webkit-input-placeholder,
+#searchBox::-webkit-input-placeholder {
+  color: var(--text-color-muted);
+}
+
+#historySearchBox::-webkit-input-placeholder,
+#searchBox::-webkit-input-placeholder {
+  color: var(--text-color-muted);
+}
+
+#historySearchBox::-webkit-input-placeholder,
+#searchBox::-webkit-input-placeholder {
+  color: var(--text-color-muted);
+}
+
+#historySearchBox::-webkit-input-placeholder,
+#searchBox::-webkit-input-placeholder {
+  color: var(--text-color-muted);
+}
+
+#historySearchBox::-webkit-input-placeholder,
+#searchBox::-webkit-input-placeholder {
+  color: var(--text-color-muted);
+}
+
+#historySearchBox::-webkit-input-placeholder,
+#searchBox::-webkit-input-placeholder {
+  color: var(--text-color-muted);
+}
+
+#historySearchBox::-webkit-input-placeholder,
+#searchBox::-webkit-input-placeholder {
+  color: var(--text-color-muted);
+}
+
+#historySearchBox::-webkit-input-placeholder,
+#searchBox::-webkit-input-placeholder {
+  color: var(--text-color-muted);
+}
+
+#historySearchBox::-webkit-input-placeholder,
+#searchBox::-webkit-input-placeholder {
+  color: var(--text-color-muted);
 }
 
 #historySearchBox::-webkit-input-placeholder,
@@ -515,7 +632,7 @@ body[data-section="history"] footer {
 #historySearchBox:focus,
 #searchBox:focus {
   outline: none;
-  background-color: var(--foreground-color-300);
+  background: var(--foreground-color-300);
   border: 1px solid var(--accent-color);
 }
 
@@ -539,7 +656,6 @@ body[data-section="history"] footer {
 .parser-entry {
   position: relative;
   border-radius: var(--radius-default);
-  background-color: var(--background-color);
   color: var(--text-color-primary);
   cursor: default;
   -webkit-transform: scaleY(1);
@@ -634,7 +750,7 @@ body[data-section="history"] footer {
 }
 
 .parser-options h4 {
-  margin-bottom: 8px;
+  margin: 8px 0;
 }
 
 .settings-option,
@@ -669,6 +785,11 @@ body[data-section="history"] footer {
   flex: 1;
 }
 
+.settings-option > label:first-child,
+.parser-option > label:first-child {
+  pointer-events: none;
+}
+
 .settings-option input,
 .settings-option select,
 .parser-option input,
@@ -680,17 +801,6 @@ body[data-section="history"] footer {
 .settings-option input[type="text"],
 .parser-option input[type="text"] {
   padding: 2px 5px !important;
-}
-
-input[type="color"] {
-  border-radius: 8px;
-  appearance: none;
-  -moz-appearance: none;
-  -webkit-appearance: none;
-  background: none;
-  border: 0;
-  cursor: pointer;
-  padding: 0;
 }
 
 ::-webkit-color-swatch-wrapper {
@@ -718,7 +828,7 @@ input[type="color"] {
 .parser-option select {
   max-width: 120px;
   width: 100%;
-  background: var(--foreground-color-500);
+  background: var(--foreground-color-400);
   outline: 0;
   border: 0;
   border-radius: var(--radius-sm);
@@ -777,7 +887,7 @@ input[type="color"] {
   opacity: 0;
 }
 
-.hidden {
+.hidden:not(.bg-expandable-section.hidden) {
   display: none;
 }
 
@@ -866,7 +976,7 @@ body[data-theme="dark"] #githubLink img {
   -webkit-box-flex: 0;
   -ms-flex: 0;
   flex: 0;
-  background: var(--foreground-color-500);
+  background: var(--foreground-color-400);
 }
 
 .date-range-picker .picker-clear:hover {
@@ -884,7 +994,7 @@ body[data-theme="dark"] #githubLink img {
 .history-filter-menu {
   position: absolute;
   padding: 0 6px;
-  top: 25px;
+  top: 33px;
   left: 5px;
   border-bottom-left-radius: var(--radius-default);
   border-bottom-right-radius: var(--radius-default);
@@ -895,16 +1005,17 @@ body[data-theme="dark"] #githubLink img {
   z-index: 4;
   height: 0;
   overflow: hidden;
-  -webkit-transition: height var(--transition-normal) ease, padding var(--transition-normal) ease, top var(--transition-normal) ease;
-  transition: height var(--transition-normal) ease, padding var(--transition-normal) ease, top var(--transition-normal) ease;
+  -webkit-transition: height var(--transition-normal) ease, padding var(--transition-normal) ease, top var(--transition-normal) ease, opacity var(--transition-normal) ease;
+  transition: height var(--transition-normal) ease, padding var(--transition-normal) ease, top var(--transition-normal) ease, opacity var(--transition-normal) ease;
   width: calc(100% - 28px);
+  opacity: 0;
 }
 
 .history-filter-menu.open {
   padding: 6px;
-  padding-top: 10px;
+  padding-top: 2px;
   max-height: 160px;
-  top: 30px;
+  opacity: 1;
 }
 
 .history-filter-menu-content {
@@ -941,7 +1052,7 @@ body[data-theme="dark"] #githubLink img {
   -ms-flex-positive: 0;
   flex-grow: 0;
   border-radius: 50%;
-  background-color: var(--foreground-color-300);
+  background: var(--foreground-color-400);
   -webkit-transition: background var(--transition-normal) ease;
   transition: background var(--transition-normal) ease;
   cursor: pointer;
@@ -955,14 +1066,14 @@ body[data-theme="dark"] #githubLink img {
   height: inherit;
   border-radius: inherit;
   border: 0;
-  background-color: transparent;
+  background: transparent;
   background-size: contain;
   -webkit-box-shadow: inset 0 0 0 1px var(--border-color);
   box-shadow: inset 0 0 0 1px var(--border-color);
 }
 
 .history-filter-menu-content label > input:checked {
-  background-color: currentcolor;
+  background: currentcolor;
 }
 
 .history-filter-menu-content label > input:checked::before {
@@ -1029,7 +1140,6 @@ body[data-theme="dark"] #githubLink img {
   max-width: 323px;
   -webkit-box-sizing: border-box;
   box-sizing: border-box;
-  background: var(--background-color);
   display: none;
 }
 
@@ -1046,7 +1156,7 @@ body[data-theme="dark"] #githubLink img {
   -ms-flex-align: center;
   align-items: center;
   margin-bottom: 6px;
-  background-color: var(--foreground-color-200);
+  background: var(--foreground-color-200);
   -webkit-box-shadow: 0 1px 3px var(--shadow-color);
   box-shadow: 0 1px 3px var(--shadow-color);
   -webkit-transition: background var(--transition-normal) ease;
@@ -1086,7 +1196,7 @@ body[data-theme="dark"] #githubLink img {
 
 .history-entry:hover,
 .history-stats-artist-entry:hover {
-  background-color: var(--foreground-color-300);
+  background: var(--foreground-color-300);
 }
 
 .history-stats-artist-entry .artist-total {
@@ -1094,23 +1204,23 @@ body[data-theme="dark"] #githubLink img {
 }
 
 .history-stats-artist-entry.active .history-entry.artist-songs {
-  background-color: var(--foreground-color-300);
+  background: var(--foreground-color-300);
 }
 
 .history-stats-artist-entry.active:hover .history-entry.artist-songs {
-  background-color: var(--foreground-color-200);
+  background: var(--foreground-color-200);
 }
 
 .history-stats-artist-entry.active .history-entry.artist-songs:hover {
-  background-color: var(--foreground-color-400);
+  background: var(--foreground-color-400);
 }
 
 .history-entry.selected {
-  background-color: var(--history-entry-delete-color);
+  background: var(--history-entry-delete-color);
 }
 
 .history-entry img {
-  background-color: var(--foreground-color-200);
+  background: var(--foreground-color-200);
   width: 46px;
   height: 46px;
   border-radius: var(--radius-sm);
@@ -1197,7 +1307,7 @@ body.cleaning-mode .selected .history-trash {
   position: absolute;
   top: 0;
   left: 0;
-  background-color: var(--foreground-color-200);
+  background: var(--foreground-color-200);
   padding: 20px;
   border-radius: var(--radius-md);
   -webkit-box-shadow: 0 4px 8px var(--shadow-color);
@@ -1222,7 +1332,7 @@ body.cleaning-mode .selected .history-trash {
 }
 .setup-dialog button,
 .tutorial-dialog button {
-  background-color: var(--accent-color);
+  background: var(--accent-color);
   color: var(--text-color-primary);
   border: none;
   padding: 10px 15px;
@@ -1234,7 +1344,7 @@ body.cleaning-mode .selected .history-trash {
 
 .setup-dialog button:hover,
 .tutorial-dialog button:hover {
-  background-color: var(--accent-color-bright);
+  background: var(--accent-color-bright);
 }
 
 .setup-dialog .setup-link-container {
@@ -1244,7 +1354,7 @@ body.cleaning-mode .selected .history-trash {
   border-radius: var(--radius-default);
   padding: 6px;
   overflow: hidden;
-  background-color: var(--foreground-color-100);
+  background: var(--foreground-color-100);
 }
 
 .setup-dialog .setup-link-container .setup-link:nth-child(1),
@@ -1285,7 +1395,7 @@ body.cleaning-mode .selected .history-trash {
 .option-change-message {
   padding: 12px 16px;
   margin: 10px 0;
-  background-color: var(--foreground-color-100);
+  background: var(--foreground-color-100);
   border-radius: var(--radius-md);
   width: auto;
   color: var(--text-color-primary);
@@ -1319,7 +1429,7 @@ body.cleaning-mode .selected .history-trash {
 .spinner {
   border: 4px solid rgba(0, 0, 0, 0.1);
   border-left-color: var(--accent-color);
-  border-radius: 50%!important;
+  border-radius: 50% !important;
   width: 40px;
   height: 40px;
   -webkit-animation: spin 1s linear infinite;
@@ -1453,7 +1563,7 @@ body.cleaning-mode .selected .history-trash {
   cursor: pointer;
   color: var(--text-color-btn);
   border-radius: var(--radius-default);
-  background-color: var(--accent-color);
+  background: var(--accent-color);
   text-align: center;
   width: calc(100% - 20px);
   top: -24px;
@@ -1471,11 +1581,11 @@ body.cleaning-mode .selected .history-trash {
 }
 
 .popup-message.warning {
-  background-color: var(--warning-color);
+  background: var(--warning-color);
 }
 
 .popup-message.alert {
-  background-color: var(--alert-color);
+  background: var(--alert-color);
 }
 
 .popup-message-indicator {
@@ -1484,10 +1594,232 @@ body.cleaning-mode .selected .history-trash {
   left: -7px;
   width: calc(100% + 13px);
   height: 3px;
-  background-color: var(--text-color-muted);
+  background: var(--text-color-muted);
   -webkit-animation: loadingBar 3s ease-in-out;
   animation: loadingBar 3s ease-in-out;
   display: none;
+}
+.color-control {
+  position: relative;
+}
+
+.color-swatch {
+  width: 22px;
+  height: 22px;
+  border-radius: 4px;
+  border: 1px solid var(--border-color);
+  cursor: pointer;
+}
+
+.picker-popover {
+  position: absolute;
+  top: 0;
+  z-index: 1000;
+  background: var(--foreground-color-400);
+  padding: 6px;
+  border-radius: var(--radius-default);
+  -webkit-box-shadow: 0 4px 12px var(--shadow-color);
+  box-shadow: 0 4px 12px var(--shadow-color);
+  right: 0px;
+}
+
+.picker-popover-inner {
+  display: -webkit-box;
+  display: -ms-flexbox;
+  display: flex;
+  gap: 10px;
+}
+
+.bg-url-wrapper {
+  position: relative;
+}
+
+.bg-url-control {
+  display: -webkit-box;
+  display: -ms-flexbox;
+  display: flex;
+  -webkit-box-align: center;
+  -ms-flex-align: center;
+  align-items: center;
+  gap: 8px;
+  -webkit-box-flex: 1;
+  -ms-flex: 1;
+  flex: 1;
+}
+
+.bg-url-input {
+  -webkit-box-flex: 1;
+  -ms-flex: 1;
+  flex: 1;
+}
+
+.bg-expand-btn {
+  -webkit-transition: -webkit-transform 0.2s;
+  transition: -webkit-transform 0.2s;
+  transition: transform 0.2s;
+  transition: transform 0.2s, -webkit-transform 0.2s;
+}
+
+.bg-expand-btn.expanded {
+  -webkit-transform: rotate(180deg);
+  -ms-transform: rotate(180deg);
+  transform: rotate(180deg);
+}
+
+.bg-expandable-section {
+  -webkit-transition: all 0.3s ease;
+  transition: all 0.3s ease;
+  overflow: hidden;
+  position: absolute;
+  top: 35px;
+  background: var(--foreground-color-300);
+  z-index: 1001;
+  border-radius: var(--radius-default);
+  -webkit-box-shadow: 0 4px 12px var(--shadow-color);
+  box-shadow: 0 4px 12px var(--shadow-color);
+  padding: 6px;
+  height: 85px;
+  opacity: 1;
+  width: 290px;
+}
+
+.bg-expandable-section.hidden {
+  height: 0;
+  padding: 0 6px;
+  opacity: 0;
+}
+
+.slider-row {
+  display: -webkit-box;
+  display: -ms-flexbox;
+  display: flex;
+  -webkit-box-align: center;
+  -ms-flex-align: center;
+  align-items: center;
+  gap: 10px;
+}
+
+.slider-input {
+  -webkit-box-flex: 1;
+  -ms-flex: 1;
+  flex: 1;
+  height: 6px;
+}
+
+.slider-value {
+  min-width: 50px;
+  text-align: right;
+  font-size: 13px;
+  color: var(--text-color-secondary);
+}
+
+.IroBox {
+  border-radius: var(--radius-default) !important;
+}
+
+.IroColorPicker {
+  margin-bottom: 10px;
+}
+
+.colorCountContainer {
+  display: -webkit-box;
+  display: -ms-flexbox;
+  display: flex;
+  -webkit-box-align: center;
+  -ms-flex-align: center;
+  align-items: center;
+  gap: 8px;
+}
+
+.degree-slider-row {
+  display: -webkit-box;
+  display: -ms-flexbox;
+  display: flex;
+  -webkit-box-align: center;
+  -ms-flex-align: center;
+  align-items: center;
+  gap: 5px;
+}
+
+.degree-slider-row .slider-input {
+  -webkit-box-flex: 1;
+  -ms-flex: 1;
+  flex: 1;
+  margin: 0;
+}
+
+.hex-input-container > input {
+  background: var(--foreground-color-300) !important;
+  border-radius: 3px;
+  font-family: monospace;
+  font-size: 11px;
+  margin: 0;
+  max-width: calc(100% - 12px) !important;
+  margin-bottom: 8px;
+}
+
+.gradient-controls {
+  max-width: 160px;
+}
+
+.gradient-color-list {
+  max-height: 76px;
+  width: auto;
+  overflow: scroll;
+  padding: 4px;
+  border: 1px solid var(--border-color);
+  background: var(--foreground-color-200);
+  border-radius: 4px;
+  margin-top: 4px;
+  -webkit-box-shadow: 0 0 3px var(--shadow-color);
+  box-shadow: 0 0 3px var(--shadow-color);
+}
+
+span.gradient-color-btn.button {
+  height: 2px !important;
+  width: 13px !important;
+}
+
+.gradient-color-item {
+  display: -webkit-box;
+  display: -ms-flexbox;
+  display: flex;
+  -webkit-box-align: center;
+  -ms-flex-align: center;
+  align-items: center;
+  margin-bottom: 4px;
+  border-radius: 3px;
+  background: var(--foreground-color-300);
+}
+
+.gradient-color-item:last-child {
+  margin-bottom: 0;
+}
+
+.gradient-color-item .indicator {
+  width: 8px;
+  height: 18px;
+  margin: 0 2px;
+  margin-left: 0;
+  border-radius: 3px;
+  border: 1px solid var(--border-color);
+  background: var(--foreground-color-200);
+}
+
+.gradient-color-item .button {
+  width: 12px !important;
+  padding: 0;
+  background: var(--foreground-color-400);
+  border-radius: 0;
+}
+
+.gradient-color-item input {
+  border: 1px solid var(--border-color);
+  border-radius: 3px;
+  font-family: monospace;
+  font-size: 11px;
+  min-width: 0px;
+  margin: 0;
 }
 
 @-webkit-keyframes loadingBar {

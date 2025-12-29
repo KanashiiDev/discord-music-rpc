@@ -210,7 +210,7 @@ const CLASS_BLOCKLIST_PATTERNS = [
   /^dark:[a-z-]+[a-z0-9-]*$/i,
   /^(group|peer)-(hover|focus|active|disabled|checked):[a-z-]+[a-z0-9-]*$/i,
 
-  // Arbitrary values [değer] syntax
+  // Arbitrary values syntax
   /^\w+(-\w+)*-\[[^\]]+\]$/i,
 
   // CSS Modules & styled-components hashes

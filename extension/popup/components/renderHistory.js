@@ -80,7 +80,7 @@ async function renderHistory({ reset = true, query = "" } = {}) {
       lastRenderedHeader = header;
     }
 
-    const historyIndex = currentOffset - maxHistoryItemLoad + i;
+    const historyIndex = fullHistory.indexOf(entry);
     fragment.appendChild(createHistoryEntry(entry, historyIndex, "history"));
   });
 

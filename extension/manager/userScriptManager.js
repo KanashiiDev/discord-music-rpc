@@ -11,6 +11,7 @@ class UserScriptUI {
     this.refreshList();
     this.bindCodeEditor();
     this.checkUserScriptsPermission();
+    this.initStorageListener();
   }
 
   bindEvents() {
@@ -230,20 +231,47 @@ class UserScriptUI {
       logError("List fetch failed", listResp);
       return;
     }
+
     this.renderList(listResp.list || []);
 
-    // Popup Gear Click
-    const params = new URLSearchParams(window.location.search);
-    const theme = params.get("theme");
-    if (theme) {
-      document.body.dataset.theme = theme || "dark";
-    }
-    const target = params.get("target");
+    await this.restoreContext();
+  }
+
+  async restoreContext() {
+    const { managerContext } = await browser.storage.local.get("managerContext");
+    if (!managerContext) return;
+    const { target } = managerContext;
     if (target) {
-      const targetEl = document.querySelector(`.btnEdit[data-id="${target}"`);
-      if (targetEl) {
-        targetEl.scrollIntoView();
-        targetEl.click();
+      const el = document.querySelector(`.btnEdit[data-id="${target}"]`);
+      el?.scrollIntoView({ block: "center" });
+      el?.click();
+    }
+    const { styleAttrs } = await browser.storage.local.get("styleAttrs");
+    if (styleAttrs) {
+      document.body.setAttribute("style", styleAttrs);
+    }
+    // remove managerContext after restoring
+    await browser.storage.local.remove("managerContext");
+  }
+
+  initStorageListener() {
+    browser.storage.onChanged.addListener((changes, area) => {
+      if (area !== "local") return;
+      if (changes.styleAttrs) {
+        const styleString = changes.styleAttrs.newValue || "";
+        document.body.setAttribute("style", styleString);
+      }
+    });
+  }
+
+  applyStyles(styleObj = {}) {
+    const root = document.body;
+
+    for (const [key, value] of Object.entries(styleObj)) {
+      if (value == null) {
+        root.style.removeProperty(key);
+      } else {
+        root.style.setProperty(key, value);
       }
     }
   }

@@ -282,8 +282,8 @@ function updateHistory(history) {
 
       const img = document.createElement("img");
       img.className = "song-image lazyload";
-      img.dataset.src = song.image || "assets/icon.png";
-      img.src = "assets/icon.png";
+      img.dataset.src = song.image || "assets/icon-dark.png";
+      img.src = "assets/icon-dark.png";
       img.alt = song.title;
 
       const infoDiv = document.createElement("div");
@@ -387,7 +387,7 @@ async function updateMusicCard() {
         domCache.trackTitle.textContent = "No Music Playing";
         domCache.trackArtist.textContent = "Artist";
         domCache.trackSource.textContent = "Source";
-        domCache.coverImage.src = "assets/icon.png";
+        domCache.coverImage.src = "assets/icon-dark.png";
         domCache.progressFill.style.width = "0%";
         domCache.timePassed.textContent = "0:00";
         domCache.duration.textContent = "0:00";
@@ -419,7 +419,7 @@ async function updateMusicCard() {
       domCache.trackSource.textContent = newSource;
     }
 
-    const newCover = act.largeImageKey ?? "assets/icon.png";
+    const newCover = act.largeImageKey ?? "assets/icon-dark.png";
     if (domCache.coverImage.src !== newCover) {
       domCache.coverImage.src = newCover;
     }

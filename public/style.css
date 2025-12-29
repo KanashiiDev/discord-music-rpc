@@ -28,8 +28,8 @@
   --text-connected: #3cff7b;
   --text-disconnected: #ff4f4f;
   --text-button: #eeeeee;
-  --accent-color: #00545e;
-  --accent-color-bright: #00626d;
+  --accent-color: #425c83;
+  --accent-color-bright: #4e6f97;
   --card-shadow: rgba(0, 0, 0, 0.4);
   --container-shadow: rgba(0, 0, 0, 0.5);
   --progress-bg: #1a1a1a;
@@ -314,6 +314,10 @@ footer a:hover {
   object-fit: cover;
   box-shadow: 0 0 6px var(--card-shadow);
   background: var(--bg-card-bright);
+}
+
+img[src*="assets/icon-dark.png"] {
+    padding: 10px;
 }
 
 .music-info {

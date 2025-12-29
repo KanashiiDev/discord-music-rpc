@@ -27,12 +27,12 @@ const SELECTOR_CONSTANTS = {
 // User Add RPC - Add Selector UI to the page
 browser.runtime.onMessage.addListener((msg) => {
   if (msg.action === "startSelectorUI") {
-    injectSelectorUI(msg.editMode, msg.theme);
+    injectSelectorUI(msg.editMode, msg.theme, msg.style);
   }
 });
 
 // Main function
-async function injectSelectorUI(editMode = false, theme) {
+async function injectSelectorUI(editMode = false, theme = "dark", style = {}) {
   const hostname = getCleanHostname();
   if (document.getElementById("userRpc-selectorContainer")) return;
 
@@ -42,15 +42,17 @@ async function injectSelectorUI(editMode = false, theme) {
 
   const placeholderMap = createPlaceholderMap(hostname);
   const fields = getFieldList();
-  const root = createRootElement(theme);
-  createTitleElements(root, editMode);
+  const root = createRootElement(theme, style);
+  const content = root._contentLayer;
+
+  createTitleElements(content, editMode);
 
   const listItems = createFieldInputs(shadow, fields, placeholderMap);
-  root.appendChild(listItems);
+  content.appendChild(listItems);
 
-  createActionButtons(root, shadow);
-  createStatusElement(root);
-  createPreviewSection(root);
+  createActionButtons(content, shadow);
+  createStatusElement(content);
+  createPreviewSection(content);
 
   shadow.appendChild(root);
   await injectStyles(shadow);

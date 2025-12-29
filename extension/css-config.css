@@ -51,8 +51,8 @@
   --history-entry-delete-color: #4e1b1b;
   --warning-color: #7a6508;
   --alert-color: #782020;
-  --accent-color: #00545e;
-  --accent-color-bright: #00626d;
+  --accent-color: #425c83;
+  --accent-color-bright: #4e6f97;
   --switch-toggle-color: #ddd;
   --icon-color: #ddd;
   --red-color: #f44336;
@@ -100,6 +100,6 @@
   --red-color: #c90000;
   --orange-color: #c99000;
   --green-color: #28c900;
-  --accent-color: #00545e;
-  --accent-color-bright: #00626d;
+  --accent-color: #425c83;
+  --accent-color-bright: #4e6f97;
 }

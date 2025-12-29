@@ -80,23 +80,87 @@ const logError = (...a) => {
   }
 };
 
+// Update Color Delete Button Visibility
+function updateDeleteButtonVisibility(item, pickerValue, btnDelete, colorConfig) {
+  const currentValue = colorConfig[item.key];
+  const defaultValue = item.default;
+
+  // If there is no value in the config, it means the default is being used
+  if (!currentValue) {
+    btnDelete.classList.add("disabled");
+    return;
+  }
+
+  // Normalize both colors with tinycolor
+  const current = tinycolor(currentValue);
+  const defaultColor = tinycolor(defaultValue);
+
+  // Compare RGBA values
+  const currentRgba = current.toRgb();
+  const defaultRgba = defaultColor.toRgb();
+
+  const isDefault = currentRgba.r === defaultRgba.r && currentRgba.g === defaultRgba.g && currentRgba.b === defaultRgba.b && Math.abs(currentRgba.a - defaultRgba.a) < 0.01;
+
+  if (isDefault) {
+    btnDelete.classList.add("disabled");
+  } else {
+    btnDelete.classList.remove("disabled");
+  }
+}
+
 // Settings Panel - Color Settings
 function getColorSettings() {
   return [
     {
+      key: "backgroundColor",
+      label: "Background Color",
+      cssVar: "--background-color",
+      default: getCSSThemeDefault("--background-color"),
+    },
+    {
+      key: "foregroundColor",
+      label: "Foreground Color",
+      cssVar: "--foreground-color",
+      default: getCSSThemeDefault("--foreground-color-100"),
+    },
+    {
       key: "accentColor",
       label: "Accent Color",
       cssVar: "--accent-color",
-      default: getComputedStyle(document.body).getPropertyValue("--accent-color").trim(),
-    },
-    {
-      key: "accentColorBright",
-      label: "Accent Color Hover",
-      cssVar: "--accent-color-bright",
-      default: getComputedStyle(document.body).getPropertyValue("--accent-color-bright").trim(),
+      default: getCSSThemeDefault("--accent-color"),
     },
   ];
 }
+
+// Background Image settings
+async function applyBackgroundSettings() {
+  const bgStorage = await browser.storage.local.get("backgroundSettings");
+  const bgSettings = bgStorage.backgroundSettings;
+
+  if (!bgSettings || !bgSettings.image) {
+    document.body.style.backgroundImage = "";
+    document.body.style.backdropFilter = "";
+    return;
+  }
+
+  document.body.style.backgroundImage = `url(${bgSettings.image})`;
+  document.body.style.backgroundSize = "cover";
+  document.body.style.backgroundPosition = "center";
+  document.body.style.backgroundRepeat = "no-repeat";
+  document.body.style.backgroundPositionX = `${bgSettings.positionX}%`;
+  document.body.style.backdropFilter = `blur(${bgSettings.blur}px) brightness(${bgSettings.brightness}%) saturate(${bgSettings.saturation}%)`;
+  debounce(async () => {
+    // save style attribute to local storage
+    await browser.storage.local.set({ styleAttrs: document.body.getAttribute("style") });
+  }, 100)();
+}
+
+// Color Settings
+const saveStyleAttrs = debounce(async () => {
+  await browser.storage.local.set({
+    styleAttrs: document.body.getAttribute("style"),
+  });
+}, 100);
 
 async function applyColorSettings() {
   const stored = await browser.storage.local.get("colorSettings");
@@ -109,8 +173,131 @@ async function applyColorSettings() {
       document.body.style.setProperty(item.cssVar, val);
     } else {
       document.body.style.removeProperty(item.cssVar);
+      
+      // Clear derived colors when the foreground is deleted
+      if (item.key === "foregroundColor") {
+        for (let i = 1; i <= 7; i++) {
+          document.body.style.removeProperty(`--foreground-color-${i * 100}`);
+        }
+      }
     }
   }
+
+  // Foreground derivation
+  if (config.foregroundColor) {
+    const theme = document.body.getAttribute("data-theme") || "dark";
+
+    // Gradient handling
+    if (isGradient(config.foregroundColor)) {
+      const gradientInfo = parseGradient(config.foregroundColor);
+      const fgScaleGradients = generateForegroundScaleGradients(gradientInfo, theme);
+
+      fgScaleGradients.forEach((gradient, index) => {
+        document.body.style.setProperty(`--foreground-color-${(index + 1) * 100}`, gradient);
+      });
+    } else {
+      const fgScale = generateForegroundScale(config.foregroundColor, theme);
+      fgScale.forEach((color, index) => {
+        document.body.style.setProperty(`--foreground-color-${(index + 1) * 100}`, color);
+      });
+    }
+  }
+
+  // Accent color bright variant
+  if (config.accentColor) {
+    if (isGradient(config.accentColor)) {
+      const colors = extractGradientColors(config.accentColor);
+      if (colors.length > 0) {
+        const base = tinycolor(colors[0]);
+        const alpha = base.getAlpha();
+        const bright = base.clone().lighten(12);
+        bright.setAlpha(alpha);
+        document.body.style.setProperty("--accent-color-bright", bright.toRgbString());
+      }
+    } else {
+      const base = tinycolor(config.accentColor);
+      const alpha = base.getAlpha();
+      const bright = base.clone().lighten(12);
+      bright.setAlpha(alpha);
+      document.body.style.setProperty("--accent-color-bright", bright.toRgbString());
+    }
+  } else {
+    // Clear the bright variant when the accent color is deleted
+    document.body.style.removeProperty("--accent-color-bright");
+  }
+
+  saveStyleAttrs();
+}
+
+// Check if value is a gradient
+function isGradient(value) {
+  return value && value.includes("linear-gradient");
+}
+
+// Parse the gradient (degree and colors)
+function parseGradient(gradientString) {
+  const degreeMatch = gradientString.match(/linear-gradient\((\d+)deg/);
+  const degree = degreeMatch ? degreeMatch[1] : "90";
+  const colors = extractGradientColors(gradientString);
+  return { degree, colors };
+}
+
+// Extract colors from the gradient
+function extractGradientColors(gradientString) {
+  const match = gradientString.match(/rgba?\([^)]+\)/g);
+  return match || [];
+}
+
+// Create foreground scales for the gradient (each one is a gradient)
+function generateForegroundScaleGradients(gradientInfo, theme = "dark") {
+  const { degree, colors } = gradientInfo;
+  const steps = [0, 6, 12, 18, 26, 36, 48];
+
+  return steps.map((step) => {
+    // Lighten/darken for each color
+    const scaledColors = colors.map((color) => {
+      const base = tinycolor(color);
+      const alpha = base.getAlpha();
+      const scaled = theme === "dark" ? base.clone().lighten(step) : base.clone().darken(step);
+      scaled.setAlpha(alpha);
+      return scaled.toRgbString();
+    });
+
+    // Create new gradient
+    return `linear-gradient(${degree}deg, ${scaledColors.join(", ")})`;
+  });
+}
+
+// Create foreground scales for a single color
+function generateForegroundScale(baseColor, theme = "dark") {
+  const base = tinycolor(baseColor);
+  const alpha = base.getAlpha();
+
+  const steps = [0, 6, 12, 18, 26, 36, 48];
+
+  return steps.map((step) => {
+    const color = theme === "dark" ? base.clone().lighten(step) : base.clone().darken(step);
+    color.setAlpha(alpha);
+    return color.toRgbString();
+  });
+}
+
+// Get the default value from CSS
+function getCSSThemeDefault(cssVar) {
+  const computed = getComputedStyle(document.documentElement).getPropertyValue(cssVar).trim();
+
+  // If there is a value, convert it to RGBA format
+  if (computed) {
+    const color = tinycolor(computed);
+    return color.toRgbString();
+  }
+}
+
+function getDefaultCSSValue(item) {
+  if (item.key === "foregroundColor") {
+    return getCSSThemeDefault("--foreground-color-100");
+  }
+  return getCSSThemeDefault(item.cssVar);
 }
 
 // Delay
@@ -1460,26 +1647,38 @@ async function sendAction(action, payload = {}, retry = 0) {
   }
 }
 
-// Open User Script Manager
-async function openUserScriptManager(id, theme) {
-  const url = browser.runtime.getURL(`manager/userScriptManager.html${theme ? `?theme=${theme}` : ""}${id ? `?target=${id}` : ""}`);
-  try {
-    const tabs = await browser.tabs.query({ url });
-    if (tabs && tabs.length > 0) {
-      const tab = tabs[0];
-      await browser.tabs.update(tab.id, { active: true });
-      try {
-        await browser.windows.update(tab.windowId, { focused: true });
-      } catch (e) {}
-      window.close();
-      return;
-    }
+function getCurrentStyleAttributes() {
+  const styleAttrs = {};
+  const rootStyles = document.body.style;
 
-    await browser.tabs.create({ url });
-    window.close();
-  } catch (err) {
-    logError("Open manager failed:", err);
+  for (const name of rootStyles) {
+    rootStyles.getPropertyValue(name) && (styleAttrs[name] = rootStyles.getPropertyValue(name));
   }
+
+  return styleAttrs;
+}
+
+// Open User Script Manager
+async function openUserScriptManager(id) {
+  const url = browser.runtime.getURL("manager/userScriptManager.html");
+  await browser.storage.local.set({
+    managerContext: {
+      target: id,
+    },
+  });
+
+  const tabs = await browser.tabs.query({ url });
+  if (tabs.length > 0 && tabs[0].id) {
+    // if tab is already open → refresh it
+    await browser.tabs.reload(tabs[0].id);
+    await browser.tabs.update(tabs[0].id, { active: true });
+    window.close();
+    return;
+  }
+
+  // if tab is not open → create new tab
+  await browser.tabs.create({ url });
+  window.close();
 }
 
 // Load all favicons

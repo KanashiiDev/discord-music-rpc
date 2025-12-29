@@ -41,10 +41,25 @@ function getFieldList() {
   return ["name", "title", "artist", "timePassed", "duration", "image", "link", "source", "buttonText", "buttonLink", "buttonText2", "buttonLink2", "regex"];
 }
 
-function createRootElement(theme) {
+function createRootElement(theme, style = {}) {
   const root = document.createElement("div");
   root.id = "userRpc-selectorRoot";
   root.dataset.theme = theme || "dark";
+
+  const contentLayer = document.createElement("div");
+  contentLayer.className = "content";
+
+  for (const [key, value] of Object.entries(style)) {
+    if (key === "backdrop-filter") {
+      contentLayer.style.setProperty(key, value);
+    } else {
+      root.style.setProperty(key, value);
+    }
+  }
+
+  root.appendChild(contentLayer);
+  root._contentLayer = contentLayer;
+
   return root;
 }
 
@@ -140,34 +155,44 @@ function createStatusElement(root) {
 
 // Make the selector draggable
 function setupDragFunctionality(root) {
+  const content = root._contentLayer;
+
   let isDragging = false;
   let hasMoved = false;
   let offsetX = 0;
   let offsetY = 0;
 
-  root.addEventListener("mousedown", function (e) {
-    if (e.target !== root) return;
+  content.addEventListener("mousedown", (e) => {
+    if (e.target !== e.currentTarget) return;
+
     isDragging = true;
-    offsetX = e.clientX - root.offsetLeft;
-    offsetY = e.clientY - root.offsetTop;
+
+    const rect = root.getBoundingClientRect();
+    offsetX = e.clientX - rect.left;
+    offsetY = e.clientY - rect.top;
+
+    e.preventDefault();
   });
 
-  document.addEventListener("mousemove", function (e) {
-    if (isDragging) {
-      hasMoved = true;
-      moveWithinBounds(e.clientX - offsetX, e.clientY - offsetY);
-    }
+  document.addEventListener("mousemove", (e) => {
+    if (!isDragging) return;
+
+    hasMoved = true;
+
+    const newLeft = e.clientX - offsetX;
+    const newTop = e.clientY - offsetY;
+
+    moveWithinBounds(newLeft, newTop);
   });
 
-  document.addEventListener("mouseup", function () {
+  document.addEventListener("mouseup", () => {
     isDragging = false;
   });
 
-  window.addEventListener("resize", function () {
+  window.addEventListener("resize", () => {
     if (hasMoved) {
       keepInsideViewport();
     } else {
-      // If no movement has been made, stay on the right side.
       const rect = root.getBoundingClientRect();
       root.style.left = window.innerWidth - rect.width - 15 + "px";
       root.style.top = "15px";
@@ -178,18 +203,13 @@ function setupDragFunctionality(root) {
     const maxLeft = window.innerWidth - root.offsetWidth;
     const maxTop = window.innerHeight - root.offsetHeight;
 
-    const newLeft = Math.max(0, Math.min(left, maxLeft));
-    const newTop = Math.max(0, Math.min(top, maxTop));
-
-    root.style.left = newLeft + "px";
-    root.style.top = newTop + "px";
+    root.style.left = Math.max(0, Math.min(left, maxLeft)) + "px";
+    root.style.top = Math.max(0, Math.min(top, maxTop)) + "px";
   }
 
   function keepInsideViewport() {
-    const currentLeft = parseInt(root.style.left || 0);
-    const currentTop = parseInt(root.style.top || 0);
-
-    moveWithinBounds(currentLeft, currentTop);
+    const rect = root.getBoundingClientRect();
+    moveWithinBounds(rect.left, rect.top);
   }
 }
 
@@ -435,7 +455,7 @@ function handleElementClick(e, field, shadowDoc, cleanup) {
   }
 
   let targetEl = el;
-  if (targetEl.id && targetEl.id === "userRpc-selectorContainer")  {
+  if (targetEl.id && targetEl.id === "userRpc-selectorContainer") {
     cleanup();
     showStatusMsg("", 0, 0, shadowDoc);
     return;
