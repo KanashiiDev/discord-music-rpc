@@ -12,7 +12,7 @@ const DEFAULT_PARSER_OPTIONS = {
 // Logs
 const logInfo = async (...args) => {
   const stored = await browser.storage.local.get("debugMode");
-  const debugMode = stored.debugMode ?? CONFIG.debugMode;
+  const debugMode = stored.debugMode === 1 ? true : CONFIG.debugMode;
   if (!debugMode) return;
 
   const prefix = "[DISCORD-MUSIC-RPC - INFO]";
@@ -25,7 +25,7 @@ const logInfo = async (...args) => {
 
 const logWarn = async (...args) => {
   const stored = await browser.storage.local.get("debugMode");
-  const debugMode = stored.debugMode ?? CONFIG.debugMode;
+  const debugMode = stored.debugMode === 1 ? true : CONFIG.debugMode;
   if (!debugMode) return;
 
   const prefix = "%c[DISCORD-MUSIC-RPC - WARN]%c";
@@ -385,146 +385,6 @@ const fetchWithTimeout = async (url, options = {}, timeout = 5000) => {
     throw err;
   }
 };
-
-// Keep Alive Tab
-let overridesApplied = false;
-function applyOverrides() {
-  if (overridesApplied) return;
-  overridesApplied = true;
-
-  // Property override
-  const singleOverrides = [
-    () => Object.defineProperty(document, "msHidden", { get: () => false, configurable: true }),
-    () => Object.defineProperty(document, "oHidden", { get: () => false, configurable: true }),
-    () => Object.defineProperty(document, "hidden", { get: () => false, configurable: true }),
-    () => Object.defineProperty(document, "visibilityState", { get: () => "visible", configurable: true }),
-
-    () => Object.defineProperty(document, "mozHidden", { get: () => false, configurable: true }),
-    () => Object.defineProperty(document, "webkitHidden", { get: () => false, configurable: true }),
-    () => Object.defineProperty(document, "webkitVisibilityState", { get: () => "visible", configurable: true }),
-
-    // Page Lifecycle API override
-    () => {
-      if ("lifecycle" in document) {
-        Object.defineProperty(document.lifecycle, "state", { get: () => "active", configurable: true });
-      }
-    },
-    () => {
-      if ("pageLifecycle" in document) {
-        Object.defineProperty(document.pageLifecycle, "state", { get: () => "active", configurable: true });
-      }
-    },
-  ];
-
-  singleOverrides.forEach((fn) => {
-    try {
-      fn();
-    } catch (e) {
-      logInfo("applyOverridesOnce error:", e);
-    }
-  });
-
-  // Event blocking override
-  try {
-    const originalDocumentAddEventListener = EventTarget.prototype.addEventListener;
-    const originalWindowAddEventListener = typeof window !== "undefined" && window.addEventListener;
-
-    if (originalDocumentAddEventListener && originalWindowAddEventListener) {
-      const events = ["visibilitychange", "webkitvisibilitychange", "mozvisibilitychange", "blur", "focus"];
-      events.forEach((eventName) => {
-        originalDocumentAddEventListener.call(document, eventName, (e) => e.stopImmediatePropagation(), true);
-        originalWindowAddEventListener.call(window, eventName, (e) => e.stopImmediatePropagation(), true);
-      });
-    }
-  } catch (e) {
-    logInfo("Event blocking override error:", e);
-  }
-  logInfo("RPC Keep Alive Overrides Applied");
-}
-
-// Keep Alive Tab - Overrides Loop
-function applyOverridesLoop() {
-  try {
-    // Title override
-    Object.defineProperty(document, "title", {
-      get: () => "Music Playing",
-      set: () => {},
-      configurable: true,
-    });
-  } catch (e) {
-    logInfo("Title override loop error:", e);
-  }
-
-  try {
-    // Focus override
-    document.hasFocus = () => true;
-  } catch (e) {
-    logInfo("hasFocus override loop error:", e);
-  }
-
-  // on<Event> null override
-  try {
-    const events = ["visibilitychange", "webkitvisibilitychange", "mozvisibilitychange", "blur", "focus"];
-    events.forEach((event) => {
-      try {
-        Object.defineProperty(document, "on" + event, {
-          get: () => null,
-          set: () => {},
-          configurable: true,
-        });
-      } catch (e) {
-        logInfo(`document.on${event} override loop error:`, e);
-      }
-      try {
-        Object.defineProperty(window, "on" + event, {
-          get: () => null,
-          set: () => {},
-          configurable: true,
-        });
-      } catch (e) {
-        logInfo(`window.on${event} override loop error:`, e);
-      }
-    });
-  } catch (e) {
-    logInfo("on<Event> null override loop error:", e);
-  }
-
-  // Page Freeze API event listener override
-  try {
-    if (!overridesApplied) {
-      window.addEventListener("freeze", (e) => e.stopImmediatePropagation(), true);
-      window.addEventListener("resume", (e) => e.stopImmediatePropagation(), true);
-    }
-  } catch (e) {
-    logInfo("Page Freeze API override loop error:", e);
-  }
-
-  // requestIdleCallback override
-  try {
-    if ("requestIdleCallback" in window) {
-      window.requestIdleCallback = function (callback) {
-        return setTimeout(() => callback({ timeRemaining: () => 50 }), 1);
-      };
-    }
-  } catch (e) {
-    logInfo("requestIdleCallback override loop error:", e);
-  }
-
-  // requestAnimationFrame override
-  window.requestAnimationFrame = (cb) => setTimeout(() => cb(performance.now()), 16);
-
-  // Pointer and Mouse Interaction Simulation
-  const x = Math.floor(Math.random() * window.innerWidth);
-  const y = Math.floor(Math.random() * window.innerHeight);
-  //Movement values ​​randomly between -10 and 10
-  const movementX = Math.floor(Math.random() * 21) - 10; // -10..10
-  const movementY = Math.floor(Math.random() * 21) - 10;
-  const mouseEvent = new MouseEvent("mousemove", { bubbles: true, cancelable: true, clientX: x, clientY: y, movementX: movementX, movementY: movementY });
-  document.dispatchEvent(mouseEvent);
-
-  const keyboardEvent = new KeyboardEvent("keydown", { bubbles: true, key: "Shift" });
-  document.dispatchEvent(keyboardEvent);
-}
 
 // Create SVG
 const svgCache = new Map();
@@ -1132,14 +992,14 @@ function encodeValue(value) {
   if (value instanceof Uint8Array) {
     return {
       __type: "uint8array",
-      data: btoa(String.fromCharCode(...value))
+      data: btoa(String.fromCharCode(...value)),
     };
   }
   if (value instanceof ArrayBuffer) {
     const uint8 = new Uint8Array(value);
     return {
       __type: "arraybuffer",
-      data: btoa(String.fromCharCode(...uint8))
+      data: btoa(String.fromCharCode(...uint8)),
     };
   }
   return value;
@@ -1189,7 +1049,7 @@ function decodeValue(value) {
     for (let i = 0; i < binary.length; i++) arr[i] = binary.charCodeAt(i);
     return arr;
   }
-  
+
   if (value?.__type === "arraybuffer") {
     const binary = atob(value.data);
     const arr = new Uint8Array(binary.length);

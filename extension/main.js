@@ -3,7 +3,6 @@ const state = {
   lastUpdateTime: null,
   isUpdating: false,
   activeTab: false,
-  rpcKeepAliveIntervalId: null,
   messageListenerRegistered: false,
   isConnected: false,
   lastRawPosition: null,
@@ -24,6 +23,8 @@ const CONSTANTS = {
   MIN_SEEK_COOLDOWN: 3000,
 };
 
+const keepAliveManager = new KeepAliveManager();
+
 // Start watching tab activity and song changes
 function startWatching() {
   if (state.isUpdating || state.updateTimer) {
@@ -38,12 +39,6 @@ function startWatching() {
   state.activeTab = true;
   state.lastRawPosition = null;
   state.lastSeekDetected = 0;
-
-  if (state.rpcKeepAliveIntervalId) {
-    logInfo("Clearing existing keepAlive interval");
-    clearInterval(state.rpcKeepAliveIntervalId);
-    state.rpcKeepAliveIntervalId = null;
-  }
   mainLoop();
 }
 
@@ -60,13 +55,7 @@ function stopWatching() {
   state.lastRawPosition = null;
   state.lastSeekDetected = 0;
   rpcState.reset();
-
-  if (state.rpcKeepAliveIntervalId) {
-    logInfo("Clearing keepAlive interval on stop");
-    clearInterval(state.rpcKeepAliveIntervalId);
-    state.rpcKeepAliveIntervalId = null;
-    window._rpcKeepActiveInjected = false;
-  }
+  keepAliveManager.destroy();
 }
 
 // Schedule the next update based on activity
@@ -268,7 +257,7 @@ async function mainLoop() {
 
       // Build the log message
       const stored = await browser.storage.local.get("debugMode");
-      const debugMode = stored.debugMode ?? CONFIG.debugMode;
+      const debugMode = stored.debugMode === 1 ? true : CONFIG.debugMode;
       if (debugMode && state.lastUpdateStatus !== "skipped") {
         let logMessage = "";
         let styles = [];
@@ -417,15 +406,15 @@ async function processRPCUpdate(song, progress) {
 
   if (res?.waiting) {
     logInfo("processRPCUpdate: RPC waiting (tab not audible yet)");
+    if (keepAliveManager.initialized) {
+      keepAliveManager.destroy();
+    }
     return false;
   }
 
   if (res?.ok) {
-    if (!window._rpcKeepActiveInjected) {
-      logInfo("processRPCUpdate: injected keepAlive");
-      rtcKeepAliveTab();
-    } else {
-      window._rpcKeepAliveActive?.();
+    if (!keepAliveManager.initialized) {
+      keepAliveManager.init();
     }
 
     rpcState.clearError();
@@ -607,33 +596,6 @@ function registerRuntimeMessageListener() {
     logError("registerRuntimeMessageListener: failed to add listener:", e);
     return;
   }
-}
-
-// Apply overrides to keep the tab active
-function rtcKeepAliveTab() {
-  try {
-    applyOverrides();
-  } catch (e) {
-    logError("rtcKeepAliveTab: applyOverrides failed:", e);
-  }
-
-  // Clear any existing interval first
-  if (state.rpcKeepAliveIntervalId) {
-    logInfo("rtcKeepAliveTab: clearing existing interval");
-    clearInterval(state.rpcKeepAliveIntervalId);
-  }
-
-  // Apply again every 5 seconds
-  state.rpcKeepAliveIntervalId = setInterval(() => {
-    try {
-      applyOverridesLoop();
-    } catch (e) {
-      logError("rtcKeepAliveTab: applyOverridesLoop error:", e);
-    }
-  }, 5000);
-
-  window._rpcKeepActiveInjected = true;
-  logInfo("✅ KeepAlive system activated");
 }
 
 init();
