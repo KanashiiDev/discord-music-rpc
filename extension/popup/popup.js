@@ -96,12 +96,11 @@ const sectionManager = {
     const dropdownMenu = document.getElementById("dropdownMenu");
     const datePicker = document.querySelector(".date-range-picker");
     const filterMenu = document.getElementById("historyFilterMenu");
-
     filterMenu.classList.remove("open");
     filterMenu.style.height = "0";
-    dropdownMenu.classList.remove("open");
     historyPanel.classList.remove("custom");
     historyPanel.style.minHeight = "";
+    dropdownMenu.classList.remove("open");
     datePicker.style.display = "none";
     dropdownToggle.classList.remove("open");
     dropdownToggle.querySelector(".arrow").style.transform = "rotate(0deg)";
@@ -166,7 +165,16 @@ const popupModule = {
     // History Search Box
     const historySearchInput = document.getElementById("historySearchBox");
     this.listeners.historySearchInput = debounce(async () => {
-      await renderHistory({ query: historySearchInput.value });
+      if (activeScrollCleanup) {
+        activeScrollCleanup();
+        activeScrollCleanup = null;
+      }
+
+      await renderHistory({
+        reset: true,
+        query: historySearchBox.value,
+      });
+
       await activateSimpleBar("historyPanel");
       await activateHistoryScroll();
     }, 300);
@@ -219,24 +227,69 @@ const popupModule = {
 
     // Document click handler
     this.listeners.documentClick = (e) => {
-      // Parser options
-      const openOptions = e.target.closest(".parser-options.open");
-      if (!openOptions) {
-        // If the clicked element is not inside an open parser-options
-        document.querySelectorAll(".parser-options.open").forEach((optionsContainer) => {
-          const siteListContainer = document.getElementById("siteListContainer");
-          const searchBox = document.getElementById("searchBox");
-          const allEntries = document.querySelectorAll(".parser-entry");
+      // Main
+      if (sectionManager.currentSection === "main") {
+        // Parser options
+        const openOptions = e.target.closest(".parser-options.open");
+        if (!openOptions) {
+          // If the clicked element is not inside an open parser-options
+          document.querySelectorAll(".parser-options.open").forEach((optionsContainer) => {
+            const siteListContainer = document.getElementById("siteListContainer");
+            const searchBox = document.getElementById("searchBox");
+            const allEntries = document.querySelectorAll(".parser-entry");
 
-          optionsContainer.classList.remove("open");
-          optionsContainer.style.maxHeight = "0";
-          siteListContainer.style.transform = "translateY(0)";
-          siteListContainer.style.marginBottom = "";
-          searchBox.classList.remove("fading");
-          allEntries.forEach((entry) => {
-            entry.classList.remove("fading");
+            optionsContainer.classList.remove("open");
+            optionsContainer.style.maxHeight = "0";
+            siteListContainer.style.transform = "translateY(0)";
+            siteListContainer.style.marginBottom = "";
+            searchBox.classList.remove("fading");
+            allEntries.forEach((entry) => {
+              entry.classList.remove("fading");
+            });
           });
-        });
+        }
+      }
+
+      // History
+      if (sectionManager.currentSection === "history") {
+        // Close History Filter Menu
+        if (filterMenu.classList.contains("open") && !filterMenu.contains(e.target)) {
+          filterMenu.classList.remove("open");
+          filterMenu.style.height = "0";
+        }
+      }
+
+      // Stats
+      if (sectionManager.currentSection === "stats") {
+        // Close Stats Filter Menu
+        const historyPanel = document.getElementById("historyStatsPanel");
+        const dropdownToggle = document.getElementById("dropdownToggle");
+        const dropdownMenu = document.getElementById("dropdownMenu");
+        if (dropdownMenu.classList.contains("open") && !dropdownMenu.contains(e.target) && !dropdownToggle.contains(e.target)) {
+          dropdownMenu.classList.remove("open");
+          dropdownToggle.classList.remove("open");
+          historyPanel.style.minHeight = "";
+          dropdownToggle.querySelector(".arrow").style.transform = "rotate(0deg)";
+        }
+      }
+
+      // Settings
+      if (sectionManager.currentSection === "settings") {
+        // Close Color Picker
+        const pickerEl = document.querySelector(".picker-popover");
+        if (pickerEl && !pickerEl.classList.contains("hidden") && !pickerEl.contains(e.target)) {
+          closePicker();
+        }
+
+        // Close Background Image Settings
+        const btnExpandEl = document.querySelector(".bg-expand-btn");
+        const bgExpandableSectionEl = document.querySelector(".bg-expandable-section");
+        if (btnExpandEl && bgExpandableSectionEl) {
+          if (!bgExpandableSectionEl.contains(e.target) && e.target !== btnExpandEl) {
+            bgExpandableSectionEl.classList.add("hidden");
+            btnExpandEl.classList.remove("expanded");
+          }
+        }
       }
     };
 

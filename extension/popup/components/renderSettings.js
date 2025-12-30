@@ -231,7 +231,8 @@ async function renderSettings() {
   bgUrlWrapper.appendChild(bgExpandableSection);
 
   // Expand button click handler
-  btnExpand.addEventListener("click", () => {
+  btnExpand.addEventListener("click", (e) => {
+    e.stopPropagation();
     bgExpandableSection.classList.toggle("hidden");
     btnExpand.classList.toggle("expanded");
   });
@@ -348,11 +349,6 @@ async function renderSettings() {
     panelContainer.appendChild(wrap);
   }
 
-  // Close picker when clicking outside
-  document.addEventListener("click", () => {
-    closePicker();
-  });
-
   // Port
   const portWrapper = document.createElement("div");
   portWrapper.className = "settings-option port-wrapper";
@@ -427,9 +423,7 @@ async function renderSettings() {
 
   // Backup Button
   btnBackup.onclick = async () => {
-    const themeStorage = await browser.storage.local.get("theme");
-    const theme = themeStorage.theme || "dark";
-    const url = browser.runtime.getURL(`backup/backup.html${theme ? `?theme=${theme}` : ""}`);
+    const url = browser.runtime.getURL(`backup/backup.html`);
     try {
       const tabs = await browser.tabs.query({ url });
       if (tabs && tabs.length > 0) {

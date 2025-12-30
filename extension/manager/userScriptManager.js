@@ -11,6 +11,7 @@ class UserScriptUI {
     this.refreshList();
     this.bindCodeEditor();
     this.checkUserScriptsPermission();
+    this.initApplyAttrs();
     this.initStorageListener();
   }
 
@@ -246,12 +247,20 @@ class UserScriptUI {
       el?.scrollIntoView({ block: "center" });
       el?.click();
     }
+    // remove managerContext after restoring
+    await browser.storage.local.remove("managerContext");
+  }
+
+  async initApplyAttrs() {
     const { styleAttrs } = await browser.storage.local.get("styleAttrs");
     if (styleAttrs) {
       document.body.setAttribute("style", styleAttrs);
     }
-    // remove managerContext after restoring
-    await browser.storage.local.remove("managerContext");
+
+    const { theme } = await browser.storage.local.get("theme");
+    if (theme) {
+      document.body.dataset.theme = theme;
+    }
   }
 
   initStorageListener() {
@@ -261,19 +270,10 @@ class UserScriptUI {
         const styleString = changes.styleAttrs.newValue || "";
         document.body.setAttribute("style", styleString);
       }
-    });
-  }
-
-  applyStyles(styleObj = {}) {
-    const root = document.body;
-
-    for (const [key, value] of Object.entries(styleObj)) {
-      if (value == null) {
-        root.style.removeProperty(key);
-      } else {
-        root.style.setProperty(key, value);
+      if (changes.theme) {
+        document.body.dataset.theme = changes.theme.newValue || "dark";
       }
-    }
+    });
   }
 
   renderList(list) {

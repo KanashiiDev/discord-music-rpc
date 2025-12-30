@@ -26,7 +26,7 @@ async function renderHistory({ reset = true, query = "" } = {}) {
   }
 
   // If simplebar exists, use its content element
-  const sbInstance = SimpleBar.instances?.get(panel);
+  const sbInstance = simpleBarInstances.get(panel);
   const target = sbInstance ? sbInstance.getContentElement() : panel;
 
   if (reset) {
@@ -42,9 +42,11 @@ async function renderHistory({ reset = true, query = "" } = {}) {
   renderSourceFilterMenu();
   target.querySelector(".spinner")?.remove();
 
-  if (query || selectedSources.size > 0) {
+  const searchQuery = query.trim();
+  if (searchQuery || selectedSources.size > 0) {
     filteredHistory = fullHistory.filter((entry) => {
-      const matchesText = (entry.t + " " + entry.a + " " + entry.s).toLowerCase().includes(query.toLowerCase());
+      const searchFields = entry.t + " " + entry.a;
+      const matchesText = !searchQuery || searchFields.toLowerCase().includes(searchQuery.toLowerCase());
       const matchesSource = selectedSources.size === 0 || selectedSources.has(entry.s);
       return matchesText && matchesSource;
     });
@@ -103,7 +105,7 @@ async function activateHistoryScroll() {
   }
 
   const panel = document.getElementById("historyPanel");
-  const sbInstance = SimpleBar.instances.get(panel);
+  const sbInstance = simpleBarInstances.get(panel);
   if (!sbInstance) return;
 
   let scrollElement = sbInstance.getScrollElement?.() || panel.querySelector(".simplebar-content-wrapper") || panel.querySelector(".simplebar-content") || panel;
@@ -446,7 +448,15 @@ function exitCleaningMode() {
 // Filter menu
 function renderSourceFilterMenu() {
   filterMenuContent.innerHTML = "";
-  const sources = [...new Set(fullHistory.map((e) => e.s))].sort();
+  const allSources = [...new Set(fullHistory.map((e) => e.s))];
+
+  // Sort the sources so that the selected ones come first, the rest alphabetically
+  const sources = allSources.sort((a, b) => {
+    const aSelected = selectedSources.has(a) ? 0 : 1;
+    const bSelected = selectedSources.has(b) ? 0 : 1;
+    if (aSelected !== bSelected) return aSelected - bSelected;
+    return a.localeCompare(b);
+  });
 
   if (!document.querySelector(".history-filter")) {
     filterBtn.className = "history-filter";

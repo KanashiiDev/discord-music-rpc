@@ -219,27 +219,6 @@ function setupDynamicPickerEvents() {
     updateGradient();
   };
 
-  const pickerEnd = async () => {
-    if (!currentEditingItem || !currentSwatch) return;
-
-    let value;
-    if (isGradientMode && globalPicker.colors.length > 1) {
-      const colors = globalPicker.colors.map((c) => c.rgbaString).join(", ");
-      value = `linear-gradient(${gradientDegree}deg, ${colors})`;
-    } else {
-      value = globalPicker.colors[0].rgbaString;
-    }
-
-    const storage = await browser.storage.local.get("colorSettings");
-    const config = storage.colorSettings || {};
-    config[currentEditingItem.key] = value;
-    currentSwatch.style.background = value;
-
-    await browser.storage.local.set({ colorSettings: config });
-    await applyColorSettings();
-    await updateCurrentDeleteBtn();
-  };
-
   globalPicker.on("input:end", pickerEnd);
   globalPicker.on("color:change", pickerChange);
 }

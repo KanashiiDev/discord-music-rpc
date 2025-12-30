@@ -221,7 +221,8 @@ async function renderTopStats(history, range = "day", topN = 5, customStart = nu
   }
 }
 
-const handleDropdownToggleClick = () => {
+const handleDropdownToggleClick = (e) => {
+  e.stopPropagation();
   const dropdownToggle = document.getElementById("dropdownToggle");
   const dropdownMenu = document.getElementById("dropdownMenu");
   const historyPanel = document.getElementById("historyStatsPanel");
