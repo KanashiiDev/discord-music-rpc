@@ -933,24 +933,12 @@ function showInitialSetupDialog() {
       url: `https://github.com/KanashiiDev/discord-music-rpc/releases/latest/download/discord-music-rpc-{version}-x86_64.AppImage`,
     },
     {
-      label: "AppImage (arm64)",
-      url: `https://github.com/KanashiiDev/discord-music-rpc/releases/latest/download/discord-music-rpc-{version}-arm64.AppImage`,
-    },
-    {
       label: "DEB (x64)",
       url: `https://github.com/KanashiiDev/discord-music-rpc/releases/latest/download/discord-music-rpc-{version}-amd64.deb`,
     },
     {
-      label: "DEB (arm64)",
-      url: `https://github.com/KanashiiDev/discord-music-rpc/releases/latest/download/discord-music-rpc-{version}-arm64.deb`,
-    },
-    {
       label: "RPM (x64)",
       url: `https://github.com/KanashiiDev/discord-music-rpc/releases/latest/download/discord-music-rpc-{version}-x86_64.rpm`,
-    },
-    {
-      label: "RPM (arm64)",
-      url: `https://github.com/KanashiiDev/discord-music-rpc/releases/latest/download/discord-music-rpc-{version}-aarch64.rpm`,
     },
   ];
   contentLinkContainer.appendChild(createPlatformDropdown("Linux", linuxOptions, manifestVersion));
@@ -958,12 +946,8 @@ function showInitialSetupDialog() {
   // MacOS Dropdown
   const macOptions = [
     {
-      label: "Intel (x64)",
-      url: `https://github.com/KanashiiDev/discord-music-rpc/releases/latest/download/Discord-Music-RPC-{version}-x86_64.dmg`,
-    },
-    {
-      label: "Apple Silicon (arm64)",
-      url: `https://github.com/KanashiiDev/discord-music-rpc/releases/latest/download/Discord-Music-RPC-{version}-arm64.dmg`,
+      label: "Universal",
+      url: `https://github.com/KanashiiDev/discord-music-rpc/releases/latest/download/Discord-Music-RPC-{version}-universal.dmg`,
     },
   ];
   contentLinkContainer.appendChild(createPlatformDropdown("MacOS", macOptions, manifestVersion));

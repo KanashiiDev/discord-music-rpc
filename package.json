@@ -32,6 +32,7 @@
     "build:mac": "npm run clean && electron-builder --mac --x64 --publish=never",
     "build:mac:arm64": "npm run clean && electron-builder --mac --arm64 --publish=never",
     "build:mac:all": "npm run clean && electron-builder --mac --x64 --arm64 --publish=never",
+    "build:mac:universal": "npm run clean && electron-builder --mac --universal --publish=never",
     "build:linux": "npm run clean && electron-builder --linux --x64 --publish=never",
     "build:linux:arm64": "npm run clean && electron-builder --linux --arm64 --publish=never",
     "build:linux:all": "npm run clean && electron-builder --linux --x64 --arm64 --publish=never",
