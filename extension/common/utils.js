@@ -173,7 +173,7 @@ async function applyColorSettings() {
       document.body.style.setProperty(item.cssVar, val);
     } else {
       document.body.style.removeProperty(item.cssVar);
-      
+
       // Clear derived colors when the foreground is deleted
       if (item.key === "foregroundColor") {
         for (let i = 1; i <= 7; i++) {
@@ -845,6 +845,52 @@ function makeIdFromDomainAndPatterns(domain, urlPatterns) {
   return `${domain}_${hashFromPatternStrings(patternStrings)}`;
 }
 
+// Create a platform dropdown with options
+function createPlatformDropdown(label, options, manifestVersion) {
+  const container = document.createElement("div");
+  container.classList.add("setup-link-dropdown-container");
+
+  const button = document.createElement("a");
+  button.textContent = label;
+  button.classList.add("setup-link", "setup-link-dropdown-toggle");
+  container.appendChild(button);
+
+  const dropdown = document.createElement("div");
+  dropdown.classList.add("setup-dropdown");
+  container.appendChild(dropdown);
+
+  options.forEach((option) => {
+    const dropdownLink = document.createElement("a");
+    dropdownLink.href = option.url.replace("{version}", manifestVersion);
+    dropdownLink.textContent = option.label;
+    dropdownLink.target = "_blank";
+    dropdownLink.rel = "noopener noreferrer";
+    dropdownLink.classList.add("setup-dropdown-item");
+    dropdown.appendChild(dropdownLink);
+  });
+
+  // Toggle dropdown
+  let leaveTimeout;
+
+  const showDropdown = () => {
+    clearTimeout(leaveTimeout);
+    dropdown.classList.add("show");
+  };
+
+  const hideDropdown = () => {
+    leaveTimeout = setTimeout(() => {
+      dropdown.classList.remove("show");
+    }, 100);
+  };
+
+  container.addEventListener("click", showDropdown);
+  container.addEventListener("mouseleave", hideDropdown);
+  dropdown.addEventListener("mouseenter", showDropdown);
+  dropdown.addEventListener("mouseleave", hideDropdown);
+
+  return container;
+}
+
 // Show initial setup dialog
 function showInitialSetupDialog() {
   const dialog = document.createElement("div");
@@ -865,29 +911,62 @@ function showInitialSetupDialog() {
   contentLinkContainer.classList.add("setup-link-container");
   content.appendChild(contentLinkContainer);
 
-  const contentLink = document.createElement("a");
-  contentLink.href = "https://github.com/KanashiiDev/discord-music-rpc/releases/latest/download/Discord-Music-RPC-Win.zip";
-  contentLink.textContent = "Windows";
-  contentLink.target = "_blank";
-  contentLink.rel = "noopener noreferrer";
-  contentLink.classList.add("setup-link");
-  contentLinkContainer.appendChild(contentLink);
+  const manifestVersion = browser.runtime.getManifest().version;
 
-  const contentLink2 = document.createElement("a");
-  contentLink2.href = "https://github.com/KanashiiDev/discord-music-rpc/releases/latest/download/Discord-Music-RPC-Linux.zip";
-  contentLink2.textContent = "Linux";
-  contentLink2.target = "_blank";
-  contentLink2.rel = "noopener noreferrer";
-  contentLink2.classList.add("setup-link");
-  contentLinkContainer.appendChild(contentLink2);
+  // Windows Dropdown
+  const windowsOptions = [
+    {
+      label: "Installer (EXE)",
+      url: `https://github.com/KanashiiDev/discord-music-rpc/releases/latest/download/Discord-Music-RPC-{version}-x64-installer.exe`,
+    },
+    {
+      label: "Portable (ZIP)",
+      url: `https://github.com/KanashiiDev/discord-music-rpc/releases/latest/download/Discord-Music-RPC-{version}-x64.zip`,
+    },
+  ];
+  contentLinkContainer.appendChild(createPlatformDropdown("Windows", windowsOptions, manifestVersion));
 
-  const contentLink3 = document.createElement("a");
-  contentLink3.href = "https://github.com/KanashiiDev/discord-music-rpc/releases/latest/download/Discord-Music-RPC-MacOS.zip";
-  contentLink3.textContent = "MacOS";
-  contentLink3.target = "_blank";
-  contentLink3.rel = "noopener noreferrer";
-  contentLink3.classList.add("setup-link");
-  contentLinkContainer.appendChild(contentLink3);
+  // Linux Dropdown
+  const linuxOptions = [
+    {
+      label: "AppImage (x64)",
+      url: `https://github.com/KanashiiDev/discord-music-rpc/releases/latest/download/discord-music-rpc-{version}-x86_64.AppImage`,
+    },
+    {
+      label: "AppImage (arm64)",
+      url: `https://github.com/KanashiiDev/discord-music-rpc/releases/latest/download/discord-music-rpc-{version}-arm64.AppImage`,
+    },
+    {
+      label: "DEB (x64)",
+      url: `https://github.com/KanashiiDev/discord-music-rpc/releases/latest/download/discord-music-rpc-{version}-amd64.deb`,
+    },
+    {
+      label: "DEB (arm64)",
+      url: `https://github.com/KanashiiDev/discord-music-rpc/releases/latest/download/discord-music-rpc-{version}-arm64.deb`,
+    },
+    {
+      label: "RPM (x64)",
+      url: `https://github.com/KanashiiDev/discord-music-rpc/releases/latest/download/discord-music-rpc-{version}-x86_64.rpm`,
+    },
+    {
+      label: "RPM (arm64)",
+      url: `https://github.com/KanashiiDev/discord-music-rpc/releases/latest/download/discord-music-rpc-{version}-aarch64.rpm`,
+    },
+  ];
+  contentLinkContainer.appendChild(createPlatformDropdown("Linux", linuxOptions, manifestVersion));
+
+  // MacOS Dropdown
+  const macOptions = [
+    {
+      label: "Intel (x64)",
+      url: `https://github.com/KanashiiDev/discord-music-rpc/releases/latest/download/Discord-Music-RPC-{version}-x86_64.dmg`,
+    },
+    {
+      label: "Apple Silicon (arm64)",
+      url: `https://github.com/KanashiiDev/discord-music-rpc/releases/latest/download/Discord-Music-RPC-{version}-arm64.dmg`,
+    },
+  ];
+  contentLinkContainer.appendChild(createPlatformDropdown("MacOS", macOptions, manifestVersion));
 
   const contentNote = document.createElement("p");
   contentNote.textContent = "The application is provided via the latest GitHub release.";

@@ -1333,18 +1333,11 @@ body.cleaning-mode .selected .history-trash {
 }
 
 .setup-dialog .setup-link-container {
-  display: -webkit-box;
-  display: -ms-flexbox;
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
   border-radius: var(--radius-default);
   padding: 6px;
-  overflow: hidden;
   background: var(--foreground-color-100);
-}
-
-.setup-dialog .setup-link-container .setup-link:nth-child(1),
-.setup-dialog .setup-link-container .setup-link:nth-child(2) {
-  border-right: 1px solid var(--border-color);
 }
 
 .setup-dialog .setup-link,
@@ -1389,6 +1382,55 @@ body.cleaning-mode .selected .history-trash {
   font-size: var(--font-lg);
   -webkit-box-shadow: 0 1px 5px var(--shadow-color);
   box-shadow: 0 1px 5px var(--shadow-color);
+}
+
+.setup-link-dropdown-container {
+  position: relative;
+  display: inline-block;
+  padding: 0 12px;
+  border-width: 0 2px;
+}
+
+.setup-link-dropdown-toggle {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font: inherit;
+}
+
+.setup-dropdown {
+  display: none;
+  position: absolute;
+  top: 100%;
+  left: -10px;
+  background: var(--foreground-color-300);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  -webkit-box-shadow: 0 4px 6px var(--shadow-color);
+  box-shadow: 0 4px 6px var(--shadow-color);
+  min-width: 120px;
+  z-index: 1000;
+  margin-top: 4px;
+  padding: 4px 0;
+}
+
+.setup-dropdown.show {
+  display: block;
+}
+
+.setup-dropdown-item {
+  display: block;
+  padding: 6px 10px;
+  text-decoration: none;
+  color: var(--text-color-primary);
+  -webkit-transition: background-color var(--transition-normal);
+  transition: background-color var(--transition-normal);
+  white-space: nowrap;
+  text-align: start;
+}
+
+.setup-dropdown-item:hover {
+  background-color: var(--foreground-color-400);
 }
 
 .tutorial-dialog p {
