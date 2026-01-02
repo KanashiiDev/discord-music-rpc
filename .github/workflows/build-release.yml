@@ -51,7 +51,7 @@ jobs:
         run: npm ci
 
       - name: Build Linux
-        run: npm run build:linux
+        run: npm run build:linux:all
 
       - name: Upload Linux Artifacts
         uses: actions/upload-artifact@v4
@@ -79,7 +79,7 @@ jobs:
         run: npm install --no-save dmg-license
 
       - name: Build macOS App
-        run: npm run build:mac
+        run: npm run build:mac:all
 
       - name: Upload Mac Artifacts
         uses: actions/upload-artifact@v4

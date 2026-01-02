@@ -27,24 +27,33 @@
   "scripts": {
     "start": "node server.js",
     "start:app": "electron .",
-    "build:win": "node scripts/buildDeps.js --win && electron-builder --win --x64 --publish=never",
-    "build:linux": "chmod +x $(pwd)/scripts/discord_ipc_diagnostic.sh && node scripts/buildDeps.js --linux && electron-builder --linux --x64 --publish=never --config.extraMetadata.productName='discord-music-rpc'",
-    "build:linux:arm64": "chmod +x $(pwd)/scripts/discord_ipc_diagnostic.sh && node scripts/buildDeps.js --linux && electron-builder --linux --arm64 --publish=never --config.extraMetadata.productName='discord-music-rpc'",
-    "build:mac": "node scripts/buildDeps.js --mac && electron-builder --mac --publish=never",
+    "clean": "rimraf dist",
+    "build:win": "npm run clean && electron-builder --win --x64 --publish=never",
+    "build:mac": "npm run clean && electron-builder --mac --x64 --publish=never",
+    "build:mac:arm64": "npm run clean && electron-builder --mac --arm64 --publish=never",
+    "build:mac:all": "npm run clean && electron-builder --mac --x64 --arm64 --publish=never",
+    "build:linux": "npm run clean && electron-builder --linux --x64 --publish=never",
+    "build:linux:arm64": "npm run clean && electron-builder --linux --arm64 --publish=never",
+    "build:linux:all": "npm run clean && electron-builder --linux --x64 --arm64 --publish=never",
+    "build:rpm": "npm run clean && electron-builder --linux rpm --x64 --publish=never",
+    "build:rpm:arm64": "npm run clean && electron-builder --linux rpm --arm64 --publish=never",
+    "build:rpm:all": "npm run clean && electron-builder --linux rpm --x64 --arm64 --publish=never",
+    "build:deb": "npm run clean && electron-builder --linux deb --x64 --publish=never",
+    "build:deb:arm64": "npm run clean && electron-builder --linux deb --arm64 --publish=never",
+    "build:deb:all": "npm run clean && electron-builder --linux deb --x64 --arm64 --publish=never",
+    "build:ubuntu": "npm run build:deb",
+    "build:debian": "npm run build:deb",
+    "build:fedora": "npm run build:rpm",
     "build:chrome": "cross-env TARGET=chrome node scripts/buildExtensions.js",
     "build:firefox": "cross-env TARGET=firefox node scripts/buildExtensions.js",
     "build:extensions": "npm run build:chrome && npm run build:firefox",
-    "build:rpm": "chmod +x $(pwd)/scripts/discord_ipc_diagnostic.sh && node scripts/buildDeps.js --linux && electron-builder --linux rpm --x64 --publish=never --config.extraMetadata.productName='discord-music-rpc'",
-    "build:deb": "chmod +x $(pwd)/scripts/discord_ipc_diagnostic.sh && node scripts/buildDeps.js --linux && electron-builder --linux deb --x64 --publish=never --config.extraMetadata.productName='discord-music-rpc'",
-    "build:rpm:arm64": "chmod +x $(pwd)/scripts/discord_ipc_diagnostic.sh && node scripts/buildDeps.js --linux && electron-builder --linux rpm --arm64 --publish=never --config.extraMetadata.productName='discord-music-rpc'",
-    "build:deb:arm64": "chmod +x $(pwd)/scripts/discord_ipc_diagnostic.sh && node scripts/buildDeps.js --linux && electron-builder --linux deb --arm64 --publish=never --config.extraMetadata.productName='discord-music-rpc'",
-    "build:fedora": "npm run build:rpm",
-    "build:all": "npm run build:linux && npm run build:linux:arm64",
     "pack": "electron-builder --dir",
     "pack:chrome": "cross-env TARGET=chrome node scripts/packExtensions.js",
     "pack:firefox": "cross-env TARGET=firefox node scripts/packExtensions.js",
     "pack:extensions": "npm run pack:chrome && npm run pack:firefox",
     "build-and-pack": "npm run build:extensions && npm run pack:extensions",
+    "build-and-pack:chrome": "npm run build:chrome && npm run pack:chrome",
+    "build-and-pack:firefox": "npm run build:firefox && npm run pack:firefox",
     "prepare-release": "npm run build-and-pack && node scripts/prepareRelease.js"
   },
   "dependencies": {
@@ -64,12 +73,16 @@
     "electron": "^39.2.2",
     "electron-builder": "^26.0.18",
     "fs-extra": "^11.3.2",
-    "postcss": "^8.5.6"
+    "postcss": "^8.5.6",
+    "rimraf": "^6.1.2"
   },
   "build": {
     "appId": "com.kanashiidev.discord.music.rpc",
     "productName": "Discord Music RPC",
     "copyright": "Copyright © 2025 KanashiiDev",
+    "electronLanguages": [
+      "en-US"
+    ],
     "publish": [
       {
         "provider": "github",
@@ -83,37 +96,19 @@
       "output": "dist/${platform}"
     },
     "win": {
-      "artifactName": "Discord-Music-RPC-Setup-${version}.exe",
+      "artifactName": "Discord-Music-RPC-${version}-${arch}-installer.exe",
       "target": "nsis",
       "icon": "assets/icon/icon.ico"
     },
     "linux": {
       "target": [
-        {
-          "target": "AppImage",
-          "arch": [
-            "x64",
-            "arm64"
-          ]
-        },
-        {
-          "target": "rpm",
-          "arch": [
-            "x64",
-            "arm64"
-          ]
-        },
-        {
-          "target": "deb",
-          "arch": [
-            "x64",
-            "arm64"
-          ]
-        }
+        "AppImage",
+        "rpm",
+        "deb"
       ],
-      "artifactName": "discord-music-rpc-${version}.${ext}",
+      "artifactName": "discord-music-rpc-${version}-${arch}.${ext}",
       "executableName": "discord-music-rpc",
-      "category": "Audio;Music",
+      "category": "Audio",
       "icon": "assets/icon",
       "maintainer": "KanashiiDev <kanashiidev0@gmail.com>",
       "synopsis": "Show music from ANY website on your Discord!",
@@ -129,30 +124,16 @@
       }
     },
     "rpm": {
-      "artifactName": "discord-music-rpc-${version}.rpm",
-      "packageName": "discord-music-rpc",
-      "category": "Audio",
-      "description": "Discord Music RPC Application - Show music from ANY website on your Discord!",
-      "maintainer": "KanashiiDev <kanashiidev0@gmail.com>",
       "depends": [
         "glibc",
         "libX11",
-        "libXrender",
-        "libXrandr",
         "libxcb"
       ]
     },
     "deb": {
-      "artifactName": "discord-music-rpc-${version}.deb",
-      "packageName": "discord-music-rpc",
-      "category": "Audio",
-      "description": "Discord Music RPC Application - Show music from ANY website on your Discord!",
-      "maintainer": "KanashiiDev <kanashiidev0@gmail.com>",
       "depends": [
         "libc6",
         "libx11-6",
-        "libxrender1",
-        "libxrandr2",
         "libxcb1"
       ],
       "priority": "optional"
@@ -163,13 +144,10 @@
       "category": "public.app-category.utilities",
       "target": [
         {
-          "target": "dmg",
-          "arch": [
-            "universal"
-          ]
+          "target": "dmg"
         }
       ],
-      "artifactName": "Discord-Music-RPC-${version}-mac.dmg",
+      "artifactName": "Discord-Music-RPC-${version}-${arch}.${ext}",
       "icon": "assets/icon/icon.icns",
       "darkModeSupport": true,
       "extendInfo": {
@@ -194,26 +172,20 @@
       "scripts/configManagement.js",
       "utils.js",
       "server.js",
-      "!LICENSE",
       "assets/**/*",
-      "package.json"
+      "public/**",
+      "package.json",
+      "!**/*.map",
+      "!**/*.md"
     ],
     "extraResources": [
       {
-        "from": "LICENSE",
-        "to": "LICENSE.txt"
-      },
-      {
-        "from": "build_deps",
-        "to": "build_deps"
-      },
-      {
-        "from": "build_deps/node_modules",
-        "to": "build_deps/node_modules"
+        "from": "scripts/discord_ipc_diagnostic.sh",
+        "to": "discord_ipc_diagnostic.sh"
       }
     ],
     "asarUnpack": [
-      "build_deps/**"
+      "**/*.node"
     ],
     "afterPack": "./scripts/buildCleanup.js"
   }

@@ -1,14 +1,26 @@
 const fs = require("fs-extra");
 const archiver = require("archiver");
 const path = require("path");
-const TARGET = process.env.TARGET || "chrome";
-let sourceDir = path.resolve("extensionBuilds/chrome");
-let outputPath = path.resolve("extensionBuilds/chrome-build.zip");
 
-if (TARGET === "firefox") {
-  sourceDir = path.resolve("extensionBuilds/firefox");
-  outputPath = path.resolve("extensionBuilds/firefox-build.zip");
+const TARGET = process.env.TARGET ?? "chrome";
+
+const config = {
+  chrome: {
+    sourceDir: path.resolve("extensionBuilds/chrome"),
+    outputPath: path.resolve("extensionBuilds/chrome-build.zip"),
+  },
+  firefox: {
+    sourceDir: path.resolve("extensionBuilds/firefox"),
+    outputPath: path.resolve("extensionBuilds/firefox-build.zip"),
+  },
+};
+
+if (!config[TARGET]) {
+  console.error(`Unknown TARGET: ${TARGET}`);
+  process.exit(1);
 }
+
+const { sourceDir, outputPath } = config[TARGET];
 
 if (!fs.existsSync(sourceDir)) {
   console.error(`Source folder not found: ${sourceDir}`);
