@@ -1,17 +1,23 @@
-const { app, Tray, Menu, Notification, MenuItem, nativeImage, dialog, shell } = require("electron");
+const { app, Tray, Menu, Notification, powerSaveBlocker, nativeImage, dialog, shell } = require("electron");
 let isAppInitialized = false;
 
 // Force English Locale
 app.commandLine.appendSwitch("lang", "en-US");
 
-// App Optimizations
-app.commandLine.appendSwitch("disable-renderer-backgrounding");
-app.commandLine.appendSwitch("disable-background-timer-throttling");
-app.commandLine.appendSwitch("disable-backgrounding-occluded-windows");
-app.commandLine.appendSwitch("disable-ipc-flooding-protection");
+// Disable all GPU/rendering related features
+app.disableHardwareAcceleration();
+app.commandLine.appendSwitch("disable-gpu");
+app.commandLine.appendSwitch("disable-gpu-compositing");
+app.commandLine.appendSwitch("disable-software-rasterizer");
+
+// Memory & Performance
+app.commandLine.appendSwitch("js-flags", "--max-old-space-size=192 --optimize-for-size --expose-gc");
+
+// Disable unnecessary features
 app.commandLine.appendSwitch("disable-extensions");
 app.commandLine.appendSwitch("disable-component-update");
 app.commandLine.appendSwitch("disable-breakpad");
+app.commandLine.appendSwitch("disable-crash-reporter");
 app.commandLine.appendSwitch("disable-sync");
 app.commandLine.appendSwitch("disable-default-apps");
 app.commandLine.appendSwitch("disable-translate");
@@ -21,33 +27,13 @@ app.commandLine.appendSwitch("disable-print-preview");
 app.commandLine.appendSwitch("disable-pdf-extension");
 app.commandLine.appendSwitch("no-default-browser-check");
 app.commandLine.appendSwitch("disable-hang-monitor");
-app.commandLine.appendSwitch("js-flags", "--max-old-space-size=192 --optimize-for-size --expose-gc --gc-interval=100");
 
 // Linux-specific optimizations
 if (process.platform === "linux") {
-  // Wayland/X11 handling
-  if (process.env.XDG_SESSION_TYPE === "wayland") {
-    app.commandLine.appendSwitch("enable-features", "UseOzonePlatform,WaylandWindowDecorations");
-    app.commandLine.appendSwitch("ozone-platform", "wayland");
-  } else {
-    app.commandLine.appendSwitch("ozone-platform", "x11");
-    app.disableHardwareAcceleration();
-    app.commandLine.appendSwitch("disable-gpu");
-  }
-  // Tray icon support
-  app.commandLine.appendSwitch("enable-features", "AppIndicator,Unity");
+  app.commandLine.appendSwitch("ozone-platform", "x11");
   app.commandLine.appendSwitch("disable-dev-shm-usage");
-}
-
-// Windows-specific optimizations
-if (process.platform === "win32") {
-  app.disableHardwareAcceleration();
-  app.commandLine.appendSwitch("disable-gpu");
-}
-
-// MacOS-specific optimizations
-if (process.platform === "darwin") {
-  app.appNap.disable();
+  app.commandLine.appendSwitch("disable-features", "VizDisplayCompositor,UseChromeOSDirectVideoDecoder,Vulkan");
+  app.commandLine.appendSwitch("enable-features", "AppIndicator,Unity");
 }
 
 const { autoUpdater } = require("electron-updater");
@@ -63,6 +49,13 @@ let config;
 const fs = require("fs");
 const os = require("os");
 const isPackaged = app.isPackaged;
+let currentMenu = null;
+let updateMenuState = {
+  visible: false,
+  label: "New Update Available",
+  releaseUrl: null,
+  isInstallable: false,
+};
 
 // Wrap console methods to avoid uncaught write errors (EIO) in packaged environments.
 // This will swallow EIO write errors and attempt to surface a short warning via electron-log (if available).
@@ -81,7 +74,7 @@ const isPackaged = app.isPackaged;
             if (log && typeof log.warn === "function") {
               try {
                 // convert args to short string
-                const msg = args.map(a => (typeof a === "string" ? a : String(a))).join(" ");
+                const msg = args.map((a) => (typeof a === "string" ? a : String(a))).join(" ");
                 log.warn(`Console write EIO suppressed: ${msg}`);
               } catch (_) {}
             }
@@ -111,41 +104,27 @@ const state = {
 };
 
 // Auto Updater Menu Item
-const updateMenuItem = new MenuItem({
-  label: "New Update - Click to Install",
-  visible: false,
-  click: () => autoUpdater.quitAndInstall(),
-});
-const updateMenuItemSeparator = new MenuItem({
-  type: "separator",
-  visible: false,
-});
+function setUpdateMenuState(options) {
+  updateMenuState = {
+    ...updateMenuState,
+    ...options,
+  };
+  updateTrayMenu();
+}
 
-function getPath(...p) {
-  const targetPath = path.join(...p);
+function getAppPath(...p) {
+  return path.join(__dirname, ...p);
+}
 
+function getResourcePath(...p) {
   if (!isPackaged) {
-    return path.join(__dirname, targetPath);
+    return path.join(__dirname, "..", ...p);
   }
-
-  const possiblePaths = [
-    path.join(process.resourcesPath, "build_deps", targetPath),
-    path.join(process.resourcesPath, targetPath),
-    path.join(path.dirname(process.execPath), "resources", "build_deps", targetPath),
-    path.join(app.getAppPath(), targetPath),
-  ];
-
-  for (const serverPath of possiblePaths) {
-    if (fs.existsSync(serverPath)) {
-      return serverPath;
-    }
-  }
-
-  throw new Error(`${targetPath} not found`);
+  return path.join(process.resourcesPath, ...p);
 }
 
 function getIconPath(size = null) {
-  let baseDir = getPath("assets", "icon");
+  let baseDir = getAppPath("assets", "icon");
   let fileName;
 
   switch (process.platform) {
@@ -232,7 +211,7 @@ app.whenReady().then(async () => {
 
   isAppInitialized = true;
   log.info("App initialization started");
-
+  powerSaveBlocker.start("prevent-app-suspension");
   try {
     await initializeApp();
     // Start background update checks
@@ -252,7 +231,7 @@ app.whenReady().then(async () => {
 // Start Server
 async function startServer() {
   const { fork } = require("child_process");
-  const serverPath = getPath("server.js");
+  const serverPath = getAppPath("server.js");
   if (!config.KEEP_LOGS) fs.writeFileSync(logFilePath, JSON.stringify([], null, 2));
   if (!config.KEEP_HISTORY) fs.writeFileSync(historyFilePath, JSON.stringify([], null, 2));
 
@@ -289,9 +268,16 @@ async function startServer() {
         LOG_FILE_PATH: logFilePath,
         HISTORY_FILE_PATH: historyFilePath,
         SETTINGS_FILE_PATH: dbPath,
+        NODE_OPTIONS: "--max-old-space-size=192",
+        UV_THREADPOOL_SIZE: "4",
+        NODE_NO_WARNINGS: "1",
+        NODE_DISABLE_COLORS: "1",
+        NODE_PENDING_DEPRECATION: "0",
       },
       stdio: ["pipe", "pipe", "pipe", "ipc"],
       silent: false,
+      detached: false,
+      execArgv: ["--max-old-space-size=192", "--optimize-for-size", "--gc-interval=100", "--no-warnings"],
     });
 
     log.info(`Server process started (PID: ${state.serverProcess.pid})`);
@@ -583,7 +569,7 @@ async function initializeApp() {
 
     if (isPackaged) {
       try {
-        const serverPath = getPath("server.js");
+        const serverPath = getAppPath("server.js");
         log.info("Pre-warming: Reading server file to cache...");
         fs.readFileSync(serverPath, "utf8");
         log.info("Pre-warming completed");
@@ -616,149 +602,328 @@ async function initializeApp() {
 
 // Auto Updater Setup
 function setupAutoUpdater() {
-  autoUpdater.autoDownload = true;
+  const platform = process.platform;
+  const isLinux = platform === "linux";
+  const isMac = platform === "darwin";
+  const isWindows = platform === "win32";
+
+  const isLinuxAppImage = isLinux && process.env.APPIMAGE !== undefined;
+  const isLinuxPackage = isLinux && !isLinuxAppImage;
+
+  // Auto-download configuration
+  autoUpdater.autoDownload = !isLinuxPackage;
   autoUpdater.autoInstallOnAppQuit = false;
+
+  // Update Available Event
   autoUpdater.on("update-available", (info) => {
-    log.info(`Update available: ${info.version}, downloading automatically...`);
-  });
-  autoUpdater.on("update-downloaded", (info) => {
-    const platform = os.release().split(".")[0];
-    const isWin10OrLater = parseInt(platform, 10) >= 10;
+    const versionLabel = info.releaseName || info.version || "new version";
 
-    if (process.platform === "win32" && !isWin10OrLater) {
-      state.tray.displayBalloon({
-        icon: icons.notification,
-        title: `Update ${info.version} ready`,
-        content: "Click to install",
-      });
-    } else {
-      let notificationIcon = icons.notification;
-      if (process.platform === "linux" && notificationIcon) {
-        notificationIcon = path.resolve(notificationIcon);
+    // Linux Package: Manual download required
+    if (isLinuxPackage) {
+      log.info(`Update available: ${versionLabel} (manual installation required for deb/rpm)`);
+
+      const releaseUrl = info.updateURL;
+      if (!releaseUrl) {
+        log.warn("No release URL available for manual download");
+        return;
       }
-      // Windows 10/11 - Modern Notification
+
       const notification = new Notification({
-        title: `Update ${info.version} ready`,
-        body: "Click to install",
-        icon: notificationIcon,
+        title: `Update Available`,
+        body: `${versionLabel} - Click to download`,
+        icon: icons.notification ? path.resolve(icons.notification) : undefined,
       });
 
-      notification.on("click", () => autoUpdater.quitAndInstall());
+      notification.on("click", () => {
+        shell.openExternal(releaseUrl);
+      });
+
       notification.show();
+
+      setUpdateMenuState({
+        visible: true,
+        label: `Download Update ${versionLabel}`,
+        releaseUrl: releaseUrl,
+        isInstallable: false,
+      });
+
+      return;
     }
 
-    // Add the update to the tray menu
-    updateMenuItem.visible = true;
-    updateMenuItemSeparator.visible = true;
-    updateTrayMenu();
+    // Other platforms: Automatic download
+    log.info(`Update available: ${versionLabel}, downloading automatically...`);
   });
+
+  // Update Downloaded Event
+  autoUpdater.on("update-downloaded", (info) => {
+    const versionLabel = info.releaseName || info.version || "new version";
+    log.info(`Update downloaded: ${versionLabel}`);
+
+    if (isLinuxPackage) {
+      log.warn("update-downloaded fired for Linux package (unexpected)");
+      return;
+    }
+
+    // Windows: Balloon for older versions, modern notification for newer ones
+    if (isWindows) {
+      const winVersion = os.release().split(".")[0];
+      const isWin10OrLater = parseInt(winVersion, 10) >= 10;
+
+      if (!isWin10OrLater) {
+        if (state.tray) {
+          state.tray.displayBalloon({
+            icon: icons.notification,
+            title: `Update Ready`,
+            content: `${versionLabel} - Restart to install`,
+          });
+        }
+
+        setUpdateMenuState({
+          visible: true,
+          label: `Install Update - ${versionLabel}`,
+          releaseUrl: null,
+          isInstallable: true,
+        });
+        return;
+      }
+
+      // Windows 10+: Modern notification
+      showModernNotification(versionLabel);
+    }
+    // macOS: Modern notification
+    else if (isMac) {
+      showModernNotification(versionLabel);
+    }
+    // Linux AppImage: Modern notification
+    else if (isLinuxAppImage) {
+      showModernNotification(versionLabel);
+    }
+    // Other Linux cases
+    else {
+      log.warn("Unexpected Linux configuration in update-downloaded");
+      showModernNotification(versionLabel);
+    }
+
+    // Update menu state
+    setUpdateMenuState({
+      visible: true,
+      label: `Install Update - ${versionLabel}`,
+      releaseUrl: null,
+      isInstallable: true,
+    });
+  });
+
+  // Modern Notification Helper Function
+  function showModernNotification(versionLabel) {
+    let notificationIcon = icons.notification;
+
+    // Linux: Absolute path required
+    if (isLinux && notificationIcon) {
+      notificationIcon = path.resolve(notificationIcon);
+    }
+
+    const notification = new Notification({
+      title: `Update Ready`,
+      body: `${versionLabel} - Click tray icon to install`,
+      icon: notificationIcon,
+      timeoutType: "never",
+      urgency: isMac ? undefined : "critical",
+    });
+
+    notification.on("click", () => {
+      log.info("Notification clicked - Installing update...");
+      setImmediate(() => {
+        autoUpdater.quitAndInstall(false, true);
+      });
+    });
+
+    // Windows modern notification action
+    if (isWindows) {
+      notification.on("action", () => {
+        log.info("Notification action - Installing update...");
+        setImmediate(() => {
+          autoUpdater.quitAndInstall(false, true);
+        });
+      });
+    }
+
+    notification.show();
+  }
+
+  // Error Handling
+  autoUpdater.on("error", (err) => {
+    const msg = typeof err?.message === "string" ? err.message.split("\n")[0].trim() : String(err);
+    log.error(`Update error (${platform}): ${msg}`);
+  });
+
+  // First update check
   autoUpdater.checkForUpdates().catch((err) => {
     const msg = typeof err?.message === "string" ? err.message.split("\n")[0].trim() : String(err);
-    log.error("Update check failed: " + msg);
+    log.error(`Update check failed (${platform}): ${msg}`);
   });
 }
 
-// Auto-start functions
+// Auto Start Setup
+// Get desktop file name
+function getDesktopFileName() {
+  const appName = app.getName().toLowerCase().replace(/\s+/g, "-");
+  return `${appName}.desktop`;
+}
+
+// Check if auto-start is enabled
 function isAutoStartEnabled() {
-  // Linux
   if (process.platform === "linux") {
     const autostartDir = path.join(os.homedir(), ".config", "autostart");
-    const desktopFile = path.join(autostartDir, "discord-music-rpc.desktop");
+    const desktopFile = path.join(autostartDir, getDesktopFileName());
     return fs.existsSync(desktopFile);
   }
-  // Win / MacOS
+
+  // Windows / macOS
   return app.getLoginItemSettings().openAtLogin;
 }
 
-// AppImage Location Control
+// AppImage Location and Execution Control
 function checkAppImageExecution() {
   if (process.platform === "linux" && process.env.APPIMAGE) {
     const execPath = process.env.APPIMAGE;
 
-    // Check if the AppImage is executable
     try {
+      // Check if the AppImage exists
+      if (!fs.existsSync(execPath)) {
+        log.error("AppImage not found at:", execPath);
+        return false;
+      }
+
+      // Check if the AppImage is executable
       fs.accessSync(execPath, fs.constants.X_OK);
+
+      // Verify it's a valid file by reading its header
       const fd = fs.openSync(execPath, "r");
       const buffer = Buffer.alloc(4);
       fs.readSync(fd, buffer, 0, 4, 0);
       fs.closeSync(fd);
+
+      return true;
     } catch (error) {
       log.error("AppImage execution check failed:", error);
       return false;
     }
-    return true;
   }
   return true;
 }
 
+// Set auto-start
 function setAutoStart(enable) {
   if (process.platform === "linux") {
     const autostartDir = path.join(os.homedir(), ".config", "autostart");
-    const desktopFile = path.join(autostartDir, "discord-music-rpc.desktop");
+    const desktopFile = path.join(autostartDir, getDesktopFileName());
 
-    // Get the AppImage path
-    let execPath = process.env.APPIMAGE || process.execPath;
+    // Get the correct executable path
+    const execPath = process.env.APPIMAGE || process.execPath;
+    const isAppImage = process.env.APPIMAGE !== undefined;
 
     if (enable) {
-      // Check running AppImage
-      if (!checkAppImageExecution()) {
+      // For AppImage: Check if it's executable and in a valid location
+      if (isAppImage && !checkAppImageExecution()) {
         dialog.showErrorBox(
           "Auto-start Error",
-          "Cannot set auto-start: AppImage may be corrupted or inaccessible.\n\nPlease ensure the AppImage is in a permanent location and has execute permissions."
+          "Cannot set auto-start: AppImage may be corrupted or inaccessible.\n\n" +
+            "Please ensure the AppImage is:\n" +
+            "• In a permanent location (not in /tmp or Downloads)\n" +
+            "• Has execute permission"
         );
-        return;
+        return false;
       }
 
+      // Create autostart directory if it doesn't exist
       if (!fs.existsSync(autostartDir)) {
-        fs.mkdirSync(autostartDir, { recursive: true });
+        try {
+          fs.mkdirSync(autostartDir, { recursive: true });
+        } catch (err) {
+          log.error("Failed to create autostart directory:", err);
+          dialog.showErrorBox("Auto-start Error", `Failed to create autostart directory: ${err.message}`);
+          return false;
+        }
       }
+
+      // Get app icon path
+      const iconPath = getIconPath() || "";
 
       // Desktop Entry format
-      const desktopEntry = `
-      [Desktop Entry]
-      Type=Application
-      Name=Discord Music RPC
-      Comment=Show music from ANY website on your Discord!
-      Exec=${execPath} --no-sandbox
-      Terminal=false
-      Hidden=false
-      X-GNOME-Autostart-enabled=true
-      Categories=Audio;
-      `.trim();
+      const desktopEntry =
+        [
+          "[Desktop Entry]",
+          "Type=Application",
+          `Name=${app.getName()}`,
+          `Comment=Show what you're listening to on Discord from ANY music website`,
+          `Exec="${execPath}"${isAppImage ? " --no-sandbox" : ""}`,
+          "Terminal=false",
+          "Hidden=false",
+          "NoDisplay=false",
+          "X-GNOME-Autostart-enabled=true",
+          ...(iconPath ? [`Icon=${iconPath}`] : []),
+          "Categories=Utility;",
+          "StartupNotify=false",
+          "X-GNOME-Autostart-Delay=5",
+        ].join("\n") + "\n";
 
       try {
-        fs.writeFileSync(desktopFile, desktopEntry, { mode: 0o644 });
+        fs.writeFileSync(desktopFile, desktopEntry, {
+          mode: 0o644,
+          encoding: "utf8",
+        });
+        log.info("Auto-start enabled:", desktopFile);
+        return true;
       } catch (err) {
         log.error("Failed to create desktop entry:", err);
-        dialog.showErrorBox("Auto-start Error", `Failed to enable auto-start: ${err.message}\n\nYou may need to manually create a desktop entry.`);
+        dialog.showErrorBox("Auto-start Error", `Failed to enable auto-start: ${err.message}\n\n` + "You may need to manually create a desktop entry or check permissions.");
+        return false;
       }
     } else {
       // Disable auto-start
       try {
         if (fs.existsSync(desktopFile)) {
           fs.unlinkSync(desktopFile);
+          log.info("Auto-start disabled:", desktopFile);
         }
+        return true;
       } catch (err) {
         log.error("Failed to disable auto-start:", err);
+        dialog.showErrorBox("Auto-start Error", `Failed to disable auto-start: ${err.message}`);
+        return false;
       }
     }
   } else {
     // Windows / macOS
-    app.setLoginItemSettings({
-      openAtLogin: enable,
-      openAsHidden: true,
-    });
+    try {
+      app.setLoginItemSettings({
+        openAtLogin: enable,
+        openAsHidden: true,
+      });
+      log.info(`Auto-start ${enable ? "enabled" : "disabled"} for ${process.platform}`);
+      return true;
+    } catch (err) {
+      log.error("Failed to set login item settings:", err);
+      return false;
+    }
   }
 }
 
 // Tray Menu
 function updateTrayMenu() {
-  if (!state.tray) {
+  if (!state.tray || state.tray.isDestroyed()) {
     log.warn("Tray not available, cannot update menu");
     return;
   }
+
   try {
-    const contextMenu = Menu.buildFromTemplate([
+    // Destroy old menu to prevent handler leaks
+    if (currentMenu) {
+      // Clear old menu reference
+      currentMenu = null;
+    }
+
+    const menuTemplate = [
       {
         label: `Version: ${app.getVersion()}`,
         enabled: false,
@@ -841,27 +1006,78 @@ function updateTrayMenu() {
           },
           { label: "Config", click: () => openConfig() },
           { type: "separator" },
-
           { label: "Open Logs", click: () => openLogs() },
           {
             label: "Run IPC Diagnostic (Linux)",
             click: () => {
-              // Run IPC Diagnostic
               const { exec } = require("child_process");
-              const scriptPath = getPath("discord_ipc_diagnostic.sh");
+              const fs = require("fs");
+              const os = require("os");
+              const scriptPath = getResourcePath("discord_ipc_diagnostic.sh");
               const outputFile = path.join(userDataPath, "discord_ipc_diagnostic_result.txt");
-              exec(`bash "${scriptPath}" > "${outputFile}" 2>&1`, (err) => {
-                if (err) {
-                  dialog.showErrorBox("IPC Diagnostic Error", err.message);
-                  return;
+
+              // Create a temporary copy of the script that we can modify
+              const tempDir = os.tmpdir();
+              const tempScriptPath = path.join(tempDir, "discord_ipc_diagnostic_temp.sh");
+
+              try {
+                // Read the original script
+                const content = fs.readFileSync(scriptPath, "utf8");
+
+                // Fix line endings and write to temp location
+                const fixedContent = content.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+                fs.writeFileSync(tempScriptPath, fixedContent, { mode: 0o755 });
+              } catch (err) {
+                console.error("Script preparation failed:", err);
+                dialog.showMessageBox({
+                  type: "error",
+                  title: "Script Error",
+                  message: "Could not prepare diagnostic script.",
+                  detail: err.message,
+                  icon: icons.message,
+                });
+                return;
+              }
+
+              // Run the temporary script
+              exec(`bash "${tempScriptPath}" > "${outputFile}" 2>&1`, (err) => {
+                const exitCode = err ? err.code : 0;
+
+                // Clean up temp file
+                try {
+                  fs.unlinkSync(tempScriptPath);
+                } catch (cleanupErr) {
+                  console.warn("Could not delete temp script:", cleanupErr);
                 }
-                // Show Open File Dialog
+
+                let type, title, message;
+                if (exitCode === 0) {
+                  type = "info";
+                  title = "Discord RPC Ready";
+                  message = "No issues detected. Your system is ready for Discord RPC.";
+                } else if (exitCode === 1) {
+                  type = "error";
+                  title = "Critical Issues Found";
+                  message = "Critical problems detected that will prevent RPC from working.\n\nPlease review the diagnostic report and follow the fix instructions.";
+                } else if (exitCode === 2) {
+                  type = "warning";
+                  title = "Warnings Detected";
+                  message = "Some issues detected. RPC may work but could have problems.\n\nPlease review the diagnostic report.";
+                } else {
+                  type = "error";
+                  title: "Diagnostic Failed";
+                  message = "Could not run diagnostic script.\n\nPlease check if the script file exists.";
+                }
+
                 dialog
                   .showMessageBox({
-                    type: "info",
-                    title: "IPC Diagnostic Output",
-                    message: `Output written to ${outputFile}`,
-                    buttons: ["Open File", "Close"],
+                    type: type,
+                    title: title,
+                    message: message,
+                    detail: `Diagnostic report saved to:\n${outputFile}`,
+                    buttons: ["Open Report", "Close"],
+                    icon: icons.message,
+                    defaultId: 0,
                   })
                   .then((res) => {
                     if (res.response === 0) {
@@ -880,33 +1096,43 @@ function updateTrayMenu() {
             click: (item) => {
               config.LOG_SONG_UPDATE = !!item.checked;
               updateConfig();
-              log.info(`Log Song Updates ${config.LOG_SONG_UPDATE ? "enabled" : "disabled"} succesfully.`);
+              log.info(`Log Song Updates ${config.LOG_SONG_UPDATE ? "enabled" : "disabled"} successfully.`);
               updateServerSettings();
               updateTrayMenu();
             },
           },
         ],
       },
-
       { label: "Open Dashboard", click: () => openStatus(), enabled: state.isServerRunning },
       { type: "separator" },
       {
         label: "Exit",
         click: () => app.quit(),
       },
-    ]);
+    ];
 
-    if (state.tray) {
-      // Insert update menu items at the beginning
-      if (updateMenuItem.visible) {
-        contextMenu.insert(0, updateMenuItem);
-        contextMenu.insert(1, updateMenuItemSeparator);
-      }
-
-      state.tray.setContextMenu(contextMenu);
-
-      state.tray.setToolTip(`Discord Music RPC\nServer: ${state.isServerRunning ? "Running" : "Stopped"}\nRPC: ${state.isRPCConnected ? "Connected" : "Disconnected"}`);
+    // Insert update menu items at the beginning if visible
+    if (updateMenuState.visible) {
+      menuTemplate.unshift(
+        {
+          label: updateMenuState.label,
+          click: () => {
+            if (updateMenuState.isInstallable) {
+              autoUpdater.quitAndInstall();
+            } else if (updateMenuState.releaseUrl) {
+              shell.openExternal(updateMenuState.releaseUrl);
+            }
+          },
+        },
+        { type: "separator" }
+      );
     }
+
+    // Build and set the new menu
+    currentMenu = Menu.buildFromTemplate(menuTemplate);
+    state.tray.setContextMenu(currentMenu);
+
+    state.tray.setToolTip(`Discord Music RPC\n` + `Server: ${state.isServerRunning ? "Running" : "Stopped"}\n` + `RPC: ${state.isRPCConnected ? "Connected" : "Disconnected"}`);
   } catch (error) {
     log.error("Error updating tray menu:", error);
   }
@@ -1028,6 +1254,7 @@ function showTrayFallbackNotification() {
     message: "Discord Music RPC is running in background mode",
     detail: "Your desktop environment may not support system tray icons. The application will continue to run. You can access it through application indicators or system menu.",
     buttons: ["OK"],
+    icon: icons.message,
   });
 }
 
@@ -1047,6 +1274,7 @@ function openLogs() {
       title: "Log File",
       message: "Log file does not exist yet",
       detail: "The application needs to run for a while to generate logs.",
+      icon: icons.message,
     });
     return;
   }
@@ -1065,6 +1293,7 @@ function openConfig() {
       title: "Config File",
       message: "Config file does not exist yet",
       detail: "The application will create it on first run or after saving settings.",
+      icon: icons.message,
     });
     return;
   }
@@ -1092,6 +1321,7 @@ function handleCriticalError(message, error) {
     title: "Application Error",
     message: `${message}: ${error.message}`,
     detail: error.stack,
+    icon: icons.message,
   };
 
   dialog.showMessageBox(dialogOptions).then(({ response }) => {
@@ -1103,8 +1333,49 @@ function handleCriticalError(message, error) {
 }
 
 // App Exit Handling
+app.on("will-quit", () => {
+  // Clear menu reference
+  if (currentMenu) {
+    try {
+      currentMenu = null;
+    } catch (err) {
+      // Ignore
+    }
+  }
+
+  // Destroy tray on all platforms
+  if (state.tray && !state.tray.isDestroyed()) {
+    try {
+      // Remove all listeners first
+      state.tray.removeAllListeners();
+      state.tray.setContextMenu(null);
+      state.tray.destroy();
+      state.tray = null;
+    } catch (err) {
+      // Silently ignore, app is closing anyway
+      try {
+        log.warn("Tray cleanup warning:", err.message);
+      } catch (_) {}
+    }
+  }
+});
+
+// Also clean up on before-quit
 app.on("before-quit", async (event) => {
   event.preventDefault();
+
+  // Clean tray first
+  if (state.tray && !state.tray.isDestroyed()) {
+    try {
+      state.tray.removeAllListeners();
+      state.tray.setContextMenu(null);
+      state.tray.destroy();
+      state.tray = null;
+    } catch (err) {
+      // Ignore
+    }
+  }
+
   await stopServer();
   app.exit(0);
 });
