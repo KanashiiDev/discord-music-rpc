@@ -30,12 +30,19 @@ It is required for detecting music on websites and sending the data to the deskt
 It is required for communicating with Discord and displaying the music status.
 
 <p>
-  <a href="https://github.com/KanashiiDev/discord-music-rpc/releases/latest/download/Discord-Music-RPC-Win.zip">
-    <img src="https://img.shields.io/badge/Windows-EXE-0078D6?logo=windows11&logoColor=white&style=for-the-badge" alt="Windows"></a>
-  <a href="https://github.com/KanashiiDev/discord-music-rpc/releases/latest/download/Discord-Music-RPC-Linux.zip">
-    <img src="https://img.shields.io/badge/Linux-AppImage-FCC624?logo=linux&logoColor=black&style=for-the-badge" alt="Linux"></a>
-  <a href="https://github.com/KanashiiDev/discord-music-rpc/releases/latest/download/Discord-Music-RPC-MacOS.zip">
-    <img src="https://img.shields.io/badge/macOS-DMG-111?logo=apple&logoColor=white&style=for-the-badge" alt="macOS"></a>
+  <a href="https://github.com/KanashiiDev/discord-music-rpc/releases/latest/download/Discord-Music-RPC-0.9.0-x64-installer.exe">
+    <img src="https://img.shields.io/badge/Windows-Installer (x64)-0078D6?logo=windows11&logoColor=white&style=for-the-badge" alt="Windows Installer (x64)"></a>
+    <a href="https://github.com/KanashiiDev/discord-music-rpc/releases/latest/download/Discord-Music-RPC-0.9.0-x64.zip">
+    <img src="https://img.shields.io/badge/%20-ZIP (x64)-0078D6?logo=windows11&logoColor=white&style=for-the-badge" alt="Windows ZIP (x64)">
+  </a>
+  <br>
+  <a href="https://github.com/KanashiiDev/discord-music-rpc/releases/latest/download/discord-music-rpc-0.9.0-x86_64.AppImage">
+    <img src="https://img.shields.io/badge/Linux-AppImage%20(x64)-FCC624?logo=linux&logoColor=black&style=for-the-badge" alt="Linux AppImage x86_64"></a>
+  <a href="https://github.com/KanashiiDev/discord-music-rpc/releases/latest/download/discord-music-rpc-0.9.0-amd64.deb"><img src="https://img.shields.io/badge/%20-DEB%20(x64)-A81D33?logo=debian&logoColor=white&style=for-the-badge" alt="Linux DEB x64"></a>
+  <a href="https://github.com/KanashiiDev/discord-music-rpc/releases/latest/download/discord-music-rpc-0.9.0-x86_64.rpm"><img src="https://img.shields.io/badge/%20-RPM%20(x64)-d12626?logo=redhat&logoColor=white&style=for-the-badge" alt="Linux RPM x64"></a>
+  <br>
+  <a href="https://github.com/KanashiiDev/discord-music-rpc/releases/latest/download/Discord-Music-RPC-0.9.0-universal.dmg">
+    <img src="https://img.shields.io/badge/macOS-DMG (Universal)-161616?logo=apple&logoColor=white&style=for-the-badge" alt="macOS DMG (Universal)"></a>
 </p>
 
 ## 📚 Table of Contents
@@ -82,7 +89,7 @@ It is required for communicating with Discord and displaying the music status.
 
 2. **Install the Application** <br>
    Install and Run the app — it will appear in your system tray.
-   
+
    <b>Important:</b> If you run Discord as an administrator, you must also run Discord Music RPC as an administrator. Otherwise, it will not function properly.
 
 3. **Play Music** <br>
@@ -110,10 +117,10 @@ It is required for communicating with Discord and displaying the music status.
 
 **Desktop App**:
 
-- **Windows 10/11** Full support with system tray integration and auto-updater.
-- **macOS (11+)** Full support for macOS 11+ (Big Sur and later) with native system tray integration via menu bar.
+- **Windows 10/11** Full support.
+- **macOS (11+)** Full support for macOS 11+ (Big Sur and later).
   - **Important:** Drag the App to `/Applications` before first launch to ensure menu bar icon and auto-updates work correctly.
-- **Linux (AppImage)** Works on most modern distributions (Ubuntu, Debian, Fedora, Arch, etc).
+- **Linux (AppImage / DEB / RPM)** Works on most modern distributions (Ubuntu, Debian, Fedora, Arch, etc).
   - GNOME users must enable the _AppIndicator / KStatusNotifierItem_ extension.
   - **Required packages on some distributions:**
     - `libayatana-appindicator3-1` (or `libappindicator3-1`)
@@ -145,47 +152,69 @@ It is required for communicating with Discord and displaying the music status.
 
 **Linux:**
 
-- **Use Native Discord**
+- **Use Automatic Diagnostic Tool (Recommended)**
 
-  - Snap Discord is isolated → IPC will not work.
-  - Flatpak Discord may require extra filesystem permissions:
-    ```bash
-    flatpak override --user com.discordapp.Discord --filesystem=/run/user/$(id -u)
-    ```
-  - Recommended: install Discord via your distribution’s package manager.
+  - Use the **Tray → Debug → "Run IPC Diagnostic (Linux)"** to automatically check your Discord setup
+
+- **Discord Installation Types**
+
+  - **Native Discord (Recommended)**
+    - Install via your distribution's package manager
+    - Best compatibility with IPC
+  - **Snap Discord**
+    - Works with IPC but may need interface connection:
+      ```bash
+      sudo snap connect discord:discord-ipc
+      ```
+  - **Flatpak Discord**
+    - Requires filesystem override for IPC access:
+      ```bash
+      flatpak override --user --filesystem=xdg-run/discord-ipc-0 com.discordapp.Discord
+      ```
 
 - **Do Not Run Discord as Root**
 
-  - IPC sockets under `/tmp` won’t be accessible.
+  - IPC sockets won't be accessible by normal user applications
+  - Always start Discord as your regular user (never use `sudo`)
+
+- **XDG_RUNTIME_DIR Issues**
+
+  - Must be set and owned by your user
   - Check with:
-    ```bash
-    ps aux | grep discord
-    ```
-
-- **XDG_RUNTIME_DIR & RuntimePath**
-
-  - Ensure `XDG_RUNTIME_DIR` is set and owned by your user:
     ```bash
     echo $XDG_RUNTIME_DIR
     ls -la $XDG_RUNTIME_DIR
     ```
-  - For systemd/elogind users, RuntimePath should not be empty:
+  - If not set, add to `~/.bashrc`:
     ```bash
-    loginctl show-session $(loginctl | grep $(whoami) | awk '{print $1}') | grep RuntimePath
+    export XDG_RUNTIME_DIR=/run/user/$(id -u)
     ```
 
 - **Wayland Users**
 
-  - May need `xdg-desktop-portal` installed for IPC:
+  - Install `xdg-desktop-portal` for proper IPC support:
     ```bash
-    sudo apt install xdg-desktop-portal      # Debian/Ubuntu
-    sudo pacman -S xdg-desktop-portal        # Arch
-    sudo dnf install xdg-desktop-portal      # Fedora
+    sudo apt install xdg-desktop-portal xdg-desktop-portal-gtk  # Debian/Ubuntu
+    sudo pacman -S xdg-desktop-portal xdg-desktop-portal-gtk    # Arch
+    sudo dnf install xdg-desktop-portal xdg-desktop-portal-gtk  # Fedora
     ```
 
-- **Use Automatic Diagnostic Tool**
-  - Use the Tray → Debug → “Run IPC Diagnostic (Linux)” to automatically check your Discord setup.
-  - The diagnostic script will detect installation type, socket permissions, session issues, and Wayland/Root restrictions.
+- **Socket Permission Issues**
+
+  - Usually caused by running Discord as root or wrong XDG_RUNTIME_DIR
+
+- **Manual Socket Check**
+
+  - Check if Discord IPC socket exists:
+
+    ```bash
+    ls -la $XDG_RUNTIME_DIR/discord-ipc-0
+    ls -la $XDG_RUNTIME_DIR/snap.discord/discord-ipc-0      # Snap
+    ls -la $XDG_RUNTIME_DIR/app/com.discordapp.Discord/     # Flatpak
+    ```
+
+  - Socket should be owned by your user (not root)
+  - If socket doesn't exist, Discord is not running or has issues
 
 ---
 

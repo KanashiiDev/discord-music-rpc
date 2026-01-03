@@ -86,7 +86,7 @@ for (const fullPath of distFiles) {
   }
 
   // Windows EXE
-  if (file.endsWith(".exe") && file.startsWith("Discord-Music-RPC-Setup")) {
+  if (file.endsWith(".exe") && file.startsWith("Discord-Music-RPC-")) {
     fs.copyFileSync(fullPath, path.join(releaseDir, file));
     console.log(`📦 Copied Windows installer: ${file}`);
   }
