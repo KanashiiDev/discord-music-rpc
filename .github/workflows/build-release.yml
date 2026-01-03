@@ -101,7 +101,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: windows-build
-          path: ./dist/windows
+          path: ./dist/win32
 
       - name: Download Linux Artifacts
         uses: actions/download-artifact@v4
