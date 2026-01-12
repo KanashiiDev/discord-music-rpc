@@ -416,7 +416,8 @@ const pendingInlines = {};
     "factoryReset",
   ]);
 
-  inlineUtilsFunctions("background.js", ["manager/userScriptWorker.js", "background/historyBackground.js", "background/backgroundListeners.js"], [], "start", true);
+  inlineUtilsFunctions("background.js", ["manager/userScriptWorker.js"], []);
+  inlineUtilsFunctions("background.js", ["background/historyBackground.js", "background/backgroundListeners.js"], [], "start", true);
 
   // Popup Selector Utils
   inlineUtilsFunctions("popup/selector/selector.js", "common/utils.js", ["throttle", "formatLabel", "getExistingElementSelector", "getPlainText", "getIconAsDataUrl", "parseRegexArray"]);
