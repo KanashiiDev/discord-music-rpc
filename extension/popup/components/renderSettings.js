@@ -6,7 +6,7 @@ async function renderSettings() {
   while (panel.firstChild) panel.removeChild(panel.firstChild);
 
   // Theme Switch
-  let themeStorage = await browser.storage.local.get("theme");
+  const themeStorage = await browser.storage.local.get("theme");
   let themeConfig = themeStorage.theme || "dark";
   const themeWrap = document.createElement("div");
   themeWrap.className = "settings-option theme-wrapper";
@@ -64,7 +64,7 @@ async function renderSettings() {
 
   // BACKGROUND IMAGE SETTINGS
   // Load saved background settings
-  let bgStorage = await browser.storage.local.get("backgroundSettings");
+  const bgStorage = await browser.storage.local.get("backgroundSettings");
   let bgSettings = bgStorage.backgroundSettings || {
     image: null,
     blur: 0,
@@ -270,8 +270,8 @@ async function renderSettings() {
 
     return controlRow;
   }
-  let COLOR_SETTINGS = getColorSettings();
-  let colorStorage = await browser.storage.local.get("colorSettings");
+  const COLOR_SETTINGS = getColorSettings();
+  const colorStorage = await browser.storage.local.get("colorSettings");
   let colorConfig = colorStorage.colorSettings || {};
 
   for (const item of COLOR_SETTINGS) {

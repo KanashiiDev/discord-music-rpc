@@ -37,7 +37,7 @@ class UseSettingParser {
     }
 
     // If it looks like JSON (array/object) attempt to normalize and parse
-    if (/^[\[{]/.test(val)) {
+    if (/^[[]{]/.test(val)) {
       // Normalize unquoted object keys like {a: 1} => {"a":1}
       const safe = val.replace(/([{,]\s*)([A-Za-z0-9_]+)\s*:/g, '$1"$2":');
       try {

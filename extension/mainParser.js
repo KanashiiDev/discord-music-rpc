@@ -323,6 +323,7 @@ window.registerParser = async function ({
       const rawData = await fn({ useSetting: boundUseSetting });
       if (!rawData) return null;
 
+      // eslint-disable-next-line prefer-const
       let { timePassed = "", duration: durationElem = "", ...rest } = rawData;
 
       const safeFormat = (val) => {
@@ -473,7 +474,7 @@ function scheduleParserListSaveOnce(delay = 1000) {
 async function scheduleParserListSave() {
   try {
     const meta = (window.parserMeta || []).filter((p) => p.id && p.domain && p.title && p.urlPatterns);
-    let parserList = [];
+    const parserList = [];
     let { userScriptsList = [] } = await browser.storage.local.get(["userScriptsList"]);
 
     if (userScriptsList.length) {
@@ -675,7 +676,7 @@ async function loadAllSavedUserParsers() {
         try {
           const title = get("title")?.textContent?.trim() ?? "";
           const artist = get("artist")?.textContent?.trim() ?? "";
-          let source = get("source")?.textContent?.trim() ?? getPlainText(data.selectors["source"]) ?? "";
+          const source = get("source")?.textContent?.trim() ?? getPlainText(data.selectors["source"]) ?? "";
           const timePassed = get("timePassed")?.textContent ?? "";
           const duration = get("duration")?.textContent ?? "";
           const imageElement = get("image");

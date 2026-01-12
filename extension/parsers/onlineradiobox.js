@@ -57,7 +57,7 @@ registerParser({
     if (!isPlaying) {
       return;
     }
-    let fetchedData = await fetchTrackHistory();
+    const fetchedData = await fetchTrackHistory();
 
     const titleElem = fetchedData?.trackTitle;
     const artistElem = fetchedData?.trackArtist;

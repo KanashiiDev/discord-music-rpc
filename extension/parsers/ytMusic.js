@@ -9,7 +9,7 @@ registerParser({
     const artistSelector = document.querySelector("ytmusic-player-bar yt-formatted-string.byline");
     if (artistSelector) {
       const artistNames = [];
-      for (let node of artistSelector.childNodes) {
+      for (const node of artistSelector.childNodes) {
         if (node.textContent.includes("•")) break;
         if (node.nodeType === Node.ELEMENT_NODE && node.tagName === "A") {
           artistNames.push(node.textContent.trim());

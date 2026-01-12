@@ -23,7 +23,7 @@ registerParser({
     let title = root?.querySelector("[data-testid='status-display']")?.textContent;
     let artist = root?.querySelector("[data-testid='status-display']")?.textContent;
     const image = document.querySelector("[data-testid='logo-in-player']")?.src;
-    let sourceTitle = root?.querySelector("[data-testid='broadcast-name']")?.textContent ?? "radio.net";
+    const sourceTitle = root?.querySelector("[data-testid='broadcast-name']")?.textContent ?? "radio.net";
     const sourceUrl = `${location.origin}/s/${getStemFromUrl(image)}` || "https://www.radio.net";
 
     if (!title && !artist && sourceTitle) {

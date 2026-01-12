@@ -63,7 +63,7 @@ if (typeof str !== "string" || !str.trim()) return fallback;
     strForRegex = strForRegex.normalize("NFC");
     strForRegex = strForRegex.replace(/[\uD800-\uDFFF](?![\uDC00-\uDFFF])/g, "").replace(/(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g, "");
     strForRegex = strForRegex.replace(/[^\u0020-\u007E\u00A0-\uD7FF\uE000-\uFFFD]/g, "");
-  } catch (e) {
+  } catch (_) {
     // Continue without removing problematic characters
   }
 
@@ -216,7 +216,7 @@ function detectElectronMode() {
     if (require.main && (require.main.filename.includes("electron") || require.main.filename.includes("app.asar"))) {
       return true;
     }
-  } catch (err) {
+  } catch (_) {
     // Continue in case of error
   }
   if (typeof window !== "undefined" && window.process && window.process.type) {

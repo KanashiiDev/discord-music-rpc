@@ -2,10 +2,10 @@
 function formatTime(sec) {
   if (!sec || sec < 0) return "00:00";
 
-  let m = Math.floor(sec / 60)
+  const m = Math.floor(sec / 60)
     .toString()
     .padStart(2, "0");
-  let s = Math.floor(sec % 60)
+  const s = Math.floor(sec % 60)
     .toString()
     .padStart(2, "0");
   return `${m}:${s}`;
@@ -13,11 +13,11 @@ function formatTime(sec) {
 
 // Time Calculate
 function nativeTimeElement(e) {
-  let date = new Date(e * 1000);
+  const date = new Date(e * 1000);
   if (isNaN(date.valueOf())) return "just now";
 
   return (function () {
-    let r = Math.round(Date.now() / 1000) - Math.round(date.valueOf() / 1000);
+    const r = Math.round(Date.now() / 1000) - Math.round(date.valueOf() / 1000);
 
     if (r === 0) return "just now";
     if (r === 1) return "1 second ago";

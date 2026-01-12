@@ -67,7 +67,7 @@ const pendingInlines = {};
 
   // 3. Read base manifest for the current target
   const manifestPath = path.join(EXTENSION_DIR, "manifests", `manifest.${TARGET}.json`);
-  let manifest = fs.readJsonSync(manifestPath);
+  const manifest = fs.readJsonSync(manifestPath);
   manifest.version = pkgVersion;
 
   // 4. Update manifest content_scripts to use compiledParsers.js and <all_urls>
@@ -113,7 +113,7 @@ const pendingInlines = {};
   if (fs.existsSync(parsersDir)) {
     const parserFiles = fs.readdirSync(parsersDir).filter((file) => file.endsWith(".js"));
     let combinedCode = "";
-    let allParserSettings = {};
+    const allParserSettings = {};
 
     for (const file of parserFiles) {
       const filePath = path.join(parsersDir, file);
@@ -126,7 +126,7 @@ const pendingInlines = {};
       // Detect useSetting calls
       const regex = /useSetting\s*\(\s*["']([^"']+)["']\s*,\s*["']([^"']+)["']\s*,\s*["']([^"']+)"(?:\s*,\s*([\s\S]*?))?\s*\)/g;
       let match;
-      let parserSettings = [];
+      const parserSettings = [];
 
       while ((match = regex.exec(code)) !== null) {
         const [_, key, label, type, defaultValueRaw] = match;
@@ -271,35 +271,33 @@ const pendingInlines = {};
    *        This value is passed through into each pending inline entry; it can be a function name, a RegExp matcher, an array of names/regexes,
    *        or a descriptor object depending on the callers' expected format.
    * @param {"start"|"end"} [position="start"] - Where to insert the inlined functions in the target file. Defaults to "start".
+   * @param {boolean [shouldDelete=false] - Whether to delete the file after inlining. Defaults to `false`.
    * @returns {void}
    */
-  function inlineUtilsFunctions(targetFiles, sourceFiles, functionsToInclude, position = "start") {
+  function inlineUtilsFunctions(targetFiles, sourceFiles, functionsToInclude, position = "start", shouldDelete = false) {
     if (!Array.isArray(targetFiles)) targetFiles = [targetFiles];
     if (!Array.isArray(sourceFiles)) sourceFiles = [sourceFiles];
 
-    let expandedSources = [];
-
+    const expandedSources = [];
     sourceFiles.forEach((src) => {
       const fullPath = path.join(EXTENSION_DIR, src);
-
       // If src is a directory -> get all .js files in that directory
       if (fs.existsSync(fullPath) && fs.lstatSync(fullPath).isDirectory()) {
         expandedSources.push(...getJsFilesInDirectory(fullPath, src));
-      }
-      // If src is a normal file -> add directly
-      else {
+      } else {
+        // If src is a normal file -> add directly
         expandedSources.push(src);
       }
     });
 
     targetFiles.forEach((target) => {
       if (!pendingInlines[target]) pendingInlines[target] = [];
-
       expandedSources.forEach((sourceFile) => {
         pendingInlines[target].push({
           sourceFile,
           functionsToInclude,
           position,
+          shouldDelete,
         });
       });
     });
@@ -326,14 +324,15 @@ const pendingInlines = {};
   }
 
   function buildInlineFunctions() {
+    const filesToDelete = new Set();
+
     for (const [targetFile, inlines] of Object.entries(pendingInlines)) {
       const targetPath = path.join(DIST_DIR, targetFile);
       let targetContent = fs.readFileSync(targetPath, "utf8");
-
       let startInlinedCode = "";
       let endInlinedCode = "";
 
-      for (const { sourceFile, functionsToInclude, position } of inlines) {
+      for (const { sourceFile, functionsToInclude, position, shouldDelete } of inlines) {
         const sourcePath = path.join(EXTENSION_DIR, sourceFile);
         const extractedFunctions = extractFunctionsFromFile(sourcePath, functionsToInclude);
         const inlineTag = `// === BEGIN INLINE UTILS (${sourceFile}) - (${functionsToInclude?.join?.(", ") || "ALL"}) ===`;
@@ -344,21 +343,31 @@ const pendingInlines = {};
         } else {
           startInlinedCode += inlinedCode;
         }
+
+        // Mark the files to be deleted
+        if (shouldDelete) {
+          filesToDelete.add(path.join(DIST_DIR, sourceFile));
+        }
       }
 
       targetContent = startInlinedCode + "\n" + targetContent + "\n" + endInlinedCode;
       fs.writeFileSync(targetPath, targetContent, "utf8");
     }
+
+    // Delete selected files
+    filesToDelete.forEach((filePath) => {
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+      }
+    });
   }
 
-  function applyCssConfig(configFile, targetFiles) {
+  function applyCssConfig(configFile, targetFiles, marker = "/*CSS-CONFIG*/") {
     const configContent = fs.readFileSync(path.join(EXTENSION_DIR, configFile), "utf8");
 
     targetFiles.forEach((file) => {
       const filePath = path.join(DIST_DIR, file);
       const originalContent = fs.readFileSync(filePath, "utf8");
-
-      const marker = "/*CSS-CONFIG*/";
       let newContent;
 
       if (originalContent.includes(marker)) {
@@ -374,7 +383,7 @@ const pendingInlines = {};
   // --- INLINE UTILITIES REGISTRATION START ---
 
   // CONFIG
-  inlineUtilsFunctions(["background.js", "common/utils.js", "mainParser.js"], "config.js", []);
+  inlineUtilsFunctions(["background.js", "common/utils.js", "mainParser.js"], "config.js", [], "start", true);
 
   // Truncate
   inlineUtilsFunctions(["common/utils.js", "popup/selector/selector.js", "popup/selector/components/preview.js", "background.js"], "../utils.js", ["truncate", "normalizeTitleAndArtist"]);
@@ -407,7 +416,7 @@ const pendingInlines = {};
     "factoryReset",
   ]);
 
-  inlineUtilsFunctions("background.js", ["manager/userScriptWorker.js", "background/historyBackground.js", "background/backgroundListeners.js"], []);
+  inlineUtilsFunctions("background.js", ["manager/userScriptWorker.js", "background/historyBackground.js", "background/backgroundListeners.js"], [], "start", true);
 
   // Popup Selector Utils
   inlineUtilsFunctions("popup/selector/selector.js", "common/utils.js", ["throttle", "formatLabel", "getExistingElementSelector", "getPlainText", "getIconAsDataUrl", "parseRegexArray"]);
@@ -422,7 +431,9 @@ const pendingInlines = {};
       "popup/selector/modules/selectorInterfaceHelpers.js",
       "popup/selector/components/preview.js",
     ],
-    []
+    [],
+    "start",
+    true
   );
 
   // Main Parser Utils
@@ -452,10 +463,10 @@ const pendingInlines = {};
   ]);
 
   // Build CodeMirror 5
-  inlineUtilsFunctions("libs/codemirror/codemirror.js", ["libs/codemirror/libs/jshint.js", "libs/codemirror/addons/", "libs/beautify.js"], [], "end");
+  inlineUtilsFunctions("libs/codemirror/codemirror.js", ["libs/codemirror/libs/jshint.js", "libs/codemirror/addons/", "libs/beautify.js"], [], "end", true);
 
   // User Script Manager
-  inlineUtilsFunctions("manager/userScriptManager.js", "manager/components/UseSettingEditor.js", []);
+  inlineUtilsFunctions("manager/userScriptManager.js", "manager/components/UseSettingEditor.js", [], "start", true);
 
   // --- INLINE UTILITIES REGISTRATION END ---
 
@@ -463,7 +474,8 @@ const pendingInlines = {};
   buildInlineFunctions();
 
   // Apply CSS Configurations
-  applyCssConfig("css-config.css", ["popup/popup.css", "popup/selector/selector.css", "manager/userScriptManager.css", "backup/backup.css"]);
+  applyCssConfig("css-config.css", ["popup/popup.css", "popup/selector/selector.css", "manager/userScriptManager.css", "settings/settings.css"]);
+  applyCssConfig("css-global.css", ["popup/popup.css", "popup/selector/selector.css", "manager/userScriptManager.css", "settings/settings.css"], "/*CSS-GLOBAL*/");
 
   // 7. Write the manifest in the dist folder
   fs.writeJsonSync(path.join(DIST_DIR, "manifest.json"), manifest, {

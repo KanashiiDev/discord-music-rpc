@@ -42,7 +42,7 @@ async function scheduleHistoryAdd(tabId, songData) {
 
   if (!state.historyCounters) state.historyCounters = new Map();
   const key = `${songData.title}::${songData.artist}::${songData.source}::${songData.image}`;
-  let tracker = state.historyCounters.get(tabId);
+  const tracker = state.historyCounters.get(tabId);
   const now = Date.now();
 
   if (!tracker || tracker.lastKey !== key) {

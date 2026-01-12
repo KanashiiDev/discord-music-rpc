@@ -28,7 +28,7 @@ class PatternValidator {
 
     // Fix / signs in regex and make .* → *
     const match = pattern.match(/^\/(.+)\/$/);
-    let inner = match ? match[1] : pattern;
+    const inner = match ? match[1] : pattern;
 
     let wildcard = inner
       .replace(/\\\//g, "/") // \/ → /

@@ -122,11 +122,11 @@ app.post("/update-rpc", async (req, res) => {
     }
 
     // String Extraction
-    let dataTitle = String(data.title || "").trim();
-    let dataArtist = String(data.artist || "").trim();
-    let dataSource = String(data.source || "").trim();
+    const dataTitle = String(data.title || "").trim();
+    const dataArtist = String(data.artist || "").trim();
+    const dataSource = String(data.source || "").trim();
     const artistIsMissingOrSame = !dataArtist || dataArtist === dataTitle;
-    let dataSettings = data.settings;
+    const dataSettings = data.settings;
 
     // Default settings
     const defaultSettings = {

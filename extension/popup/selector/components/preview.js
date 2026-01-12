@@ -105,7 +105,7 @@ function createPreviewSection(root) {
 // Start preview loop
 let previewInterval = null;
 function startPreviewLoop(shadow, editMode) {
-  window.previewInterval = setInterval(() => {
+  previewInterval = setInterval(() => {
     updatePreview(shadow, editMode);
   }, 1000);
 }

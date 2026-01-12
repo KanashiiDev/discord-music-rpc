@@ -195,7 +195,7 @@ const popupModule = {
       button.disabled = true;
 
       try {
-        let theme = await browser.storage.local.get("theme");
+        const theme = await browser.storage.local.get("theme");
         document.body.dataset.theme = theme.theme || "dark";
         document.documentElement.dataset.theme = theme.theme || "dark";
         clearTimeout(buttonDisableTimeout);
@@ -303,7 +303,7 @@ let domLoadedListener = null;
 domLoadedListener = async () => {
   try {
     // Set Theme
-    let theme = await browser.storage.local.get("theme");
+    const theme = await browser.storage.local.get("theme");
     document.body.dataset.theme = theme.theme || "dark";
     document.documentElement.dataset.theme = theme.theme || "dark";
 

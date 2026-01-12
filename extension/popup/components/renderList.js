@@ -174,7 +174,7 @@ async function renderList(filteredList = null, isSearch = null) {
 
     // Get parserSettings root
     const { parserSettings = {} } = await browser.storage.local.get("parserSettings");
-    let parserOptions = parserSettings[settingKey] || {};
+    const parserOptions = parserSettings[settingKey] || {};
 
     // Fill missing defaults
     for (const [key, def] of Object.entries(DEFAULT_PARSER_OPTIONS)) {

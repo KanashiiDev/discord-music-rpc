@@ -28,6 +28,9 @@
     "start": "node server.js",
     "start:app": "electron .",
     "clean": "rimraf dist",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "lint:strict": "eslint . --max-warnings=0",
     "build:win": "npm run clean && electron-builder --win --x64 --publish=never",
     "build:mac": "npm run clean && electron-builder --mac --x64 --publish=never",
     "build:mac:arm64": "npm run clean && electron-builder --mac --arm64 --publish=never",
@@ -73,6 +76,7 @@
     "cross-env": "^10.1.0",
     "electron": "^39.2.7",
     "electron-builder": "^26.0.18",
+    "eslint": "^9.39.2",
     "fs-extra": "^11.3.3",
     "postcss": "^8.5.6",
     "rimraf": "^6.1.2"

@@ -4,14 +4,14 @@ let fullHistory = [];
 let filteredHistory = [];
 let currentOffset = 0;
 const maxHistoryItemLoad = 20;
-let selectedSources = new Set();
+const selectedSources = new Set();
 const panel = document.getElementById("historyPanel");
 const filterBtn = document.getElementById("historyFilterBtn");
 const filterMenu = document.getElementById("historyFilterMenu");
 const filterMenuContent = document.getElementById("historyFilterMenuContent");
 let lastRenderedHeader = null;
-let scrollListenerRef = null;
-let draggingIntervalRef = null;
+const scrollListenerRef = null;
+const draggingIntervalRef = null;
 let scrollElementGlobal = null;
 
 // Render
@@ -108,7 +108,7 @@ async function activateHistoryScroll() {
   const sbInstance = simpleBarInstances.get(panel);
   if (!sbInstance) return;
 
-  let scrollElement = sbInstance.getScrollElement?.() || panel.querySelector(".simplebar-content-wrapper") || panel.querySelector(".simplebar-content") || panel;
+  const scrollElement = sbInstance.getScrollElement?.() || panel.querySelector(".simplebar-content-wrapper") || panel.querySelector(".simplebar-content") || panel;
   scrollElementGlobal = scrollElement;
 
   // State

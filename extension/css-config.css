@@ -52,6 +52,7 @@
   --warning-color: #7a6508;
   --alert-color: #782020;
   --accent-color: #425c83;
+  --accent-color-border: #425c83;
   --accent-color-bright: #4e6f97;
   --switch-toggle-color: #ddd;
   --icon-color: #ddd;
@@ -101,5 +102,6 @@
   --orange-color: #c99000;
   --green-color: #28c900;
   --accent-color: #425c83;
+  --accent-color-border: #425c83;
   --accent-color-bright: #4e6f97;
 }

@@ -25,7 +25,7 @@ function updateReadmeVersion() {
     return;
   }
 
-  let readmeContent = fs.readFileSync(readmePath, "utf8");
+  const readmeContent = fs.readFileSync(readmePath, "utf8");
   const releaseUrlPattern = /(\/releases\/latest\/download\/[a-zA-Z-]+-)(\d+\.\d+\.\d+)(-[a-zA-Z0-9._-]+)/g;
 
   let changeCount = 0;

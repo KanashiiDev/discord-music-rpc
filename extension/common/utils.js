@@ -41,6 +41,7 @@ const errorFilter = (() => {
     /failed to fetch/i,
     /update failed after all retries/i,
     /update failed \(no response\)/i,
+    /Request timed out/i,
   ];
 
   const shouldIgnore = (error) => {
@@ -206,24 +207,37 @@ async function applyColorSettings() {
   // Accent color bright variant
   if (config.accentColor) {
     if (isGradient(config.accentColor)) {
-      const colors = extractGradientColors(config.accentColor);
-      if (colors.length > 0) {
-        const base = tinycolor(colors[0]);
+      const gradientInfo = parseGradient(config.accentColor);
+      const brightenedColors = gradientInfo.colors.map((color) => {
+        const base = tinycolor(color);
         const alpha = base.getAlpha();
         const bright = base.clone().lighten(12);
         bright.setAlpha(alpha);
-        document.body.style.setProperty("--accent-color-bright", bright.toRgbString());
-      }
+        return bright.toRgbString();
+      });
+
+      // Create a bright version for the entire gradient
+      const brightGradient = `linear-gradient(${gradientInfo.degree}deg, ${brightenedColors.join(", ")})`;
+      document.body.style.setProperty("--accent-color-bright", brightGradient);
+
+      // Use the middle color for the border
+      const middleIndex = Math.floor(gradientInfo.colors.length / 2);
+      const borderColor = gradientInfo.colors[middleIndex];
+      document.body.style.setProperty("--accent-color-border", borderColor);
     } else {
       const base = tinycolor(config.accentColor);
       const alpha = base.getAlpha();
       const bright = base.clone().lighten(12);
       bright.setAlpha(alpha);
       document.body.style.setProperty("--accent-color-bright", bright.toRgbString());
+
+      // If it's a single color, use the same color
+      document.body.style.setProperty("--accent-color-border", config.accentColor);
     }
   } else {
-    // Clear the bright variant when the accent color is deleted
+    // Clear the bright variant and border when the accent color is deleted
     document.body.style.removeProperty("--accent-color-bright");
+    document.body.style.removeProperty("--accent-color-border");
   }
 
   saveStyleAttrs();
@@ -341,20 +355,27 @@ function createMutex() {
 }
 
 // Waits for a condition to become true
-function waitFor(fn, maxWait = 1000, interval = 50) {
+function waitFor(fn, maxWait = 1000) {
   const start = performance.now();
 
   return new Promise((resolve, reject) => {
+    try {
+      if (fn()) return resolve(true);
+    } catch (error) {
+      return reject(error);
+    }
+
     const tick = () => {
       try {
         if (fn()) return resolve(true);
         if (performance.now() - start >= maxWait) return resolve(false);
-        setTimeout(tick, interval);
+        requestAnimationFrame(tick);
       } catch (error) {
         reject(error);
       }
     };
-    tick();
+
+    requestAnimationFrame(tick);
   });
 }
 
@@ -1064,7 +1085,7 @@ async function showInitialTutorial() {
     const popupHeight = document.body.scrollHeight;
 
     // Place the tooltip below or above the target
-    let top = rect.bottom + 8 + tooltipHeight > popupHeight ? rect.top + scrollTop - tooltipHeight - 12 : rect.bottom + scrollTop + 8;
+    const top = rect.bottom + 8 + tooltipHeight > popupHeight ? rect.top + scrollTop - tooltipHeight - 12 : rect.bottom + scrollTop + 8;
 
     tooltip.style.top = `${top}px`;
     tooltip.style.left = `${rect.left + scrollLeft}px`;
@@ -1210,9 +1231,9 @@ function getPlainText(text) {
     "hr",
     "br",
   ]);
-  if (/^[.#\[]/.test(trimmed)) return null;
+  if (/^[.#[]/.test(trimmed)) return null;
   if (!trimmed.includes(" ") && htmlTags.has(trimmed.toLowerCase())) return null;
-  if (/[\s>+~.#:\[\]]/.test(trimmed)) return null;
+  if (/[\s>+~.#:[\]]/.test(trimmed)) return null;
   return trimmed;
 }
 
@@ -1363,7 +1384,7 @@ function parseRegexArray(input) {
     if (!inner) return [/.*/];
 
     const parts = inner
-      .split(/,(?![^\[]*\])/g)
+      .split(/,(?![^[]*])/g)
       .map((s) => s.trim())
       .filter(Boolean);
 
@@ -1486,14 +1507,10 @@ async function activateSimpleBar(targetIds, timeout = 500, interval = 30, maxWai
       }
 
       // Wait for panel visibility
-      const isVisible = await waitFor(
-        () => {
-          const style = getComputedStyle(panel);
-          return style.display !== "none" && style.visibility !== "hidden" && panel.offsetWidth > 0 && panel.offsetHeight > 0;
-        },
-        maxWaitMs,
-        interval
-      );
+      const isVisible = await waitFor(() => {
+        const style = getComputedStyle(panel);
+        return style.display !== "none" && style.visibility !== "hidden" && panel.offsetWidth > 0 && panel.offsetHeight > 0;
+      }, 200);
 
       if (!isVisible) {
         results.push({ id, success: false, reason: "not_visible" });

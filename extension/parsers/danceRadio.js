@@ -14,7 +14,7 @@ registerParser({
         console.error("Error:", err);
       }
     }
-    let fetchedData = await getStatus();
+    const fetchedData = await getStatus();
     const titleElem = fetchedData?.title;
     const artistElem = fetchedData?.title;
     const coverElem = fetchedData?.artwork_url;

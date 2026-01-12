@@ -9,7 +9,7 @@ registerParser({
       const urlPattern = /-(t\d+x\d+|original)\.(jpg|png)$/;
       if (!baseUrl) return null;
 
-      for (let size of tryImageSizes) {
+      for (const size of tryImageSizes) {
         const imgUrl = baseUrl.replace(urlPattern, `-${size}.jpg`);
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), timeoutMs);

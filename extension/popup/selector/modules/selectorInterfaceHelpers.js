@@ -306,7 +306,7 @@ function setupEventListeners(shadow) {
 
     // Check Selector Fields
     const checkFields = ["title", "artist", "timePassed", "duration"];
-    let invalidFields = [];
+    const invalidFields = [];
 
     checkFields.forEach((f) => {
       if (selectors[f] && !getExistingElementSelector(selectors[f])) {
@@ -344,7 +344,7 @@ function setupEventListeners(shadow) {
     };
 
     const settings = await browser.storage.local.get("userParserSelectors");
-    let parserArray = Array.isArray(settings.userParserSelectors) ? settings.userParserSelectors : [];
+    const parserArray = Array.isArray(settings.userParserSelectors) ? settings.userParserSelectors : [];
 
     const existingIndex = parserArray.findIndex((p) => p.id === id);
     if (existingIndex !== -1) {
@@ -360,7 +360,7 @@ function setupEventListeners(shadow) {
 
   // Close User Add RPC
   shadow.getElementById("closeSelectorUI").addEventListener("click", () => {
-    clearInterval(window.previewInterval);
+    clearInterval(previewInterval);
     shadow.host.remove();
   });
 }

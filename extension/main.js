@@ -260,7 +260,7 @@ async function mainLoop() {
       const debugMode = stored.debugMode === 1 ? true : CONFIG.debugMode;
       if (debugMode && state.lastUpdateStatus !== "skipped") {
         let logMessage = "";
-        let styles = [];
+        const styles = [];
 
         sections.forEach((section, sectionIndex) => {
           // Section header
@@ -345,7 +345,7 @@ async function mainLoop() {
     // Send Update
     logInfo(`%c🚀 RPC Update triggered by:%c ${updateReason}`, "color:#4caf50; font-weight:bold;", "color:#fff;");
 
-    let updatedProgress = Math.max(progress, 1);
+    const updatedProgress = Math.max(progress, 1);
     const didUpdate = await processRPCUpdate(song, updatedProgress);
 
     if (didUpdate) {

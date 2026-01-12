@@ -236,7 +236,7 @@ const handleDropdownToggleClick = (e) => {
   dropdownToggle.querySelector(".arrow").style.transform = dropdownMenu.classList.contains("open") ? "rotate(180deg)" : "rotate(0deg)";
 };
 
-let flatpickrInstances = { start: null, end: null };
+const flatpickrInstances = { start: null, end: null };
 
 const handleDropdownMenuClick = async (e) => {
   const li = e.target.closest("li");

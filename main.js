@@ -124,7 +124,7 @@ function getResourcePath(...p) {
 }
 
 function getIconPath(size = null) {
-  let baseDir = getAppPath("assets", "icon");
+  const baseDir = getAppPath("assets", "icon");
   let fileName;
 
   switch (process.platform) {
@@ -1338,7 +1338,7 @@ app.on("will-quit", () => {
   if (currentMenu) {
     try {
       currentMenu = null;
-    } catch (err) {
+    } catch (_) {
       // Ignore
     }
   }
@@ -1371,7 +1371,7 @@ app.on("before-quit", async (event) => {
       state.tray.setContextMenu(null);
       state.tray.destroy();
       state.tray = null;
-    } catch (err) {
+    } catch (_) {
       // Ignore
     }
   }

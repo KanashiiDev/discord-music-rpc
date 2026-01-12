@@ -23,7 +23,7 @@ function configureLogging({ logDir, maxSize, rotationInterval }) {
       if (electron && electron.app && typeof electron.app.isPackaged === "boolean") {
         isPackaged = electron.app.isPackaged;
       }
-    } catch (e) {
+    } catch (_) {
       // ignore - not running in electron main process context
     }
 
@@ -35,11 +35,11 @@ function configureLogging({ logDir, maxSize, rotationInterval }) {
       log.transports.console.format = "[{h}:{i}:{s}] {text}";
       log.transports.console.level = "debug";
     }
-  } catch (err) {
+  } catch (_) {
     // If anything goes wrong configuring console transport, ensure we don't crash the app
     try {
       log.transports.console.level = false;
-    } catch (e) {
+    } catch (_) {
       // swallow
     }
   }
@@ -63,7 +63,7 @@ function configureLogging({ logDir, maxSize, rotationInterval }) {
     } catch (err) {
       try {
         console.error("Log rotation failed:", err);
-      } catch (e) {
+      } catch (_) {
         // swallow
       }
     }
@@ -85,7 +85,7 @@ function logStartupTimeout({ elapsed, serverPath = null, pid = null, env = {} } 
       if (fs.existsSync(diagFile)) {
         try {
           entries = JSON.parse(fs.readFileSync(diagFile, "utf8")) || [];
-        } catch (e) {
+        } catch (_) {
           entries = [];
         }
       }

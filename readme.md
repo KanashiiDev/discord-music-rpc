@@ -151,6 +151,8 @@ It is required for communicating with Discord and displaying the music status.
   - For the extension: Open extension popup, click settings, click toggle "Activate Debug Mode" then check your browser's developer console for any errors.
 
 **Linux:**
+<details>
+<summary>Click to view</summary>
 
 - **Use Automatic Diagnostic Tool (Recommended)**
 
@@ -215,6 +217,8 @@ It is required for communicating with Discord and displaying the music status.
 
   - Socket should be owned by your user (not root)
   - If socket doesn't exist, Discord is not running or has issues
+
+</details>
 
 ---
 

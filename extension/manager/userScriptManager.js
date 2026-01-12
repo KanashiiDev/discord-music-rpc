@@ -217,7 +217,7 @@ class UserScriptUI {
   checkSettings(cm) {
     const useSetRegex = /useSetting\s*\(\s*["']([^"']+)["']\s*,\s*["']([^"']+)["']\s*,\s*["']([^"']+)"(?:\s*,\s*([\s\S]*?))?\s*\)/g;
     const code = cm.getValue();
-    let match = useSetRegex.exec(code);
+    const match = useSetRegex.exec(code);
     if (match === null) {
       document.getElementById("editSettingsBtn").hidden = true;
     } else {
@@ -525,6 +525,7 @@ class UserScriptUI {
       let match;
 
       while ((match = regex.exec(code)) !== null) {
+        // eslint-disable-next-line prefer-const
         let [, key, label, type, rawDefaultValue] = match;
         let defaultValue = "";
 

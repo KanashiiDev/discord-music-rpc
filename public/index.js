@@ -130,8 +130,6 @@ document.querySelectorAll("h2.collapsible").forEach((header) => {
     }
 
     if (expandTimeout) clearTimeout(expandTimeout);
-    isLogs = header.className.includes("collapsible logs");
-    isHistory = header.className.includes("collapsible history");
 
     const box = header.nextElementSibling;
     if (!box) return;
@@ -302,8 +300,8 @@ function updateHistory(history) {
       source.classList.add("source");
 
       const date = document.createElement("p");
-      let dateLong = new Date(song.date).toLocaleString();
-      let unixSeconds = Math.floor(song.date / 1000);
+      const dateLong = new Date(song.date).toLocaleString();
+      const unixSeconds = Math.floor(song.date / 1000);
       const dateAgo = nativeTimeElement(unixSeconds);
       date.textContent = dateAgo;
       date.title = dateLong;
@@ -442,7 +440,7 @@ async function updateMusicCard() {
     const hasTimestamps = typeof start === "number" && typeof end === "number";
 
     if (hasTimestamps) {
-      let total = Math.max(0, end - start);
+      const total = Math.max(0, end - start);
       let passed = Math.max(0, now - start);
       if (passed > total) passed = total;
 

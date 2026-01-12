@@ -42,7 +42,7 @@ async function loadHistory() {
 async function addToHistory({ image, title, artist, source, songUrl }) {
   if (!title || !artist) return;
 
-  let history = await loadHistory();
+  const history = await loadHistory();
   const last = history[0];
   const lastArtist = last?.t === last?.a ? "" : last?.a;
   const normalized = normalizeTitleAndArtist(title, artist);
@@ -75,7 +75,7 @@ async function migrateOldHistory() {
   const result = await browser.storage.local.get("listeningHistory");
   const oldList = Array.isArray(result.listeningHistory) ? result.listeningHistory : [];
   if (!oldList.length) return;
-  let srcList = [];
+  const srcList = [];
 
   const newList = oldList.map((entry) => ({
     a: entry.artist || "Unknown Artist",
