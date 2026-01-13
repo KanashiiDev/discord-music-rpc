@@ -1,7 +1,4 @@
 let currentRenderCleanup = null;
-const settingRefreshMessage = () => {
-  showPopupMessage("Please refresh the page to apply the settings.");
-};
 
 async function renderList(filteredList = null, isSearch = null) {
   const container = document.getElementById("siteListContainer");
@@ -390,7 +387,6 @@ async function renderOption(key, data, container, settingKey, addListener) {
       const arr = Array.isArray(opts[optKey]?.value) ? opts[optKey].value : [];
       opts[optKey].value = arr.map((o) => ({ ...o, selected: o.value === selectedValue }));
       await browser.storage.local.set({ parserSettings: { ...parserSettings, [setKey]: opts } });
-      settingRefreshMessage();
     };
     addListener(input, "change", handler);
   } else if (data.type === "checkbox") {
@@ -414,8 +410,29 @@ async function renderOption(key, data, container, settingKey, addListener) {
       const { parserSettings = {} } = await browser.storage.local.get("parserSettings");
       const opts = parserSettings[setKey] || {};
       opts[optKey].value = e.target.checked;
+      const showSourceCheckbox = container.querySelector(`input[type="checkbox"][data-option-key="showSource"][data-setting-key="${setKey}"]`);
+      const showArtistCheckbox = container.querySelector(`input[type="checkbox"][data-option-key="showArtist"][data-setting-key="${setKey}"]`);
+
+      if (optKey === "showArtist") {
+        if (!e.target.checked) {
+          // if showArtist became false, make showSource true
+          if (opts.showSource && showSourceCheckbox) {
+            opts.showSource.value = true;
+            showSourceCheckbox.checked = true;
+          }
+        }
+      }
+
+      if (optKey === "showSource") {
+        if (!e.target.checked) {
+          // if showSource became false, make showArtist true
+          if (opts.showArtist && showArtistCheckbox) {
+            opts.showArtist.value = true;
+            showArtistCheckbox.checked = true;
+          }
+        }
+      }
       await browser.storage.local.set({ parserSettings: { ...parserSettings, [setKey]: opts } });
-      settingRefreshMessage();
     });
   } else if (data.type === "text") {
     input = document.createElement("input");
@@ -431,7 +448,6 @@ async function renderOption(key, data, container, settingKey, addListener) {
       const opts = parserSettings[setKey] || {};
       opts[optKey].value = e.target.value;
       await browser.storage.local.set({ parserSettings: { ...parserSettings, [setKey]: opts } });
-      settingRefreshMessage();
     }, 300);
 
     addListener(input, "input", debounced);

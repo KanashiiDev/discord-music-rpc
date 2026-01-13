@@ -131,6 +131,7 @@ app.post("/update-rpc", async (req, res) => {
     // Default settings
     const defaultSettings = {
       showFavIcon: false,
+      showArtist: true,
       showCover: true,
       showSource: true,
       customCover: false,
@@ -143,6 +144,8 @@ app.post("/update-rpc", async (req, res) => {
       ...defaultSettings,
       ...(dataSettings && typeof dataSettings === "object" ? dataSettings : {}),
     };
+
+    const shouldShowArtist = !artistIsMissingOrSame && activitySettings.showArtist;
 
     // Server settings check
     if (!serverSettings || typeof serverSettings !== "object") {
@@ -170,7 +173,7 @@ app.post("/update-rpc", async (req, res) => {
     // Activity
     const activity = {
       details: dataTitle,
-      state: artistIsMissingOrSame ? dataSource : dataArtist,
+      state: shouldShowArtist ? dataArtist : dataSource,
       type: data.watching ? 3 : 2,
       instance: false,
     };

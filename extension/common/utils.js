@@ -1,7 +1,8 @@
 // Default Parser Options
 const DEFAULT_PARSER_OPTIONS = {
-  showCover: { label: "Show Cover", type: "checkbox", value: true },
+  showArtist: { label: "Show Artist", type: "checkbox", value: true },
   showSource: { label: "Show Source", type: "checkbox", value: true },
+  showCover: { label: "Show Cover", type: "checkbox", value: true },
   showTimeLeft: { label: "Show Time Left", type: "checkbox", value: true },
   showButtons: { label: "Show Buttons", type: "checkbox", value: true },
   showFavIcon: { label: "Show Small Site Icon", type: "checkbox", value: false },
