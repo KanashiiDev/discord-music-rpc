@@ -912,7 +912,6 @@ function setAutoStart(enable) {
 // Tray Menu
 function updateTrayMenu() {
   if (!state.tray || state.tray.isDestroyed()) {
-    log.warn("Tray not available, cannot update menu");
     return;
   }
 

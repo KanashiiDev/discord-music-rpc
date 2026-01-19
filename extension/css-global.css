@@ -100,6 +100,11 @@
   margin: 40px auto;
 }
 
+svg:not(.flatpickr-calendar svg) {
+  display: block;
+  place-self: center;
+}
+
 @-webkit-keyframes loadingBar {
   0% {
     -webkit-transform: scaleX(0);

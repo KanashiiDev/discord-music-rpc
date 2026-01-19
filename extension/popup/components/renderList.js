@@ -28,7 +28,21 @@ async function renderList(filteredList = null, isSearch = null) {
   if (!list || list.length === 0) {
     const setupListMessage = document.createElement("div");
     setupListMessage.className = "setup-list-message";
-    setupListMessage.textContent = isSearch ? "Not Found" : "Please open a supported website (YouTube, Soundcloud, Deezer etc.) in an active tab to build the parser list.";
+    if (isSearch) {
+      setupListMessage.textContent = "Not Found";
+    } else {
+      const messageText = document.createElement("p");
+      messageText.textContent = "Please open a supported website (YouTube, Soundcloud, Deezer etc.) to build the site list.";
+      const link = document.createElement("a");
+      link.className = "setup-link";
+      link.href = "https://github.com/KanashiiDev/discord-music-rpc?tab=readme-ov-file#-supported-websites";
+      link.textContent = "Supported Websites";
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
+
+      setupListMessage.appendChild(messageText);
+      setupListMessage.appendChild(link);
+    }
     container.appendChild(setupListMessage);
     updateMinHeight();
     return false;

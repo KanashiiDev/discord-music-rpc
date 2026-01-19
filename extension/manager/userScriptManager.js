@@ -1094,17 +1094,17 @@ class UserScriptUI {
       const dataStr = this.exportToRegisterParser(scripts);
       blob = new Blob([dataStr], { type: "text/javascript" });
       if (options.type === "single") {
-        fileName = `${scripts[0].title || "script"}.js`;
+        fileName = `discord-music-rpc-userScript-${scripts[0].title || "script"}.js`;
       } else {
-        fileName = `userScripts-${new Date().toISOString().split("T")[0]}.js`;
+        fileName = `discord-music-rpc-userScripts-${new Date().toISOString().split("T")[0]}.js`;
       }
     } else {
       const dataStr = JSON.stringify(scripts, null, 2);
       blob = new Blob([dataStr], { type: "application/json" });
       if (options.type === "single") {
-        fileName = `${scripts[0].title || "script"}.json`;
+        fileName = `discord-music-rpc-userScript-${scripts[0].title || "script"}.json`;
       } else {
-        fileName = `userScripts-${new Date().toISOString().split("T")[0]}.json`;
+        fileName = `discord-music-rpc-userScripts-${new Date().toISOString().split("T")[0]}.json`;
       }
     }
 
@@ -1120,6 +1120,10 @@ class UserScriptUI {
   exportMenuClick(e) {
     const oldMenu = document.querySelector(".export-menu");
     if (oldMenu) oldMenu.remove();
+
+    const li = e.target.closest("li.script-item");
+    const scriptId = li?.dataset?.id || null;
+    const isSingle = !!scriptId;
 
     // menu container
     const menu = document.createElement("div");
@@ -1141,11 +1145,11 @@ class UserScriptUI {
 
     // click events
     btnJson.addEventListener("click", async () => {
-      await this.handleExport("json");
+      await this.handleExport("json", isSingle ? { type: "single", scriptId } : { type: "all" });
       menu.remove();
     });
     btnJs.addEventListener("click", async () => {
-      await this.handleExport("js");
+      await this.handleExport("js", isSingle ? { type: "single", scriptId } : { type: "all" });
       menu.remove();
     });
 

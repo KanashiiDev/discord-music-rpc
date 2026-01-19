@@ -420,7 +420,7 @@ const pendingInlines = {};
   inlineUtilsFunctions("background.js", ["background/historyBackground.js", "background/backgroundListeners.js"], [], "start", true);
 
   // Popup Selector Utils
-  inlineUtilsFunctions("popup/selector/selector.js", "common/utils.js", ["throttle", "formatLabel", "getExistingElementSelector", "getPlainText", "getIconAsDataUrl", "parseRegexArray"]);
+  inlineUtilsFunctions("popup/selector/selector.js", "common/utils.js", ["throttle", "formatLabel", "getExistingElementSelector", "getPlainText", "getIconAsDataUrl", "parseRegexArray", "svg_paths", "svgCache", "createSVG"]);
   inlineUtilsFunctions(
     "popup/selector/selector.js",
     [

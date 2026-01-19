@@ -755,6 +755,7 @@ input[type="range"]::-moz-range-thumb {
 .del-user-parser,
 .edit-user-script {
   margin-left: auto;
+  margin-right: 4px
 }
 
 .del-user-parser:hover,
@@ -1252,6 +1253,7 @@ body.cleaning-mode .selected .history-trash {
   background: var(--foreground-color-100);
 }
 
+.setup-list-message .setup-link,
 .setup-dialog .setup-link,
 .setup-dialog .setup-link-github {
   display: inline-block;
@@ -1265,6 +1267,7 @@ body.cleaning-mode .selected .history-trash {
   margin-top: 6px;
 }
 
+.setup-list-message .setup-link:hover,
 .setup-dialog .setup-link:hover,
 .setup-dialog .setup-link-github:hover {
   color: var(--link-color-bright);

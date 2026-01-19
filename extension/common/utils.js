@@ -517,7 +517,8 @@ function formatLabel(name) {
 
 // Normalize artist name
 function normalizeArtistName(name) {
-  return name.split(/,|&|feat\.|Feat\.|FEAT\./)[0].trim();
+  if (!name) return '';
+  return name.split(/,|&|feat\.|Feat\.|FEAT\./)[0].trim().toLowerCase();
 }
 
 // Normalize host string
@@ -649,7 +650,10 @@ const svg_paths = {
     "M15 7c0-1.1.9-2 2-2h2c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2h-2c-1.1 0-2-.9-2-2V7z",
   ],
   backIconPaths: ["M19 20l-8-8 8-8"],
+  forwardIconPaths: ["M5 4l8 8-8 8"],
   crossIconPaths: ["M6 6L18 18 M18 6L6 18"],
+  minusIconPaths: ["M6 12L18 12"],
+  plusIconPaths: ["M12 6L12 18 M6 12L18 12"],
   filterIconPaths: ["M3 4h18", "M6 12h12", "M10 20h4"],
   pauseIconPaths: ["M6 5h4v14H6z", "M14 5h4v14h-4z"],
   startIconPaths: ["M8 5v14l10-7z"],
@@ -883,7 +887,7 @@ function createPlatformDropdown(label, options, manifestVersion) {
 
   options.forEach((option) => {
     const dropdownLink = document.createElement("a");
-    dropdownLink.href = option.url.replace("{version}", manifestVersion);
+    dropdownLink.href = option.url.replace(/{version}/g, manifestVersion);
     dropdownLink.textContent = option.label;
     dropdownLink.target = "_blank";
     dropdownLink.rel = "noopener noreferrer";
@@ -939,11 +943,11 @@ function showInitialSetupDialog() {
   const windowsOptions = [
     {
       label: "Installer (EXE)",
-      url: `https://github.com/KanashiiDev/discord-music-rpc/releases/latest/download/Discord-Music-RPC-{version}-x64-installer.exe`,
+      url: `https://github.com/KanashiiDev/discord-music-rpc/releases/download/{version}/Discord-Music-RPC-{version}-x64-installer.exe`,
     },
     {
       label: "Portable (ZIP)",
-      url: `https://github.com/KanashiiDev/discord-music-rpc/releases/latest/download/Discord-Music-RPC-{version}-x64.zip`,
+      url: `https://github.com/KanashiiDev/discord-music-rpc/releases/download/{version}/Discord-Music-RPC-{version}-x64.zip`,
     },
   ];
   contentLinkContainer.appendChild(createPlatformDropdown("Windows", windowsOptions, manifestVersion));
@@ -952,15 +956,15 @@ function showInitialSetupDialog() {
   const linuxOptions = [
     {
       label: "AppImage (x64)",
-      url: `https://github.com/KanashiiDev/discord-music-rpc/releases/latest/download/discord-music-rpc-{version}-x86_64.AppImage`,
+      url: `https://github.com/KanashiiDev/discord-music-rpc/releases/download/{version}/discord-music-rpc-{version}-x86_64.AppImage`,
     },
     {
       label: "DEB (x64)",
-      url: `https://github.com/KanashiiDev/discord-music-rpc/releases/latest/download/discord-music-rpc-{version}-amd64.deb`,
+      url: `https://github.com/KanashiiDev/discord-music-rpc/releases/download/{version}/discord-music-rpc-{version}-amd64.deb`,
     },
     {
       label: "RPM (x64)",
-      url: `https://github.com/KanashiiDev/discord-music-rpc/releases/latest/download/discord-music-rpc-{version}-x86_64.rpm`,
+      url: `https://github.com/KanashiiDev/discord-music-rpc/releases/download/{version}/discord-music-rpc-{version}-x86_64.rpm`,
     },
   ];
   contentLinkContainer.appendChild(createPlatformDropdown("Linux", linuxOptions, manifestVersion));
@@ -969,7 +973,7 @@ function showInitialSetupDialog() {
   const macOptions = [
     {
       label: "Universal",
-      url: `https://github.com/KanashiiDev/discord-music-rpc/releases/latest/download/Discord-Music-RPC-{version}-universal.dmg`,
+      url: `https://github.com/KanashiiDev/discord-music-rpc/releases/download/{version}/Discord-Music-RPC-{version}-universal.dmg`,
     },
   ];
   contentLinkContainer.appendChild(createPlatformDropdown("MacOS", macOptions, manifestVersion));

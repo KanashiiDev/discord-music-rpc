@@ -243,6 +243,25 @@ const handleMigrateHistory = async () => {
   return { ok: true };
 };
 
+const handleGetSongInfo = async () => {
+  const map = state.activeTabMap;
+  
+  if (map.size === 0) {
+    return { ok: false, error: "No active tab map or it's empty" };
+  }
+  
+  // Iterate over the Map to find the current song
+  for (const [key, value] of map.entries()) {
+    const current = value;
+    
+    if (current && current.title && current.artist) {
+      return { ok: true, data: current };
+    }
+  }
+  
+  return { ok: false, error: "No current song" };
+};
+
 // Type Handlers
 // Update RPC
 const handleUpdateRpc = async (req, sender) => {
@@ -389,7 +408,18 @@ const handleIsHostnameMatch = async (sender) => {
   } catch {
     return { ok: false, error: { code: 0, message: "No tab info" } };
   }
-  const url = new URL(tabInfo.url);
+
+  if (!tabInfo.url || tabInfo.url.length === 0) {
+    return { ok: false, error: { code: 0, message: "No tab info" } };
+  }
+
+  let url;
+  try {
+    url = new URL(tabInfo.url);
+  } catch (e) {
+    return { ok: false, error: { code: 0, message: "No tab info" } };
+  }
+
   if (state.activeTabMap.size > 0 && !state.activeTabMap.has(tabId)) {
     return { ok: false, error: { code: 1, message: "Another tab is currently active." } };
   }
@@ -436,6 +466,9 @@ const setupListeners = () => {
               break;
             case "migrateHistory":
               result = await handleMigrateHistory();
+              break;
+            case "getSongInfo":
+              result = await handleGetSongInfo();
               break;
             default:
               result = { ok: false, error: "Unknown action" };

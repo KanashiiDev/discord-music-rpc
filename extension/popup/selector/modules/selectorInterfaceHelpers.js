@@ -97,7 +97,7 @@ function createFieldInputs(shadow, fields, placeholderMap) {
     button.className = `userRpc-selectBtn ${f === "name" || f === "regex" ? "hidden" : ""}`;
     button.title = "Select with mouse click";
     button.id = `${f}Button`;
-    button.textContent = "+";
+    button.appendChild(createSVG(svg_paths.plusIconPaths));
 
     const br = document.createElement("br");
     br.id = `${f}Br`;

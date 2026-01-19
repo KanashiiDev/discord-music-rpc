@@ -6,12 +6,21 @@ function filterHistoryByRange(history, range, customStart = null, customEnd = nu
 
 // Get Top Artists
 async function getFilteredTopArtists(filteredHistory) {
-  const allArtists = [...new Set(filteredHistory.map((e) => e.a))].filter(Boolean).filter((artist) => !artist.includes("Unknown Artist"));
+  const allArtists = [
+    ...new Set(
+      filteredHistory
+        .map((e) => e.a)
+        .filter(Boolean)
+        .filter((artist) => !artist.includes("Unknown Artist"))
+        .map((artist) => normalizeArtistName(artist))
+    ),
+  ];
+
   const list = await getFreshParserList();
   const parserTexts = list.map((entry) => ((entry.title || "") + " " + (entry.domain || "")).toLowerCase());
-  return allArtists.filter((artist) => {
-    const name = artist.toLowerCase();
-    return !parserTexts.some((text) => text.includes(name));
+
+  return allArtists.filter((normalizedArtist) => {
+    return !parserTexts.some((text) => text.includes(normalizedArtist));
   });
 }
 
@@ -20,21 +29,53 @@ async function getTopSongs(filteredHistory, topN = 5) {
   const allowedArtists = await getFilteredTopArtists(filteredHistory);
 
   const artistCounts = Object.create(null);
+  const artistOriginalNames = Object.create(null);
+  const artistNameFrequency = Object.create(null);
+
   for (const e of filteredHistory) {
     const norm = normalizeArtistName(e.a);
-    if (allowedArtists.includes(e.a)) {
+    if (allowedArtists.includes(norm)) {
       artistCounts[norm] = (artistCounts[norm] || 0) + 1;
+
+      if (!artistNameFrequency[norm]) {
+        artistNameFrequency[norm] = Object.create(null);
+      }
+      artistNameFrequency[norm][e.a] = (artistNameFrequency[norm][e.a] || 0) + 1;
     }
+  }
+
+  // Select the most commonly used artist name, prioritizing capitalized names
+  for (const norm in artistNameFrequency) {
+    const entries = Object.entries(artistNameFrequency[norm]);
+
+    // Sort by: 1) Capitalization (uppercase first letter), 2) Frequency
+    entries.sort((a, b) => {
+      const aCapitalized = /^[A-Z]/.test(a[0]);
+      const bCapitalized = /^[A-Z]/.test(b[0]);
+
+      // If one is capitalized and other is not, prioritize capitalized
+      if (aCapitalized && !bCapitalized) return -1;
+      if (!aCapitalized && bCapitalized) return 1;
+
+      // If both same capitalization status, sort by frequency
+      return b[1] - a[1];
+    });
+
+    artistOriginalNames[norm] = entries[0][0];
   }
 
   const topArtists = Object.entries(artistCounts)
     .sort((a, b) => b[1] - a[1])
     .slice(0, topN)
-    .map(([name, count]) => ({ name, count }));
+    .map(([normalizedName, count]) => ({
+      name: normalizedName,
+      displayName: artistOriginalNames[normalizedName],
+      count,
+    }));
 
   const songCounts = Object.create(null);
   for (const e of filteredHistory) {
-    if (!allowedArtists.includes(e.a)) continue;
+    if (!allowedArtists.includes(normalizeArtistName(e.a))) continue;
     if (!e.t || e.t.includes("Unknown Song")) continue;
     const key = `${e.t} - ${normalizeArtistName(e.a)}`;
     songCounts[key] = (songCounts[key] || 0) + 1;
@@ -161,7 +202,7 @@ async function renderTopStats(history, range = "day", topN = 5, customStart = nu
 
       const name = document.createElement("span");
       name.className = "artist-name";
-      name.textContent = `${artist.name}`;
+      name.textContent = `${artist.displayName}`;
       header.appendChild(name);
 
       const total = document.createElement("span");
@@ -260,6 +301,13 @@ const handleDropdownMenuClick = async (e) => {
     const container = document.getElementById("statsEntries");
     const cachedNode = statsModule._topStatsCache.get(cacheKey);
     container.replaceChildren(...cachedNode.cloneNode(true).childNodes);
+
+    if (container._artistClickListener) {
+      container.removeEventListener("click", container._artistClickListener);
+    }
+    container._artistClickListener = handleArtistEntryClick;
+    container.addEventListener("click", container._artistClickListener);
+
     await activateSimpleBar("historyStatsPanel");
     return;
   }
@@ -312,6 +360,13 @@ const handleApplyCustomRange = async () => {
     const container = document.getElementById("statsEntries");
     const cachedNode = statsModule._topStatsCache.get(cacheKey);
     container.replaceChildren(...cachedNode.cloneNode(true).childNodes);
+
+    if (container._artistClickListener) {
+      container.removeEventListener("click", container._artistClickListener);
+    }
+    container._artistClickListener = handleArtistEntryClick;
+    container.addEventListener("click", container._artistClickListener);
+
     await activateSimpleBar("historyStatsPanel");
     return;
   }

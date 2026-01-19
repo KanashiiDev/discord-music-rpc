@@ -545,6 +545,22 @@ window.getSongInfo = async function () {
               dataTitle = truncate(dataTitle, 128, { fallback: "Unknown Song" });
               dataArtist = truncate(dataArtist, 128, { fallback: "Unknown Artist" });
               dataSource = truncate(dataSource, 32, { fallback: "Unknown Source" });
+
+              // Apply parser filters and replacements
+              const filterResult = await applyParserFilters(parser.id, dataArtist, dataTitle);
+              
+              if (filterResult.shouldBlock) {
+                logInfo(`Song blocked: ${dataArtist} - ${dataTitle} (Parser: ${parser.id} | Filter: ${filterResult.filterId})`);
+                return null;
+              }
+
+              // Apply replacements if any
+              if (filterResult.replaced) {
+                dataArtist = filterResult.artist;
+                dataTitle = filterResult.title;
+                logInfo(`Song replaced: ${dataArtist} - ${dataTitle} (Parser: ${parser.id} | Filter: ${filterResult.filterId})`);
+              }
+
               song.title = dataTitle;
               song.artist = dataArtist;
               song.source = dataSource;
@@ -564,6 +580,79 @@ window.getSongInfo = async function () {
     return null;
   }
 };
+
+// Apply parser filters and replacements
+async function applyParserFilters(parserId, artist, title) {
+  try {
+    const { parserFilters = [] } = await browser.storage.local.get("parserFilters");
+
+    if (!parserFilters || parserFilters.length === 0) {
+      return { shouldBlock: false, replaced: false, artist, title };
+    }
+
+    // Normalize strings for comparison (case-insensitive)
+    const normalizedArtist = artist.toLowerCase().trim();
+    const normalizedTitle = title.toLowerCase().trim();
+
+    for (const filter of parserFilters) {
+      // Check if this filter applies to current parser
+      const appliesToParser = filter.parsers.includes("*") || filter.parsers.includes(parserId);
+
+      if (!appliesToParser) {
+        continue;
+      }
+
+      // Determine if this is a replace filter or block filter
+      const isReplaceFilter = filter.entries.some(e => e.replaceArtist || e.replaceTitle);
+
+      // Check each entry in the filter
+      for (const entry of filter.entries) {
+        const filterArtist = (entry.artist || "").toLowerCase().trim();
+        const filterTitle = (entry.title || "").toLowerCase().trim();
+
+        // If both are empty, skip this entry
+        if (!filterArtist && !filterTitle) {
+          continue;
+        }
+
+        // Check if current song matches the filter entry
+        const artistMatch = !filterArtist || normalizedArtist === filterArtist;
+        const titleMatch = !filterTitle || normalizedTitle === filterTitle;
+
+        // If both conditions match for this entry
+        if (artistMatch && titleMatch) {
+          if (isReplaceFilter) {
+            // Apply replacement
+            const newArtist = entry.replaceArtist?.trim() || artist;
+            const newTitle = entry.replaceTitle?.trim() || title;
+            
+            return {
+              shouldBlock: false,
+              replaced: true,
+              artist: newArtist,
+              title: newTitle,
+              filterId: filter.id
+            };
+          } else {
+            // Block the song
+            return {
+              shouldBlock: true,
+              replaced: false,
+              artist,
+              title,
+              filterId: filter.id
+            };
+          }
+        }
+      }
+    }
+
+    return { shouldBlock: false, replaced: false, artist, title };
+  } catch (err) {
+    logError("applyParserFilters error:", err);
+    return { shouldBlock: false, replaced: false, artist, title };
+  }
+}
 
 // userScript Manager Listener
 const lastUseScriptRequest = Object.create(null);

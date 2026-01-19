@@ -331,39 +331,46 @@ app.get("/update-rpc", (req, res) => {
 // Clear RPC - POST
 app.post("/clear-rpc", express.json(), async (req, res) => {
   try {
-    let response;
-
-    if (currentActivity === null) {
-      response = { success: true, message: "Already cleared" };
-    } else {
-      if (!req.body || typeof req.body !== "object") {
-        return res.status(400).json({ error: "Invalid request body" });
-      }
-
-      if (historyTimeout) {
-        clearTimeout(historyTimeout);
-      }
-
-      const { clientId } = req.body;
-
-      if (!clientId || typeof clientId !== "string") {
-        return res.status(400).json({ error: "clientId is required and must be a string" });
-      }
-
-      if (await connectRPC()) {
-        await rpcClient.user?.clearActivity();
-        currentActivity = null;
-        if (lastActiveClient?.clientId === clientId) lastActiveClient = null;
-      }
-
-      response = { success: true };
+    // Validation
+    if (!req.body || typeof req.body !== "object") {
+      return res.status(400).json({ error: "Invalid request body" });
     }
 
+    const { clientId } = req.body;
+    if (!clientId || typeof clientId !== "string") {
+      return res.status(400).json({ error: "clientId is required and must be a string" });
+    }
+
+    // Clear the timeout
+    if (historyTimeout) {
+      clearTimeout(historyTimeout);
+      historyTimeout = null;
+    }
+
+    // RPC cleanup
+    if (currentActivity !== null) {
+      if (await connectRPC()) {
+        try {
+          await rpcClient.user?.clearActivity();
+        } catch (err) {
+          console.error("Failed to clear activity:", err);
+        }
+      }
+    }
+
+    // Clear the state
+    currentActivity = null;
+    lastActiveClient = null;
+
+    const response = { success: true };
     lastClearRpcResult = response;
     res.json(response);
   } catch (err) {
     console.error("RPC Clear Error:", err);
-    const errorResp = { error: "Internal server error", details: err.message };
+    const errorResp = {
+      error: "Internal server error",
+      details: err.message,
+    };
     lastClearRpcResult = errorResp;
     res.status(500).json(errorResp);
   }

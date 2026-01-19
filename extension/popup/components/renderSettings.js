@@ -420,10 +420,33 @@ async function renderSettings() {
   const btnDebug = createButton(`${debugState ? "Disable" : "Activate"} Debug Mode`, "debugMode");
   const btnFactory = createButton("Factory Reset (Default Settings)", "factoryReset");
   const btnBackup = createButton("Backup / Restore", "backupSettings");
+  const btnFilter = createButton("Manage Filters", "filterSettings");
 
   // Backup Button
   btnBackup.onclick = async () => {
-    const url = browser.runtime.getURL(`backup/backup.html`);
+    const url = browser.runtime.getURL(`settings/settings.html?section=backup`);
+    try {
+      const tabs = await browser.tabs.query({ url });
+      if (tabs && tabs.length > 0) {
+        const tab = tabs[0];
+        await browser.tabs.update(tab.id, { active: true });
+        try {
+          await browser.windows.update(tab.windowId, { focused: true });
+        } catch (_) {}
+        window.close();
+        return;
+      }
+
+      await browser.tabs.create({ url });
+      window.close();
+    } catch (err) {
+      logError("Open settings failed:", err);
+    }
+  };
+
+    // Filter Button
+  btnFilter.onclick = async () => {
+    const url = browser.runtime.getURL(`settings/settings.html?section=filter`);
     try {
       const tabs = await browser.tabs.query({ url });
       if (tabs && tabs.length > 0) {
@@ -485,7 +508,7 @@ async function renderSettings() {
   };
 
   // Add to panel
-  panelContainer.append(btnBackup, btnRestart, btnDebug, btnFactory);
+  panelContainer.append(btnFilter, btnBackup, btnRestart, btnDebug, btnFactory);
   panel.appendChild(panelContainer);
 
   // Apply background settings on load

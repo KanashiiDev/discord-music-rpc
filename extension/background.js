@@ -236,19 +236,21 @@ const clearRpcForTab = async (tabId, reason = "Tab closed") => {
         const title = tab?.title || "";
         const url = tab?.url || "";
         const domain = url ? new URL(url).host : "";
-
-        console.groupCollapsed(
-          `%c[DISCORD-MUSIC-RPC - INFO] Clearing RPC for tab ${tabId}%c ${url ? "| " + url : ""}`,
-          "color: ddd; background-color: #2a4645ff; padding: 2px 4px; border-radius: 3px;",
-          "color: #5bc0de; font-weight: bold;"
-        );
-        if (tab) {
-          console.log(`Title: %c${title}`, "color: #f0ad4e; font-weight: bold;");
-          console.log(`Domain: %c${domain}`, "color: #5cb85c; text-decoration: underline;");
+        const stored = await browser.storage.local.get("debugMode");
+        const debugMode = stored.debugMode === 1 ? true : CONFIG.debugMode;
+        if (debugMode && state.lastUpdateStatus !== "skipped") {
+          console.groupCollapsed(
+            `%c[DISCORD-MUSIC-RPC - INFO] Clearing RPC for tab ${tabId}%c ${url ? "| " + url : ""}`,
+            "color: ddd; background-color: #2a4645ff; padding: 2px 4px; border-radius: 3px;",
+            "color: #5bc0de; font-weight: bold;"
+          );
+          if (tab) {
+            console.log(`Title: %c${title}`, "color: #f0ad4e; font-weight: bold;");
+            console.log(`Domain: %c${domain}`, "color: #5cb85c; text-decoration: underline;");
+          }
+          console.log(`Reason: %c${reason}`, "color: #0275d8; font-weight: bold;");
+          console.groupEnd();
         }
-        console.log(`Reason: %c${reason}`, "color: #0275d8; font-weight: bold;");
-        console.groupEnd();
-
         try {
           await fetchWithTimeout(
             `http://localhost:${state.serverPort}/clear-rpc`,

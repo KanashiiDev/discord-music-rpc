@@ -378,7 +378,6 @@ window.addEventListener("pagehide", () => {
   scrollElementGlobal = null;
   if (flatpickrInstances.start) flatpickrInstances.start.destroy();
   if (flatpickrInstances.end) flatpickrInstances.end.destroy();
-  flatpickrInstances = { start: null, end: null };
   svgCache.clear();
   destroyOtherSimpleBars();
 });

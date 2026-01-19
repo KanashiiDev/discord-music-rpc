@@ -5,6 +5,11 @@
   padding: 0;
 }
 
+html,
+body {
+  height: auto;
+}
+
 body {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   background: var(--background-color);
@@ -12,7 +17,7 @@ body {
   line-height: 1.6;
   min-width: 800px;
   font-size: 75%;
-  height: 100vh;
+  min-height: 100vh;
 }
 
 .header {
@@ -121,7 +126,8 @@ button:not([disabled]):hover {
 ul {
   list-style: none;
   margin-bottom: 20px;
-  padding: 0 10px;
+  margin: 12px;
+  padding: 0 20px;
 }
 
 /* Script Item */
@@ -900,7 +906,7 @@ code > code {
 
 .disabled .parser-icon-container {
   -webkit-filter: grayscale(1);
-          filter: grayscale(1);
+  filter: grayscale(1);
 }
 
 .parser-icon-container.spinner {

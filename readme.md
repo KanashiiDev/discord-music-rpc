@@ -53,20 +53,21 @@ It is required for communicating with Discord and displaying the music status.
 - [Setup](#-setup)
 - [Troubleshooting](#-troubleshooting)
 - [How to Add a New Music Site](#-how-to-add-a-new-music-site)
+- [Filter Management](#-filter-management)
 - [Developer Setup](#-developer-setup)
 - [License](#-license)
 
 ## 🚀 Features
 
-- No login required — works locally on your machine
-- Support for popular music platforms,
-- Easy to extend — add support for any music site using the built-in selector system or using userscripts.
+- No login required, works locally
+- Support for popular music platforms
+- Easy to extend — add support for any music site using the built-in selector system or using userscripts
+- Filter management for blocking and modifying songs
 - Cross-platform Electron desktop app [Windows / Linux / MacOS](#-compatibility)
-- System tray integration for easy access and control
 - Automatic updates for both the extension and the desktop app
 - Customizable settings and options (custom covers, buttons, etc.)
-- Support buttons and timestamps.
-- Open-source and community-driven project
+- Support buttons and timestamps
+- Open-source and community-driven
 
 ---
 
@@ -151,6 +152,7 @@ It is required for communicating with Discord and displaying the music status.
   - For the extension: Open extension popup, click settings, click toggle "Activate Debug Mode" then check your browser's developer console for any errors.
 
 **Linux:**
+
 <details>
 <summary>Click to view</summary>
 
@@ -413,6 +415,88 @@ getImage(".cover img");
 
 ---
 
+## 📚 Filter Management
+
+The Filter system allows you to block or replace songs. You can create filters that apply to specific parsers or all parsers at once.
+
+To do this, after clicking on Settings in the popup, you can manage the filters by clicking on Manage Filters.
+
+---
+
+<details>
+<summary>Click to view</summary>
+
+## Filter Types
+
+### Block Filters
+
+Block filters prevent songs from being displayed. When a song matches your filter criteria, it will be ignored.
+
+### Replace Filters
+
+Replace filters modify song information before sending to Discord. You can change the artist name, title, or both when a song matches your criteria.
+
+## Creating a Filter
+
+1. **Open the Filter Form**
+
+   - Click the "+ Add New Filter" button
+   - The form will expand, showing all available options
+
+2. **Choose Filter Mode**
+
+   - **Block**: Prevents matching songs from being displayed
+   - **Replace**: Modifies song information before sending to Discord
+
+3. **Add Song Entries**
+
+   - Enter the **Artist** and/or **Title** you want to filter
+   - You can leave either field empty to match any value (wildcard)
+   - For Replace mode, specify the replacement artist/title
+   - Click "Add Entry" to add multiple songs to the same filter
+
+4. **Quick Fill Option**
+
+   - Click "Fill with Current Song" to automatically populate the form with the currently playing song
+   - This is useful for quickly blocking or replacing songs you're currently listening to
+
+5. **Select Parsers**
+
+   - Choose which parsers this filter applies to by toggling the switches
+   - Enable "Applies to All Parsers" to apply the filter universally
+   - When "All Parsers" is enabled, individual parser selections are disabled
+
+6. **Save the Filter**
+   - Click "Save" to create your filter
+   - Click "Cancel" to discard changes
+
+## Quick Block Current Song
+
+For even faster blocking, use the "Block Current Song" button at the top of the filter section:
+
+- This instantly blocks the currently playing song
+- The song is automatically added to an existing block filter for that parser, or creates a new one if needed
+- No need to open the filter form
+
+## Filter Matching Rules
+
+- **Wildcard matching**: Leave artist or title empty to match any value
+
+  - Empty artist = matches any artist
+  - Empty title = matches any title
+  - Both empty = matches all songs (not recommended)
+
+- **Case insensitive**: Matching is not case-sensitive
+
+  - "Artist Name" matches "artist name" and "ARTIST NAME"
+
+- **Partial matching**: Filters match exact strings, not partial matches
+  - To block "Remix" versions, you need to specify the full title including "Remix"
+
+</details>
+
+---
+
 ## 💻 Developer Setup
 
 To set up the project locally:
@@ -432,7 +516,7 @@ npm start
 #### Run the app in development mode
 
 ```bash
-npm start:app
+npm run start:app
 ```
 
 ---
@@ -444,37 +528,72 @@ npm start:app
 
 ### Start & Development
 
-- **`npm start`**
+- **`npm start`**  
   Starts the Node.js backend server.
 
-- **`npm run start:app`**
+- **`npm run start:app`**  
   Launches the Electron application for desktop testing.
 
 ---
 
 ### Application Build
 
-- **`npm run build:win`**
-  Builds a Windows 64-bit Electron application.
+#### Windows
 
-- **`npm run build:linux`**
-  Builds a Linux Electron application.
+- **`npm run build:win`**  
+  Builds a Windows 64-bit installer.
 
-- **`npm run build:mac`**
-  Builds a macOS Electron application.
+#### macOS
 
-- **`npm run pack`**
-  Creates the app directory without generating an installer (`--dir` mode).
+- **`npm run build:mac`**  
+  Builds macOS app (Intel 64-bit).
+
+- **`npm run build:mac:arm64`**  
+  Builds macOS app (Apple Silicon).
+
+- **`npm run build:mac:all`**  
+  Builds both Intel and Apple Silicon versions.
+
+- **`npm run build:mac:universal`**  
+  Builds a universal macOS binary.
+
+#### Linux
+
+- **`npm run build:linux`**  
+  Builds Linux app (64-bit, all formats).
+
+- **`npm run build:linux:arm64`**  
+  Builds Linux app (ARM64).
+
+- **`npm run build:linux:all`**  
+  Builds both x64 and ARM64 versions.
+
+#### Linux Specific Formats
+
+- **`npm run build:appImage`** / **`:arm64`** / **`:all`**  
+  Builds AppImage format.
+
+- **`npm run build:deb`** / **`:arm64`** / **`:all`**  
+  Builds DEB package (Debian/Ubuntu).
+
+- **`npm run build:rpm`** / **`:arm64`** / **`:all`**  
+  Builds RPM package (Fedora/RHEL).
+
+**Shortcuts:**
+
+- `npm run build:ubuntu` = `build:deb`
+- `npm run build:debian` = `build:deb`
+- `npm run build:fedora` = `build:rpm`
 
 ---
 
 ### Browser Extension Build
 
 - **`npm run build:chrome`**
-  Builds the Chrome extension using `TARGET=chrome` with `buildExtensions.js`.
+  Builds the Chrome extension.
 
 - **`npm run build:firefox`**
-  Builds the Firefox extension using `TARGET=firefox` with `buildExtensions.js`.
+  Builds the Firefox extension.
 
 - **`npm run build:extensions`**
   Builds both Chrome and Firefox extensions.
@@ -484,13 +603,13 @@ npm start:app
 ### Browser Extension Packaging (ZIP)
 
 - **`npm run pack:chrome`**
-  Zips the Chrome extension into a distributable format.
+  Packages Chrome extension as ZIP.
 
 - **`npm run pack:firefox`**
-  Zips the Firefox extension into a distributable format.
+  Packages Firefox extension as ZIP.
 
 - **`npm run pack:extensions`**
-  Zips both Chrome and Firefox extensions.
+  Packages both Chrome and Firefox extensions.
 
 ---
 
@@ -500,10 +619,30 @@ npm start:app
   Builds and packages both Chrome and Firefox extensions.
 
 - **`npm run build-and-pack:chrome`**
-  Builds and packages only the Chrome extension.
+  Builds and packages Chrome extension only.
 
 - **`npm run build-and-pack:firefox`**
-Builds and packages only the Firefox extension.
+  Builds and packages Firefox extension only.
+
+---
+
+### Additional Commands
+
+- **`npm run pack`**  
+  Creates unpacked app directory (no installer).
+
+- **`npm run clean`**  
+  Removes build artifacts from `dist/` folder.
+
+- **`npm run lint`**  
+  Checks code for linting issues.
+
+- **`npm run lint:fix`**  
+  Automatically fixes linting issues.
+
+- **`npm run prepare-release`**  
+  Builds extensions and prepares release files.
+
 </details>
 
 ---
@@ -524,8 +663,11 @@ This project is licensed under the MIT License. See the [`LICENSE`](LICENSE) fil
 #### Backend & Storage
 
 - [Express](https://github.com/expressjs/express) – Fast, minimalist web server
+- [cors](https://github.com/expressjs/cors) – Middleware for enabling CORS in Express applications
 - [simple-json-db](https://github.com/nmaggioni/Simple-JSONdb) – Lightweight JSON-based local storage
 - [Electron Log](https://github.com/megahertz/electron-log) – Simple logging for Electron applications
+- [electron-updater](https://github.com/electron-userland/electron-builder/tree/master/packages/electron-updater) – Auto-update solution for Electron applications
+- [archiver](https://github.com/archiverjs/node-archiver) – Streaming interface for for archive generation
 
 #### UI Components
 

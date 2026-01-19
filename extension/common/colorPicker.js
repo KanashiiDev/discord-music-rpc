@@ -52,12 +52,12 @@ function createPickerPopover() {
 
   const btnRemoveColor = document.createElement("span");
   btnRemoveColor.className = "gradient-color-btn button";
-  btnRemoveColor.textContent = "-";
+  btnRemoveColor.appendChild(createSVG(svg_paths.minusIconPaths));
 
   const colorCount = document.createElement("span");
 
   const btnAddColor = document.createElement("span");
-  btnAddColor.textContent = "+";
+  btnAddColor.appendChild(createSVG(svg_paths.plusIconPaths));
   btnAddColor.className = "gradient-color-btn button";
 
   // Color List
