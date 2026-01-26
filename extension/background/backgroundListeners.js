@@ -1,4 +1,4 @@
-// Action Handlers
+// UserScript Actions
 const handleListUserScripts = async () => {
   const scripts = await scriptManager.storage.getScripts();
   const { parserEnabledState = {} } = await browser.storage.local.get("parserEnabledState");
@@ -223,6 +223,7 @@ const handleToggleUserScript = async (req) => {
   return { ok: true, enabled: newEnabledState };
 };
 
+// History Actions
 const handleAddToHistory = async (req) => {
   await addToHistory(req.data);
   return { ok: true };
@@ -243,22 +244,140 @@ const handleMigrateHistory = async () => {
   return { ok: true };
 };
 
+const handleCleanHistoryForReplace = async (req) => {
+  const entries = req.entries || [];
+  const parsers = req.parsers || [];
+  const parserList = req.parserList || [];
+
+  //  Check for empty entries
+  if (!entries.length) {
+    return { ok: true, removedCount: 0, error: "No entries provided" };
+  }
+
+  // At least one entry must have either the artist or the title filled in
+  const hasValidEntry = entries.some((e) => (e.artist && e.artist.trim() && e.artist.trim() !== "*") || (e.title && e.title.trim() && e.title.trim() !== "*"));
+  if (!hasValidEntry) {
+    return { ok: false, removedCount: 0, error: "At least one entry must have artist or title" };
+  }
+
+  const history = await loadHistory();
+  if (!history.length) {
+    return { ok: true, removedCount: 0 };
+  }
+
+  // Convert parser IDs to source names
+  const sourceNames = new Set();
+  const applyToAll = parsers.includes("*");
+
+  if (!applyToAll) {
+    // Error if the parser list is empty
+    if (!parsers.length) {
+      return { ok: false, removedCount: 0, error: "No parsers specified" };
+    }
+
+    parsers.forEach((parserId) => {
+      const parser = parserList.find((p) => p.id === parserId);
+      if (parser) {
+        const sourceName = (parser.title || parser.domain || "").toLowerCase().trim();
+        if (sourceName) {
+          sourceNames.add(sourceName);
+        }
+      }
+    });
+
+    // Error if no source is found
+    if (sourceNames.size === 0) {
+      return { ok: false, removedCount: 0, error: "No valid sources found from parsers" };
+    }
+  }
+
+  let hasChanges = false;
+  const entriesToRemove = new Set();
+
+  // Find the matches in history for each replace entry
+  entries.forEach((entry) => {
+    const artist = (entry.artist || "").trim().toLowerCase();
+    const title = (entry.title || "").trim().toLowerCase();
+
+    // Neither of them can be empty or a wildcard
+    if ((!artist || artist === "*") && (!title || title === "*")) {
+      return;
+    }
+
+    history.forEach((historyEntry, index) => {
+      const historyArtist = (historyEntry.a || "").trim().toLowerCase();
+      const historyTitle = (historyEntry.t || "").trim().toLowerCase();
+      const historySource = (historyEntry.s || "").trim().toLowerCase();
+
+      // Artist/Title match check
+      const artistMatches = !artist || artist === "*" || historyArtist === artist;
+      const titleMatches = !title || title === "*" || historyTitle === title;
+
+      // At least one specific match is required
+      const hasSpecificMatch = (artist && artist !== "*" && historyArtist === artist) || (title && title !== "*" && historyTitle === title);
+      if (!hasSpecificMatch) {
+        return;
+      }
+
+      // Source matching check
+      let sourceMatches = false;
+      if (applyToAll) {
+        sourceMatches = true;
+      } else {
+        // Check if the history source matches any source in the parser list
+        for (const sourceName of sourceNames) {
+          // A minimum of 3 character matches is required
+          if (sourceName.length >= 3 && historySource.length >= 3) {
+            if (historySource.includes(sourceName) || sourceName.includes(historySource)) {
+              sourceMatches = true;
+              break;
+            }
+          }
+        }
+      }
+
+      // Delete if they all match
+      if (artistMatches && titleMatches && sourceMatches) {
+        entriesToRemove.add(index);
+        hasChanges = true;
+      }
+    });
+  });
+
+  if (!hasChanges) {
+    return { ok: true, removedCount: 0 };
+  }
+
+  // Delete the indices backwards
+  const indicesToRemove = Array.from(entriesToRemove).sort((a, b) => b - a);
+  indicesToRemove.forEach((index) => {
+    history.splice(index, 1);
+  });
+
+  await saveHistory(history);
+
+  return {
+    ok: true,
+    removedCount: indicesToRemove.length,
+    percentage: removalPercentage.toFixed(1),
+  };
+};
+
+// Song Info
 const handleGetSongInfo = async () => {
   const map = state.activeTabMap;
-  
   if (map.size === 0) {
     return { ok: false, error: "No active tab map or it's empty" };
   }
-  
+
   // Iterate over the Map to find the current song
   for (const [key, value] of map.entries()) {
     const current = value;
-    
     if (current && current.title && current.artist) {
       return { ok: true, data: current };
     }
   }
-  
+
   return { ok: false, error: "No current song" };
 };
 
@@ -466,6 +585,9 @@ const setupListeners = () => {
               break;
             case "migrateHistory":
               result = await handleMigrateHistory();
+              break;
+            case "cleanHistoryForReplace":
+              result = await handleCleanHistoryForReplace(req);
               break;
             case "getSongInfo":
               result = await handleGetSongInfo();

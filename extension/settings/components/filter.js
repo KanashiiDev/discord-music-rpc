@@ -431,6 +431,9 @@ async function saveFilter() {
     return hasReplaceData(f.entries) === replaceMode;
   });
 
+  let entriesToClean = [];
+  let parsersToClean = [];
+
   if (existingFilterIndex !== -1 && !editingFilterId) {
     // Merge with existing filter
     const checker = new FilterDuplicateChecker();
@@ -444,6 +447,11 @@ async function saveFilter() {
 
     parserFilters[existingFilterIndex].entries.push(...newUniqueEntries);
     parserFilters[existingFilterIndex].updatedAt = new Date().toISOString();
+
+    if (replaceMode) {
+      entriesToClean = newUniqueEntries;
+      parsersToClean = parserFilters[existingFilterIndex].parsers;
+    }
   } else {
     // Create new or update existing
     const checker = new FilterDuplicateChecker();
@@ -478,6 +486,7 @@ async function saveFilter() {
         ...filterData,
         updatedAt: new Date().toISOString(),
       };
+
       editingFilterId = null;
     } else {
       parserFilters.push({
@@ -486,9 +495,23 @@ async function saveFilter() {
         ...filterData,
       });
     }
+
+    if (replaceMode) {
+      entriesToClean = uniqueEntries;
+      parsersToClean = selectedParsers;
+    }
   }
 
   await saveFiltersToStorage();
+
+  // If in replace mode, clear old entries from the history
+  if (replaceMode && entriesToClean.length > 0) {
+    await sendAction("cleanHistoryForReplace", {
+      entries: entriesToClean,
+      parsers: parsersToClean,
+      parserList: parserList,
+    });
+  }
 
   const form = document.getElementById("formContainer");
   const addFilterContainer = document.querySelector(".filter-actions-header");
