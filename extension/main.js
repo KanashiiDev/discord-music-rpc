@@ -405,7 +405,7 @@ async function processRPCUpdate(song, progress) {
   }
 
   if (res?.waiting) {
-    logInfo("processRPCUpdate: RPC waiting (tab not audible yet)");
+    if (res?.ok) logInfo("processRPCUpdate: RPC waiting (tab not audible yet)");
     if (keepAliveManager.initialized) {
       keepAliveManager.destroy();
     }
@@ -474,10 +474,7 @@ async function safeGetSongInfo(maxRetries = 10, retryDelay = 500) {
     if (typeof window.getSongInfo === "function") {
       try {
         const song = await window.getSongInfo();
-        if (song && song.title !== "Unknown Title" && song.artist !== "Unknown Artist" && song.source !== "Unknown Source") {
-          return song;
-        }
-        return null;
+        return song;
       } catch (e) {
         logError(`safeGetSongInfo: attempt ${i + 1} failed:`, e);
       }
@@ -509,7 +506,7 @@ const waitForHostname = async () => {
     }
 
     if (hostMatch.error?.code === 1) {
-      logOnce("⏸️  Another tab active. Waiting...");
+      logOnce(hostMatch.error.message);
       await delay(CONSTANTS.ACTIVE_INTERVAL);
       continue;
     }

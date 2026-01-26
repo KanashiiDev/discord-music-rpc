@@ -381,7 +381,6 @@ const handleGetSongInfo = async () => {
   return { ok: false, error: "No current song" };
 };
 
-// Type Handlers
 // Update RPC
 const handleUpdateRpc = async (req, sender) => {
   const tab = await getSenderTab(sender);
@@ -425,8 +424,21 @@ const handleUpdateRpc = async (req, sender) => {
 
   // 1️) Audible check
   const isAudioPlaying = tabInfo.audible ?? false;
+  if (isAudioPlaying) {
+    if (state.audibleTimers.has(tabId)) {
+      clearTimeout(state.audibleTimers.get(tabId));
+      state.audibleTimers.delete(tabId);
+      logInfo(`Tab ${tabId} resumed audio in UPDATE_RPC, timer cancelled`);
+    }
+  }
+
   if (!isAudioPlaying) {
     // The tab is silent, but the player might be loading
+    if (!state.activeTabMap.has(tabId)) {
+      logInfo(`Tab ${tabId} UPDATE_RPC received but not audible and not in map, rejecting`);
+      return { ok: false, waiting: true };
+    }
+
     state.activeTabMap.set(tabId, {
       ...req.data,
       isAudioPlaying: false,
@@ -435,6 +447,7 @@ const handleUpdateRpc = async (req, sender) => {
       progress,
       parserId,
     });
+    logInfo(`Tab ${tabId} UPDATE_RPC received but not audible`);
     return { ok: true, waiting: true };
   }
 
@@ -540,7 +553,29 @@ const handleIsHostnameMatch = async (sender) => {
   }
 
   if (state.activeTabMap.size > 0 && !state.activeTabMap.has(tabId)) {
-    return { ok: false, error: { code: 1, message: "Another tab is currently active." } };
+    for (const [activeTabId, tabData] of state.activeTabMap.entries()) {
+      if (tabData.isAudioPlaying) {
+        try {
+          const activeTab = await browser.tabs.get(activeTabId);
+          if (activeTab.audible) {
+            return {
+              ok: false,
+              error: {
+                code: 1,
+                message: `⏸️ Another tab (${activeTabId}${tabData?.source ? " | " + tabData.source : ""}) is currently playing audio.`,
+              },
+            };
+          } else {
+            logInfo(`Tab ${activeTabId} in map but not audible, updating state`);
+            tabData.isAudioPlaying = false;
+            state.activeTabMap.set(activeTabId, tabData);
+          }
+        } catch (err) {
+          logInfo(`Tab ${activeTabId} not found, removing from map`);
+          state.activeTabMap.delete(activeTabId);
+        }
+      }
+    }
   }
   const allowed = await isAllowedDomain(url.hostname, url.pathname);
   return { ok: allowed.ok, match: allowed.match, error: allowed.error };
@@ -697,13 +732,64 @@ const setupListeners = () => {
       // 1) Tab muted check
       if (changeInfo.mutedInfo?.muted === true) {
         logInfo(`Tab ${tabId} muted, clearing RPC`);
+
+        if (state.audibleTimers.has(tabId)) {
+          clearTimeout(state.audibleTimers.get(tabId));
+          state.audibleTimers.delete(tabId);
+        }
+
         clearRpcForTab(tabId, "tab muted").catch(logError);
         tabState.isAudioPlaying = false;
         state.activeTabMap.set(tabId, tabState);
         return;
       }
 
-      // 2) Audible control
+      // 2) Domain change control
+      let shouldClearImmediately = false;
+
+      if (changeInfo.url && oldUrl) {
+        try {
+          const oldHost = new URL(oldUrl).host;
+          const newHost = new URL(changeInfo.url).host;
+
+          if (oldHost !== newHost) {
+            shouldClearImmediately = true;
+            logInfo(`Tab ${tabId} domain changed: ${oldHost} → ${newHost}, clearing RPC immediately`);
+          }
+        } catch (err) {
+          logError("Domain comparison error:", err);
+        }
+      }
+
+      // 3) Page reload control
+      if (!shouldClearImmediately && changeInfo.status === "loading" && oldUrl) {
+        try {
+          const currentHost = new URL(oldUrl).host;
+          const tabHost = new URL(tab.url || oldUrl).host;
+
+          if (currentHost !== tabHost) {
+            shouldClearImmediately = true;
+            logInfo(`Tab ${tabId} page reloaded on different domain, clearing RPC immediately`);
+          }
+        } catch (err) {
+          logError("Page reload check error:", err);
+        }
+      }
+
+      // If the domain has changed, clear it immediately
+      if (shouldClearImmediately) {
+        if (state.audibleTimers.has(tabId)) {
+          clearTimeout(state.audibleTimers.get(tabId));
+          state.audibleTimers.delete(tabId);
+        }
+
+        clearRpcForTab(tabId, "domain/navigation changed").catch(logError);
+        state.activeTabMap.delete(tabId);
+        state.tabUrlMap.set(tabId, newUrl);
+        return;
+      }
+
+      // 4) Audible check
       const isCurrentlyAudible = tab.audible ?? false;
 
       if (isCurrentlyAudible) {
@@ -717,65 +803,43 @@ const setupListeners = () => {
         if (state.audibleTimers.has(tabId)) {
           clearTimeout(state.audibleTimers.get(tabId));
           state.audibleTimers.delete(tabId);
+          logInfo(`Tab ${tabId} audible resumed, cleanup timer cancelled`);
         }
       } else {
         // The tab no longer active → just update the state
         if (tabState.isAudioPlaying) {
           tabState.isAudioPlaying = false;
           state.activeTabMap.set(tabId, tabState);
+          logInfo(`Tab ${tabId} lost audio, will clear RPC in 5s if not recovered`);
 
-          logInfo(`Tab ${tabId} is not audible, will clear RPC in 5s if still silent`);
-          const timer = setTimeout(async () => {
-            try {
-              const t = await browser.tabs.get(tabId);
-              const currentState = state.activeTabMap.get(tabId);
-              if (!t.audible && currentState?.isAudioPlaying === false) {
-                logInfo(`Tab ${tabId} still not audible after 5s, clearing RPC`);
-                clearRpcForTab(tabId, "tab not audible").catch(logError);
-              } else {
-                logInfo(`Tab ${tabId} became audible within 5s, keeping RPC`);
+          // Only start a new timer if there isn't one already
+          if (!state.audibleTimers.has(tabId)) {
+            const timer = setTimeout(async () => {
+              try {
+                const t = await browser.tabs.get(tabId);
+                const currentState = state.activeTabMap.get(tabId);
+                if (!t.audible && currentState?.isAudioPlaying === false) {
+                  logInfo(`Tab ${tabId} still not audible after 5s, clearing RPC`);
+                  await clearRpcForTab(tabId, "audio stopped for 5+ seconds");
+                  state.activeTabMap.delete(tabId);
+                } else {
+                  logInfo(`Tab ${tabId} recovered audio within 5s, keeping RPC active`);
+                }
+              } catch (err) {
+                logInfo(`Tab ${tabId} not found during cleanup timer, removing from map`);
+                state.activeTabMap.delete(tabId);
+              } finally {
+                state.audibleTimers.delete(tabId);
               }
-            } catch (err) {
-              logError(err);
-            } finally {
-              state.audibleTimers.delete(tabId);
-            }
-          }, 5000);
+            }, 5000);
 
-          state.audibleTimers.set(tabId, timer);
+            state.audibleTimers.set(tabId, timer);
+            logInfo(`Tab ${tabId} cleanup timer started (5s)`);
+          }
         }
       }
-
-      // 3) URL change check
-      if (!oldUrl && newUrl) {
-        state.tabUrlMap.set(tabId, newUrl);
-        return;
-      }
-
-      if (changeInfo.url && oldUrl) {
-        const oldHost = new URL(oldUrl).host;
-        const newHost = new URL(changeInfo.url).host;
-
-        if (oldHost !== newHost) {
-          logInfo(`Tab ${tabId} domain changed, clearing RPC`);
-          clearRpcForTab(tabId, "domain changed").catch(logError);
-        } else {
-          logInfo(`Tab ${tabId} SPA navigation detected, keeping RPC`);
-        }
-      }
-
-      // 4) Page reload control
-      if (changeInfo.status === "loading" && oldUrl) {
-        const currentHost = new URL(oldUrl).host;
-        const tabHost = new URL(tab.url || oldUrl).host;
-
-        if (currentHost !== tabHost) {
-          logInfo(`Tab ${tabId} page reloaded on new domain, clearing RPC`);
-          clearRpcForTab(tabId, "page reloaded").catch(logError);
-        } else {
-          logInfo(`Tab ${tabId} page loading (SPA soft reload), keeping RPC`);
-        }
-      }
+    } catch (err) {
+      logError(`Tab ${tabId} onUpdated error:`, err);
     } finally {
       if (newUrl) state.tabUrlMap.set(tabId, newUrl);
     }
