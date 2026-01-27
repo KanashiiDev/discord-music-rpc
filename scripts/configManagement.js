@@ -33,7 +33,7 @@ const defaultConfig = {
     KEEP_HISTORY: {
       value: false,
       type: "boolean",
-      note:  "Prevent the music history from being deleted when the server is launched.",
+      note: "Prevent the music history from being deleted when the server is launched.",
     },
 
     KEEP_LOGS: {
@@ -233,8 +233,6 @@ const updateConfigObject = () => {
 
   // Add new values
   Object.assign(config, flattened);
-
-  log.info("[Config] Config object updated");
 };
 
 // Get the raw config
@@ -253,15 +251,11 @@ const refreshConfig = () => {
       throw new Error("Config not initialized. Call initialize() first.");
     }
 
-    log.info("[Config] Refreshing configuration...");
-
     // Reload the Store
     store = new JSONdb(dbPath);
 
     // Resynchronize
     initializeConfig();
-
-    log.info("[Config] Configuration refreshed successfully");
     return true;
   } catch (err) {
     log.error("[Config] Failed to refresh config:", err);

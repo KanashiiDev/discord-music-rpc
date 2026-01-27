@@ -962,7 +962,7 @@ function updateTrayMenu() {
                 buttons: ["OK"],
                 title: "Discord Music RPC - Update Available",
                 message: `A new version (${result.updateInfo.version}) is available.`,
-                detail: "The update will download and install in the background.",
+                detail: "The update will be downloaded automatically. You can start the installation from the tray menu.",
                 icon: icons.message,
               });
             } else {

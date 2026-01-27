@@ -8,7 +8,10 @@ let PORT = 3000;
 const CLIENT_ID = "1366752683628957767";
 const RETRY_DELAY = 10000; // 10 seconds
 const CLIENT_TIMEOUT = 30000; // 30 seconds
-const STUCK_TIMEOUT = 40000; // 40 seconds
+const AUTO_CLEAR_TIMEOUT = 24000; // 24 seconds
+const STUCK_TIMEOUT = 12000; // 12 seconds
+const MAX_CLEAR_RETRIES = 3;
+let reconnectScheduled = false;
 let historyTimeout = null;
 const settingsFilePath = process.env.SETTINGS_FILE_PATH;
 const logFilePath = process.env.LOG_FILE_PATH;
@@ -80,7 +83,7 @@ app.use(express.json());
 
 // RPC update - POST
 app.post("/update-rpc", async (req, res) => {
-  if (Date.now() - lastUpdateAt < 2000) {
+  if (lastUpdateAt && Date.now() - lastUpdateAt < 2000) {
     return res.status(429).json({ error: "Too many updates" });
   }
   lastUpdateAt = Date.now();
@@ -115,9 +118,16 @@ app.post("/update-rpc", async (req, res) => {
     // Clear activity
     if (!data.status) {
       if (rpcClient?.user?.clearActivity) {
-        await rpcClient.user.clearActivity();
+        try {
+          await Promise.race([rpcClient.user.clearActivity(), new Promise((_, reject) => setTimeout(() => reject(new Error("Clear timeout")), 5000))]);
+        } catch (err) {
+          console.warn("[UPDATE-RPC] Failed to clear activity:", err.message);
+          isRpcConnected = false;
+        }
       }
       currentActivity = null;
+      lastActiveClient = null;
+      lastUpdateAt = null;
       return res.json({ success: true, action: "cleared" });
     }
 
@@ -305,6 +315,17 @@ app.post("/update-rpc", async (req, res) => {
         } catch (err) {
           console.error("setActivity failed:", err.message);
           isRpcConnected = false;
+
+          // Reconnect
+          if (!reconnectScheduled && !isConnecting && !isShuttingDown) {
+            reconnectScheduled = true;
+            setTimeout(async () => {
+              reconnectScheduled = false;
+              if (!isConnecting && !isShuttingDown) {
+                await connectRPC();
+              }
+            }, 2000);
+          }
         }
       } else {
         console.error("RPC client or setActivity method not available");
@@ -349,24 +370,71 @@ app.post("/clear-rpc", express.json(), async (req, res) => {
     if (historyTimeout) {
       clearTimeout(historyTimeout);
       historyTimeout = null;
+      historySaveLock = false;
     }
 
-    // RPC cleanup
-    if (currentActivity !== null) {
-      if (await connectRPC()) {
-        try {
-          await rpcClient.user?.clearActivity();
-        } catch (err) {
-          console.error("Failed to clear activity:", err);
+    // RPC cleanup with retry
+    let clearSuccess = false;
+    const hadActivity = currentActivity !== null;
+
+    if (await connectRPC()) {
+      if (hadActivity || rpcClient?.user) {
+        for (let attempt = 1; attempt <= MAX_CLEAR_RETRIES; attempt++) {
+          try {
+            await Promise.race([rpcClient.user?.clearActivity(), new Promise((_, reject) => setTimeout(() => reject(new Error("Clear timeout")), 5000))]);
+            await new Promise((resolve) => setTimeout(resolve, 1000));
+            clearSuccess = true;
+            break;
+          } catch (err) {
+            console.error(`[CLEAR-RPC] Failed to clear activity (attempt ${attempt}/${MAX_CLEAR_RETRIES}):`, err.message);
+
+            if (attempt < MAX_CLEAR_RETRIES) {
+              await new Promise((resolve) => setTimeout(resolve, 1000));
+            }
+          }
         }
+
+        if (!clearSuccess) {
+          console.error(`[CLEAR-RPC] All clear attempts failed. Forcing client reconnection...`);
+
+          isRpcConnected = false;
+          const oldClient = rpcClient;
+          rpcClient = null;
+
+          try {
+            await oldClient?.destroy();
+          } catch (destroyErr) {
+            console.warn(`[CLEAR-RPC] Error destroying client:`, destroyErr.message);
+          }
+
+          await connectRPC();
+
+          try {
+            if (rpcClient?.user?.clearActivity) {
+              await rpcClient.user.clearActivity();
+              console.log(`[CLEAR-RPC] Activity cleared after reconnection`);
+              clearSuccess = true;
+            }
+          } catch (finalErr) {
+            console.error(`[CLEAR-RPC] Final clear attempt failed:`, finalErr.message);
+          }
+        }
+      } else {
+        clearSuccess = true;
       }
     }
 
     // Clear the state
     currentActivity = null;
     lastActiveClient = null;
+    lastUpdateAt = null;
 
-    const response = { success: true };
+    const response = {
+      success: true,
+      cleared: clearSuccess,
+      reconnected: !clearSuccess,
+    };
+
     lastClearRpcResult = response;
     res.json(response);
   } catch (err) {
@@ -698,31 +766,94 @@ function startHealthCheckTimer() {
     if (isShuttingDown) return;
     try {
       const now = Date.now();
+      if (currentActivity !== null && lastUpdateAt && now - lastUpdateAt > AUTO_CLEAR_TIMEOUT) {
+        console.log(`[HEALTH] No update for ${Math.floor((now - lastUpdateAt) / 1000)}s, auto-clearing activity...`);
 
-      // If there is no client or it has been destroyed -> reconnect
+        for (let attempt = 1; attempt <= 2; attempt++) {
+          try {
+            if (rpcClient?.user?.clearActivity) {
+              await Promise.race([
+                rpcClient.user.clearActivity(), 
+                new Promise((_, reject) => setTimeout(() => reject(new Error("Clear timeout")), 5000))
+              ]);
+              console.log(`[HEALTH] Activity auto-cleared successfully`);
+              break;
+            }
+          } catch (err) {
+            console.warn(`[HEALTH] Failed to auto-clear (attempt ${attempt}):`, err.message);
+
+            if (attempt === 2) {
+              console.log("[HEALTH] Forcing client reconnection after failed auto-clear...");
+              isRpcConnected = false;
+              const oldClient = rpcClient;
+              rpcClient = null;
+
+              try {
+                await oldClient?.destroy();
+              } catch (destroyErr) {
+                console.warn("[HEALTH] Error destroying client:", destroyErr.message);
+              }
+
+              await connectRPC();
+            }
+          }
+        }
+
+        currentActivity = null;
+        lastActiveClient = null;
+        lastUpdateAt = null;
+
+        if (historyTimeout) {
+          clearTimeout(historyTimeout);
+          historyTimeout = null;
+          historySaveLock = false;
+        }
+      }
+
+      if (lastActiveClient?.timestamp && now - lastActiveClient.timestamp > CLIENT_TIMEOUT) {
+        console.log(`[HEALTH] Client inactive for ${Math.floor((now - lastActiveClient.timestamp) / 1000)}s, clearing...`);
+
+        try {
+          if (rpcClient?.user?.clearActivity) {
+            await rpcClient.user.clearActivity();
+            console.log(`[HEALTH] Activity cleared due to client timeout`);
+          }
+        } catch (err) {
+          console.warn(`[HEALTH] Failed to clear inactive client:`, err.message);
+        }
+
+        currentActivity = null;
+        lastActiveClient = null;
+        lastUpdateAt = null;
+      }
+
+      // Client control
       if (!rpcClient || rpcClient.destroyed || !rpcClient.user) {
         if (!isConnecting && !isShuttingDown) {
+          console.log("[HEALTH] Client is destroyed or missing, reconnecting...");
           isRpcConnected = false;
           await connectRPC();
         }
         return;
       }
 
-      // If the activity is stuck -> clearActivity
-      if (lastActiveClient?.timestamp && now - lastActiveClient.timestamp > CLIENT_TIMEOUT) {
-        try {
-          await rpcClient?.user?.clearActivity();
-        } catch (err) {
-          console.warn("[HEALTH] Failed to clear activity:", err.message);
-        }
-        currentActivity = null;
-        lastActiveClient = null;
-      }
+      // Connection state verification
+      const shouldBeConnected = !!(rpcClient && !rpcClient.destroyed && rpcClient.user);
+      if (isRpcConnected !== shouldBeConnected) {
+        console.log(`[HEALTH] Connection state mismatch. Reconnecting...`);
+        isRpcConnected = shouldBeConnected;
+        notifyRpcStatus(isRpcConnected);
 
-      // RPC is connected but only the reconnect guard
-      isRpcConnected = !!(rpcClient && !rpcClient.destroyed && rpcClient.user);
+        if (!shouldBeConnected && !isConnecting) {
+          await connectRPC();
+        }
+      }
     } catch (err) {
       console.error("[HEALTH] Unexpected error:", err.message);
+      if (!isConnecting && !isShuttingDown) {
+        isRpcConnected = false;
+        await connectRPC();
+      }
     }
   }, STUCK_TIMEOUT);
 }
