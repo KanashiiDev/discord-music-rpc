@@ -187,13 +187,23 @@ input[type="text"] {
   gap: 8px;
 }
 
-#parserList {
+#availableParsersList,
+#selectedParsersList {
   overflow-y: auto;
   max-height: 215px;
 }
 
+.parser-search-input {
+  height: 40px;
+}
+
 .parser-selection {
   margin-bottom: 25px;
+}
+
+.parser-section-label,
+.parser-no-results {
+  margin: 6px 0 4px 0;
 }
 
 .parser-option {
@@ -208,8 +218,8 @@ input[type="text"] {
   background: var(--foreground-color-400);
   border-radius: 8px;
   cursor: pointer;
-  -webkit-transition: all 0.2s;
-  transition: all 0.2s;
+  -webkit-transition: background var(--transition-normal) ease;
+  transition: background var(--transition-normal) ease;
   gap: 8px;
 }
 
@@ -312,6 +322,23 @@ input[type="text"] {
 
 .parser-title {
   font-weight: 500;
+}
+
+.parser-title mark {
+  background-color: var(--accent-color);
+  color: var(--text-color-btn);
+  border-radius: 2px;
+  font-weight: 500;
+  -webkit-transition: background var(--transition-normal) ease;
+  transition: background var(--transition-normal) ease;
+}
+
+.parser-option.active .parser-title mark {
+  background-color: var(--accent-color-bright);
+}
+
+.parser-option.active:hover .parser-title mark {
+  background-color: var(--accent-color);
 }
 
 .filters-list h2 {

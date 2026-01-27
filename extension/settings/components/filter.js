@@ -4,6 +4,8 @@ let editingFilterId = null;
 let currentFilterMode = "filter";
 let currentFilterTab = "all";
 let currentEntries = [{ artist: "", title: "", replaceArtist: "", replaceTitle: "" }];
+let searchQuery = "";
+let selectedParsersOrder = [];
 
 // Event Manager
 class FilterEventManager {
@@ -189,7 +191,7 @@ async function toggleForm() {
     btn.textContent = "Hide Filter Menu";
     resetForm();
   }
-  await activateSimpleBar("parserList");
+  await activateSimpleBar(["selectedParsersList", "availableParsersList"]);
 }
 
 function cancelForm() {
@@ -215,6 +217,12 @@ function resetForm() {
   currentEntries = [{ artist: "", title: "", replaceArtist: "", replaceTitle: "" }];
   editingFilterId = null;
   currentFilterMode = "filter";
+  searchQuery = "";
+  selectedParsersOrder = [];
+
+  // Clear search input
+  const searchInput = document.querySelector(".parser-search-input");
+  if (searchInput) searchInput.value = "";
 
   renderFilterModeSelector();
   renderEntries();
@@ -225,6 +233,16 @@ function updateParserCheckboxes(allChecked, selectedIds = []) {
   const allSwitch = document.getElementById("allParsersSwitch");
   allSwitch.checked = allChecked;
 
+  if (allChecked) {
+    // Clear selected parsers order when "all parsers" is enabled
+    selectedParsersOrder = [];
+  } else {
+    // Update selected parsers order based on selectedIds
+    const newSelections = selectedIds.filter((id) => !selectedParsersOrder.includes(id));
+    const existingSelections = selectedParsersOrder.filter((id) => selectedIds.includes(id));
+    selectedParsersOrder = [...newSelections, ...existingSelections];
+  }
+
   document.querySelectorAll("#parserList input[type='checkbox']").forEach((cb) => {
     cb.checked = allChecked || selectedIds.includes(cb.dataset.parserId);
     cb.disabled = allChecked;
@@ -234,6 +252,8 @@ function updateParserCheckboxes(allChecked, selectedIds = []) {
       wrapper.classList.toggle("active", cb.checked);
     }
   });
+
+  renderParserList();
 }
 
 // Render Functions
@@ -254,7 +274,7 @@ function renderAllParsersSwitch() {
 
   const text = document.createElement("span");
   text.className = "switch-text";
-  text.textContent = "Applies to All Parsers";
+  text.textContent = "Applies to All Websites";
 
   label.appendChild(checkbox);
   label.appendChild(slider);
@@ -262,48 +282,206 @@ function renderAllParsersSwitch() {
   container.appendChild(text);
 }
 
+// Add search input to parser list
+function renderParserSearch() {
+  const container = document.getElementById("parserList");
+
+  // Check if search already exists
+  let searchWrapper = container.querySelector(".parser-search-wrapper");
+  if (!searchWrapper) {
+    searchWrapper = document.createElement("div");
+    searchWrapper.className = "parser-search-wrapper";
+
+    const searchInput = document.createElement("input");
+    searchInput.type = "text";
+    searchInput.className = "parser-search-input";
+    searchInput.placeholder = "Search websites...";
+    searchInput.value = searchQuery;
+
+    filterEventManager.add(searchInput, "input", (e) => {
+      searchDebounce(e);
+    });
+
+    const searchDebounce = debounce(async (e) => {
+      searchQuery = e.target.value.toLowerCase().trim();
+      renderParserList();
+    }, 300);
+
+    searchWrapper.appendChild(searchInput);
+    container.insertBefore(searchWrapper, container.firstChild);
+  }
+}
+
+// Create individual parser option element
+function createParserOption(parser, isSelected) {
+  const wrapper = document.createElement("div");
+  wrapper.className = "parser-option";
+  if (isSelected) {
+    wrapper.classList.add("active");
+  }
+
+  const switchLabel = document.createElement("label");
+  switchLabel.className = "switch-label";
+
+  const checkbox = document.createElement("input");
+  checkbox.type = "checkbox";
+  checkbox.dataset.parserId = parser.id;
+  checkbox.checked = isSelected;
+
+  filterEventManager.add(checkbox, "change", (e) => {
+    handleParserCheckboxChange(parser.id, e.target.checked);
+  });
+
+  filterEventManager.add(wrapper, "click", (e) => {
+    if (e.target === checkbox || e.target.classList.contains("slider")) return;
+    checkbox.checked = !checkbox.checked;
+    checkbox.dispatchEvent(new Event("change"));
+  });
+
+  const slider = document.createElement("span");
+  slider.className = "slider";
+
+  const text = document.createElement("span");
+  text.className = "parser-title";
+  text.textContent = parser.title || parser.domain;
+
+  // Highlight search query if present
+  if (searchQuery) {
+    const textValue = text.textContent;
+    const lowerText = textValue.toLowerCase();
+    const index = lowerText.indexOf(searchQuery);
+
+    if (index !== -1) {
+      while (text.firstChild) {
+        text.removeChild(text.firstChild);
+      }
+
+      const before = document.createTextNode(textValue.slice(0, index));
+      const match = document.createElement("mark");
+      match.textContent = textValue.slice(index, index + searchQuery.length);
+      const after = document.createTextNode(textValue.slice(index + searchQuery.length));
+
+      text.appendChild(before);
+      text.appendChild(match);
+      text.appendChild(after);
+    }
+  }
+
+  switchLabel.appendChild(checkbox);
+  switchLabel.appendChild(slider);
+  wrapper.appendChild(switchLabel);
+  wrapper.appendChild(text);
+
+  return wrapper;
+}
+
+// Handle parser checkbox changes
+function handleParserCheckboxChange(parserId, isChecked) {
+  if (isChecked) {
+    // Add to selected parsers if not already there
+    if (!selectedParsersOrder.includes(parserId)) {
+      selectedParsersOrder.push(parserId);
+    }
+  } else {
+    // Remove from selected parsers
+    selectedParsersOrder = selectedParsersOrder.filter((id) => id !== parserId);
+  }
+
+  renderParserList();
+}
+
+// Parser list rendering
 function renderParserList() {
   const container = document.getElementById("parserList");
+
+  // Clear parser options and labels
   clearElementListeners(container, ".parser-option");
-  container.textContent = "";
+  const elementsToRemove = container.querySelectorAll(".selected-parsers-section, .available-parsers-section, .parser-section-label, .parser-no-results");
+  elementsToRemove.forEach((el) => el.remove());
 
-  parserList.forEach((parser) => {
-    const wrapper = document.createElement("div");
-    wrapper.className = "parser-option";
+  // Add search if it doesn't exist
+  renderParserSearch();
 
-    const switchLabel = document.createElement("label");
-    switchLabel.className = "switch-label";
-
-    const checkbox = document.createElement("input");
-    checkbox.type = "checkbox";
-    checkbox.dataset.parserId = parser.id;
-
-    filterEventManager.add(checkbox, "change", (e) => {
-      wrapper.classList.toggle("active", e.target.checked);
-    });
-
-    filterEventManager.add(wrapper, "click", (e) => {
-      if (e.target === checkbox || e.target.classList.contains("slider")) return;
-      checkbox.checked = !checkbox.checked;
-      checkbox.dispatchEvent(new Event("change"));
-    });
-
-    const slider = document.createElement("span");
-    slider.className = "slider";
-
-    const text = document.createElement("span");
-    text.className = "parser-title";
-    text.textContent = parser.title || parser.domain;
-
-    switchLabel.appendChild(checkbox);
-    switchLabel.appendChild(slider);
-    wrapper.appendChild(switchLabel);
-    wrapper.appendChild(text);
-    container.appendChild(wrapper);
+  // Filter parsers based on search query
+  const filteredParsers = parserList.filter((parser) => {
+    if (!searchQuery) return true;
+    const searchText = (parser.title || parser.domain || "").toLowerCase();
+    return searchText.includes(searchQuery);
   });
+
+  // Separate selected and unselected parsers
+  const selectedParsers = [];
+  const unselectedParsers = [];
+
+  filteredParsers.forEach((parser) => {
+    const allParsersChecked = document.getElementById("allParsersSwitch")?.checked;
+    const isSelected = allParsersChecked || selectedParsersOrder.includes(parser.id);
+
+    if (isSelected) {
+      selectedParsers.push(parser);
+    } else {
+      unselectedParsers.push(parser);
+    }
+  });
+
+  // Sort selected parsers by order they were selected
+  selectedParsers.sort((a, b) => {
+    return selectedParsersOrder.indexOf(a.id) - selectedParsersOrder.indexOf(b.id);
+  });
+
+  // Render selected parsers section
+  if (selectedParsers.length > 0) {
+    const sectionLabel = document.createElement("div");
+    sectionLabel.className = "parser-section-label selected";
+    sectionLabel.textContent = "Selected Websites";
+    container.appendChild(sectionLabel);
+
+    const selectedSection = document.createElement("div");
+    selectedSection.className = "selected-parsers-section";
+    selectedSection.id = "selectedParsersList";
+
+    selectedParsers.forEach((parser) => {
+      selectedSection.appendChild(createParserOption(parser, true));
+    });
+
+    container.appendChild(selectedSection);
+  }
+
+  // Render available parsers section
+  if (unselectedParsers.length > 0) {
+    const sectionLabel = document.createElement("div");
+    sectionLabel.className = "parser-section-label available";
+    sectionLabel.textContent = "Available Websites";
+    container.appendChild(sectionLabel);
+
+    const availableSection = document.createElement("div");
+    availableSection.className = "available-parsers-section";
+    availableSection.id = "availableParsersList";
+
+    unselectedParsers.forEach((parser) => {
+      availableSection.appendChild(createParserOption(parser, false));
+    });
+
+    container.appendChild(availableSection);
+  }
+
+  // Show "no results" message if search returns nothing
+  if (filteredParsers.length === 0 && searchQuery) {
+    const noResults = document.createElement("div");
+    noResults.className = "parser-no-results";
+    noResults.textContent = "No websites found";
+    container.appendChild(noResults);
+  }
+
+  activateSimpleBar(["selectedParsersList", "availableParsersList"]);
 }
 
 function handleAllParsersChange(e) {
+  if (e.target.checked) {
+    searchQuery = "";
+    const searchInput = document.querySelector(".parser-search-input");
+    if (searchInput) searchInput.value = "";
+  }
   updateParserCheckboxes(e.target.checked, []);
 }
 
@@ -411,7 +589,7 @@ async function saveFilter() {
   }
 
   // Get selected parsers
-  const selectedParsers = allParsers ? ["*"] : Array.from(document.querySelectorAll("#parserList input[type='checkbox']:checked")).map((cb) => cb.dataset.parserId);
+  const selectedParsers = allParsers ? ["*"] : [...selectedParsersOrder];
 
   if (!selectedParsers.length) {
     alert("Please select at least one site");
@@ -701,7 +879,7 @@ async function startEditFilter(filter) {
   renderFilterModeSelector();
   renderEntries();
   updateParserCheckboxes(filter.parsers.includes("*"), filter.parsers);
-  await activateSimpleBar("parserList");
+  await activateSimpleBar(["selectedParsersList", "availableParsersList"]);
 }
 
 // Exit Edit Mode
@@ -841,8 +1019,14 @@ async function fillCurrentSong() {
       if (checkbox.dataset.parserId === parserId.toString()) {
         checkbox.checked = true;
         option.classList.add("active");
+        // Add to selected parsers order
+        if (!selectedParsersOrder.includes(parserId.toString())) {
+          selectedParsersOrder.push(parserId.toString());
+        }
       }
     });
+    // Re-render to show in selected section
+    renderParserList();
   }
 
   // Success feedback
