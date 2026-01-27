@@ -14,8 +14,8 @@ registerParser({
       title = stationName || "Listening..";
       stationName = "Sasalele Music Station";
     }
-    if (artist === "Visit radio's homepage for playing info" || artist === "Unknown" || artist === "Loading...") {
-      artist = null;
+    if (artist === "Visit radio's homepage for playing info" || artist === "Stream not active" || artist === "Unknown" || artist === "Loading...") {
+      artist = -1;
     }
 
     if (/\.webp(\?.*)?$/i.test(image)) {
@@ -28,6 +28,12 @@ registerParser({
       image,
       source: stationName,
       songUrl: stationLink,
+      buttons: [
+        {
+          link: "https://basic.pp.ua/",
+          text: "Sasalele Music Station",
+        },
+      ],
     };
   },
 });

@@ -43,6 +43,7 @@ const errorFilter = (() => {
     /update failed after all retries/i,
     /update failed \(no response\)/i,
     /Request timed out/i,
+    /signal is aborted without reason/i,
   ];
 
   const shouldIgnore = (error) => {
@@ -517,8 +518,11 @@ function formatLabel(name) {
 
 // Normalize artist name
 function normalizeArtistName(name) {
-  if (!name) return '';
-  return name.split(/,|&|feat\.|Feat\.|FEAT\./)[0].trim().toLowerCase();
+  if (!name) return "";
+  return name
+    .split(/,|&|feat\.|Feat\.|FEAT\./)[0]
+    .trim()
+    .toLowerCase();
 }
 
 // Normalize host string

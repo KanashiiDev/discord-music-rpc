@@ -123,9 +123,11 @@ app.post("/update-rpc", async (req, res) => {
 
     // String Extraction
     const dataTitle = String(data.title || "").trim();
-    const dataArtist = String(data.artist || "").trim();
+    const rawArtist = String(data.artist ?? "").trim();
+    const artistIsIntentionallyEmpty = !rawArtist || rawArtist === "-1";
+    const dataArtist = artistIsIntentionallyEmpty ? "" : rawArtist;
     const dataSource = String(data.source || "").trim();
-    const artistIsMissingOrSame = !dataArtist || dataArtist === dataTitle;
+    const artistIsMissingOrSame = artistIsIntentionallyEmpty || dataArtist === dataTitle;
     const dataSettings = data.settings;
 
     // Default settings
@@ -191,17 +193,19 @@ app.post("/update-rpc", async (req, res) => {
     }
 
     // Large image text
-    if (activitySettings.showSource && dataTitle !== dataArtist && dataTitle !== dataSource) {
+    if (!artistIsIntentionallyEmpty && activitySettings.showSource && dataTitle !== dataArtist && dataTitle !== dataSource) {
       activity.largeImageText = dataSource;
     }
 
     // Small image
-    if (!artistIsMissingOrSame && serverSettings.showSmallIcon) {
+    if (!artistIsIntentionallyEmpty && serverSettings.showSmallIcon) {
       activity.smallImageKey = favIcon || (data.watching ? "watch" : "listen");
     }
 
     // Small image text
-    if (serverSettings.showSmallIcon) {
+    if (artistIsIntentionallyEmpty) {
+      activity.smallImageText = "";
+    } else if (serverSettings.showSmallIcon) {
       activity.smallImageText = dataSource;
     } else {
       activity.smallImageText = data.watching ? "Watching" : "Listening";

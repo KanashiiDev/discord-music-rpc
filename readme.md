@@ -406,10 +406,12 @@ getImage(".cover img");
 ## 📝 Tips
 
 - Always provide `title`, `artist`, and `image` when available.
+- Use `-1` as the artist value to intentionally hide the artist name and display only the source information.
 - Use `urlPatterns` to limit the parser to specific pages.
 - If time info is available, include `timePassed`, `duration` to calculate `position`, `progress`, and timestamps.
 - Use `getText` and `getImage` to keep your code clean and reliable.
 - Use your browser’s developer tools (right-click > Inspect) to find the correct selectors.
+- Buttons will not be visible to you on Discord. This is a limitation of Discord itself. To test them, open Discord in a web browser using a different account.
 
 </details>
 

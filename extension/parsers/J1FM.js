@@ -1,5 +1,6 @@
 registerParser({
   domain: "j1fm.tokyo",
+  homepage: "https://www.j1fm.tokyo/player/j1hits/",
   title: "J1FM",
   urlPatterns: [/player.*/],
   fn: function () {
