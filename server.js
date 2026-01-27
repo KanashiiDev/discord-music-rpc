@@ -772,10 +772,7 @@ function startHealthCheckTimer() {
         for (let attempt = 1; attempt <= 2; attempt++) {
           try {
             if (rpcClient?.user?.clearActivity) {
-              await Promise.race([
-                rpcClient.user.clearActivity(), 
-                new Promise((_, reject) => setTimeout(() => reject(new Error("Clear timeout")), 5000))
-              ]);
+              await Promise.race([rpcClient.user.clearActivity(), new Promise((_, reject) => setTimeout(() => reject(new Error("Clear timeout")), 5000))]);
               console.log(`[HEALTH] Activity auto-cleared successfully`);
               break;
             }
@@ -830,7 +827,6 @@ function startHealthCheckTimer() {
       // Client control
       if (!rpcClient || rpcClient.destroyed || !rpcClient.user) {
         if (!isConnecting && !isShuttingDown) {
-          console.log("[HEALTH] Client is destroyed or missing, reconnecting...");
           isRpcConnected = false;
           await connectRPC();
         }
