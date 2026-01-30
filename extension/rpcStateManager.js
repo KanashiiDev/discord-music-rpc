@@ -6,18 +6,23 @@ window.RPCStateManager = class {
     this.isCurrentlySeeking = false;
     this.seekTimeout = null;
     this.errorCount = 0;
-    this.lastTabId = null;
+
+    // Has Only Duration Mode
     this.durationTimer = 0;
     this.durationTimerInterval = null;
     this.hasOnlyDuration = false;
     this.hasOnlyDurationCount = 0;
-    this.isRemainingMode = false;
-    this.remainingNegativeCount = 0;
-    this.lastCheckTime = null;
-  }
+    this.calculatedTotalDuration = null;
 
-  setActiveTab(tabId) {
-    this.lastTabId = tabId;
+    // Remaining Mode
+    this.isRemainingMode = false;
+    this.lastReportedTime = null;
+    this.lastReportedDuration = null;
+    this.lastEffectiveDuration = null;
+    this.consecutiveRemaining = 0;
+    this.consecutiveNormal = 0;
+
+    this.lastCheckTime = null;
   }
 
   isSeekDetected(currentPosition, duration = 0) {
@@ -92,23 +97,28 @@ window.RPCStateManager = class {
     this.lastKnownPosition = 0;
     this.isCurrentlySeeking = false;
     clearTimeout(this.seekTimeout);
+    this.seekTimeout = null;
     this.errorCount = 0;
-
+    this.lastCheckTime = null;
     this.hasOnlyDuration = false;
     this.hasOnlyDurationCount = 0;
-
     this.resetDurationTimer();
     this.resetRemainingState();
   }
 
   resetRemainingState() {
     this.isRemainingMode = false;
-    this.remainingNegativeCount = 0;
+    this.consecutiveRemaining = 0;
+    this.consecutiveNormal = 0;
+    this.lastReportedTime = null;
+    this.lastReportedDuration = null;
+    this.lastEffectiveDuration = null;
+    this.calculatedTotalDuration = null;
   }
 
   startDurationTimer() {
+    if (this.durationTimerInterval) return;
     this.durationTimer = 0;
-    clearInterval(this.durationTimerInterval);
     this.durationTimerInterval = setInterval(() => {
       this.durationTimer++;
     }, 1000);
@@ -116,13 +126,17 @@ window.RPCStateManager = class {
 
   resetDurationTimer() {
     clearInterval(this.durationTimerInterval);
+    this.durationTimerInterval = null;
     this.hasOnlyDurationCount = 0;
     this.durationTimer = 0;
+    this.calculatedTotalDuration = null;
+    this.durationTimerStart = null;
   }
 
   getDurationTimer() {
-    const minutes = Math.floor(this.durationTimer / 60);
-    const seconds = this.durationTimer % 60;
+    const elapsed = this.durationTimer;
+    const minutes = Math.floor(elapsed / 60);
+    const seconds = elapsed % 60;
     return `${minutes}:${seconds.toString().padStart(2, "0")}`;
   }
 };
