@@ -109,7 +109,7 @@ class UserScriptUI {
           clearContainer();
           this.useSettingEditor.loadFromCode();
         }
-      }.bind(this)
+      }.bind(this),
     );
 
     // Async Wrapper
@@ -478,7 +478,7 @@ class UserScriptUI {
          const source = "";
          const songUrl = "";
          const timePassed = null;
-         const duration = null;`
+         const duration = null;`,
     );
 
     this.checkSettings(this.codeEditor);
@@ -514,7 +514,11 @@ class UserScriptUI {
   }
 
   async saveScript() {
-    const domain = $("inDomain").value.trim();
+    const domain = $("inDomain")
+      .value.replace(/^https?:\/\//, "")
+      .replace(/^www\./, "")
+      .replace(/\/.*$/, "")
+      .trim();
     const rawPatterns = $("inUrlPatterns").value.trim() || ".*";
     const { normalizedList } = PatternValidator.processPatterns(rawPatterns);
     $("editor").setAttribute("current", "0");
@@ -1167,7 +1171,7 @@ class UserScriptUI {
         (ev) => {
           if (!menu.contains(ev.target)) menu.remove();
         },
-        { once: true }
+        { once: true },
       );
     }, 0);
   }
