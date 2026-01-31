@@ -196,14 +196,19 @@ class UserScriptManager {
                 "color: #7bd583ff; font-weight: bold; font-size: 14px;",
                 "color: #efefefff; font-weight: bold; font-size: 14px;"
               );
+              console.log("%cScript Information:", "color: #ffb86c; font-weight: bold; font-size: 13px;");
+              console.log("  • Title:     ", trackData.title);
+              console.log("  • Domain:    ", trackData.domain);
+              console.log("  • Url Patterns:  ", trackData.urlPatterns || "—");
               const song = trackData.song;
-              console.log("%cTitle:", "color: #8be9fd; font-weight: bold;", song.title || "Unknown");
-              console.log("%cArtist:", "color: #8be9fd; font-weight: bold;", song.artist || "Unknown");
-              console.log("%cSource:", "color: #50fa7b; font-weight: bold;", song.source || "Unknown");
-              console.log("%cSong URL:", "color: #d2da78ff; font-weight: bold;", song.songUrl || "N/A");
-              console.log("%cDuration:", "color: #bd93f9; font-weight: bold;", song.duration ?? "N/A");
-              console.log("%cTime Passed:", "color: #bd93f9; font-weight: bold;", song.timePassed ?? "N/A");
-              console.log("%cImage:", "color: #ff5555; font-weight: bold;", song.image || "Default Image");
+              console.log("%cSong Information:", "color: #8be9fd; font-weight: bold; font-size: 13px;");
+              console.log("  • Title:      ", song.title || "Unknown");
+              console.log("  • Artist:     ", song.artist || "Unknown");
+              console.log("  • Source:     ", song.source || "Unknown");
+              console.log("  • Song URL:   ", song.songUrl || "N/A");
+              console.log("  • Image:      ", song.image || "Default Image");
+              console.log("  • Duration:   ", song.duration ?? "N/A");
+              console.log("  • Time Passed:", song.timePassed ?? "N/A");
               console.groupEnd();
             }
 
