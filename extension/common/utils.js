@@ -1556,6 +1556,27 @@ async function activateSimpleBar(targetIds, timeout = 500, interval = 30, maxWai
 
   return results;
 }
+// Destroy Single Simplebar
+async function destroySimplebar(panelOrId) {
+  const panel = typeof panelOrId === "string" 
+    ? document.getElementById(panelOrId) 
+    : panelOrId;
+
+  if (!panel || !simpleBarInstances.has(panel)) return;
+
+  const instance = simpleBarInstances.get(panel);
+  instance.el.querySelectorAll(":scope > .simplebar-track").forEach(el => el.remove());
+  instance.unMount?.();
+
+  await new Promise(r => requestAnimationFrame(r));
+  await new Promise(r => setTimeout(r, 16));
+
+  // Cleanup
+  simpleBarInstances.delete(panel);
+  panel.dataset.sbInit = "";
+  panel.style.paddingRight = "";
+  allPanels?.delete?.(panel);
+}
 
 // Wait for unmount simplebar
 function waitForUnmountSimplebars() {

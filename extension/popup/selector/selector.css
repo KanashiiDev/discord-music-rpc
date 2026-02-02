@@ -311,7 +311,7 @@ br[id*="buttonLink"] {
 }
 
 #userRpc-selectorChooser-container-list .score.orange {
-  color: var(--orange-color);
+  color: var(--yellow-color);
 }
 
 #userRpc-selectorChooser-container-list .score.red {

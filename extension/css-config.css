@@ -57,8 +57,11 @@
   --switch-toggle-color: #ddd;
   --icon-color: #ddd;
   --red-color: #f44336;
-  --orange-color: #ffc107;
+  --red-color-dark: #8a251e;
+  --yellow-color: #ffc107;
+  --yellow-color-dark: #977718;
   --green-color: #4caf50;
+  --green-color-dark: #1f7021;
 }
 
 /* Light Theme */
@@ -99,8 +102,11 @@
   --blue-color: #2e6386;
   --blue-color-bright: #36739c;
   --red-color: #c90000;
-  --orange-color: #c99000;
+  --red-color-dark: #8d1e1e;
+  --yellow-color: #c99000;
+  --yellow-color-dark: #997720;
   --green-color: #28c900;
+  --green-color-dark: #2f8f18;
   --accent-color: #425c83;
   --accent-color-border: #425c83;
   --accent-color-bright: #4e6f97;

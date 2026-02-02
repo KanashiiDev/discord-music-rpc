@@ -494,6 +494,15 @@ const pendingInlines = {};
     true,
   );
 
+  // Filter History Modal
+  inlineUtilsFunctions(
+    "settings/components/Filter/components/History/history.js",
+    ["settings/components/Filter/components/History/historyState.js", "settings/components/Filter/components/History/historyController.js", "settings/components/Filter/components/History/historyRenderer.js"],
+    [],
+    "start",
+    true,
+  );
+
   // --- INLINE UTILITIES REGISTRATION END ---
 
   // Build the inlined functions

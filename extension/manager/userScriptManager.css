@@ -125,9 +125,7 @@ button:not([disabled]):hover {
 
 ul {
   list-style: none;
-  margin-bottom: 20px;
-  margin: 12px;
-  padding: 0 20px;
+  padding: 20px 40px;
 }
 
 /* Script Item */
@@ -612,6 +610,7 @@ code > code {
   padding: 6px 10px;
   border-radius: 5px;
   margin: 5px 0;
+  gap: 5px;
 }
 
 .new-item label,

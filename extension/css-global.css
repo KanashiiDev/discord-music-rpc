@@ -105,6 +105,50 @@ svg:not(.flatpickr-calendar svg) {
   place-self: center;
 }
 
+
+.popup-message {
+  position: absolute;
+  overflow: hidden;
+  cursor: pointer;
+  color: var(--text-color-btn);
+  border-radius: var(--radius-default);
+  background: var(--accent-color);
+  text-align: center;
+  width: calc(100% - 20px);
+  top: -24px;
+  z-index: 22222;
+  -webkit-box-shadow: 0 0 8px var(--shadow-color);
+  box-shadow: 0 0 8px var(--shadow-color);
+  -webkit-animation: fadeInUp var(--transition-normal) ease-out;
+  animation: fadeInUp var(--transition-normal) ease-out;
+  padding: 6px;
+}
+
+.popup-message.hide {
+  -webkit-animation: fadeOutDown var(--transition-normal) ease-out both;
+  animation: fadeOutDown var(--transition-normal) ease-out both;
+}
+
+.popup-message.warning {
+  background: var(--warning-color);
+}
+
+.popup-message.alert {
+  background: var(--alert-color);
+}
+
+.popup-message-indicator {
+  position: relative;
+  top: 7px;
+  left: -7px;
+  width: calc(100% + 13px);
+  height: 3px;
+  background: var(--text-color-muted);
+  -webkit-animation: loadingBar 3s ease-in-out;
+  animation: loadingBar 3s ease-in-out;
+  display: none;
+}
+
 @-webkit-keyframes loadingBar {
   0% {
     -webkit-transform: scaleX(0);

@@ -91,7 +91,7 @@ async function renderHistory({ reset = true, query = "" } = {}) {
   if (cleaningMode) attachCheckboxListeners();
 
   // Recalculate simplebar after adding content
-  activateSimpleBar("historyPanel");
+  await activateSimpleBar("historyPanel");
 }
 
 // History Scroll
@@ -381,6 +381,7 @@ const handleClearButtonClick = async () => {
     cancelCleanBtn.style.display = "inline-block";
     updateClearBtnText();
     attachCheckboxListeners();
+    await activateSimpleBar("historyPanel");
     return;
   } else if (!fullHistory.length) {
     alert("History is already empty.");

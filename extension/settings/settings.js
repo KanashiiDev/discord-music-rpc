@@ -53,4 +53,5 @@ window.addEventListener("load", async () => {
   initStorageListener();
   applySectionFromUrl();
   initFilter();
+  initHistoryModal();
 });
