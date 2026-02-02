@@ -244,25 +244,33 @@ const handleMigrateHistory = async () => {
   return { ok: true };
 };
 
-const handleCleanHistoryForReplace = async (req) => {
-  const entries = req.entries || [];
-  const parsers = req.parsers || [];
-  const parserList = req.parserList || [];
+const handleFilterHistoryReplace = async (request) => {
+  const action = request.mode || "update";
+  const entries = Array.isArray(request.entries) ? request.entries : [];
+  const parsers = Array.isArray(request.parsers) ? request.parsers : [];
+  const parserList = Array.isArray(request.parserList) ? request.parserList : [];
 
   //  Check for empty entries
   if (!entries.length) {
-    return { ok: true, removedCount: 0, error: "No entries provided" };
+    return { ok: true, count: 0, message: "No entries provided" };
   }
 
   // At least one entry must have either the artist or the title filled in
-  const hasValidEntry = entries.some((e) => (e.artist && e.artist.trim() && e.artist.trim() !== "*") || (e.title && e.title.trim() && e.title.trim() !== "*"));
+  const hasValidEntry = entries.some((e) => (typeof e.artist === "string" && e.artist.trim() && e.artist.trim() !== "*") || (typeof e.title === "string" && e.title.trim() && e.title.trim() !== "*"));
   if (!hasValidEntry) {
-    return { ok: false, removedCount: 0, error: "At least one entry must have artist or title" };
+    return { ok: false, count: 0, error: "At least one entry must have artist or title" };
   }
 
-  const history = await loadHistory();
-  if (!history.length) {
-    return { ok: true, removedCount: 0 };
+  // Load current history entries
+  let history;
+  try {
+    history = await loadHistory();
+  } catch (err) {
+    return { ok: false, count: 0, error: "Failed to load history: " + err.message };
+  }
+
+  if (!Array.isArray(history) || history.length === 0) {
+    return { ok: true, count: 0, message: "History is empty" };
   }
 
   // Convert parser IDs to source names
@@ -271,95 +279,145 @@ const handleCleanHistoryForReplace = async (req) => {
 
   if (!applyToAll) {
     // Error if the parser list is empty
-    if (!parsers.length) {
-      return { ok: false, removedCount: 0, error: "No parsers specified" };
-    }
+    if (!parsers.length) return { ok: false, count: 0, error: "No parsers specified" };
 
-    parsers.forEach((parserId) => {
-      const parser = parserList.find((p) => p.id === parserId);
+    parsers.forEach((id) => {
+      const parser = parserList.find((p) => p.id === id);
       if (parser) {
-        const sourceName = (parser.title || parser.domain || "").toLowerCase().trim();
-        if (sourceName) {
-          sourceNames.add(sourceName);
-        }
+        const name = (parser.title || parser.domain || "").toLowerCase().trim();
+        if (name) sourceNames.add(name);
       }
     });
 
     // Error if no source is found
-    if (sourceNames.size === 0) {
-      return { ok: false, removedCount: 0, error: "No valid sources found from parsers" };
-    }
+    if (sourceNames.size === 0) return { ok: false, count: 0, error: "No valid sources found" };
   }
 
-  let hasChanges = false;
-  const entriesToRemove = new Set();
+  let changeCount = 0;
+  const indicesToRemove = new Set();
 
   // Find the matches in history for each replace entry
   entries.forEach((entry) => {
-    const artist = (entry.artist || "").trim().toLowerCase();
-    const title = (entry.title || "").trim().toLowerCase();
+    const origA = typeof entry.artist === "string" ? entry.artist.trim().toLowerCase() : "";
+    const origT = typeof entry.title === "string" ? entry.title.trim().toLowerCase() : "";
+    const newA = typeof entry.replaceArtist === "string" ? entry.replaceArtist.trim() : "";
+    const newT = typeof entry.replaceTitle === "string" ? entry.replaceTitle.trim() : "";
 
-    // Neither of them can be empty or a wildcard
-    if ((!artist || artist === "*") && (!title || title === "*")) {
+    if (action === "update" && !newA && !newT) {
+      return;
+    }
+    if (action === "revert" && !origA && !origT) {
+      return;
+    }
+    if (!origA && !origT) {
       return;
     }
 
-    history.forEach((historyEntry, index) => {
-      const historyArtist = (historyEntry.a || "").trim().toLowerCase();
-      const historyTitle = (historyEntry.t || "").trim().toLowerCase();
-      const historySource = (historyEntry.s || "").trim().toLowerCase();
+    history.forEach((record, idx) => {
+      const histA = typeof record.a === "string" ? record.a.trim().toLowerCase() : "";
+      const histT = typeof record.t === "string" ? record.t.trim().toLowerCase() : "";
+      const histS = typeof record.s === "string" ? record.s.trim().toLowerCase() : "";
 
-      // Artist/Title match check
-      const artistMatches = !artist || artist === "*" || historyArtist === artist;
-      const titleMatches = !title || title === "*" || historyTitle === title;
+      let hasConcreteMatch = false;
 
-      // At least one specific match is required
-      const hasSpecificMatch = (artist && artist !== "*" && historyArtist === artist) || (title && title !== "*" && historyTitle === title);
-      if (!hasSpecificMatch) {
-        return;
-      }
+      if (action === "revert") {
+        const replaceA = newA.toLowerCase();
+        const replaceT = newT.toLowerCase();
 
-      // Source matching check
-      let sourceMatches = false;
-      if (applyToAll) {
-        sourceMatches = true;
+        const hasA = replaceA && replaceA !== "*";
+        const hasT = replaceT && replaceT !== "*";
+
+        if (hasA && hasT) {
+          hasConcreteMatch = histA === replaceA && histT === replaceT;
+        } else if (hasA) {
+          hasConcreteMatch = histA === replaceA;
+        } else if (hasT) {
+          hasConcreteMatch = histT === replaceT;
+        } else {
+          hasConcreteMatch = false;
+        }
       } else {
-        // Check if the history source matches any source in the parser list
-        for (const sourceName of sourceNames) {
-          // A minimum of 3 character matches is required
-          if (sourceName.length >= 3 && historySource.length >= 3) {
-            if (historySource.includes(sourceName) || sourceName.includes(historySource)) {
-              sourceMatches = true;
-              break;
-            }
-          }
+        const hasOrigA = origA && origA !== "*";
+        const hasOrigT = origT && origT !== "*";
+
+        if (hasOrigA && hasOrigT) {
+          hasConcreteMatch = histA === origA && histT === origT;
+        } else if (hasOrigA) {
+          hasConcreteMatch = histA === origA;
+        } else if (hasOrigT) {
+          hasConcreteMatch = histT === origT;
         }
       }
 
-      // Delete if they all match
-      if (artistMatches && titleMatches && sourceMatches) {
-        entriesToRemove.add(index);
-        hasChanges = true;
+      if (!hasConcreteMatch) return;
+
+      // Source matching check
+      let sourceOk = applyToAll;
+      if (!applyToAll) {
+        for (const s of sourceNames) {
+          if (s.length >= 3 && histS.length >= 3 && (histS.includes(s) || s.includes(histS))) {
+            sourceOk = true;
+            break;
+          }
+        }
+      }
+      if (!sourceOk) return;
+
+      if (action === "update") {
+        let changed = false;
+        if (newA && newA !== record.a) {
+          record.a = newA;
+          changed = true;
+        }
+        if (newT && newT !== record.t) {
+          record.t = newT;
+          changed = true;
+        }
+        if (changed) changeCount++;
+      } else if (action === "revert") {
+        let changed = false;
+        // Revert to original values
+        if (origA && origA !== record.a.toLowerCase()) {
+          record.a = entry.artist.trim();
+          changed = true;
+        }
+        if (origT && origT !== record.t.toLowerCase()) {
+          record.t = entry.title.trim();
+          changed = true;
+        }
+        if (changed) changeCount++;
+      } else if (action === "clean") {
+        indicesToRemove.add(idx);
+        changeCount++;
       }
     });
   });
 
-  if (!hasChanges) {
-    return { ok: true, removedCount: 0 };
+  if (changeCount > 0) {
+    if (action === "clean") {
+      Array.from(indicesToRemove)
+        .sort((a, b) => b - a)
+        .forEach((i) => history.splice(i, 1));
+    }
+
+    try {
+      await saveHistory(history);
+    } catch (err) {
+      return { ok: false, count: 0, error: "Failed to save history: " + err.message };
+    }
   }
-
-  // Delete the indices backwards
-  const indicesToRemove = Array.from(entriesToRemove).sort((a, b) => b - a);
-  indicesToRemove.forEach((index) => {
-    history.splice(index, 1);
-  });
-
-  await saveHistory(history);
 
   return {
     ok: true,
-    removedCount: indicesToRemove.length,
-    percentage: removalPercentage.toFixed(1),
+    count: changeCount,
+    message:
+      changeCount > 0
+        ? action === "update"
+          ? `${changeCount} record(s) updated`
+          : action === "revert"
+            ? `${changeCount} record(s) reverted`
+            : `${changeCount} record(s) removed`
+        : `No matching records found to ${action}`,
   };
 };
 
@@ -465,7 +523,7 @@ const handleUpdateRpc = async (req, sender) => {
   scheduleRpcUpdate(req.data, tabId)?.catch((err) => logError("RPC schedule failed", err));
 
   // 4️) Add History
-  if (!req.data.watching && req.data.title !== "Unknown Song" && req.data.artist !== "Unknown Artist") {
+  if (!req.data.watching && req.data.title !== "Unknown Song" && req.data.artist !== "Unknown Artist" && req.data.artist !== "-1") {
     scheduleHistoryAdd(tabId, {
       title: req.data.title,
       artist: req.data.artist,
@@ -487,7 +545,7 @@ const handleUpdateRpcPort = async (req) => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(req.data),
       },
-      CONFIG.requestTimeout
+      CONFIG.requestTimeout,
     );
 
     return { success: true, port: req.data.port };
@@ -621,8 +679,8 @@ const setupListeners = () => {
             case "migrateHistory":
               result = await handleMigrateHistory();
               break;
-            case "cleanHistoryForReplace":
-              result = await handleCleanHistoryForReplace(req);
+            case "filterHistoryReplace":
+              result = await handleFilterHistoryReplace(req);
               break;
             case "getSongInfo":
               result = await handleGetSongInfo();

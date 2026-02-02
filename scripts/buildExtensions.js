@@ -420,7 +420,17 @@ const pendingInlines = {};
   inlineUtilsFunctions("background.js", ["background/historyBackground.js", "background/backgroundListeners.js"], [], "start", true);
 
   // Popup Selector Utils
-  inlineUtilsFunctions("popup/selector/selector.js", "common/utils.js", ["throttle", "formatLabel", "getExistingElementSelector", "getPlainText", "getIconAsDataUrl", "parseRegexArray", "svg_paths", "svgCache", "createSVG"]);
+  inlineUtilsFunctions("popup/selector/selector.js", "common/utils.js", [
+    "throttle",
+    "formatLabel",
+    "getExistingElementSelector",
+    "getPlainText",
+    "getIconAsDataUrl",
+    "parseRegexArray",
+    "svg_paths",
+    "svgCache",
+    "createSVG",
+  ]);
   inlineUtilsFunctions(
     "popup/selector/selector.js",
     [
@@ -434,7 +444,7 @@ const pendingInlines = {};
     ],
     [],
     "start",
-    true
+    true,
   );
 
   // Main Parser Utils
@@ -468,6 +478,21 @@ const pendingInlines = {};
 
   // User Script Manager
   inlineUtilsFunctions("manager/userScriptManager.js", "manager/components/UseSettingEditor.js", [], "start", true);
+
+  // Filter Manager
+  inlineUtilsFunctions(
+    "settings/components/Filter/filter.js",
+    [
+      "settings/components/Filter/filterState.js",
+      "settings/components/Filter/filterController.js",
+      "settings/components/Filter/filterFormController.js",
+      "settings/components/Filter/filterParserController.js",
+      "settings/components/Filter/filterUtils.js",
+    ],
+    [],
+    "start",
+    true,
+  );
 
   // --- INLINE UTILITIES REGISTRATION END ---
 

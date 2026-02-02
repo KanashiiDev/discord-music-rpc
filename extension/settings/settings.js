@@ -51,22 +51,6 @@ function applySectionFromUrl() {
 window.addEventListener("load", async () => {
   initApplyAttrs();
   initStorageListener();
-
   applySectionFromUrl();
-  await loadParserList();
-  await loadFilters();
-  renderFilterTabs();
-  renderAllParsersSwitch();
-  renderParserList();
-  renderFilters();
-  renderEntries();
-
-  // Event listeners
-  document.getElementById("toggleFormBtn").addEventListener("click", toggleForm);
-  document.getElementById("saveFilterBtn").addEventListener("click", saveFilter);
-  document.getElementById("cancelBtn").addEventListener("click", cancelForm);
-  document.getElementById("addEntryBtn").addEventListener("click", addNewEntry);
-  document.getElementById("fillFormBtn").addEventListener("click", fillCurrentSong);
-  document.getElementById("getSongInfoBtn").addEventListener("click", addCurrentSong);
-  await activateSimpleBar("parserList");
+  initFilter();
 });
