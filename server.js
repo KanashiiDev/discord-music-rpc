@@ -83,10 +83,12 @@ app.use(express.json());
 
 // RPC update - POST
 app.post("/update-rpc", async (req, res) => {
-  if (lastUpdateAt && Date.now() - lastUpdateAt < 2000) {
+  const now = Date.now();
+  // Rate limiting check
+  if (lastUpdateAt && now - lastUpdateAt < 2000) {
     return res.status(429).json({ error: "Too many updates" });
   }
-  lastUpdateAt = Date.now();
+
   try {
     const { data, clientId } = req.body || {};
     lastUpdateRequest = data;
@@ -94,11 +96,9 @@ app.post("/update-rpc", async (req, res) => {
       return res.status(400).json({ error: "Invalid data object" });
     }
 
-    const progress = Number(data.progress) || 0;
+    const position = Number(data.position) || 0;
     const duration = Number(data.duration) || 0;
     const now = Date.now();
-    const startTime = now - (progress / 100) * duration * 1000;
-    const endTime = startTime + duration * 1000;
 
     // Client check
     if (lastActiveClient && lastActiveClient.clientId !== clientId && now - (lastActiveClient.timestamp || 0) < CLIENT_TIMEOUT) {
@@ -186,7 +186,7 @@ app.post("/update-rpc", async (req, res) => {
     const activity = {
       details: dataTitle,
       state: shouldShowArtist ? dataArtist : dataSource,
-      type: data.watching ? 3 : 2,
+      type: data.mode === "watch" ? 3 : 2,
       instance: false,
     };
 
@@ -209,7 +209,7 @@ app.post("/update-rpc", async (req, res) => {
 
     // Small image
     if (!artistIsIntentionallyEmpty && serverSettings.showSmallIcon) {
-      activity.smallImageKey = favIcon || (data.watching ? "watch" : "listen");
+      activity.smallImageKey = favIcon || (data.mode === "watch" ? "watch" : "listen");
     }
 
     // Small image text
@@ -218,7 +218,7 @@ app.post("/update-rpc", async (req, res) => {
     } else if (serverSettings.showSmallIcon) {
       activity.smallImageText = dataSource;
     } else {
-      activity.smallImageText = data.watching ? "Watching" : "Listening";
+      activity.smallImageText = data.mode === "watch" ? "Watching" : "Listening";
     }
 
     // Buttons
@@ -258,9 +258,11 @@ app.post("/update-rpc", async (req, res) => {
 
     // Timestamps
     if (duration > 0) {
-      activity.startTimestamp = Math.floor(startTime / 1000);
+      const nowSeconds = Math.floor(now / 1000);
+      activity.startTimestamp = nowSeconds - position;
       if (activitySettings.showTimeLeft) {
-        activity.endTimestamp = Math.floor(endTime / 1000);
+        const remainingTime = duration - position;
+        activity.endTimestamp = nowSeconds + remainingTime;
       }
     }
 
@@ -332,7 +334,7 @@ app.post("/update-rpc", async (req, res) => {
         return res.status(503).json({ error: "RPC client not ready" });
       }
     }
-
+    lastUpdateAt = now;
     res.json({ success: true, action: "updated" });
   } catch (err) {
     console.error("RPC Update Error:", err);

@@ -467,18 +467,19 @@ class UserScriptUI {
     $("inAuthorsLinks").value = script?.authorsLinks || "";
     $("inDomain").value = script?.domain || "";
     $("inHomepage").value = script?.homepage || "";
+    $("inMode").value = script?.mode || "listen";
     $("inDebug").checked = script?.debug || false;
     $("inUrlPatterns").value = this.formatPatterns(script?.urlPatterns) || ".*";
     $("inUrlPatterns").dispatchEvent(new Event("input"));
     this.codeEditor.setValue(
       script?.code ||
-        `const title = "";
-         const artist = "";
-         const image = "";
-         const source = "";
-         const songUrl = "";
-         const timePassed = null;
-         const duration = null;`,
+        `let title = "";
+         let artist = "";
+         let image = "";
+         let source = "";
+         let songUrl = "";
+         let timePassed = null;
+         let duration = null;`,
     );
 
     this.checkSettings(this.codeEditor);
@@ -600,6 +601,7 @@ class UserScriptUI {
       lastUpdated: Date.now(),
       runAt: "document_idle",
       code: this.codeEditor.getValue(),
+      mode: $("inMode").value.trim(),
       debug: $("inDebug").checked,
       settings: extractSettingsFromCode(this.codeEditor.getValue()),
     };
@@ -751,6 +753,8 @@ class UserScriptUI {
         title: "${script.title}",
         description: "${script.description}",
         lastUpdated: "${script.lastUpdated}",
+        mode: "${script.mode}",
+        homepage: "${script.homepage}",
         urlPatterns: [${urlPatterns}],
         fn: function () {
         ${codeIndented}
@@ -779,13 +783,15 @@ class UserScriptUI {
     while ((match = regex.exec(jsText)) !== null) {
       const block = match[1];
 
-      const domain = /domain:\s*["'`](.*?)["'`]/.exec(block)?.[1] || "";
+      let domain = /domain:\s*["'`](.*?)["'`]/.exec(block)?.[1] || "";
+      domain = domain.replace(/^https?:\/\//, "").replace(/^www\./, "").replace(/\/.*$/, "");
       const title = /title:\s*["'`](.*?)["'`]/.exec(block)?.[1] || "";
       const description = /description:\s*["'`](.*?)["'`]/.exec(block)?.[1] || "";
       const lastUpdated = /lastUpdated:\s*["'`](.*?)["'`]/.exec(block)?.[1] || "";
       const homepage = /homepage:\s*["'`](.*?)["'`]/.exec(block)?.[1] || "";
       const authors = /authors:\s*["'`](.*?)["'`]/.exec(block)?.[1] || "";
       const authorsLinks = /authorsLinks:\s*["'`](.*?)["'`]/.exec(block)?.[1] || "";
+      const mode = /mode:\s*["'`](.*?)["'`]/.exec(block)?.[1] || "listen";
       const urlPatternsRaw = /\burlPatterns:\s*\[([\s\S]*?)\]/.exec(block)?.[1] || "";
       const urlPatterns = urlPatternsRaw
         .split(",")
@@ -803,6 +809,7 @@ class UserScriptUI {
         authors: authors ? authors.split(",").map((a) => a.trim()) : [],
         authorsLinks: authorsLinks ? authorsLinks.split(",").map((a) => a.trim()) : [],
         urlPatterns,
+        mode,
         code,
         id: `${domain}_${Math.random().toString(36).slice(2, 8)}`,
         lastUpdated,

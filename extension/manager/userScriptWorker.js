@@ -183,6 +183,7 @@ class UserScriptManager {
               description: "${script.description || ""}",
               urlPatterns: [${patternString}],
               title: "${script.title || "Unknown"}",
+              mode: "${script.mode || "listen"}",
               song: { ...trackState }
             };
 

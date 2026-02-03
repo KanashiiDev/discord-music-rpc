@@ -362,6 +362,7 @@ registerParser({
       duration: getText(".time-display-total"), // Total duration (optional)
       source: "Example", // Source label (optional)
       songUrl: "example.com", // Link to song/station (optional)
+      mode: "listen", // Activity Type ("listen" or "watch") (optional)
       buttons: [
         // Buttons (max 2) (optional)
         {

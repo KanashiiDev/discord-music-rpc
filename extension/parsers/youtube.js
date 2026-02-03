@@ -15,8 +15,8 @@ registerParser({
 
     if (video) {
       isWatching = video.paused ? 0 : 1;
-      timePassed = isLive ? "" : formatTime(video.currentTime);
-      duration = isLive ? "" : formatTime(video.duration);
+      timePassed = isLive ? "" : video.currentTime;
+      duration = isLive ? "" : video.duration;
     }
 
     const vid = url && new URL(url).searchParams.get("v");
@@ -28,7 +28,7 @@ registerParser({
       image,
       source: "YouTube",
       songUrl: url,
-      watching: true,
+      mode: "watch",
       playStatus: isWatching,
       timePassed,
       duration,

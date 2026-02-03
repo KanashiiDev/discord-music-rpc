@@ -523,7 +523,7 @@ const handleUpdateRpc = async (req, sender) => {
   scheduleRpcUpdate(req.data, tabId)?.catch((err) => logError("RPC schedule failed", err));
 
   // 4️) Add History
-  if (!req.data.watching && req.data.title !== "Unknown Song" && req.data.artist !== "Unknown Artist" && req.data.artist !== "-1") {
+  if (req.data.mode !== "watch" && req.data.title !== "Unknown Song" && req.data.artist !== "Unknown Artist" && req.data.artist !== "-1") {
     scheduleHistoryAdd(tabId, {
       title: req.data.title,
       artist: req.data.artist,

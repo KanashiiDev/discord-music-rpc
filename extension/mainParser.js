@@ -265,6 +265,7 @@ window.registerParser = async function ({
   authorsLinks = [""],
   homepage = "",
   description = "",
+  mode = "listen",
   fn,
   userAdd = false,
   userScript = false,
@@ -319,7 +320,8 @@ window.registerParser = async function ({
     authorsLinks,
     homepage,
     description,
-    parse: async (...args) => {
+    mode,
+    parse: async () => {
       if (initOnly) return null;
       const rawData = await fn({ useSetting: boundUseSetting });
       if (!rawData) return null;
@@ -329,7 +331,7 @@ window.registerParser = async function ({
 
       // Validates and normalizes raw time values; returns null if unusable
       const safeFormat = (val) => {
-        if (typeof val === "number") return formatTime(val);
+        if (typeof val === "number") return formatTime(Math.floor(val));
         if (typeof val === "string") {
           const trimmed = val.trim();
           if (/^-?\d+:\d{2}(:\d{2})?$/.test(trimmed)) {
@@ -532,6 +534,7 @@ window.registerParser = async function ({
         authors,
         authorsLinks,
         description,
+        mode,
         homepage,
         userAdd,
         userScript,
@@ -784,6 +787,7 @@ window.addEventListener("message", async (event) => {
         homepage: msg.data.homepage,
         description: msg.data.description,
         urlPatterns: msg.data.urlPatterns,
+        mode: msg.data.mode,
         userAdd: false,
         userScript: true,
         fn: async function () {
@@ -802,6 +806,7 @@ window.addEventListener("message", async (event) => {
               position: currentPosition,
               duration: totalDuration,
               progress: currentProgress,
+              mode: msg.data.mode,
               ...timestamps,
             };
           } catch (err) {

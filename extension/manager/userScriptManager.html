@@ -37,7 +37,7 @@
           <div class="container">
             <p>Description:</p>
             <input type="text" id="inDesc" placeholder="My Userscript for Music Website." />
-          <small>A brief description of what your script does.</small>
+            <small>A brief description of what your script does.</small>
           </div>
           <div class="container">
             <p>Authors (comma separated):</p>
@@ -67,6 +67,15 @@
             <p>Homepage (Optional):</p>
             <input type="text" id="inHomepage" placeholder="https://musicwebsite.com" />
             <small>The site that will open when the icon is clicked.</small>
+          </div>
+          <div class="container mode">
+            <p>Activity Mode</p>
+            <select id="inMode">
+              <option value="listen">Listening</option>
+              <option value="watch">Watching</option>
+            </select>
+            <small>Choose how the activity is displayed on Discord.</small><br />
+            <small>Note: If you are using <code>Watching</code> mode, the source section will only appear when hovering over the activity cover. This is an RPC limitation.</small>
           </div>
           <div class="container debug">
             <p>Debug Mode</p>
@@ -100,13 +109,12 @@
             </div>
             <div class="code-notes useSettings">
               <p>Manage Settings</p>
-              <small>This section is for generating and editing default settings.</small>
+              <small>This section is for generating and editing default settings. This allows you to change these custom settings from the extension's pop-up window.</small>
               <div class="buttons"><button id="createSettingsBtn">Generate Settings</button> <button id="editSettingsBtn">Edit Settings</button></div>
               <div id="useSettingsContainer" class="use-settings-builder"></div>
             </div>
           </div>
         </div>
-        <small class="editor-note">When you save your script for the first time, it is normal for the site not to appear in the popup. The popup will update when you open the relevant page.</small>
       </div>
 
       <div id="editorMsg"></div>
