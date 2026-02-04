@@ -1,0 +1,7 @@
+.github/workflows/**
+**/node_modules/**
+**/libs/**
+dist/
+build/
+release/
+extensionBuilds/

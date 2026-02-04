@@ -31,6 +31,8 @@
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "lint:strict": "eslint . --max-warnings=0",
+    "prettier:check": "prettier --check .",
+    "prettier:write": "prettier --write .",
     "build:win": "npm run clean && electron-builder --publish=never --win --x64",
     "build:mac": "npm run clean && electron-builder --publish=never --mac --x64",
     "build:mac:arm64": "npm run clean && electron-builder --publish=never --mac --arm64",
@@ -82,6 +84,7 @@
     "eslint": "^9.39.2",
     "fs-extra": "^11.3.3",
     "postcss": "^8.5.6",
+    "prettier": "^3.8.1",
     "rimraf": "^6.1.2"
   },
   "build": {
