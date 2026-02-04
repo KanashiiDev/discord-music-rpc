@@ -5,7 +5,7 @@ registerParser({
   fn: function () {
     const titleElem = getText(".player-title");
     const artistElem = getText(".player-artist");
-    const coverElem =  getImage(".player-cover");
+    const coverElem = getImage(".player-cover");
     const currentChannel = getText(".channel-selector div");
     const channelMap = {
       "The Main Mix": "main-mix",
@@ -13,7 +13,7 @@ registerParser({
       "RP Rock Mix": "rock-mix",
       "RP Global Mix": "global-mix",
       "Beyond...": "beyond",
-      "Serenity": "serenity",
+      Serenity: "serenity",
     };
 
     let sourceElem = "https://radioparadise.com/listen/channels/";
@@ -24,7 +24,7 @@ registerParser({
       artist: artistElem,
       image: coverElem,
       source: "Radio Paradise",
-      songUrl: sourceElem
+      songUrl: sourceElem,
     };
   },
 });

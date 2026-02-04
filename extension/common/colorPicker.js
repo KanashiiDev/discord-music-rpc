@@ -127,7 +127,11 @@ function initGlobalPicker() {
     width: 100,
     colors: ["#000000"],
     layoutDirection: "vertical",
-    layout: [{ component: iro.ui.Box }, { component: iro.ui.Slider, options: { sliderType: "hue", sliderSize: 10 } }, { component: iro.ui.Slider, options: { sliderType: "alpha", sliderSize: 10 } }],
+    layout: [
+      { component: iro.ui.Box },
+      { component: iro.ui.Slider, options: { sliderType: "hue", sliderSize: 10 } },
+      { component: iro.ui.Slider, options: { sliderType: "alpha", sliderSize: 10 } },
+    ],
   });
 
   globalPickerElements.popoverInner.appendChild(globalPickerElements.gradientControls);

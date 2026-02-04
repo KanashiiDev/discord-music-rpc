@@ -11,9 +11,9 @@ const STABLE_DATA_ATTRS = [
 ];
 
 const SIMPLE_PATTERNS = [
-  /^[a-z][a-z0-9]*(-[a-z][a-z0-9]*){1,4}$/i,  // kebab-case (max 5 segments)
-  /^[a-z][a-z0-9]*(_[a-z][a-z0-9]*){1,4}$/i,  // snake_case (max 5 segments)
-  /^[a-z][a-zA-Z0-9]{2,32}$/,                 // camelCase (reasonable length)
+  /^[a-z][a-z0-9]*(-[a-z][a-z0-9]*){1,4}$/i, // kebab-case (max 5 segments)
+  /^[a-z][a-z0-9]*(_[a-z][a-z0-9]*){1,4}$/i, // snake_case (max 5 segments)
+  /^[a-z][a-zA-Z0-9]{2,32}$/, // camelCase (reasonable length)
 ];
 
 const DATA_BLOCKLIST_PATTERNS = [

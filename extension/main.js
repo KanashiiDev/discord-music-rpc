@@ -297,7 +297,7 @@ async function mainLoop() {
           isSeeking ? "color:#ff9800" : "color:#666",
           "",
           rawPositionDiff > 5 ? "color:#f44336" : "color:#4caf50",
-          ""
+          "",
         );
         console.log(logMessage, ...styles);
         console.groupEnd();
@@ -335,7 +335,11 @@ async function mainLoop() {
     if (!shouldUpdate) {
       if (!updateReason) updateReason = "Update skipped (interval not reached)";
       if (state.lastUpdateStatus !== "skipped") {
-        logInfo(`%cSkipping update:%c ${updateReason} (Δpos: ${rawPositionDiff.toFixed(1)}s, Δtime: ${(timeSinceLastUpdate / 1000).toFixed(1)}s).`, "color:#ff9800; font-weight:bold;", "color:#fff;");
+        logInfo(
+          `%cSkipping update:%c ${updateReason} (Δpos: ${rawPositionDiff.toFixed(1)}s, Δtime: ${(timeSinceLastUpdate / 1000).toFixed(1)}s).`,
+          "color:#ff9800; font-weight:bold;",
+          "color:#fff;",
+        );
       }
       state.lastRawPosition = song.position;
       state.lastUpdateStatus = "skipped";

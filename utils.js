@@ -1,6 +1,6 @@
 const fs = require("fs");
 function truncate(str, maxLength = 128, { fallback = "Unknown", minLength = 2, maxRegexLength = 512 } = {}) {
-if (typeof str !== "string" || !str.trim()) return fallback;
+  if (typeof str !== "string" || !str.trim()) return fallback;
 
   // Keywords that need to be cleaned
   const alwaysRemoveKeywords = [
@@ -267,4 +267,14 @@ function addHistoryEntry(song, historyPath) {
   fs.writeFileSync(historyPath, JSON.stringify(history, null, 2), "utf8");
 }
 
-module.exports = { addHistoryEntry, getCurrentTime, isSameActivity, isSameActivityIgnore, truncate, normalizeTitleAndArtist, isValidUrl, notifyRpcStatus, detectElectronMode };
+module.exports = {
+  addHistoryEntry,
+  getCurrentTime,
+  isSameActivity,
+  isSameActivityIgnore,
+  truncate,
+  normalizeTitleAndArtist,
+  isValidUrl,
+  notifyRpcStatus,
+  detectElectronMode,
+};

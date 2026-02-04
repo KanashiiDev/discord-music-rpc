@@ -204,15 +204,6 @@ class UserScriptUI {
     });
   }
 
-  escapeHtml(s) {
-    return String(s || "")
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;")
-      .replace(/'/g, "&#039;");
-  }
-
   // Show/Hide Edit Settings Button
   checkSettings(cm) {
     const useSetRegex = /useSetting\s*\(\s*["']([^"']+)["']\s*,\s*["']([^"']+)["']\s*,\s*["']([^"']+)"(?:\s*,\s*([\s\S]*?))?\s*\)/g;
@@ -244,7 +235,6 @@ class UserScriptUI {
     const { target } = managerContext;
     if (target) {
       const el = document.querySelector(`.btnEdit[data-id="${target}"]`);
-      el?.scrollIntoView({ block: "center" });
       el?.click();
     }
     // remove managerContext after restoring
@@ -309,7 +299,7 @@ class UserScriptUI {
 
       const title = document.createElement("strong");
       title.className = "script-title";
-      title.textContent = this.escapeHtml(script.title);
+      title.textContent = script.title || "";
 
       // FavIcon
       const favIconContainer = document.createElement("div");
@@ -352,16 +342,19 @@ class UserScriptUI {
 
       const description = document.createElement("p");
       description.className = "script-description";
-      description.textContent = this.escapeHtml(script.description || "");
+      description.textContent = script.description || "";
       details.appendChild(description);
 
       const domain = document.createElement("small");
       domain.className = "script-domain";
-      domain.textContent = `${this.escapeHtml(script.domain || "No domain")} [${this.escapeHtml(this.formatPatterns(script.urlPatterns))}]`;
+      domain.textContent = `${script.domain || "No domain"} [${this.formatPatterns(script.urlPatterns)}]`;
       details.appendChild(domain);
 
       // script-meta
-      const authors = script.authors && Array.isArray(script.authors) && script.authors.length > 0 ? `${script.authors.length > 1 ? "Authors" : "Author"}: ${script.authors.join(", ")}` : "";
+      const authors =
+        script.authors && Array.isArray(script.authors) && script.authors.length > 0
+          ? `${script.authors.length > 1 ? "Authors" : "Author"}: ${script.authors.join(", ")}`
+          : "";
       const updated = script.lastUpdated ? `Updated: ${new Date(script.lastUpdated).toLocaleDateString()}` : "";
       const meta = `${authors}\n${updated}`.trim();
       title.title = meta;
@@ -420,6 +413,8 @@ class UserScriptUI {
   }
 
   handleListClick(e) {
+    e.preventDefault();
+    e.stopPropagation();
     const li = e.target.closest("li");
     if (!li) return;
 
@@ -689,6 +684,13 @@ class UserScriptUI {
     const li = document.querySelector(`li[data-id="${id}"]`);
     if (li) {
       this.showEditor(script, li);
+      const offset = 10;
+      const rect = li.getBoundingClientRect();
+      const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+      window.scrollTo({
+        top: rect.top + scrollTop - offset,
+        behavior: "smooth",
+      });
     }
   }
 
@@ -784,7 +786,10 @@ class UserScriptUI {
       const block = match[1];
 
       let domain = /domain:\s*["'`](.*?)["'`]/.exec(block)?.[1] || "";
-      domain = domain.replace(/^https?:\/\//, "").replace(/^www\./, "").replace(/\/.*$/, "");
+      domain = domain
+        .replace(/^https?:\/\//, "")
+        .replace(/^www\./, "")
+        .replace(/\/.*$/, "");
       const title = /title:\s*["'`](.*?)["'`]/.exec(block)?.[1] || "";
       const description = /description:\s*["'`](.*?)["'`]/.exec(block)?.[1] || "";
       const lastUpdated = /lastUpdated:\s*["'`](.*?)["'`]/.exec(block)?.[1] || "";

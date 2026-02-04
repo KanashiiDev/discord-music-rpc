@@ -181,7 +181,11 @@ function hasVisibleContent(el) {
   const isNavbar = !!safeClosest(el, "header, nav, .navbar, .header, .nav, [role='navigation']");
 
   const hasContent =
-    el.textContent?.trim().length > 0 || el.innerHTML?.trim().length > 5 || el.hasAttribute("src") || el.hasAttribute("href") || el.querySelector("img, svg, i, span, canvas, video, iframe");
+    el.textContent?.trim().length > 0 ||
+    el.innerHTML?.trim().length > 5 ||
+    el.hasAttribute("src") ||
+    el.hasAttribute("href") ||
+    el.querySelector("img, svg, i, span, canvas, video, iframe");
 
   const hasSize = el.offsetWidth > 0 || el.offsetHeight > 0;
   const hasClientRect = el.getClientRects().length > 0;

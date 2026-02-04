@@ -544,7 +544,7 @@ function createHistoryEntry(entry, historyIndex, type, filteredHistory = []) {
     () => {
       img.src = browser.runtime.getURL("icons/48x48.png");
     },
-    { once: true }
+    { once: true },
   );
 
   // Info

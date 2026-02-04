@@ -7,8 +7,12 @@ body {
   width: 325px;
   color: var(--text-color-primary);
   opacity: 0;
-  -webkit-transition: opacity 0.6s, background-color var(--transition-normal);
-  transition: opacity 0.6s, background-color var(--transition-normal);
+  -webkit-transition:
+    opacity 0.6s,
+    background-color var(--transition-normal);
+  transition:
+    opacity 0.6s,
+    background-color var(--transition-normal);
 }
 
 body[data-theme] {
@@ -161,10 +165,19 @@ body[data-section="settings"] #settingsPanel {
   justify-content: center;
   position: relative;
   padding: 10px;
-  -webkit-transition: opacity var(--transition-normal) ease, -webkit-transform var(--transition-normal) ease;
-  transition: opacity var(--transition-normal) ease, -webkit-transform var(--transition-normal) ease;
-  transition: opacity var(--transition-normal) ease, transform var(--transition-normal) ease;
-  transition: opacity var(--transition-normal) ease, transform var(--transition-normal) ease, -webkit-transform var(--transition-normal) ease;
+  -webkit-transition:
+    opacity var(--transition-normal) ease,
+    -webkit-transform var(--transition-normal) ease;
+  transition:
+    opacity var(--transition-normal) ease,
+    -webkit-transform var(--transition-normal) ease;
+  transition:
+    opacity var(--transition-normal) ease,
+    transform var(--transition-normal) ease;
+  transition:
+    opacity var(--transition-normal) ease,
+    transform var(--transition-normal) ease,
+    -webkit-transform var(--transition-normal) ease;
 }
 
 #mainHeader {
@@ -218,7 +231,12 @@ a:hover {
   -webkit-transition: -webkit-transform var(--transition-normal) ease;
   transition: -webkit-transform var(--transition-normal) ease;
   transition: transform var(--transition-normal) ease;
-  transition: transform var(--transition-normal) ease, -webkit-transform var(--transition-normal) ease;
+  transition:
+    transform var(--transition-normal) ease,
+    -webkit-transform var(--transition-normal) ease;
+  transition:
+    transform var(--transition-normal) ease,
+    -webkit-transform var(--transition-normal) ease;
 }
 
 html,
@@ -289,8 +307,18 @@ body,
   height: 17px;
   width: 17px;
   pointer-events: auto;
-  -webkit-transition: background var(--transition-normal), opacity 0.2s ease, width 0.2s ease, padding 0.2s ease, margin 0.2s ease;
-  transition: background var(--transition-normal), opacity 0.2s ease, width 0.2s ease, padding 0.2s ease, margin 0.2s ease;
+  -webkit-transition:
+    background var(--transition-normal),
+    opacity 0.2s ease,
+    width 0.2s ease,
+    padding 0.2s ease,
+    margin 0.2s ease;
+  transition:
+    background var(--transition-normal),
+    opacity 0.2s ease,
+    width 0.2s ease,
+    padding 0.2s ease,
+    margin 0.2s ease;
 }
 
 .color-delete-btn.disabled {
@@ -401,7 +429,11 @@ body[data-section="history"] footer {
   border-color: transparent;
   border-radius: var(--radius-default);
   overflow: hidden;
-  transition: transform var(--transition-normal), opacity var(--transition-normal), border-color var(--transition-normal), background-color var(--transition-normal),
+  transition:
+    transform var(--transition-normal),
+    opacity var(--transition-normal),
+    border-color var(--transition-normal),
+    background-color var(--transition-normal),
     -webkit-transform var(--transition-normal);
 }
 
@@ -410,6 +442,7 @@ body[data-section="history"] footer {
   padding-right: 30px;
 }
 
+/* autoprefixer: off */
 #historySearchBox::-moz-placeholder,
 #searchBox::-moz-placeholder {
   color: var(--text-color-muted);
@@ -420,9 +453,11 @@ body[data-section="history"] footer {
   color: var(--text-color-muted);
 }
 
-#historySearchBox::-webkit-input-placeholder, #searchBox::-webkit-input-placeholder {
+#historySearchBox::-webkit-input-placeholder,
+#searchBox::-webkit-input-placeholder {
   color: var(--text-color-muted);
 }
+/* autoprefixer: on */
 
 #historySearchBox::-webkit-input-placeholder,
 #historySearchBox::-moz-placeholder,
@@ -475,10 +510,19 @@ body[data-section="history"] footer {
   -ms-transform: scaleY(1);
   transform: scaleY(1);
   margin-bottom: 10px;
-  -webkit-transition: opacity var(--transition-normal) ease, -webkit-transform var(--transition-normal) ease;
-  transition: opacity var(--transition-normal) ease, -webkit-transform var(--transition-normal) ease;
-  transition: opacity var(--transition-normal) ease, transform var(--transition-normal) ease;
-  transition: opacity var(--transition-normal) ease, transform var(--transition-normal) ease, -webkit-transform var(--transition-normal) ease;
+  -webkit-transition:
+    opacity var(--transition-normal) ease,
+    -webkit-transform var(--transition-normal) ease;
+  transition:
+    opacity var(--transition-normal) ease,
+    -webkit-transform var(--transition-normal) ease;
+  transition:
+    opacity var(--transition-normal) ease,
+    transform var(--transition-normal) ease;
+  transition:
+    opacity var(--transition-normal) ease,
+    transform var(--transition-normal) ease,
+    -webkit-transform var(--transition-normal) ease;
   overflow: hidden;
 }
 
@@ -550,8 +594,12 @@ body[data-section="history"] footer {
   display: block;
   max-height: 0;
   overflow: hidden;
-  -webkit-transition: max-height var(--transition-normal) ease, padding-top var(--transition-normal) ease;
-  transition: max-height var(--transition-normal) ease, padding-top var(--transition-normal) ease;
+  -webkit-transition:
+    max-height var(--transition-normal) ease,
+    padding-top var(--transition-normal) ease;
+  transition:
+    max-height var(--transition-normal) ease,
+    padding-top var(--transition-normal) ease;
 }
 
 .parser-options.open {
@@ -745,17 +793,26 @@ input[type="range"]::-moz-range-thumb {
   -ms-flex-align: center;
   align-items: center;
   opacity: 0.7;
-  -webkit-transition: opacity var(--transition-normal) ease, -webkit-transform var(--transition-normal) ease;
-  transition: opacity var(--transition-normal) ease, -webkit-transform var(--transition-normal) ease;
-  transition: opacity var(--transition-normal) ease, transform var(--transition-normal) ease;
-  transition: opacity var(--transition-normal) ease, transform var(--transition-normal) ease, -webkit-transform var(--transition-normal) ease;
+  -webkit-transition:
+    opacity var(--transition-normal) ease,
+    -webkit-transform var(--transition-normal) ease;
+  transition:
+    opacity var(--transition-normal) ease,
+    -webkit-transform var(--transition-normal) ease;
+  transition:
+    opacity var(--transition-normal) ease,
+    transform var(--transition-normal) ease;
+  transition:
+    opacity var(--transition-normal) ease,
+    transform var(--transition-normal) ease,
+    -webkit-transform var(--transition-normal) ease;
 }
 
 .song-link,
 .del-user-parser,
 .edit-user-script {
   margin-left: auto;
-  margin-right: 4px
+  margin-right: 4px;
 }
 
 .del-user-parser:hover,
@@ -887,8 +944,16 @@ body[data-theme="dark"] #githubLink img {
   z-index: 4;
   height: 0;
   overflow: hidden;
-  -webkit-transition: height var(--transition-normal) ease, padding var(--transition-normal) ease, top var(--transition-normal) ease, opacity var(--transition-normal) ease;
-  transition: height var(--transition-normal) ease, padding var(--transition-normal) ease, top var(--transition-normal) ease, opacity var(--transition-normal) ease;
+  -webkit-transition:
+    height var(--transition-normal) ease,
+    padding var(--transition-normal) ease,
+    top var(--transition-normal) ease,
+    opacity var(--transition-normal) ease;
+  transition:
+    height var(--transition-normal) ease,
+    padding var(--transition-normal) ease,
+    top var(--transition-normal) ease,
+    opacity var(--transition-normal) ease;
   width: calc(100% - 28px);
   opacity: 0;
 }
@@ -993,9 +1058,17 @@ body[data-theme="dark"] #githubLink img {
 }
 
 #historyStatsPanel {
-  -webkit-transition: padding var(--transition-normal) ease, min-height var(--transition-normal) ease, top var(--transition-normal) ease, margin-bottom var(--transition-normal) ease,
+  -webkit-transition:
+    padding var(--transition-normal) ease,
+    min-height var(--transition-normal) ease,
+    top var(--transition-normal) ease,
+    margin-bottom var(--transition-normal) ease,
     max-height var(--transition-normal) ease !important;
-  transition: padding var(--transition-normal) ease, min-height var(--transition-normal) ease, top var(--transition-normal) ease, margin-bottom var(--transition-normal) ease,
+  transition:
+    padding var(--transition-normal) ease,
+    min-height var(--transition-normal) ease,
+    top var(--transition-normal) ease,
+    margin-bottom var(--transition-normal) ease,
     max-height var(--transition-normal) ease !important;
   position: relative;
   max-height: 452px;
@@ -1068,8 +1141,12 @@ body[data-theme="dark"] #githubLink img {
 
 .history-stats-artist-entry {
   display: inline-block;
-  -webkit-transition: background var(--transition-normal) ease, max-height var(--transition-normal) ease;
-  transition: background var(--transition-normal) ease, max-height var(--transition-normal) ease;
+  -webkit-transition:
+    background var(--transition-normal) ease,
+    max-height var(--transition-normal) ease;
+  transition:
+    background var(--transition-normal) ease,
+    max-height var(--transition-normal) ease;
   cursor: pointer;
   overflow: hidden;
 }
@@ -1150,7 +1227,12 @@ body.cleaning-mode .history-trash {
   -webkit-transition: -webkit-transform var(--transition-normal) ease;
   transition: -webkit-transform var(--transition-normal) ease;
   transition: transform var(--transition-normal) ease;
-  transition: transform var(--transition-normal) ease, -webkit-transform var(--transition-normal) ease;
+  transition:
+    transform var(--transition-normal) ease,
+    -webkit-transform var(--transition-normal) ease;
+  transition:
+    transform var(--transition-normal) ease,
+    -webkit-transform var(--transition-normal) ease;
 }
 
 body.cleaning-mode .history-trash:hover {
@@ -1389,8 +1471,12 @@ body.cleaning-mode .selected .history-trash {
   -ms-flex-align: center;
   align-items: center;
   border-radius: var(--radius-sm);
-  -webkit-transition: border-radius var(--transition-slow) ease-in-out, border-color var(--transition-normal) ease;
-  transition: border-radius var(--transition-slow) ease-in-out, border-color var(--transition-normal) ease;
+  -webkit-transition:
+    border-radius var(--transition-slow) ease-in-out,
+    border-color var(--transition-normal) ease;
+  transition:
+    border-radius var(--transition-slow) ease-in-out,
+    border-color var(--transition-normal) ease;
 }
 
 .dropdown-toggle:hover {
@@ -1411,7 +1497,12 @@ body.cleaning-mode .selected .history-trash {
   -webkit-transition: -webkit-transform var(--transition-normal) ease;
   transition: -webkit-transform var(--transition-normal) ease;
   transition: transform var(--transition-normal) ease;
-  transition: transform var(--transition-normal) ease, -webkit-transform var(--transition-normal) ease;
+  transition:
+    transform var(--transition-normal) ease,
+    -webkit-transform var(--transition-normal) ease;
+  transition:
+    transform var(--transition-normal) ease,
+    -webkit-transform var(--transition-normal) ease;
 }
 
 .dropdown-menu {
@@ -1545,7 +1636,12 @@ body.cleaning-mode .selected .history-trash {
   -webkit-transition: -webkit-transform 0.2s;
   transition: -webkit-transform 0.2s;
   transition: transform 0.2s;
-  transition: transform 0.2s, -webkit-transform 0.2s;
+  transition:
+    transform 0.2s,
+    -webkit-transform 0.2s;
+  transition:
+    transform 0.2s,
+    -webkit-transform 0.2s;
 }
 
 .bg-expand-btn.expanded {

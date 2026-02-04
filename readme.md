@@ -101,7 +101,6 @@ It is required for communicating with Discord and displaying the music status.
 
 5. **How to Disable It on Certain Pages** <br>
    If you don't want the extension to detect music on a certain website:
-
    - Click on the extension icon (top-right of your browser)
    - A small popup will appear
    - Use the switch to turn off detection for that page
@@ -157,11 +156,9 @@ It is required for communicating with Discord and displaying the music status.
 <summary>Click to view</summary>
 
 - **Use Automatic Diagnostic Tool (Recommended)**
-
   - Use the **Tray → Debug → "Run IPC Diagnostic (Linux)"** to automatically check your Discord setup
 
 - **Discord Installation Types**
-
   - **Native Discord (Recommended)**
     - Install via your distribution's package manager
     - Best compatibility with IPC
@@ -177,12 +174,10 @@ It is required for communicating with Discord and displaying the music status.
       ```
 
 - **Do Not Run Discord as Root**
-
   - IPC sockets won't be accessible by normal user applications
   - Always start Discord as your regular user (never use `sudo`)
 
 - **XDG_RUNTIME_DIR Issues**
-
   - Must be set and owned by your user
   - Check with:
     ```bash
@@ -195,7 +190,6 @@ It is required for communicating with Discord and displaying the music status.
     ```
 
 - **Wayland Users**
-
   - Install `xdg-desktop-portal` for proper IPC support:
     ```bash
     sudo apt install xdg-desktop-portal xdg-desktop-portal-gtk  # Debian/Ubuntu
@@ -204,11 +198,9 @@ It is required for communicating with Discord and displaying the music status.
     ```
 
 - **Socket Permission Issues**
-
   - Usually caused by running Discord as root or wrong XDG_RUNTIME_DIR
 
 - **Manual Socket Check**
-
   - Check if Discord IPC socket exists:
 
     ```bash
@@ -271,15 +263,12 @@ This allows you to create and manage scripts that extract track data (title, art
 ### 📖 How to Add a UserScript
 
 1. **Open the Script Manager**
-
    - In the extension popup, click **“Open Script Manager”**.
    - A new window will open showing the list of your current user scripts.
 
 2. **Create a New Script**
-
    - Click the **“+ New Script”** button.
    - Fill in the following fields:
-
      - **Script Name** – A friendly name for your parser (e.g. “Spotify Parser”).
      - **Description** – A short note about what the script does.
      - **Authors** – Comma-separated list of authors (optional).
@@ -287,7 +276,6 @@ This allows you to create and manage scripts that extract track data (title, art
      - **URL Pattern(s)** – (Optional) Regex patterns to match specific pages (e.g. `player.*`).
 
 3. **Write the Script Code**
-
    - In the code editor, define the required variables:
 
      ```js
@@ -304,7 +292,6 @@ This allows you to create and manage scripts that extract track data (title, art
    - Use JavaScript to fetch these values from the target webpage (supports async functions).
 
 4. **Save Your Script**
-
    - Once you’ve filled everything out, click **“Save Script”**.
    - The new script will appear in your list and can be enabled, edited, exported, or deleted anytime.
 
@@ -320,7 +307,6 @@ To add them:
 1. In the **Script Editor**, scroll to the **“Manage Settings”** section.
 2. Click **“Generate Settings”** to create a new variable.
 3. Fill in:
-
    - **Variable Name** – Used in your code (e.g. `mySetting`).
    - **Label** – Display name shown in the popup.
    - **Type** – Choose between `text`, `checkbox`, or `select`.
@@ -442,29 +428,24 @@ Replace filters modify song information before sending to Discord. You can chang
 ## Creating a Filter
 
 1. **Open the Filter Form**
-
    - Click the "+ Add New Filter" button
    - The form will expand, showing all available options
 
 2. **Choose Filter Mode**
-
    - **Block**: Prevents matching songs from being displayed
    - **Replace**: Modifies song information before sending to Discord
 
 3. **Add Song Entries**
-
    - Enter the **Artist** and/or **Title** you want to filter
    - You can leave either field empty to match any value (wildcard)
    - For Replace mode, specify the replacement artist/title
    - Click "Add Entry" to add multiple songs to the same filter
 
 4. **Quick Fill Option**
-
    - Click "Fill with Current Song" to automatically populate the form with the currently playing song
    - This is useful for quickly blocking or replacing songs you're currently listening to
 
 5. **Select Parsers**
-
    - Choose which parsers this filter applies to by toggling the switches
    - Enable "Applies to All Parsers" to apply the filter universally
    - When "All Parsers" is enabled, individual parser selections are disabled
@@ -484,13 +465,11 @@ For even faster blocking, use the "Block Current Song" button at the top of the 
 ## Filter Matching Rules
 
 - **Wildcard matching**: Leave artist or title empty to match any value
-
   - Empty artist = matches any artist
   - Empty title = matches any title
   - Both empty = matches all songs (not recommended)
 
 - **Case insensitive**: Matching is not case-sensitive
-
   - "Artist Name" matches "artist name" and "ARTIST NAME"
 
 - **Partial matching**: Filters match exact strings, not partial matches

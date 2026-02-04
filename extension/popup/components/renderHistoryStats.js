@@ -12,7 +12,7 @@ async function getFilteredTopArtists(filteredHistory) {
         .map((e) => e.a)
         .filter(Boolean)
         .filter((artist) => !artist.includes("Unknown Artist"))
-        .map((artist) => normalizeArtistName(artist))
+        .map((artist) => normalizeArtistName(artist)),
     ),
   ];
 

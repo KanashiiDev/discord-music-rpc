@@ -161,8 +161,16 @@ document.querySelectorAll("h2.collapsible").forEach((header) => {
     // Simplebar updates
     activitySimpleBar.recalculate();
     lastActivitySimpleBar.recalculate();
-    document.querySelector("#activityJson").style.paddingBottom = document.querySelector("#activityWrapper .simplebar-track.simplebar-horizontal[style='visibility: visible;']") ? "20px" : "0";
-    document.querySelector("#lastActivityJson").style.paddingBottom = document.querySelector("#lastActivityWrapper .simplebar-track.simplebar-horizontal[style='visibility: visible;']") ? "20px" : "0";
+    document.querySelector("#activityJson").style.paddingBottom = document.querySelector(
+      "#activityWrapper .simplebar-track.simplebar-horizontal[style='visibility: visible;']",
+    )
+      ? "20px"
+      : "0";
+    document.querySelector("#lastActivityJson").style.paddingBottom = document.querySelector(
+      "#lastActivityWrapper .simplebar-track.simplebar-horizontal[style='visibility: visible;']",
+    )
+      ? "20px"
+      : "0";
 
     // if the height hasn't changed, cancel opening
     requestAnimationFrame(() => {

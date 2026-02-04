@@ -44,7 +44,9 @@ const HistoryActions = {
       if (filterIndex === -1) return false;
 
       const filter = FilterState.parserFilters[filterIndex];
-      const idx = filter.entries.findIndex((e) => (e.artist || "").toLowerCase().trim() === artist.toLowerCase() && (e.title || "").toLowerCase().trim() === title.toLowerCase());
+      const idx = filter.entries.findIndex(
+        (e) => (e.artist || "").toLowerCase().trim() === artist.toLowerCase() && (e.title || "").toLowerCase().trim() === title.toLowerCase(),
+      );
 
       if (idx === -1) return false;
 
@@ -66,19 +68,17 @@ const HistoryActions = {
   },
 
   syncBlockUI(entry, action) {
-  const key = HistoryUtils.createEntryKey(entry);
-  const isBlocked = action === "block";
+    const key = HistoryUtils.createEntryKey(entry);
+    const isBlocked = action === "block";
 
-  document.querySelectorAll(
-    `.history-entry[data-entry-key="${key}"]`
-  ).forEach((el) => {
-    const btn = el.querySelector(".block-btn");
-    if (!btn) return;
+    document.querySelectorAll(`.history-entry[data-entry-key="${key}"]`).forEach((el) => {
+      const btn = el.querySelector(".block-btn");
+      if (!btn) return;
 
-    btn.textContent = isBlocked ? "Unblock" : "Block";
-    btn.classList.toggle("unblock-mode", isBlocked);
-  });
-},
+      btn.textContent = isBlocked ? "Unblock" : "Block";
+      btn.classList.toggle("unblock-mode", isBlocked);
+    });
+  },
 
   async toggleBlock(entry, buttonElement) {
     const blocked = HistoryUtils.checkIfBlocked(entry);

@@ -39,7 +39,7 @@ async function renderSettings() {
     await new Promise((resolve) =>
       requestAnimationFrame(() => {
         requestAnimationFrame(resolve);
-      })
+      }),
     );
 
     // Update all swatches and picker if open
@@ -444,7 +444,7 @@ async function renderSettings() {
     }
   };
 
-    // Filter Button
+  // Filter Button
   btnFilter.onclick = async () => {
     const url = browser.runtime.getURL(`settings/settings.html?section=filter`);
     try {

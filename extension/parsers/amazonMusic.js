@@ -9,11 +9,11 @@ registerParser({
     const image = getText("music-image", {
       root: main,
       attr: "src",
-      transform: v => v.replace(/\.jpg$/, "._SX160_SY160_.jpg")
+      transform: (v) => v.replace(/\.jpg$/, "._SX160_SY160_.jpg"),
     });
     const songUrl = main?.querySelector("music-link a")?.href;
     const times = getText("#progress-container", { root: document });
-    const [timePassed = "", remaining = ""] = (times.split("-").map(s => s.trim()));
+    const [timePassed = "", remaining = ""] = times.split("-").map((s) => s.trim());
 
     return {
       title,

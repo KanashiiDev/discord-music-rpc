@@ -830,7 +830,7 @@ function setAutoStart(enable) {
           "Cannot set auto-start: AppImage may be corrupted or inaccessible.\n\n" +
             "Please ensure the AppImage is:\n" +
             "• In a permanent location (not in /tmp or Downloads)\n" +
-            "• Has execute permission"
+            "• Has execute permission",
         );
         return false;
       }
@@ -876,7 +876,10 @@ function setAutoStart(enable) {
         return true;
       } catch (err) {
         log.error("Failed to create desktop entry:", err);
-        dialog.showErrorBox("Auto-start Error", `Failed to enable auto-start: ${err.message}\n\n` + "You may need to manually create a desktop entry or check permissions.");
+        dialog.showErrorBox(
+          "Auto-start Error",
+          `Failed to enable auto-start: ${err.message}\n\n` + "You may need to manually create a desktop entry or check permissions.",
+        );
         return false;
       }
     } else {
@@ -1123,7 +1126,7 @@ function updateTrayMenu() {
             }
           },
         },
-        { type: "separator" }
+        { type: "separator" },
       );
     }
 
@@ -1131,7 +1134,9 @@ function updateTrayMenu() {
     currentMenu = Menu.buildFromTemplate(menuTemplate);
     state.tray.setContextMenu(currentMenu);
 
-    state.tray.setToolTip(`Discord Music RPC\n` + `Server: ${state.isServerRunning ? "Running" : "Stopped"}\n` + `RPC: ${state.isRPCConnected ? "Connected" : "Disconnected"}`);
+    state.tray.setToolTip(
+      `Discord Music RPC\n` + `Server: ${state.isServerRunning ? "Running" : "Stopped"}\n` + `RPC: ${state.isRPCConnected ? "Connected" : "Disconnected"}`,
+    );
   } catch (error) {
     log.error("Error updating tray menu:", error);
   }
@@ -1251,7 +1256,8 @@ function showTrayFallbackNotification() {
     type: "info",
     title: "System Tray Not Available",
     message: "Discord Music RPC is running in background mode",
-    detail: "Your desktop environment may not support system tray icons. The application will continue to run. You can access it through application indicators or system menu.",
+    detail:
+      "Your desktop environment may not support system tray icons. The application will continue to run. You can access it through application indicators or system menu.",
     buttons: ["OK"],
     icon: icons.message,
   });

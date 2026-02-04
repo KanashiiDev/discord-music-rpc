@@ -24,7 +24,7 @@ registerParser({
     let artist = root?.querySelector("[data-testid='status-display']")?.textContent;
     const image = document.querySelector("[data-testid='logo-in-player']")?.src;
     const sourceTitle = root?.querySelector("[data-testid='broadcast-name']")?.textContent ?? "radio.net";
-    const sourceUrl = `${location.origin}/s/${getStemFromUrl(image)}` || "https://www.radio.net";
+    const sourceUrl = location.origin && getStemFromUrl(image) ? `${location.origin}/s/${getStemFromUrl(image)}` : "https://www.radio.net";
 
     if (!title && !artist && sourceTitle) {
       title = sourceTitle;

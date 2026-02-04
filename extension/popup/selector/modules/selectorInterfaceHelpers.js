@@ -284,7 +284,7 @@ function setupEventListeners(shadow) {
         (e) => {
           e.stopPropagation();
         },
-        true
+        true,
       );
     });
   });

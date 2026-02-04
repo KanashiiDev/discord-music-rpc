@@ -304,10 +304,19 @@ select {
   border-radius: 4px;
   font-size: 14px;
   margin-top: 0;
-  -webkit-transition: border-color var(--transition-normal), -webkit-box-shadow var(--transition-normal);
-  transition: border-color var(--transition-normal), -webkit-box-shadow var(--transition-normal);
-  transition: box-shadow var(--transition-normal), border-color var(--transition-normal);
-  transition: box-shadow var(--transition-normal), border-color var(--transition-normal), -webkit-box-shadow var(--transition-normal);
+  -webkit-transition:
+    border-color var(--transition-normal),
+    -webkit-box-shadow var(--transition-normal);
+  transition:
+    border-color var(--transition-normal),
+    -webkit-box-shadow var(--transition-normal);
+  transition:
+    box-shadow var(--transition-normal),
+    border-color var(--transition-normal);
+  transition:
+    box-shadow var(--transition-normal),
+    border-color var(--transition-normal),
+    -webkit-box-shadow var(--transition-normal);
 }
 
 input:focus,

@@ -138,7 +138,7 @@ class UseSettingEditor {
           e.target.textContent = "Failed!";
         }
       },
-      { id: "copyCodeBtn" }
+      { id: "copyCodeBtn" },
     );
   }
 
@@ -309,7 +309,7 @@ class UseSettingEditor {
           line.remove();
           updateRemoveButtons();
         },
-        { className: "remove-btn" }
+        { className: "remove-btn" },
       );
       removeBtn.appendChild(createSVG(svg_paths.crossIconPaths));
 
@@ -605,7 +605,7 @@ class UseSettingEditor {
               wrap.remove();
               updateRemoveButtons();
             },
-            { className: "remove-btn" }
+            { className: "remove-btn" },
           );
           remove.appendChild(createSVG(svg_paths.crossIconPaths));
 

@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
   <head>
     <meta charset="utf-8" />
@@ -61,7 +61,11 @@
             <div id="patternStatus"></div>
             <small>Regex patterns to match specific URLs. (Optional)</small>
             <br />
-            <small>Example: <code>home.*</code> will match URLs that start with "home"</small>
+            <small>
+              Example:
+              <code>home.*</code>
+              will match URLs that start with "home"
+            </small>
           </div>
           <div class="container">
             <p>Homepage (Optional):</p>
@@ -74,13 +78,21 @@
               <option value="listen">Listening</option>
               <option value="watch">Watching</option>
             </select>
-            <small>Choose how the activity is displayed on Discord.</small><br />
-            <small>Note: If you are using <code>Watching</code> mode, the source section will only appear when hovering over the activity cover. This is an RPC limitation.</small>
+            <small>Choose how the activity is displayed on Discord.</small>
+            <br />
+            <small>
+              Note: If you are using
+              <code>Watching</code>
+              mode, the source section will only appear when hovering over the activity cover. This is an RPC limitation.
+            </small>
           </div>
           <div class="container debug">
             <p>Debug Mode</p>
             <small>When your script is active, it displays song information every 5 seconds in the developer console of the relevant page.</small>
-            <label class="switch-label"><input type="checkbox" id="inDebug" placeholder="" value="" /><span class="slider"></span></label>
+            <label class="switch-label">
+              <input type="checkbox" id="inDebug" placeholder="" value="" />
+              <span class="slider"></span>
+            </label>
           </div>
           <div class="container">
             <button id="btnSave">Save Script</button>
@@ -96,21 +108,55 @@
             <textarea id="inCode" rows="15" placeholder="// Your javaScript code here..."></textarea>
             <div class="code-notes">
               <p class="required-vars">
-                <span>Required Variables: </span><code>title</code>, <code>artist</code>, <code>image</code>, <code>source</code>, <code>songUrl</code>, <code>timePassed</code>, <code>duration</code>.
+                <span>Required Variables:</span>
+                <code>title</code>
+                ,
+                <code>artist</code>
+                ,
+                <code>image</code>
+                ,
+                <code>source</code>
+                ,
+                <code>songUrl</code>
+                ,
+                <code>timePassed</code>
+                ,
+                <code>duration</code>
+                .
               </p>
               <p>
                 <span class="keyboard-shortcuts">Keyboard Shortcuts:</span>
-                <code><code>Ctrl+/</code> Toggle Comment</code>
-                <code><code>Ctrl+z</code> Undo</code>
-                <code><code>Ctrl+y</code> Redo</code>
-                <code><code>Ctrl+F</code> Find</code>
-                <code><code>Ctrl+S</code> Save</code>
+                <code>
+                  <code>Ctrl+/</code>
+                  Toggle Comment
+                </code>
+                <code>
+                  <code>Ctrl+z</code>
+                  Undo
+                </code>
+                <code>
+                  <code>Ctrl+y</code>
+                  Redo
+                </code>
+                <code>
+                  <code>Ctrl+F</code>
+                  Find
+                </code>
+                <code>
+                  <code>Ctrl+S</code>
+                  Save
+                </code>
               </p>
             </div>
             <div class="code-notes useSettings">
               <p>Manage Settings</p>
-              <small>This section is for generating and editing default settings. This allows you to change these custom settings from the extension's pop-up window.</small>
-              <div class="buttons"><button id="createSettingsBtn">Generate Settings</button> <button id="editSettingsBtn">Edit Settings</button></div>
+              <small>
+                This section is for generating and editing default settings. This allows you to change these custom settings from the extension's pop-up window.
+              </small>
+              <div class="buttons">
+                <button id="createSettingsBtn">Generate Settings</button>
+                <button id="editSettingsBtn">Edit Settings</button>
+              </div>
               <div id="useSettingsContainer" class="use-settings-builder"></div>
             </div>
           </div>
@@ -123,7 +169,9 @@
       <div class="box">
         <h2>⚠️ User Scripts Permission Required! ⚠️</h2>
         <p>
-          This section relies on the <b>User Scripts API</b> to inject and manage custom scripts.
+          This section relies on the
+          <b>User Scripts API</b>
+          to inject and manage custom scripts.
           <br />
           However, your browser has not granted this permission yet.
         </p>
@@ -133,9 +181,15 @@
         <br />
         <h4>How to fix it</h4>
         <p>
-          1. Open your browser's <b>Extension Management page</b>: <code>chrome://extensions/</code> and locate this extension.
+          1. Open your browser's
+          <b>Extension Management page</b>
+          :
+          <code>chrome://extensions/</code>
+          and locate this extension.
           <br />
-          2. Look for a permission setting related to <code>Allow User Scripts</code> and enable it.
+          2. Look for a permission setting related to
+          <code>Allow User Scripts</code>
+          and enable it.
           <br />
           3. After changing the permission, please refresh the page.
         </p>

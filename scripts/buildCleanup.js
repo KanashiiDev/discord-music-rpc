@@ -75,15 +75,7 @@ module.exports = async function (context) {
       ];
 
       iconSizes.forEach(({ size, file }) => {
-        const destDir = path.join(
-          appOutDir,
-          "usr",
-          "share",
-          "icons",
-          "hicolor",
-          size,
-          "apps",
-        );
+        const destDir = path.join(appOutDir, "usr", "share", "icons", "hicolor", size, "apps");
         try {
           fs.mkdirSync(destDir, { recursive: true });
           const src = path.join(iconsSrcDir, file);
@@ -96,15 +88,11 @@ module.exports = async function (context) {
             if (fs.existsSync(fallback)) {
               fs.copyFileSync(fallback, dest);
             } else {
-              console.warn(
-                `  • icon source missing: ${src} and fallback ${fallback}`,
-              );
+              console.warn(`  • icon source missing: ${src} and fallback ${fallback}`);
             }
           }
         } catch (err) {
-          console.warn(
-            `  • warning copying icon ${file} to ${destDir}: ${err.message}`,
-          );
+          console.warn(`  • warning copying icon ${file} to ${destDir}: ${err.message}`);
         }
       });
     } catch (err) {

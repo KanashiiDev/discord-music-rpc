@@ -256,7 +256,9 @@ const handleFilterHistoryReplace = async (request) => {
   }
 
   // At least one entry must have either the artist or the title filled in
-  const hasValidEntry = entries.some((e) => (typeof e.artist === "string" && e.artist.trim() && e.artist.trim() !== "*") || (typeof e.title === "string" && e.title.trim() && e.title.trim() !== "*"));
+  const hasValidEntry = entries.some(
+    (e) => (typeof e.artist === "string" && e.artist.trim() && e.artist.trim() !== "*") || (typeof e.title === "string" && e.title.trim() && e.title.trim() !== "*"),
+  );
   if (!hasValidEntry) {
     return { ok: false, count: 0, error: "At least one entry must have artist or title" };
   }

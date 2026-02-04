@@ -5,5 +5,5 @@ const CONFIG = {
   stuckThreshold: 20000,
   serverCacheTime: 4000,
   requestTimeout: 3000,
-  debugMode: 0
+  debugMode: 0,
 };

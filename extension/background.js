@@ -242,7 +242,7 @@ const clearRpcForTab = async (tabId, reason = "Tab closed") => {
           console.groupCollapsed(
             `%c[DISCORD-MUSIC-RPC - INFO] Clearing RPC for tab ${tabId}%c ${url ? "| " + url : ""}`,
             "color: ddd; background-color: #2a4645ff; padding: 2px 4px; border-radius: 3px;",
-            "color: #5bc0de; font-weight: bold;"
+            "color: #5bc0de; font-weight: bold;",
           );
           if (tab) {
             console.log(`Title: %c${title}`, "color: #f0ad4e; font-weight: bold;");
@@ -259,7 +259,7 @@ const clearRpcForTab = async (tabId, reason = "Tab closed") => {
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ clientId: `tab_${tabId}` }),
             },
-            CONFIG.requestTimeout
+            CONFIG.requestTimeout,
           );
           logInfo(`✅ Cleared RPC for tab ${tabId}`);
         } catch (err) {
@@ -432,7 +432,7 @@ const updateRpc = async (data, tabId) => {
         body: JSON.stringify(payload),
         signal: controller.signal,
       },
-      CONFIG.requestTimeout
+      CONFIG.requestTimeout,
     );
   } catch (err) {
     if (err.name !== "AbortError") {

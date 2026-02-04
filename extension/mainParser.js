@@ -437,7 +437,14 @@ window.registerParser = async function ({
       }
 
       // Remaining Mode
-      if (sameTrack && !rpcState.hasOnlyDuration && effectiveTimePassed && effectiveDuration && rpcState.lastReportedTime !== null && rpcState.lastReportedDuration !== null) {
+      if (
+        sameTrack &&
+        !rpcState.hasOnlyDuration &&
+        effectiveTimePassed &&
+        effectiveDuration &&
+        rpcState.lastReportedTime !== null &&
+        rpcState.lastReportedDuration !== null
+      ) {
         const timeDiff = tpSec - rpcState.lastReportedTime;
         const rawDurationDiff = Math.abs(durSecRaw - rpcState.lastReportedDuration);
 

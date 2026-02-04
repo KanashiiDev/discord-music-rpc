@@ -1,4 +1,3 @@
-
 const FilterState = {
   // Data
   parserList: [],

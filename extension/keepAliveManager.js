@@ -84,7 +84,7 @@ class KeepAliveManager {
             document.exitPictureInPicture();
           }
         },
-        true
+        true,
       );
 
       this.videoElement.addEventListener(
@@ -93,7 +93,7 @@ class KeepAliveManager {
           e.preventDefault();
           e.stopImmediatePropagation();
         },
-        true
+        true,
       );
 
       // Create video stream from canvas

@@ -132,13 +132,13 @@ function zipFile(sourcePath, zipName) {
     });
     archive.on("error", reject);
     archive.pipe(output);
-    
+
     if (fs.statSync(sourcePath).isDirectory()) {
       archive.directory(sourcePath, false);
     } else {
       archive.file(sourcePath, { name: path.basename(sourcePath) });
     }
-    
+
     archive.finalize();
   });
 }

@@ -78,7 +78,7 @@ const logError = (...a) => {
           return safeStringify(arg);
         }
         return arg?.toString?.() || "";
-      })
+      }),
     );
   }
 };
@@ -102,7 +102,8 @@ function updateDeleteButtonVisibility(item, pickerValue, btnDelete, colorConfig)
   const currentRgba = current.toRgb();
   const defaultRgba = defaultColor.toRgb();
 
-  const isDefault = currentRgba.r === defaultRgba.r && currentRgba.g === defaultRgba.g && currentRgba.b === defaultRgba.b && Math.abs(currentRgba.a - defaultRgba.a) < 0.01;
+  const isDefault =
+    currentRgba.r === defaultRgba.r && currentRgba.g === defaultRgba.g && currentRgba.b === defaultRgba.b && Math.abs(currentRgba.a - defaultRgba.a) < 0.01;
 
   if (isDefault) {
     btnDelete.classList.add("disabled");
@@ -665,7 +666,10 @@ const svg_paths = {
     "M20.15,13.1h1.35v6.9a1.9,1.9,0,0,1-1.9,1.9H4.4a1.9,1.9,0,0,1-1.9-1.9V5.6a1.9,1.9,0,0,1,1.9-1.9h6.9v1.35H4.4a0.7,0.7,0,0,0-0.7,0.7V19.8a0.7,0.7,0,0,0,0.7,0.7H19.6a0.7,0.7,0,0,0,0.7-0.7Z",
     "M17,2.6v1h4L12.7,11.6l0.9,0.9L21.9,4.2v3.4h.7V2.8Z",
   ],
-  penIconPaths: ["M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25z", "M20.71 7.04a1.003 1.003 0 0 0 0-1.42l-2.34-2.34a1.003 1.003 0 0 0-1.42 0l-1.83 1.83 3.75 3.75 1.84-1.82z"],
+  penIconPaths: [
+    "M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25z",
+    "M20.71 7.04a1.003 1.003 0 0 0 0-1.42l-2.34-2.34a1.003 1.003 0 0 0-1.42 0l-1.83 1.83 3.75 3.75 1.84-1.82z",
+  ],
 };
 
 // Get Fresh Parser List
@@ -1558,18 +1562,16 @@ async function activateSimpleBar(targetIds, timeout = 500, interval = 30, maxWai
 }
 // Destroy Single Simplebar
 async function destroySimplebar(panelOrId) {
-  const panel = typeof panelOrId === "string" 
-    ? document.getElementById(panelOrId) 
-    : panelOrId;
+  const panel = typeof panelOrId === "string" ? document.getElementById(panelOrId) : panelOrId;
 
   if (!panel || !simpleBarInstances.has(panel)) return;
 
   const instance = simpleBarInstances.get(panel);
-  instance.el.querySelectorAll(":scope > .simplebar-track").forEach(el => el.remove());
+  instance.el.querySelectorAll(":scope > .simplebar-track").forEach((el) => el.remove());
   instance.unMount?.();
 
-  await new Promise(r => requestAnimationFrame(r));
-  await new Promise(r => setTimeout(r, 16));
+  await new Promise((r) => requestAnimationFrame(r));
+  await new Promise((r) => setTimeout(r, 16));
 
   // Cleanup
   simpleBarInstances.delete(panel);

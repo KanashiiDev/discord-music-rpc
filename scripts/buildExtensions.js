@@ -386,7 +386,10 @@ const pendingInlines = {};
   inlineUtilsFunctions(["background.js", "common/utils.js", "mainParser.js"], "config.js", [], "start", true);
 
   // Truncate
-  inlineUtilsFunctions(["common/utils.js", "popup/selector/selector.js", "popup/selector/components/preview.js", "background.js"], "../utils.js", ["truncate", "normalizeTitleAndArtist"]);
+  inlineUtilsFunctions(["common/utils.js", "popup/selector/selector.js", "popup/selector/components/preview.js", "background.js"], "../utils.js", [
+    "truncate",
+    "normalizeTitleAndArtist",
+  ]);
 
   // Delay
   inlineUtilsFunctions("main.js", "common/utils.js", ["delay"]);
@@ -497,7 +500,11 @@ const pendingInlines = {};
   // Filter History Modal
   inlineUtilsFunctions(
     "settings/components/Filter/components/History/history.js",
-    ["settings/components/Filter/components/History/historyState.js", "settings/components/Filter/components/History/historyController.js", "settings/components/Filter/components/History/historyRenderer.js"],
+    [
+      "settings/components/Filter/components/History/historyState.js",
+      "settings/components/Filter/components/History/historyController.js",
+      "settings/components/Filter/components/History/historyRenderer.js",
+    ],
     [],
     "start",
     true,

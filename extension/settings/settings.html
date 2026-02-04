@@ -1,71 +1,67 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Discord Music RPC - Settings</title>
+    <link rel="stylesheet" href="settings.css" />
+    <link rel="stylesheet" href="../libs/simplebar.css" />
+  </head>
 
-<head>
-  <meta charset="utf-8" />
-  <title>Discord Music RPC - Settings</title>
-  <link rel="stylesheet" href="settings.css" />
-  <link rel="stylesheet" href="../libs/simplebar.css" />
-</head>
-
-<body data-theme="dark">
-  <div class="header">
-    <div>
-      <h3>Discord Music RPC - Settings</h3>
-      <p class="header-desc">Manage your Discord Music RPC settings!</p>
-    </div>
-  </div>
-  <div class="container" data-section="backup" data-section-header="Backup"
-    data-section-desc="Backup/Restore your Discord Music RPC settings!">
-    <div class="content backup">
-      <div class="buttons">
-        <button id="exportBtn">Export Backup</button>
-        <button id="importBtn">Import Backup</button>
-      </div>
-      <pre id="log"></pre>
-    </div>
-  </div>
-  <div class="container" data-section="filter" data-section-header="Filters"
-    data-section-desc="Manage the songs to be filtered!">
-    <div class="filter-actions-header">
-      <div id="filterTabsContainer"></div>
+  <body data-theme="dark">
+    <div class="header">
       <div>
-        <button class="btn btn-primary" id="toggleFormBtn">+ Add New Filter</button>
-        <button class="btn-open-history" id="openHistoryBtn">Open History</button>
-        <button class="btn btn-primary" id="getSongInfoBtn">
-          <span class="btn-text">Block Current Song</span>
-          <div class="response-indicator"></div>
-        </button>
+        <h3>Discord Music RPC - Settings</h3>
+        <p class="header-desc">Manage your Discord Music RPC settings!</p>
       </div>
     </div>
-    <div class="content filter">
-      <div class="form-container" id="formContainer">
-        <div class="entries-container">
-          <div id="filterModeContainer"></div>
-          <div id="entriesList"></div>
-          <button class="btn-add-entry" id="addEntryBtn">Add Entry</button>
-          <button class="btn-fill-current" id="fillFormBtn">Fill with Current Song</button>
-          <div class="all-parsers-container" id="allParsersContainer"></div>
+    <div class="container" data-section="backup" data-section-header="Backup" data-section-desc="Backup/Restore your Discord Music RPC settings!">
+      <div class="content backup">
+        <div class="buttons">
+          <button id="exportBtn">Export Backup</button>
+          <button id="importBtn">Import Backup</button>
         </div>
-        <div class="parser-list" id="parserList"></div>
-        <div class="form-actions">
-          <button class="btn btn-save" id="saveFilterBtn">Save</button>
-          <button class="btn btn-cancel" id="cancelBtn">Cancel</button>
-        </div>
-      </div>
-      <div class="filters-list">
-        <div id="filtersList"></div>
+        <pre id="log"></pre>
       </div>
     </div>
-  </div>
-  <script src="../libs/lazysizes.js" async></script>
-  <script src="../libs/browser-polyfill.js"></script>
-  <script src="../libs/simplebar.js"></script>
-  <script src="../common/utils.js"></script>
-  <script src="settings.js"></script>
-  <script src="components/backup.js"></script>
-  <script src="components/filter/filter.js"></script>
-  <script src="components/filter/components/history/history.js"></script>
-</body>
-
+    <div class="container" data-section="filter" data-section-header="Filters" data-section-desc="Manage the songs to be filtered!">
+      <div class="filter-actions-header">
+        <div id="filterTabsContainer"></div>
+        <div>
+          <button class="btn btn-primary" id="toggleFormBtn">+ Add New Filter</button>
+          <button class="btn-open-history" id="openHistoryBtn">Open History</button>
+          <button class="btn btn-primary" id="getSongInfoBtn">
+            <span class="btn-text">Block Current Song</span>
+            <div class="response-indicator"></div>
+          </button>
+        </div>
+      </div>
+      <div class="content filter">
+        <div class="form-container" id="formContainer">
+          <div class="entries-container">
+            <div id="filterModeContainer"></div>
+            <div id="entriesList"></div>
+            <button class="btn-add-entry" id="addEntryBtn">Add Entry</button>
+            <button class="btn-fill-current" id="fillFormBtn">Fill with Current Song</button>
+            <div class="all-parsers-container" id="allParsersContainer"></div>
+          </div>
+          <div class="parser-list" id="parserList"></div>
+          <div class="form-actions">
+            <button class="btn btn-save" id="saveFilterBtn">Save</button>
+            <button class="btn btn-cancel" id="cancelBtn">Cancel</button>
+          </div>
+        </div>
+        <div class="filters-list">
+          <div id="filtersList"></div>
+        </div>
+      </div>
+    </div>
+    <script src="../libs/lazysizes.js" async></script>
+    <script src="../libs/browser-polyfill.js"></script>
+    <script src="../libs/simplebar.js"></script>
+    <script src="../common/utils.js"></script>
+    <script src="settings.js"></script>
+    <script src="components/backup.js"></script>
+    <script src="components/filter/filter.js"></script>
+    <script src="components/filter/components/history/history.js"></script>
+  </body>
 </html>
