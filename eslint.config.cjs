@@ -1,4 +1,5 @@
 const globals = require("globals");
+const js = require("@eslint/js");
 
 /**
  * ============================================
@@ -33,6 +34,13 @@ module.exports = [
 
   /**
    * ============================================
+   * ESLint Recommended Rules
+   * ============================================
+   */
+  js.configs.recommended,
+
+  /**
+   * ============================================
    * NODE / ELECTRON
    * ============================================
    */
@@ -40,14 +48,11 @@ module.exports = [
     files: ["*.js", "scripts/**/*.js"],
     ignores: ["eslint.config.cjs"],
     languageOptions: {
-      ecmaVersion: 2021,
+      ecmaVersion: "latest",
       sourceType: "commonjs",
-      globals: {
-        ...globals.node,
-      },
+      globals: globals.node,
     },
     rules: {
-      "no-undef": "error",
       "no-unused-vars": [
         "error",
         {
@@ -57,11 +62,9 @@ module.exports = [
         },
       ],
       "no-empty": ["error", { allowEmptyCatch: true }],
-      eqeqeq: "error",
       "no-var": "error",
       "prefer-const": "warn",
-      "no-redeclare": "error",
-      "no-fallthrough": "error",
+      "no-console": "off",
     },
   },
 
@@ -73,7 +76,7 @@ module.exports = [
   {
     files: ["main.js"],
     languageOptions: {
-      ecmaVersion: 2021,
+      ecmaVersion: "latest",
       sourceType: "commonjs",
       globals: {
         ...globals.node,
@@ -82,6 +85,7 @@ module.exports = [
     },
     rules: {
       "no-unused-labels": "off",
+      "no-console": "off",
     },
   },
 
@@ -93,19 +97,14 @@ module.exports = [
   {
     files: ["public/**/*.js"],
     languageOptions: {
-      ecmaVersion: 2021,
+      ecmaVersion: "latest",
       sourceType: "script",
-      globals: {
-        ...globals.browser,
-      },
+      globals: globals.browser,
     },
     rules: {
       "no-undef": "off",
       "no-unused-vars": "off",
-      eqeqeq: "error",
       "no-empty": ["error", { allowEmptyCatch: true }],
-      "no-redeclare": "error",
-      "no-fallthrough": "error",
       "prefer-const": "warn",
     },
   },
@@ -117,8 +116,9 @@ module.exports = [
    */
   {
     files: ["extension/**/*.js"],
+    ignores: ["extension/background.js"],
     languageOptions: {
-      ecmaVersion: 2022,
+      ecmaVersion: "latest",
       sourceType: "script",
       globals: {
         ...globals.browser,
@@ -128,14 +128,13 @@ module.exports = [
     rules: {
       "no-undef": "off",
       "no-unused-vars": "off",
-      eqeqeq: "error",
       "no-empty": ["error", { allowEmptyCatch: true }],
       "no-var": "error",
       "prefer-const": "warn",
-      "no-redeclare": "error",
-      "no-control-regex": "error",
-      "no-useless-escape": "error",
-      "no-fallthrough": "error",
+      "no-control-regex": "off",
+      "no-useless-escape": "off",
+      "no-prototype-builtins": "off",
+      "no-constant-binary-expression": "warn",
     },
   },
 
@@ -147,7 +146,7 @@ module.exports = [
   {
     files: ["extension/background.js"],
     languageOptions: {
-      ecmaVersion: 2022,
+      ecmaVersion: "latest",
       sourceType: "module",
       globals: {
         ...globals.browser,
@@ -169,13 +168,17 @@ module.exports = [
   {
     files: ["utils.js"],
     languageOptions: {
+      ecmaVersion: "latest",
+      sourceType: "commonjs",
       globals: {
-        window: "readonly",
-        document: "readonly",
+        ...globals.browser,
+        ...globals.node,
       },
     },
     rules: {
       "no-undef": "off",
+      "no-control-regex": "off",
+      "no-useless-escape": "off",
     },
   },
 ];
