@@ -802,16 +802,31 @@ function getText(selector, options = {}) {
 
   val = val.trim();
 
-  if (typeof transform === "function") {
+  if (transform) {
     try {
       val = transform(val);
       if (!val) return "";
-    } catch {
+    } catch (_) {
       return "";
     }
   }
 
   return val;
+}
+
+/**
+ * Gets text/attributes from ALL matching elements
+ * @param {string} selector - CSS selector
+ * @param {object} options - Same as getText options
+ * @returns {string[]} - Array of processed strings
+ */
+function getTextAll(selector, options = {}) {
+  const { root = document, ...rest } = options;
+  const elements = root.querySelectorAll(selector);
+
+  return Array.from(elements)
+    .map((el) => getText(selector, { ...rest, root: el.parentElement }))
+    .filter((val) => val !== "");
 }
 
 /**
@@ -821,8 +836,8 @@ function getText(selector, options = {}) {
  * @param {Document|Element} [root=document] - Root element for querySelector.
  * @returns {string|null} Image URL or null if not found.
  */
-function getImage(selector) {
-  const elem = document.querySelector(selector);
+function getImage(selector, root = document) {
+  const elem = root.querySelector(selector);
   if (!elem) return null;
 
   // Priority: element directly <img>
@@ -831,18 +846,29 @@ function getImage(selector) {
   }
 
   // Alternative: background-image
-  const bgImage = window.getComputedStyle(elem).backgroundImage;
+  const bgImage = getComputedStyle(elem).backgroundImage;
   if (bgImage && bgImage !== "none") {
-    return bgImage.replace(/^url\(["']?/, "").replace(/["']?\)$/, "");
+    const match = bgImage.match(/url\(["']?(.+?)["']?\)/);
+    return match ? match[1] : null;
   }
 
   // Alternative: check for <img> inside
   const childImg = elem.querySelector("img");
-  if (childImg && childImg.src) {
-    return childImg.src;
-  }
+  return childImg?.src || null;
+}
 
-  return null;
+/**
+ * Gets image URLs from ALL matching elements
+ * @param {string} selector - CSS selector
+ * @param {Document|Element} root - Search root
+ * @returns {string[]} - Array of image URLs
+ */
+function getImageAll(selector, root = document) {
+  const elements = root.querySelectorAll(selector);
+
+  return Array.from(elements)
+    .map((el) => getImage(el.tagName === "IMG" ? el : selector, el.parentElement))
+    .filter((url) => url !== null);
 }
 
 // Deep query selector that traverses shadow DOMs
