@@ -413,15 +413,16 @@ class UserScriptUI {
   }
 
   handleListClick(e) {
-    e.preventDefault();
-    e.stopPropagation();
-    const li = e.target.closest("li");
-    if (!li) return;
-
-    const id = li.dataset.id;
-    const title = li.dataset.title;
     const button = e.target.closest("button");
     if (!button) return;
+
+    e.preventDefault();
+    e.stopPropagation();
+
+    const li = button.closest("li");
+    if (!li) return;
+
+    const { id, title } = li.dataset;
 
     if (button.classList.contains("btnEdit")) return this.onEdit(id);
     if (button.classList.contains("btnRegister")) return this.onRegisterToggle(id);
