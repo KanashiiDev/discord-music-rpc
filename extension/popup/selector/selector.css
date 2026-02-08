@@ -157,16 +157,6 @@ h4 {
   margin-inline-end: 0;
 }
 
-.userRpc-listItems {
-  display: -ms-grid;
-  display: grid;
-  -ms-grid-columns: auto auto auto 0;
-  grid-template-columns: auto auto auto 0;
-  -webkit-box-align: center;
-  -ms-flex-align: center;
-  align-items: center;
-}
-
 label[id*="buttonText"],
 input[id*="buttonText"],
 a[id*="buttonText"],
@@ -184,6 +174,7 @@ br[id*="buttonLink"] {
   -ms-grid-columns: 1fr 1fr;
   grid-template-columns: 1fr 1fr;
   margin-top: 10px;
+  gap: 5px;
 }
 
 .addButtonsToggle {
@@ -192,7 +183,6 @@ br[id*="buttonLink"] {
 
 .userRpc-selectBtn,
 .userRpc-optionButtons {
-  padding: 8px !important;
   border-radius: 8px !important;
   background: var(--foreground-color-300);
   cursor: pointer;
@@ -201,34 +191,47 @@ br[id*="buttonLink"] {
   color: var(--text-color-primary);
   text-decoration: none;
   text-align: center;
-  margin: 5px !important;
+  -ms-flex-line-pack: center;
+  align-content: center;
   border: 1px solid var(--border-color);
 }
 
+.userRpc-optionButtons {
+  padding: 8px;
+  margin-bottom: 4px;
+}
+
+.userRpc-regexStatus,
 .userRpc-selectBtn {
-  line-height: 13px;
   height: 34px;
-  width: 28px;
+  width: 100%;
+  display: -webkit-box;
+  display: -ms-flexbox;
+  display: flex;
+  -webkit-box-align: center;
+  -ms-flex-align: center;
+  align-items: center;
+  -webkit-box-pack: center;
+  -ms-flex-pack: center;
+  justify-content: center;
 }
 
 .userRpc-selectBtn.hidden {
   pointer-events: none;
   visibility: hidden;
-  width: 0;
-  height: 0;
-  margin: 0 !important;
-  padding: 0 !important;
-  overflow: hidden;
 }
 
-.userRpc-regexStatus {
-  text-align: center;
-  width: 34px;
+.field-row {
+  display: grid;
+  grid-template-columns: 100px 1fr 30px;
+  -webkit-box-align: center;
+  -ms-flex-align: center;
+  align-items: center;
 }
 
 .userRpc-select {
   font-size: 14px;
-  margin: 2px 0px 2px 5px;
+  margin: 5px;
   height: 34px !important;
   padding: 4px !important;
   color: var(--text-color-primary) !important;
@@ -241,10 +244,6 @@ br[id*="buttonLink"] {
   -moz-user-select: all !important;
   -ms-user-select: all !important;
   user-select: all !important;
-}
-
-#regexSelector.userRpc-select {
-  margin-top: 4px;
 }
 
 .userRpc-select:focus-visible {
@@ -263,6 +262,8 @@ br[id*="buttonLink"] {
 
 #userRpc-selectorChooser-container-list {
   max-height: 85vh !important;
+  gap: 4px;
+  display: grid;
 }
 
 #userRpc-selectorRoot::-webkit-scrollbar-thumb,
@@ -322,7 +323,7 @@ br[id*="buttonLink"] {
   display: block;
   border: 1px solid var(--border-color);
   cursor: pointer;
-  width: calc(100% - 10px) !important;
+  width: 100% !important;
   text-align: left;
 }
 

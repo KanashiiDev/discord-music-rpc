@@ -33,21 +33,17 @@ browser.runtime.onMessage.addListener((msg) => {
 
 // Main function
 async function injectSelectorUI(editMode = false, theme = "dark", style = {}) {
-  const hostname = getCleanHostname();
   if (document.getElementById("userRpc-selectorContainer")) return;
 
   const container = createContainer();
-  const shadow = attachShadowDOM(container);
+  const shadow = container.attachShadow({ mode: "open" });
   setupContainerStyles(container);
-
-  const placeholderMap = createPlaceholderMap(hostname);
-  const fields = getFieldList();
   const root = createRootElement(theme, style);
   const content = root._contentLayer;
 
   createTitleElements(content, editMode);
 
-  const listItems = createFieldInputs(shadow, fields, placeholderMap);
+  const listItems = createFieldInputs();
   content.appendChild(listItems);
 
   createActionButtons(content, shadow);
@@ -60,7 +56,7 @@ async function injectSelectorUI(editMode = false, theme = "dark", style = {}) {
   setupDragFunctionality(root);
   positionElement(root);
 
-  await populateExistingData(shadow, hostname);
+  await populateExistingData(shadow);
 
   setupEventListeners(shadow);
   startPreviewLoop(shadow, editMode);

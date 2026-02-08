@@ -1,44 +1,127 @@
+const FIELDS_CONFIG = {
+  name: {
+    label: "Site Name",
+    placeholder: (hostname) => `text (${hostname})`,
+    desc: "A name for this site to show in the website list",
+    type: "text",
+  },
+  title: {
+    label: "Title",
+    placeholder: "selector (#class, .class)",
+    desc: "CSS selector for the title of the currently playing song (required)",
+    type: "text",
+    required: true,
+  },
+  artist: {
+    label: "Artist",
+    placeholder: "selector (#class, .class)",
+    desc: "CSS selector for the artist of the currently playing song (required)",
+    type: "text",
+    required: true,
+  },
+  timePassed: {
+    label: "Time Elapsed",
+    placeholder: "selector (#class, .class)",
+    desc: "CSS selector for the elapsed time of the currently playing song",
+    type: "text",
+  },
+  duration: {
+    label: "Duration",
+    placeholder: "selector (#class, .class)",
+    desc: "CSS selector for the total duration of the currently playing song",
+    type: "text",
+  },
+  image: {
+    label: "Image",
+    placeholder: "selector or url",
+    desc: "CSS selector for the artwork of the currently playing song",
+    type: "text",
+  },
+  link: {
+    label: "Link",
+    placeholder: "selector or url",
+    desc: "CSS selector for the URL of the currently playing song",
+    type: "text",
+  },
+  source: {
+    label: "Source",
+    placeholder: "text or selector",
+    desc: "CSS selector for the source of the currently playing song",
+    type: "text",
+  },
+  buttonText: {
+    label: "Button 1 Text",
+    placeholder: "text or selector",
+    desc: "The text to show on the first button",
+    type: "text",
+    group: "buttons",
+  },
+  buttonLink: {
+    label: "Button 1 URL",
+    placeholder: "selector or url",
+    desc: "CSS selector for the URL of the first button",
+    type: "text",
+    group: "buttons",
+  },
+  buttonText2: {
+    label: "Button 2 Text",
+    placeholder: "text or selector",
+    desc: "The text to show on the second button",
+    type: "text",
+    group: "buttons",
+  },
+  buttonLink2: {
+    label: "Button 2 URL",
+    placeholder: "selector or url",
+    desc: "CSS selector for the URL of the second button",
+    type: "text",
+    group: "buttons",
+  },
+  regex: {
+    label: "Regex",
+    placeholder: `playlist.*`,
+    desc: "A regex pattern to match URLs for this site",
+    type: "text",
+  },
+};
+
+const ALL_FIELDS = Object.keys(FIELDS_CONFIG);
+
 function getCleanHostname() {
   return location.hostname.replace(/^https?:\/\/|^www\./g, "");
 }
 
-function createContainer() {
-  const container = document.createElement("div");
-  container.id = "userRpc-selectorContainer";
-  document.body.appendChild(container);
-  return container;
+function getPlaceholderMap(hostname = getCleanHostname()) {
+  const map = {};
+  Object.entries(FIELDS_CONFIG).forEach(([key, cfg]) => {
+    if (typeof cfg.placeholder === "function") {
+      map[key] = cfg.placeholder(hostname);
+    } else {
+      map[key] = cfg.placeholder || "selector (#id, .class, [attribute])";
+    }
+  });
+  return map;
 }
 
-function attachShadowDOM(container) {
-  return container.attachShadow({ mode: "open" });
+function createContainer() {
+  let container = document.getElementById("userRpc-selectorContainer");
+
+  if (!container) {
+    container = document.createElement("div");
+    container.id = "userRpc-selectorContainer";
+    document.documentElement.appendChild(container);
+  }
+
+  return container;
 }
 
 function setupContainerStyles(container) {
   container.style.cssText = `
     all: initial !important;
-    position: relative !important;
+    position: fixed !important;
     z-index: 2147483647 !important;
     isolation: isolate !important;
   `;
-}
-
-function createPlaceholderMap(hostname) {
-  return {
-    name: "text (" + hostname + ")",
-    regex: "regex.* or [/regex.*/]",
-    source: "text or selector (#class, .class)",
-    link: "url or selector (#class, .class)",
-    image: "url or selector (#class, .class)",
-    default: "selector (#class, .class)",
-    buttonLink: "url or selector (#class, .class)",
-    buttonText: "text or selector (#class, .class)",
-    buttonText2: "text or selector (#class, .class)",
-    buttonLink2: "url or selector (#class, .class)",
-  };
-}
-
-function getFieldList() {
-  return ["name", "title", "artist", "timePassed", "duration", "image", "link", "source", "buttonText", "buttonLink", "buttonText2", "buttonLink2", "regex"];
 }
 
 function createRootElement(theme, style = {}) {
@@ -75,37 +158,53 @@ function createTitleElements(root, editMode) {
   root.appendChild(editTitle);
 }
 
-function createFieldInputs(shadow, fields, placeholderMap) {
+function createFieldInputs(placeholderMap = getPlaceholderMap()) {
   const listItems = document.createElement("div");
   listItems.className = "userRpc-listItems";
 
-  fields.forEach((f) => {
+  Object.entries(FIELDS_CONFIG).forEach(([key, config]) => {
+    const wrapper = document.createElement("div");
+    wrapper.className = "field-row";
+    if (config.hidden) wrapper.style.display = "none";
+    if (config.group === "buttons") wrapper.classList.add("button-group");
+
     const label = document.createElement("label");
     label.className = "userRpc-label";
-    label.id = `${f}Label`;
-    label.textContent = formatLabel(f);
+    label.id = `${key}Label`;
+    label.textContent = config.label;
+    label.htmlFor = `${key}Selector`;
+    label.title = config.desc || "";
 
-    const input = document.createElement("input");
-    input.type = "text";
-    input.id = `${f}Selector`;
-    input.className = "userRpc-select";
-    input.autocomplete = "off";
-    input.placeholder = placeholderMap[f] || placeholderMap.default;
+    let input;
+    if (config.type === "select") {
+      input = document.createElement("select");
+      input.id = `${key}Selector`;
+      input.className = "userRpc-select";
+
+      (config.options || []).forEach((opt) => {
+        const option = document.createElement("option");
+        option.value = opt.value;
+        option.text = opt.label;
+        if (opt.value === config.defaultValue) option.selected = true;
+        input.appendChild(option);
+      });
+    } else {
+      input = document.createElement("input");
+      input.type = "text";
+      input.id = `${key}Selector`;
+      input.className = "userRpc-select";
+      input.autocomplete = "off";
+      input.placeholder = placeholderMap[key] || "";
+    }
 
     const button = document.createElement("a");
-    button.setAttribute("data-field", f);
-    button.className = `userRpc-selectBtn ${f === "name" || f === "regex" ? "hidden" : ""}`;
+    button.setAttribute("data-field", key);
+    button.className = `userRpc-selectBtn ${config.type === "select" || config.hidden ? "hidden" : ""}`;
     button.title = "Select with mouse click";
-    button.id = `${f}Button`;
+    button.id = `${key}Button`;
     button.appendChild(createSVG(svg_paths.plusIconPaths));
-
-    const br = document.createElement("br");
-    br.id = `${f}Br`;
-
-    listItems.appendChild(label);
-    listItems.appendChild(input);
-    listItems.appendChild(button);
-    listItems.appendChild(br);
+    wrapper.append(label, input, button);
+    listItems.appendChild(wrapper);
   });
 
   return listItems;
@@ -132,10 +231,10 @@ function createActionButtons(root, shadow) {
     shadow.querySelectorAll('[id*="buttonText"], [id*="buttonLink"]').forEach((el) => {
       if (el.tagName === "BR") {
         el.style.display = "inline";
-      } else if (el.tagName === "INPUT") {
+      } else if (el.tagName === "INPUT" || el.tagName === "SELECT") {
         el.style.display = "inline-block";
       } else {
-        el.style.display = "block";
+        el.style.display = "flex";
       }
     });
     addButtonsToggle.remove();
@@ -202,7 +301,6 @@ function setupDragFunctionality(root) {
   function moveWithinBounds(left, top) {
     const maxLeft = window.innerWidth - root.offsetWidth;
     const maxTop = window.innerHeight - root.offsetHeight;
-
     root.style.left = Math.max(0, Math.min(left, maxLeft)) + "px";
     root.style.top = Math.max(0, Math.min(top, maxTop)) + "px";
   }
@@ -215,21 +313,27 @@ function setupDragFunctionality(root) {
 
 // Inject Selector CSS
 async function injectStyles(shadowRoot) {
-  const response = await fetch(browser.runtime.getURL("popup/selector/selector.css"));
-  const css = await response.text();
-
   try {
-    const sheet = new CSSStyleSheet();
-    await sheet.replace(css);
+    const url = browser.runtime.getURL("popup/selector/selector.css");
+    const response = await fetch(url);
+    const css = await response.text();
 
-    if ("adoptedStyleSheets" in shadowRoot) {
-      shadowRoot.adoptedStyleSheets = [...(shadowRoot.adoptedStyleSheets || []), sheet];
-      return;
-    }
-  } catch (e) {}
-  const style = document.createElement("style");
-  style.textContent = css;
-  shadowRoot.appendChild(style);
+    try {
+      const sheet = new CSSStyleSheet();
+      await sheet.replace(css);
+
+      if ("adoptedStyleSheets" in shadowRoot) {
+        shadowRoot.adoptedStyleSheets = [...(shadowRoot.adoptedStyleSheets || []), sheet];
+        return;
+      }
+    } catch (_) {}
+
+    const style = document.createElement("style");
+    style.textContent = css;
+    shadowRoot.appendChild(style);
+  } catch (err) {
+    console.error("injectStyles failed:", err);
+  }
 }
 
 // Set the position of the Selector
@@ -240,20 +344,15 @@ function positionElement(root) {
   root.style.right = "";
 }
 
-// Fill Selector Fields
-async function populateExistingData(shadow, hostname) {
+// Populate existing data
+async function populateExistingData(shadow, hostname = getCleanHostname()) {
   const pathname = location.pathname;
-
-  // Get all user-added parsers for the current hostname
   const userParsers = (window.parsers?.[hostname] || []).filter((p) => p.userAdd);
-
-  // Find a parser that matches the current page
   const matchedParser = userParsers.find((parser) => parser.patterns?.some((regex) => regex.test(pathname)));
 
   if (matchedParser) {
     const settings = await browser.storage.local.get("userParserSelectors");
     const parserArray = Array.isArray(settings.userParserSelectors) ? settings.userParserSelectors : [];
-
     const current = parserArray.find((p) => p.id === matchedParser.id);
 
     if (current?.selectors) {
@@ -267,7 +366,7 @@ async function populateExistingData(shadow, hostname) {
 
 // Setup Selector Event Listeners
 function setupEventListeners(shadow) {
-  // Add startSelectorMode to the selection buttons.
+  // Selection buttons
   shadow.querySelectorAll(".userRpc-selectBtn").forEach((btn) => {
     btn.addEventListener("click", () => {
       const field = btn.dataset.field;
@@ -275,30 +374,51 @@ function setupEventListeners(shadow) {
     });
   });
 
-  // Prevent page shortcuts from breaking the inputs.
-  const inputs = shadow.querySelectorAll("input");
-  inputs.forEach((input) => {
+  // Prevent page shortcuts inside inputs
+  shadow.querySelectorAll("input").forEach((input) => {
     ["keydown", "keyup", "keypress"].forEach((eventType) => {
-      input.addEventListener(
-        eventType,
-        (e) => {
-          e.stopPropagation();
-        },
-        true,
-      );
+      input.addEventListener(eventType, (e) => e.stopPropagation(), true);
     });
   });
 
   // Save User Add RPC
   shadow.getElementById("saveSelectors").addEventListener("click", async () => {
-    const fields = ["name", "title", "artist", "timePassed", "duration", "image", "link", "source", "buttonText", "buttonLink", "buttonText2", "buttonLink2", "regex"];
+    const fields = ALL_FIELDS;
     const selectors = {};
+    let hasError = false;
+    const missingRequired = [];
+
     fields.forEach((f) => {
-      const val = shadow.getElementById(`${f}Selector`).value.trim();
+      const inputEl = shadow.getElementById(`${f}Selector`);
+      if (!inputEl) return;
+
+      const val = inputEl.tagName === "SELECT" ? inputEl.value.trim() : inputEl.value.trim();
       if (val) selectors[f] = val;
+
+      if (FIELDS_CONFIG[f]?.required && !val) {
+        hasError = true;
+        missingRequired.push(FIELDS_CONFIG[f].label || f);
+      }
     });
 
-    // Mandatory Fields
+    if (hasError || missingRequired.length > 0) {
+      const fragment = document.createDocumentFragment();
+      fragment.appendChild(document.createTextNode("Required fields are missing:"));
+      fragment.appendChild(document.createElement("br"));
+
+      const ul = document.createElement("ul");
+      missingRequired.forEach((label) => {
+        const li = document.createElement("li");
+        li.textContent = label;
+        ul.appendChild(li);
+      });
+
+      fragment.appendChild(ul);
+
+      showStatusMsg(fragment, true, false, shadow);
+      return;
+    }
+
     if (!selectors.title || !selectors.artist) {
       showStatusMsg("Please fill in both the 'title' and 'artist' fields.", 1, 0, shadow);
       return;
@@ -310,22 +430,24 @@ function setupEventListeners(shadow) {
 
     checkFields.forEach((f) => {
       if (selectors[f] && !getExistingElementSelector(selectors[f])) {
-        invalidFields.push(formatLabel(f));
+        invalidFields.push(FIELDS_CONFIG[f]?.label || formatLabel(f));
       }
     });
 
     if (invalidFields.length > 0) {
-      showStatusMsg("Invalid or not found selector(s):", 1, 0, shadow);
+      const fragment = document.createDocumentFragment();
+      fragment.appendChild(document.createTextNode("Invalid or not found selector(s):"));
+      fragment.appendChild(document.createElement("br"));
+
       const ul = document.createElement("ul");
-      invalidFields.forEach((f) => {
+      invalidFields.forEach((label) => {
         const li = document.createElement("li");
-        li.textContent = f;
+        li.textContent = label;
         ul.appendChild(li);
       });
+      fragment.appendChild(ul);
 
-      const statusDiv = shadow.getElementById("userRpc-selectorStatus");
-      statusDiv.append(document.createElement("br"), ul);
-
+      showStatusMsg(fragment, true, false, shadow);
       return;
     }
 
@@ -413,6 +535,7 @@ function updateHighlight(e, overlay, highlight, shadowDoc) {
     lastHighlightedElement = null;
     return;
   }
+
   if (el.closest("#userRpc-selectorRoot")) {
     highlight.style.display = "none";
     lastHighlightedElement = null;
@@ -460,10 +583,13 @@ function handleElementClick(e, field, shadowDoc, cleanup) {
     showStatusMsg("", 0, 0, shadowDoc);
     return;
   }
+
   if (!isValidElement(targetEl)) {
     showStatusMsg("Selected element is not valid or visible.\n Please choose another element.", 1, 1, shadowDoc);
     return;
-  } else if (field === "image") {
+  }
+
+  if (field === "image") {
     targetEl = findImageElement(el);
     if (!targetEl) {
       showStatusMsg("No image element found. Please click on an image.", 1, 1, shadowDoc);
@@ -503,44 +629,37 @@ function handleEscapeKey(e, cleanup, shadowDoc) {
 
 // Selector Status Message
 let statusTimeoutId = null;
-function showStatusMsg(msg, isAlert = false, isTemp = false, shadowDoc) {
-  const statusEl = shadowDoc.getElementById("userRpc-selectorStatus");
-  if (!statusEl) {
-    console.warn("Element with ID 'userRpc-selectorStatus' not found");
-    return;
-  }
 
-  // Clear the previous timeout
+function showStatusMsg(content, isAlert = false, isTemp = false, shadowDoc) {
+  const statusEl = shadowDoc.getElementById("userRpc-selectorStatus");
+  if (!statusEl) return;
+
   if (statusTimeoutId) {
     clearTimeout(statusTimeoutId);
     statusTimeoutId = null;
   }
 
-  // Set the message
-  statusEl.textContent = msg;
+  statusEl.textContent = "";
 
-  if (!msg) {
+  if (!content) {
     statusEl.classList.remove("open", "alert");
     return;
   }
 
+  if (typeof content === "string") {
+    statusEl.textContent = content;
+  } else if (content instanceof Node) {
+    statusEl.appendChild(content);
+  }
+
   statusEl.classList.add("open");
+  statusEl.classList.toggle("alert", !!isAlert);
 
-  // Warning mode
-  if (isAlert) {
-    statusEl.classList.add("alert");
-
-    if (isTemp) {
-      statusTimeoutId = setTimeout(() => {
-        // Reset
-        if (statusEl.textContent === msg) {
-          statusEl.textContent = "Please click the element on the page with the mouse! \n(Press 'ESC' or click here to leave)";
-        }
-        statusEl.classList.remove("alert");
-        statusTimeoutId = null;
-      }, 3000);
-    }
-  } else {
-    statusEl.classList.remove("alert");
+  if (isTemp) {
+    statusTimeoutId = setTimeout(() => {
+      statusEl.textContent = "";
+      statusEl.classList.remove("open", "alert");
+      statusTimeoutId = null;
+    }, 3000);
   }
 }
