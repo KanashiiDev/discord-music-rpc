@@ -1919,6 +1919,7 @@ function showPopupMessage(text, type = "info", closeAfter = null) {
     clearTimeout(showPopupMessageTimeout);
     const loadingIndicator = document.createElement("div");
     loadingIndicator.className = "popup-message-indicator";
+    loadingIndicator.style.animationDuration = `${closeAfter}ms`;
     messageContainer.appendChild(loadingIndicator);
     loadingIndicator.style.display = "none";
     void loadingIndicator.offsetWidth;

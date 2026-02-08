@@ -194,33 +194,40 @@ const popupModule = {
       if (button.disabled) return;
       button.disabled = true;
 
+      const enableButton = (delay = 2000) => {
+        buttonDisableTimeout = setTimeout(() => {
+          button.disabled = false;
+        }, delay);
+      };
+
       try {
         const theme = await browser.storage.local.get("theme");
-        document.body.dataset.theme = theme.theme || "dark";
-        document.documentElement.dataset.theme = theme.theme || "dark";
+        const currentTheme = theme.theme || "dark";
+        document.body.dataset.theme = currentTheme;
+        document.documentElement.dataset.theme = currentTheme;
+
         clearTimeout(buttonDisableTimeout);
+
         const isEdit = button.textContent.includes("Edit");
         const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
 
-        if (tab.url?.startsWith("http")) {
-          await browser.tabs.sendMessage(tab.id, {
-            action: "startSelectorUI",
-            editMode: isEdit,
-            theme: theme.theme || "dark",
-            style: getCurrentStyleAttributes(),
-          });
-          window.close();
-        } else {
-          showPopupMessage("This page is not supported.", "alert", 3000);
-          buttonDisableTimeout = setTimeout(() => {
-            button.disabled = false;
-          }, 3000);
+        if (tab.status !== "complete") {
+          showPopupMessage("Please wait for the page to finish loading", "warning", 2000);
+          enableButton();
+          return;
         }
-      } catch (e) {
-        showPopupMessage("Wait for the page to load.", "warning", 3000);
-        buttonDisableTimeout = setTimeout(() => {
-          button.disabled = false;
-        }, 3000);
+
+        await browser.tabs.sendMessage(tab.id, {
+          action: "startSelectorUI",
+          editMode: isEdit,
+          theme: currentTheme,
+          style: getCurrentStyleAttributes(),
+        });
+
+        window.close();
+      } catch (_) {
+        showPopupMessage("This page is not supported", "alert", 2000);
+        enableButton();
       }
     };
     document.getElementById("openSelector").addEventListener("click", this.listeners.openSelector);
