@@ -105,6 +105,7 @@ function createPreviewSection(root) {
 // Start preview loop
 let previewInterval = null;
 function startPreviewLoop(shadow, editMode) {
+  updatePreview(shadow, editMode);
   previewInterval = setInterval(() => {
     updatePreview(shadow, editMode);
   }, 1000);
@@ -150,6 +151,7 @@ function updatePreview(shadow, editMode) {
     buttonLink2: getValue("buttonLink2Selector"),
     source: getValue("sourceSelector"),
     regex: getValue("regexSelector"),
+    mode: getValue("modeSelector"),
   };
 
   // Get elements
@@ -178,6 +180,7 @@ function updatePreview(shadow, editMode) {
     duration: elements.duration?.textContent || undefined,
     buttonText: elements.buttonText?.textContent || getPlainText(selectors.buttonText) || "Custom Action",
     buttonText2: elements.buttonText2?.textContent || getPlainText(selectors.buttonText2) || "Custom Action",
+    mode: selectors.mode === "watch" ? "Watching" : "Listening",
   };
 
   // Trim texts
@@ -417,10 +420,16 @@ function updatePreview(shadow, editMode) {
   };
 
   // Apply updates
-  setText(".source", texts.source, 32);
+  const sourceEl = details.querySelector(".source");
+  const isWatch = selectors.mode === "watch";
+  sourceEl.style.display = isWatch ? "none" : "block";
+  if (!isWatch) {
+    setText(".source", texts.source, 32);
+  }
+
   setText(".title", texts.title, 128);
   setText(".artist", texts.artist, 128);
-  setText(".header", `Listening to ${texts.artist}`, 128);
+  setText(".header", `${texts.mode} to ${texts.artist}`, 128);
   if (editMode) {
     const header = shadow.querySelector(".userRpc-h4");
     if (header && header.textContent !== texts.name) header.textContent = texts.name;

@@ -854,6 +854,7 @@ async function loadAllSavedUserParsers() {
       title: data.title || hostname,
       urlPatterns: data.urlPatterns,
       userAdd: true,
+      mode: data.selectors.mode || "listen",
       fn: async function () {
         if (locHostname !== hostname && !locHostname.endsWith(`.${hostname}`)) return null;
 
@@ -894,6 +895,7 @@ async function loadAllSavedUserParsers() {
             position: currentPosition,
             duration: totalDuration,
             progress: currentProgress,
+            mode: data.selectors.mode || "listen",
             buttons: [
               buttonLink && buttonText
                 ? {

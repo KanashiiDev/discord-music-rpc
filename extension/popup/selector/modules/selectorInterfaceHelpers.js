@@ -83,6 +83,16 @@ const FIELDS_CONFIG = {
     desc: "A regex pattern to match URLs for this site",
     type: "text",
   },
+  mode: {
+    label: "Activity Mode",
+    type: "select",
+    desc: "Choose whether this site should show as 'Listening to' or 'Watching' in Discord",
+    options: [
+      { value: "listen", label: "Listening" },
+      { value: "watch", label: "Watching" },
+    ],
+    defaultValue: "listen",
+  },
 };
 
 const ALL_FIELDS = Object.keys(FIELDS_CONFIG);
