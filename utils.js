@@ -261,14 +261,58 @@ function addHistoryEntry(song, historyPath) {
     source: song.largeImageText || "",
     songUrl: song.detailsUrl || "",
     date: Date.now(),
+    total_listened_ms: 0,
   };
 
   history.push(entry);
   fs.writeFileSync(historyPath, JSON.stringify(history, null, 2), "utf8");
 }
 
+function saveListeningTime(song, listenedMs, historyFilePath) {
+  if (!song || !song.details || !song.state || listenedMs < 0) {
+    return;
+  }
+
+  // Do not save the song if it has been played for less than 25 seconds or more than 24 hours
+  if (listenedMs < 25000 || listenedMs > 86400000) {
+    return;
+  }
+
+  let history = [];
+
+  if (fs.existsSync(historyFilePath)) {
+    const data = fs.readFileSync(historyFilePath, "utf8");
+    try {
+      history = JSON.parse(data);
+      if (!Array.isArray(history)) history = [];
+    } catch {
+      history = [];
+    }
+  }
+
+  // Find the last record and update it
+  const lastIndex = history.length - 1;
+  if (lastIndex >= 0) {
+    const last = history[lastIndex];
+    const sameTitle = last.title === song.details;
+    const sameArtist = last.artist === song.state;
+
+    if (sameTitle && sameArtist) {
+      // Same song - add listening time
+      history[lastIndex].total_listened_ms = (last.total_listened_ms || 0) + listenedMs;
+      try {
+        fs.writeFileSync(historyFilePath, JSON.stringify(history, null, 2), "utf8");
+      } catch (err) {
+        console.error("[HISTORY] Write failed:", err);
+        return false;
+      }
+    }
+  }
+}
+
 module.exports = {
   addHistoryEntry,
+  saveListeningTime,
   getCurrentTime,
   isSameActivity,
   isSameActivityIgnore,

@@ -3,7 +3,17 @@ const path = require("path");
 const fs = require("fs");
 const cors = require("cors");
 const { Client, StatusDisplayType } = require("@xhayper/discord-rpc");
-const { addHistoryEntry, getCurrentTime, isSameActivity, isSameActivityIgnore, truncate, isValidUrl, notifyRpcStatus, detectElectronMode } = require("./utils.js");
+const {
+  addHistoryEntry,
+  saveListeningTime,
+  getCurrentTime,
+  isSameActivity,
+  isSameActivityIgnore,
+  truncate,
+  isValidUrl,
+  notifyRpcStatus,
+  detectElectronMode,
+} = require("./utils.js");
 let PORT = 3000;
 const CLIENT_ID = "1366752683628957767";
 const RETRY_DELAY = 10000; // 10 seconds
@@ -11,6 +21,7 @@ const CLIENT_TIMEOUT = 30000; // 30 seconds
 const AUTO_CLEAR_TIMEOUT = 24000; // 24 seconds
 const STUCK_TIMEOUT = 12000; // 12 seconds
 const MAX_CLEAR_RETRIES = 3;
+const HISTORY_SAVE_TIMEOUT = 25000;
 let reconnectScheduled = false;
 let historyTimeout = null;
 const settingsFilePath = process.env.SETTINGS_FILE_PATH;
@@ -56,6 +67,7 @@ let hasLoggedRpcFailure = false;
 let lastUpdateRequest = null;
 let lastClearRpcResult = null;
 let historySaveLock = false;
+let listeningStartTime = null;
 
 // Settings
 let serverSettings = {
@@ -125,9 +137,17 @@ app.post("/update-rpc", async (req, res) => {
           isRpcConnected = false;
         }
       }
+
+      // Save the listening duration
+      if (currentActivity && listeningStartTime) {
+        const listenedMs = Date.now() - listeningStartTime;
+        saveListeningTime(currentActivity, listenedMs, historyFilePath);
+      }
+
       currentActivity = null;
       lastActiveClient = null;
       lastUpdateAt = null;
+      listeningStartTime = null;
       return res.json({ success: true, action: "cleared" });
     }
 
@@ -269,6 +289,15 @@ app.post("/update-rpc", async (req, res) => {
     // Add to history if type is not watching
     if (activity.type !== 3) {
       if (!isSameActivityIgnore(activity, currentActivity)) {
+        // The song changed - save the listening time of the previous song
+        if (currentActivity && listeningStartTime) {
+          const listenedMs = Date.now() - listeningStartTime;
+          saveListeningTime(currentActivity, listenedMs, historyFilePath);
+        }
+
+        // Start the timer for the new song
+        listeningStartTime = Date.now();
+
         // The song changed - cancel the previous timeout
         if (historyTimeout) {
           clearTimeout(historyTimeout);
@@ -276,17 +305,20 @@ app.post("/update-rpc", async (req, res) => {
         }
         historySaveLock = false;
 
-        // Save song after 25 seconds.
+        // Save song after 25 seconds
         historyTimeout = setTimeout(() => {
           if (!isSameActivityIgnore(activity, lastSavedHistoryEntry)) {
+            // 25 seconds have passed and it's still the same song - unlock
+            historySaveLock = true;
             addHistoryEntry(activity, historyFilePath);
             lastSavedHistoryEntry = JSON.parse(JSON.stringify(activity));
           }
           historyTimeout = null;
-          historySaveLock = false;
-        }, 25000);
+        }, HISTORY_SAVE_TIMEOUT);
       } else if (!historySaveLock && !historyTimeout) {
-        // The song is the same, but the timeout hasn't started yet
+        // The same song but the timer hasn't started
+        listeningStartTime = listeningStartTime || Date.now();
+
         historySaveLock = true;
         historyTimeout = setTimeout(() => {
           if (!isSameActivityIgnore(activity, lastSavedHistoryEntry)) {
@@ -294,8 +326,7 @@ app.post("/update-rpc", async (req, res) => {
             lastSavedHistoryEntry = JSON.parse(JSON.stringify(activity));
           }
           historyTimeout = null;
-          historySaveLock = false;
-        }, 25000);
+        }, HISTORY_SAVE_TIMEOUT);
       }
     }
 
@@ -368,6 +399,12 @@ app.post("/clear-rpc", express.json(), async (req, res) => {
       return res.status(400).json({ error: "clientId is required and must be a string" });
     }
 
+    // Save listening duration
+    if (currentActivity && listeningStartTime) {
+      const listenedMs = Date.now() - listeningStartTime;
+      saveListeningTime(currentActivity, listenedMs, historyFilePath);
+    }
+
     // Clear the timeout
     if (historyTimeout) {
       clearTimeout(historyTimeout);
@@ -430,6 +467,7 @@ app.post("/clear-rpc", express.json(), async (req, res) => {
     currentActivity = null;
     lastActiveClient = null;
     lastUpdateAt = null;
+    listeningStartTime = null;
 
     const response = {
       success: true,
@@ -771,6 +809,12 @@ function startHealthCheckTimer() {
       if (currentActivity !== null && lastUpdateAt && now - lastUpdateAt > AUTO_CLEAR_TIMEOUT) {
         console.log(`[HEALTH] No update for ${Math.floor((now - lastUpdateAt) / 1000)}s, auto-clearing activity...`);
 
+        // Save listening duration
+        if (currentActivity && listeningStartTime) {
+          const listenedMs = Date.now() - listeningStartTime;
+          saveListeningTime(currentActivity, listenedMs, historyFilePath);
+        }
+
         for (let attempt = 1; attempt <= 2; attempt++) {
           try {
             if (rpcClient?.user?.clearActivity) {
@@ -801,6 +845,7 @@ function startHealthCheckTimer() {
         currentActivity = null;
         lastActiveClient = null;
         lastUpdateAt = null;
+        listeningStartTime = null;
 
         if (historyTimeout) {
           clearTimeout(historyTimeout);
@@ -811,6 +856,12 @@ function startHealthCheckTimer() {
 
       if (lastActiveClient?.timestamp && now - lastActiveClient.timestamp > CLIENT_TIMEOUT) {
         console.log(`[HEALTH] Client inactive for ${Math.floor((now - lastActiveClient.timestamp) / 1000)}s, clearing...`);
+
+        // Save listening duration
+        if (currentActivity && listeningStartTime) {
+          const listenedMs = Date.now() - listeningStartTime;
+          saveListeningTime(currentActivity, listenedMs, historyFilePath);
+        }
 
         try {
           if (rpcClient?.user?.clearActivity) {
@@ -824,6 +875,7 @@ function startHealthCheckTimer() {
         currentActivity = null;
         lastActiveClient = null;
         lastUpdateAt = null;
+        listeningStartTime = null;
       }
 
       // Client control
@@ -917,6 +969,12 @@ async function shutdown() {
     console.log("[Server] Shutdown initiated...");
 
     try {
+      // Save listening duration
+      if (currentActivity && listeningStartTime) {
+        const listenedMs = Date.now() - listeningStartTime;
+        saveListeningTime(currentActivity, listenedMs, historyFilePath);
+      }
+
       // Stop HealthCheck interval
       if (healthCheckInterval) {
         clearInterval(healthCheckInterval);
