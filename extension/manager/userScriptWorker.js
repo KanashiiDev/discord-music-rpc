@@ -158,22 +158,21 @@ class UserScriptManager {
             setTimeout(() => reject(new Error("useSetting timeout")), 5000);
           });
         }
-
-        // UserScript
-        ${script.code || ""}
-
-        // update trackState
-        trackState.title = typeof title !== "undefined" ? title : null;
-        trackState.artist = typeof artist !== "undefined" ? artist : null;
-        trackState.image = typeof image !== "undefined" ? image : null;
-        trackState.source = typeof source !== "undefined" ? source : null;
-        trackState.songUrl = typeof songUrl !== "undefined" ? songUrl : null;
-        trackState.timePassed = typeof timePassed !== "undefined" ? timePassed : null;
-        trackState.duration = typeof duration !== "undefined" ? duration : null;
-
-        // Track Data Interval
-        setInterval(async () => {
+        // update trackData
+        async function updateTrackData() {
           try {
+            // UserScript
+            ${script.code || ""}
+            // update trackState
+            trackState.title = typeof title !== "undefined" ? title : null;
+            trackState.artist = typeof artist !== "undefined" ? artist : null;
+            trackState.image = typeof image !== "undefined" ? image : null;
+            trackState.source = typeof source !== "undefined" ? source : null;
+            trackState.songUrl = typeof songUrl !== "undefined" ? songUrl : null;
+            trackState.timePassed = typeof timePassed !== "undefined" ? timePassed : null;
+            trackState.duration = typeof duration !== "undefined" ? duration : null;
+
+            // Track Data
             const trackData = {
               id: "${script.id}",
               domain: "${script.domain}",
@@ -217,10 +216,24 @@ class UserScriptManager {
           } catch (error) {
             console.warn("UserScript tracking error:", error);
           }
-        }, 5000);
+        }
+        await updateTrackData();
+        setInterval(updateTrackData, 5000);
       }, 5000);
     })();
     `;
+  }
+
+  resolveWorld(code) {
+    const lines = code.split("\n");
+    const userScriptIndex = lines.findIndex((line) => line.trim().startsWith("// UserScript"));
+    if (userScriptIndex === -1) {
+      return "USER_SCRIPT";
+    }
+    const headerSlice = lines.slice(userScriptIndex, userScriptIndex + 5).join("\n");
+    const match = headerSlice.match(/\/\/\s*@world\s+(main|isolated)/);
+    if (!match) return "USER_SCRIPT";
+    return match[1] === "main" ? "MAIN" : "USER_SCRIPT";
   }
 
   async registerUserScript(script) {
@@ -247,6 +260,7 @@ class UserScriptManager {
             js: [{ code: trackingCode }],
             matches,
             runAt: script.runAt || "document_idle",
+            world: this.resolveWorld(trackingCode),
           },
         ]);
         this.registeredScripts.set(script.id, registeredUserScript);
@@ -256,6 +270,7 @@ class UserScriptManager {
           matches,
           runAt: script.runAt || "document_idle",
           scriptMetadata: { id: script.id, domain: script.domain },
+          world: this.resolveWorld(trackingCode),
         });
 
         this.registeredScripts.set(script.id, registeredUserScript);
