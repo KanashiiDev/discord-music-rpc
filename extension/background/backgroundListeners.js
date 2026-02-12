@@ -643,95 +643,114 @@ const handleIsHostnameMatch = async (sender) => {
 
 // Main Setup Function
 const setupListeners = () => {
-  browser.runtime.onMessage.addListener((req, sender, sendResponse) => {
-    (async () => {
-      try {
-        // Handle action-based requests
-        if (req.action) {
-          let result;
+  browser.runtime.onMessage.addListener(async (req, sender) => {
+    try {
+      if (req.type === "EXECUTE_IN_MAIN") {
+        try {
+          const { func, args, tabId } = req.payload;
+          const targetTabId = tabId || sender.tab?.id;
 
-          switch (req.action) {
-            case "listUserScripts":
-              result = await handleListUserScripts();
-              break;
-            case "saveUserScript":
-              result = await handleSaveUserScript(req);
-              break;
-            case "deleteUserScript":
-              result = await handleDeleteUserScript(req);
-              break;
-            case "registerUserScript":
-              result = await handleRegisterUserScript(req);
-              break;
-            case "unregisterUserScript":
-              result = await handleUnregisterUserScript(req);
-              break;
-            case "toggleUserScript":
-              result = await handleToggleUserScript(req);
-              break;
-            case "addToHistory":
-              result = await handleAddToHistory(req);
-              break;
-            case "loadHistory":
-              result = await handleLoadHistory();
-              break;
-            case "saveHistory":
-              result = await handleSaveHistory(req);
-              break;
-            case "migrateHistory":
-              result = await handleMigrateHistory();
-              break;
-            case "filterHistoryReplace":
-              result = await handleFilterHistoryReplace(req);
-              break;
-            case "getSongInfo":
-              result = await handleGetSongInfo();
-              break;
-            default:
-              result = { ok: false, error: "Unknown action" };
-          }
+          const results = await browser.scripting.executeScript({
+            target: { tabId: targetTabId },
+            world: "MAIN",
+            func: (fnStr, fnArgs) => {
+              try {
+                const runner = new Function(`return (${fnStr}).apply(null, arguments)`);
+                return runner(...fnArgs);
+              } catch (e) {
+                return { __error: "Execution failed: " + e.message };
+              }
+            },
+            args: [func, args],
+          });
 
-          sendResponse(result);
-          return;
+          return results[0]?.result;
+        } catch (err) {
+          console.error("[Background] CSP-Safe Injection Error:", err);
+          return { __error: err.message };
         }
-
-        // Handle type-based requests
-        if (req.type) {
-          let result;
-
-          switch (req.type) {
-            case "UPDATE_RPC":
-              result = await handleUpdateRpc(req, sender);
-              break;
-            case "CLEAR_RPC":
-              result = await handleClearRpc(sender);
-              break;
-            case "IS_RPC_CONNECTED":
-              result = await handleIsRpcConnected();
-              break;
-            case "IS_HOSTNAME_MATCH":
-              result = await handleIsHostnameMatch(sender);
-              break;
-            case "UPDATE_RPC_PORT":
-              result = await handleUpdateRpcPort(req);
-              break;
-            default:
-              result = { ok: false, error: "Unknown message type" };
-          }
-
-          sendResponse(result);
-          return;
-        }
-
-        // If neither action nor type is present
-        sendResponse({ ok: false, error: "No action or type specified" });
-      } catch (err) {
-        logError("Unified message handler error:", err);
-        sendResponse({ ok: false, error: err.message });
       }
-    })();
 
-    return true;
+      if (req.type === "GET_TAB_ID") {
+        return sender.tab?.id;
+      }
+
+      // Handle action-based requests
+      if (req.action) {
+        let result;
+        switch (req.action) {
+          case "listUserScripts":
+            result = await handleListUserScripts();
+            break;
+          case "saveUserScript":
+            result = await handleSaveUserScript(req);
+            break;
+          case "deleteUserScript":
+            result = await handleDeleteUserScript(req);
+            break;
+          case "registerUserScript":
+            result = await handleRegisterUserScript(req);
+            break;
+          case "unregisterUserScript":
+            result = await handleUnregisterUserScript(req);
+            break;
+          case "toggleUserScript":
+            result = await handleToggleUserScript(req);
+            break;
+          case "addToHistory":
+            result = await handleAddToHistory(req);
+            break;
+          case "loadHistory":
+            result = await handleLoadHistory();
+            break;
+          case "saveHistory":
+            result = await handleSaveHistory(req);
+            break;
+          case "migrateHistory":
+            result = await handleMigrateHistory();
+            break;
+          case "filterHistoryReplace":
+            result = await handleFilterHistoryReplace(req);
+            break;
+          case "getSongInfo":
+            result = await handleGetSongInfo();
+            break;
+          default:
+            result = { ok: false, error: "Unknown action" };
+        }
+        return result;
+      }
+
+      // Handle type-based requests
+      if (req.type) {
+        let result;
+        switch (req.type) {
+          case "UPDATE_RPC":
+            result = await handleUpdateRpc(req, sender);
+            break;
+          case "CLEAR_RPC":
+            result = await handleClearRpc(sender);
+            break;
+          case "IS_RPC_CONNECTED":
+            result = await handleIsRpcConnected();
+            break;
+          case "IS_HOSTNAME_MATCH":
+            result = await handleIsHostnameMatch(sender);
+            break;
+          case "UPDATE_RPC_PORT":
+            result = await handleUpdateRpcPort(req);
+            break;
+          default:
+            result = { ok: false, error: "Unknown message type" };
+        }
+        return result;
+      }
+      // If neither action nor type is present
+      return { ok: false, error: "No action or type specified" };
+    } catch (err) {
+      console.error("Unified message handler error:", err);
+      return { ok: false, error: err.message };
+    }
   });
 
   // update the local storage when the data changes

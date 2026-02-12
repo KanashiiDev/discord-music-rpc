@@ -84,6 +84,30 @@ async function loadSettingsForId(id) {
   return loadingPromises[settingKey];
 }
 
+async function executeInMain(func, args = []) {
+  try {
+    const funcStr = typeof func === "function" ? func.toString() : func;
+
+    const result = await browser.runtime.sendMessage({
+      type: "EXECUTE_IN_MAIN",
+      payload: {
+        func: funcStr,
+        args: args,
+      },
+    });
+
+    if (result && result.__error) {
+      logError("[Parser] Main World error:", result.__error);
+      return null;
+    }
+
+    return result;
+  } catch (error) {
+    logError("[Parser] Background error:", error);
+    return null;
+  }
+}
+
 // useSettings
 /**
  * Manages custom settings for a custom user parser.
@@ -323,7 +347,10 @@ window.registerParser = async function ({
     mode,
     parse: async () => {
       if (initOnly) return null;
-      const rawData = await fn({ useSetting: boundUseSetting });
+      const rawData = await fn({
+        useSetting: boundUseSetting,
+        executeInMain,
+      });
       if (!rawData) return null;
 
       // eslint-disable-next-line prefer-const
@@ -801,20 +828,15 @@ window.addEventListener("message", async (event) => {
           try {
             const song = window.latestUserScriptData[msg.data.domain];
             if (!song) return null;
-
-            const { currentPosition, totalDuration, currentProgress, timestamps } = window.processPlaybackInfo?.(song.timePassed, song.duration) ?? {};
-
             return {
               title: song.title,
               artist: song.artist,
               image: song.image,
               source: song.source,
               songUrl: song.songUrl,
-              position: currentPosition,
-              duration: totalDuration,
-              progress: currentProgress,
+              timePassed: song.timePassed,
+              duration: song.duration,
               mode: msg.data.mode,
-              ...timestamps,
             };
           } catch (err) {
             logError("User script parser error:", err);

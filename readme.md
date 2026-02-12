@@ -237,7 +237,7 @@ You can add a parser in **three ways**:
 <details>
 <summary><strong>Option 1: UI Method (No Code)</strong></summary>
 
-**You don't need to write any code. Just follow these steps:**
+You don't need to write any code. Just follow these steps:
 
 1. **Click the plugin icon** in your browser.
 2. Click **"Add Music Site"**.
@@ -344,12 +344,30 @@ registerParser({
   authorsLinks: [""], // Contributors links (optional)
   description: "", // Short description of the parser (optional)
 
-  fn: function () {
-    // To use custom settings in your parser (checkbox, text, or select), include useSetting in the parser function parameters: async function ({ useSetting })
-    // Example useSetting Types:
-    // const checkboxExample = await useSetting("checkboxVariable", "checkboxLabel", "checkbox", true);
-    // const textExample = await useSetting("textVariable", "textLabel", "text", "Default text");
-    // const selectExample = await useSetting("selectVariable", "selectLabel", "select", [{ value: "example1", label: "Example Value", selected: true },{ value: "example2", label: "Example Value 2" }]);
+  fn: async function ({ executeInMain, useSetting }) {
+    /* --- USE CUSTOM SETTINGS ---
+      To use custom settings in your parser (checkbox, text, or select), include useSetting in the parser function parameters: async function ({ useSetting })
+      Example useSetting Types:
+        const checkboxExample = await useSetting("checkboxVariable", "checkboxLabel", "checkbox", true);
+        const textExample = await useSetting("textVariable", "textLabel", "text", "Default text");
+        const selectExample = await useSetting("selectVariable", "selectLabel", "select", [{ value: "example1", label: "Example Value", selected: true },{ value: "example2", label: "Example Value 2" }]);
+
+    /* --- EXECUTE IN MAIN ---
+    Use `executeInMain` to access page `window` variables or functions safely. 
+    Examples:
+      // Basic usage
+        const track = await executeInMain(() => window.player?.getCurrentTrack());
+
+      // Try/catch handling
+        let track;
+        try { track = await executeInMain(() => window.player.getCurrentTrack()); }
+        catch { track = defaultTrack; }
+
+      // Parallel calls
+        const [track, playlist] = await Promise.all([
+        executeInMain(() => window.player.getCurrentTrack()),
+        executeInMain(() => window.player.getPlaylist())]);
+    */
 
     // You can define and use helper functions here if needed
     return {
