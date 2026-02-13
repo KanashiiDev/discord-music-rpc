@@ -1,5 +1,5 @@
 // Format Time
-function formatTime(sec) {
+export function formatTime(sec) {
   if (!sec || sec < 0) return "00:00";
 
   const m = Math.floor(sec / 60)
@@ -11,35 +11,57 @@ function formatTime(sec) {
   return `${m}:${s}`;
 }
 
-// Time Calculate
-function nativeTimeElement(e) {
-  const date = new Date(e * 1000);
-  if (isNaN(date.valueOf())) return "just now";
+// Relative Time
+export function relativeTime(dateValue) {
+  const now = Date.now();
+  const past = Number(dateValue);
+  if (!past || isNaN(past)) return "—";
 
-  return (function () {
-    const r = Math.round(Date.now() / 1000) - Math.round(date.valueOf() / 1000);
+  const s = Math.floor((now - past) / 1000);
+  if (s < 45) return "just now";
+  if (s < 90) return "1 minute ago";
+  if (s < 3600) return Math.floor(s / 60) + " minutes ago";
 
-    if (r === 0) return "just now";
-    if (r === 1) return "1 second ago";
-    if (r < 60) return `${r} seconds ago`;
-    if (r < 120) return "1 minute ago";
-    if (r < 3600) return `${Math.floor(r / 60)} minutes ago`;
-    if (r < 7200) return "1 hour ago";
-    if (r < 86400) return `${Math.floor(r / 3600)} hours ago`;
-    if (r < 172800) return "1 day ago";
-    if (r < 604800) return `${Math.floor(r / 86400)} days ago`;
-    if (r < 1209600) return "1 week ago";
-    if (r < 2419200) return `${Math.floor(r / 604800)} weeks ago`;
-    if (r < 29030400) return `${Math.floor(r / 2419200)} months ago`;
+  const mins = Math.floor(s / 60);
+  if (mins < 90) return "1 hour ago";
+  if (mins < 1440) return Math.floor(mins / 60) + " hours ago";
 
-    return `${Math.floor(r / 29030400)} years ago`;
-  })();
+  const hours = Math.floor(mins / 60);
+  const days = Math.floor(hours / 24);
+
+  if (days === 1) return "yesterday";
+  if (days < 7) return days + " days ago";
+
+  const weeks = Math.floor(days / 7);
+  if (weeks === 1) return "1 week ago";
+  if (weeks < 4) return weeks + " weeks ago";
+
+  const months = Math.floor(days / 30.4);
+  if (months < 12) return months + ` month${months === 1 ? "" : "s"} ago`;
+
+  const years = Math.floor(months / 12);
+  return years + ` year${years === 1 ? "" : "s"} ago`;
+}
+
+// Full Date Time
+export function fullDateTime(dateValue, fallbackLocale = "en-US") {
+  const timestamp = Number(dateValue);
+  if (isNaN(timestamp)) return "Invalid date";
+
+  return new Date(timestamp).toLocaleString(navigator.language || fallbackLocale, {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  });
 }
 
 // Create SVG
 const svgCache = new Map();
-function createSVG(paths, options = {}) {
-  // SVG cache
+export function createSVG(paths, options = {}) {
   const key = paths.join("");
   if (svgCache.has(key)) return svgCache.get(key).cloneNode(true);
 
@@ -73,7 +95,7 @@ function createSVG(paths, options = {}) {
   return svg;
 }
 
-const svg_paths = {
+export const svg_paths = {
   single: [
     "M5.5 2.5H18.5A3 3 0 0 1 21.5 5.5V18.5A3 3 0 0 1 18.5 21.5H5.5A3 3 0 0 1 2.5 18.5V5.5A3 3 0 0 1 5.5 2.5Z",
     "M8.5 7H15.5A1.5 1.5 0 0 1 17 8.5V15.5A1.5 1.5 0 0 1 15.5 17H8.5A1.5 1.5 0 0 1 7 15.5V8.5A1.5 1.5 0 0 1 8.5 7Z",
@@ -94,14 +116,7 @@ const svg_paths = {
   back: ["M19 20l-8-8 8-8"],
 };
 
-// Add Expand SVG
-document.querySelectorAll("span.arrow").forEach((arrow) => {
-  const expandSvg = createSVG(svg_paths.expand);
-  arrow.appendChild(expandSvg);
-});
-
-// Find the total height for accordion divs
-function getTotalHeight(element, elementParent) {
+export function getTotalHeight(element, elementParent) {
   const div = typeof element !== "object" ? document.querySelector(element) : element;
   let content = div.querySelector(".simplebar-content");
   if (!content) content = div;
@@ -110,4 +125,115 @@ function getTotalHeight(element, elementParent) {
   const paddingTop = parseFloat(style.paddingTop) || 0;
   const paddingBottom = parseFloat(style.paddingBottom) || 0;
   return content.scrollHeight + paddingTop + paddingBottom;
+}
+
+export function updateSimpleBarPadding(containerId) {
+  const container = document.getElementById(containerId);
+  if (!container || document.querySelector(".main").style.display === "none") return;
+
+  const hasVisibleScrollbar = document.querySelector(`#${containerId} .simplebar-track[style*="visibility: visible"]`);
+
+  container.style.paddingRight = hasVisibleScrollbar ? "22px" : "0";
+}
+
+export function updateCollapsibleHeight(type) {
+  const box = document.getElementById(`${type}`);
+  if (!box || !box.classList.contains("open")) return;
+
+  const content = box.querySelector(".simplebar-content");
+  if (content) {
+    box.style.maxHeight = content.scrollHeight + "px";
+  }
+}
+
+export function shallowEqual(objA, objB) {
+  if (objA === objB) return true;
+  if (typeof objA !== "object" || typeof objB !== "object" || objA == null || objB == null) {
+    return false;
+  }
+
+  const keysA = Object.keys(objA);
+  const keysB = Object.keys(objB);
+
+  if (keysA.length !== keysB.length) return false;
+
+  for (const key of keysA) {
+    if (!Object.prototype.hasOwnProperty.call(objB, key) || objA[key] !== objB[key]) {
+      return false;
+    }
+  }
+  return true;
+}
+
+export function getCSS(variable, fallback = null, mode = "hex", element = document.documentElement) {
+  const value = getComputedStyle(element).getPropertyValue(variable).trim();
+
+  if (!value) return fallback;
+
+  if (value.startsWith("rgb")) {
+    const rgb = value.match(/\d+/g);
+
+    if (!rgb) return fallback;
+
+    if (mode === "rgb-string") {
+      return rgb.join(",");
+    }
+
+    if (mode === "hex") {
+      return (
+        "#" +
+        rgb
+          .slice(0, 3)
+          .map((x) => parseInt(x).toString(16).padStart(2, "0"))
+          .join("")
+      );
+    }
+  }
+
+  return value;
+}
+
+export function handleCollapsible(header, AppState, simpleBars) {
+  if (AppState.expandTimeout) clearTimeout(AppState.expandTimeout);
+  const box = header.nextElementSibling;
+  if (!box) return;
+
+  const isOpen = box.classList.contains("open");
+  const heightBefore = box.offsetHeight;
+
+  if (isOpen) {
+    box.style.maxHeight = box.scrollHeight + "px";
+    requestAnimationFrame(() => {
+      box.classList.remove("open");
+      header.classList.remove("open");
+      box.style.maxHeight = "";
+    });
+  } else {
+    box.classList.add("open");
+    header.classList.add("open");
+    const targetH = getTotalHeight(box, box);
+    const maxH = parseInt(box.dataset.maxHeight) || 0;
+    const finalH = maxH && targetH > maxH ? maxH : targetH;
+
+    box.style.maxHeight = finalH + "px";
+    Object.values(simpleBars).forEach((sb) => sb?.recalculate());
+  }
+
+  header.style.pointerEvents = "none";
+
+  AppState.expandTimeout = setTimeout(() => {
+    header.style.pointerEvents = "";
+
+    if (!isOpen) {
+      const heightAfter = box.offsetHeight;
+
+      if (heightAfter <= heightBefore + 2) {
+        box.classList.remove("open");
+        header.classList.remove("open");
+        box.style.maxHeight = "";
+      } else {
+        if (!box.dataset.maxHeight) box.style.maxHeight = "100vh";
+      }
+    }
+  }, 355);
 }
