@@ -418,6 +418,61 @@ const handleFilterHistoryReplace = async (request) => {
   };
 };
 
+const handleSyncHistory = async () => {
+  try {
+    const history = await loadHistory();
+    const fullHistory = history.map((entry) => ({
+      title: entry.t,
+      artist: entry.a,
+      image: entry.i,
+      source: entry.s,
+      songUrl: entry.u,
+      date: entry.p,
+      total_listened_ms: entry.ms || 0,
+    }));
+
+    const response = await fetchWithTimeout(
+      `http://localhost:${state.serverPort}/sync-history`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ history: fullHistory }),
+      },
+      CONFIG.requestTimeout,
+    );
+
+    if (!response.ok) {
+      throw new Error(`Server responded with ${response.status}`);
+    }
+
+    const result = await response.json();
+
+    if (result.success && result.serverHistory) {
+      const shortHistory = result.serverHistory
+        .map((entry) => ({
+          t: entry.title,
+          a: entry.artist,
+          i: entry.image,
+          s: entry.source,
+          u: entry.songUrl,
+          p: entry.date,
+          ms: entry.total_listened_ms || 0,
+        }))
+        .reverse();
+
+      await saveHistory(shortHistory);
+    }
+    return {
+      ok: true,
+      synced: true,
+      count: result.count,
+    };
+  } catch (err) {
+    console.error("History sync error:", err);
+    return { success: false, error: err.message };
+  }
+};
+
 // Song Info
 const handleGetSongInfo = async () => {
   const map = state.activeTabMap;
@@ -703,6 +758,9 @@ const setupListeners = () => {
             break;
           case "filterHistoryReplace":
             result = await handleFilterHistoryReplace(req);
+            break;
+          case "syncHistory":
+            result = await handleSyncHistory();
             break;
           case "getSongInfo":
             result = await handleGetSongInfo();

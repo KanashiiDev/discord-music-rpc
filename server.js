@@ -6,6 +6,7 @@ const { Client, StatusDisplayType } = require("@xhayper/discord-rpc");
 const {
   addHistoryEntry,
   saveListeningTime,
+  mergeHistories,
   getCurrentTime,
   isSameActivity,
   isSameActivityIgnore,
@@ -91,7 +92,8 @@ app.use((req, res, next) => {
 
 // Middleware
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: "50mb" }));
+app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
 // RPC update - POST
 app.post("/update-rpc", async (req, res) => {
@@ -541,6 +543,48 @@ app.get("/history", (req, res) => {
   const history = fs.existsSync(historyFilePath) ? JSON.parse(fs.readFileSync(historyFilePath, "utf-8")) : [];
 
   res.json(history);
+});
+
+// Sync History - POST
+app.post("/sync-history", (req, res) => {
+  const { history } = req.body;
+
+  if (!Array.isArray(history)) {
+    return res.status(400).json({ error: "Invalid history data" });
+  }
+
+  fs.readFile(historyFilePath, "utf8", (err, data) => {
+    let serverHistory = [];
+
+    if (!err && data) {
+      try {
+        serverHistory = JSON.parse(data);
+        if (!Array.isArray(serverHistory)) {
+          serverHistory = [];
+        }
+      } catch (e) {
+        console.error("History parse error:", e);
+        serverHistory = [];
+      }
+    }
+
+    const merged = mergeHistories(serverHistory, history);
+    const reversed = merged.reverse();
+    const historyData = JSON.stringify(reversed, null, 2);
+
+    fs.writeFile(historyFilePath, historyData, "utf8", (writeErr) => {
+      if (writeErr) {
+        return res.status(500).json({ error: "History save failed: " + writeErr });
+      }
+
+      res.json({
+        success: true,
+        message: "History synced successfully",
+        count: merged.length,
+        serverHistory: merged,
+      });
+    });
+  });
 });
 
 // LOGS - GET

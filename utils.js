@@ -310,9 +310,42 @@ function saveListeningTime(song, listenedMs, historyFilePath) {
   }
 }
 
+function mergeHistories(serverHistory, browserHistory) {
+  const unique = [];
+  const seenFull = new Set();
+
+  let i = 0,
+    j = serverHistory.length - 1;
+
+  // Process Browser and Server History
+  while (i < browserHistory.length || j >= 0) {
+    const entry = i < browserHistory.length ? browserHistory[i++] : serverHistory[j--];
+
+    // Skip the exact same entry
+    const fullKey = `${entry.title}_${entry.artist}_${entry.source}_${entry.date}`;
+    if (seenFull.has(fullKey)) continue;
+
+    const prev = unique[unique.length - 1];
+
+    if (prev && prev.title === entry.title && prev.artist === entry.artist && prev.source === entry.source) {
+      // Consecutive same song → save the newest one
+      if (entry.date > prev.date) {
+        unique[unique.length - 1] = entry;
+      }
+    } else {
+      unique.push(entry);
+    }
+
+    seenFull.add(fullKey);
+  }
+
+  return unique;
+}
+
 module.exports = {
   addHistoryEntry,
   saveListeningTime,
+  mergeHistories,
   getCurrentTime,
   isSameActivity,
   isSameActivityIgnore,

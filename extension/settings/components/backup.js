@@ -66,3 +66,29 @@ document.getElementById("importBtn").onclick = () => {
 
   input.click();
 };
+
+// Sync History Button
+document.getElementById("syncBtn").addEventListener("click", async () => {
+  const btn = document.getElementById("syncBtn");
+  const originalText = btn.textContent;
+
+  try {
+    btn.textContent = "Syncing...";
+    btn.disabled = true;
+
+    const result = await sendAction("syncHistory");
+
+    if (result.ok) {
+      btn.textContent = `Synced ${result.count} entries`;
+    } else {
+      btn.textContent = `Failed: ${result.error}`;
+    }
+  } catch (error) {
+    btn.textContent = `Error: ${error.message}`;
+  } finally {
+    setTimeout(() => {
+      btn.textContent = originalText;
+      btn.disabled = false;
+    }, 3000);
+  }
+});
