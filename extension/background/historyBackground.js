@@ -70,26 +70,3 @@ async function addToHistory({ image, title, artist, source, songUrl }) {
 
   await saveHistory(history);
 }
-
-async function migrateOldHistory() {
-  const result = await browser.storage.local.get("listeningHistory");
-  const oldList = Array.isArray(result.listeningHistory) ? result.listeningHistory : [];
-  if (!oldList.length) return;
-  const srcList = [];
-
-  const newList = oldList.map((entry) => ({
-    a: entry.artist || "Unknown Artist",
-    t: entry.title || "Unknown Song",
-    i: entry.image || "",
-    s: entry.source || "Unknown Source",
-    p: entry.playedAt || Date.now(),
-  }));
-
-  const compressed = pako.deflate(JSON.stringify({ h: newList, src: srcList }));
-  const db = await openIndexedDB(HISTORY_DB_NAME, HISTORY_STORE_NAME, HISTORY_DB_VERSION);
-  const tx = db.transaction(HISTORY_STORE_NAME, "readwrite");
-  const store = tx.objectStore(HISTORY_STORE_NAME);
-  store.put(compressed, "history");
-  await tx.complete;
-  await browser.storage.local.remove("listeningHistory");
-}

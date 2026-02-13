@@ -321,13 +321,6 @@ domLoadedListener = async () => {
       return;
     }
 
-    // Migrate Old History
-    const ohm = await browser.storage.local.get("oldHistoryMigrate");
-    if (!ohm.oldHistoryMigrate) {
-      await sendAction("migrateHistory");
-      await browser.storage.local.set({ oldHistoryMigrate: true });
-    }
-
     // Start the Section Manager
     sectionManager.init();
 

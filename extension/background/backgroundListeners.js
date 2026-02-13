@@ -239,11 +239,6 @@ const handleSaveHistory = async (req) => {
   return { ok: true };
 };
 
-const handleMigrateHistory = async () => {
-  await migrateOldHistory();
-  return { ok: true };
-};
-
 const handleFilterHistoryReplace = async (request) => {
   const action = request.mode || "update";
   const entries = Array.isArray(request.entries) ? request.entries : [];
@@ -705,9 +700,6 @@ const setupListeners = () => {
             break;
           case "saveHistory":
             result = await handleSaveHistory(req);
-            break;
-          case "migrateHistory":
-            result = await handleMigrateHistory();
             break;
           case "filterHistoryReplace":
             result = await handleFilterHistoryReplace(req);
