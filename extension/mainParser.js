@@ -84,26 +84,25 @@ async function loadSettingsForId(id) {
   return loadingPromises[settingKey];
 }
 
-async function executeInMain(func, args = []) {
+async function accessWindow(path, options = {}) {
   try {
-    const funcStr = typeof func === "function" ? func.toString() : func;
-
     const result = await browser.runtime.sendMessage({
-      type: "EXECUTE_IN_MAIN",
+      type: "ACCESS_WINDOW",
       payload: {
-        func: funcStr,
-        args: args,
+        path,
+        callFunction: options.call,
+        args: options.args || [],
       },
     });
 
     if (result && result.__error) {
-      logError("[Parser] Main World error:", result.__error);
+      logError("[Parser] Error:", result.__error);
       return null;
     }
 
     return result;
   } catch (error) {
-    logError("[Parser] Background error:", error);
+    logError("[Parser] Error:", error);
     return null;
   }
 }
@@ -349,7 +348,7 @@ window.registerParser = async function ({
       if (initOnly) return null;
       const rawData = await fn({
         useSetting: boundUseSetting,
-        executeInMain,
+        accessWindow,
       });
       if (!rawData) return null;
 

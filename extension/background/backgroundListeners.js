@@ -695,28 +695,85 @@ const handleIsHostnameMatch = async (sender) => {
 const setupListeners = () => {
   browser.runtime.onMessage.addListener(async (req, sender) => {
     try {
-      if (req.type === "EXECUTE_IN_MAIN") {
+      if (req.type === "ACCESS_WINDOW") {
         try {
-          const { func, args, tabId } = req.payload;
-          const targetTabId = tabId || sender.tab?.id;
+          const { path, callFunction, args } = req.payload;
 
           const results = await browser.scripting.executeScript({
-            target: { tabId: targetTabId },
+            target: { tabId: sender.tab.id },
             world: "MAIN",
-            func: (fnStr, fnArgs) => {
+            func: (targetPath, shouldCallStr, fnArgs) => {
+              function safeSerialize(obj, maxDepth = 3, currentDepth = 0, seen = new WeakSet()) {
+                if (currentDepth >= maxDepth) return "[Max Depth]";
+                if (obj === null) return null;
+                if (obj === undefined) return undefined;
+
+                const type = typeof obj;
+                if (type === "string" || type === "number" || type === "boolean") return obj;
+                if (type === "function") return `[Function: ${obj.name || "anonymous"}]`;
+
+                if (seen.has(obj)) return "[Circular]";
+                seen.add(obj);
+
+                if (Array.isArray(obj)) {
+                  return obj.slice(0, 100).map((item) => safeSerialize(item, maxDepth, currentDepth + 1, seen));
+                }
+
+                if (typeof obj === "object") {
+                  const result = {};
+                  const keys = Object.keys(obj).slice(0, 100);
+                  for (const key of keys) {
+                    try {
+                      result[key] = safeSerialize(obj[key], maxDepth, currentDepth + 1, seen);
+                    } catch (e) {
+                      result[key] = `[Error: ${e.message}]`;
+                    }
+                  }
+                  return result;
+                }
+                return obj;
+              }
+
               try {
-                const runner = new Function(`return (${fnStr}).apply(null, arguments)`);
-                return runner(...fnArgs);
+                const parts = targetPath.split(".");
+                let current = window;
+                let parent = window;
+
+                for (let i = 0; i < parts.length; i++) {
+                  parent = current;
+                  current = current[parts[i]];
+
+                  if (current === undefined || current === null) {
+                    return { __error: `'${parts.slice(0, i + 1).join(".")}' is ${current}` };
+                  }
+                }
+
+                const isFunction = typeof current === "function";
+                let shouldCall = false;
+                if (shouldCallStr === "auto") {
+                  shouldCall = isFunction;
+                } else if (shouldCallStr === "true") {
+                  shouldCall = true;
+                }
+
+                if (shouldCall) {
+                  if (!isFunction) {
+                    return { __error: `'${targetPath}' is not a function` };
+                  }
+                  const returnValue = current.apply(parent, fnArgs);
+                  return safeSerialize(returnValue);
+                }
+
+                return safeSerialize(current);
               } catch (e) {
-                return { __error: "Execution failed: " + e.message };
+                return { __error: e.message };
               }
             },
-            args: [func, args],
+            args: [path, callFunction === undefined ? "auto" : callFunction ? "true" : "false", args || []],
           });
 
           return results[0]?.result;
         } catch (err) {
-          console.error("[Background] CSP-Safe Injection Error:", err);
           return { __error: err.message };
         }
       }

@@ -344,7 +344,7 @@ registerParser({
   authorsLinks: [""], // Contributors links (optional)
   description: "", // Short description of the parser (optional)
 
-  fn: async function ({ executeInMain, useSetting }) {
+  fn: async function ({ accessWindow, useSetting }) {
     /* --- USE CUSTOM SETTINGS ---
       To use custom settings in your parser (checkbox, text, or select), include useSetting in the parser function parameters: async function ({ useSetting })
       Example useSetting Types:
@@ -352,21 +352,27 @@ registerParser({
         const textExample = await useSetting("textVariable", "textLabel", "text", "Default text");
         const selectExample = await useSetting("selectVariable", "selectLabel", "select", [{ value: "example1", label: "Example Value", selected: true },{ value: "example2", label: "Example Value 2" }]);
 
-    /* --- EXECUTE IN MAIN ---
-    Use `executeInMain` to access page `window` variables or functions safely. 
-    Examples:
-      // Basic usage
-        const track = await executeInMain(() => window.player?.getCurrentTrack());
-
-      // Try/catch handling
-        let track;
-        try { track = await executeInMain(() => window.player.getCurrentTrack()); }
-        catch { track = defaultTrack; }
-
+    /* --- ACCESS WINDOW ---
+      Safely access window properties and call functions from main world. Returns the property value, function return value, or null if inaccessible/error
+      Examples:
+      // Get property
+        const prop = await accessWindow('prop');
+        const config = await accessWindow('ap.config.settings');
+  
+      // Call function (detects and calls automatically)
+        const audio = await accessWindow('player.getCurrentAudio');
+        const progress = await accessWindow('player.getCurrentProgress');
+  
+      // Call function with arguments
+        const result = await accessWindow('ap.setVolume', { args: [50] });
+        const data = await accessWindow('api.fetch', { args: ['songs', { limit: 10 }] });
+  
       // Parallel calls
-        const [track, playlist] = await Promise.all([
-        executeInMain(() => window.player.getCurrentTrack()),
-        executeInMain(() => window.player.getPlaylist())]);
+        const [audio, config, playlist] = await Promise.all([
+          accessWindow('player.getCurrentAudio'),
+          accessWindow('player.config'),
+          accessWindow('player.getPlaylist')
+        ]);
     */
 
     // You can define and use helper functions here if needed
