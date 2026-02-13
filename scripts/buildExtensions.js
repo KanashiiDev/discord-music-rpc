@@ -484,13 +484,13 @@ const pendingInlines = {};
 
   // Filter Manager
   inlineUtilsFunctions(
-    "settings/components/Filter/filter.js",
+    "settings/components/filter/filter.js",
     [
-      "settings/components/Filter/filterState.js",
-      "settings/components/Filter/filterController.js",
-      "settings/components/Filter/filterFormController.js",
-      "settings/components/Filter/filterParserController.js",
-      "settings/components/Filter/filterUtils.js",
+      "settings/components/filter/filterState.js",
+      "settings/components/filter/filterController.js",
+      "settings/components/filter/filterFormController.js",
+      "settings/components/filter/filterParserController.js",
+      "settings/components/filter/filterUtils.js",
     ],
     [],
     "start",
@@ -499,11 +499,11 @@ const pendingInlines = {};
 
   // Filter History Modal
   inlineUtilsFunctions(
-    "settings/components/Filter/components/History/history.js",
+    "settings/components/filter/components/history/history.js",
     [
-      "settings/components/Filter/components/History/historyState.js",
-      "settings/components/Filter/components/History/historyController.js",
-      "settings/components/Filter/components/History/historyRenderer.js",
+      "settings/components/filter/components/history/historyState.js",
+      "settings/components/filter/components/history/historyController.js",
+      "settings/components/filter/components/history/historyRenderer.js",
     ],
     [],
     "start",
