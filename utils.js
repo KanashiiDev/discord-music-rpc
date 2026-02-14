@@ -310,26 +310,34 @@ function saveListeningTime(song, listenedMs, historyFilePath) {
   }
 }
 
-function mergeHistories(serverHistory, browserHistory) {
+function mergeHistories(serverHistory = [], browserHistory = []) {
+  // Combine both arrays
+  const merged = [...browserHistory, ...serverHistory];
+  if (merged.length === 0) return [];
+
+  // Sort by date (oldest first, newest last)
+  merged.sort((a, b) => a.date - b.date);
+
+  // Remove duplicates and merge consecutive same songs
   const unique = [];
   const seenFull = new Set();
 
-  let i = 0,
-    j = serverHistory.length - 1;
+  for (const entry of merged) {
+    // Skip invalid entries
+    if (!entry || !entry.title || !entry.artist || !entry.source || !entry.date) continue;
 
-  // Process Browser and Server History
-  while (i < browserHistory.length || j >= 0) {
-    const entry = i < browserHistory.length ? browserHistory[i++] : serverHistory[j--];
-
-    // Skip the exact same entry
+    // Skip exact duplicates
     const fullKey = `${entry.title}_${entry.artist}_${entry.source}_${entry.date}`;
     if (seenFull.has(fullKey)) continue;
 
     const prev = unique[unique.length - 1];
 
     if (prev && prev.title === entry.title && prev.artist === entry.artist && prev.source === entry.source) {
-      // Consecutive same song → save the newest one
-      if (entry.date > prev.date) {
+      // Consecutive same song → prefer the one with total_listened_ms, otherwise newer
+      const prevMs = prev.total_listened_ms || 0;
+      const entryMs = entry.total_listened_ms || 0;
+
+      if (entryMs > 0 || prevMs === 0) {
         unique[unique.length - 1] = entry;
       }
     } else {

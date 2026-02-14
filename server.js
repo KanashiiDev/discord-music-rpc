@@ -569,8 +569,7 @@ app.post("/sync-history", (req, res) => {
     }
 
     const merged = mergeHistories(serverHistory, history);
-    const reversed = merged.reverse();
-    const historyData = JSON.stringify(reversed, null, 2);
+    const historyData = JSON.stringify(merged, null, 2);
 
     fs.writeFile(historyFilePath, historyData, "utf8", (writeErr) => {
       if (writeErr) {
