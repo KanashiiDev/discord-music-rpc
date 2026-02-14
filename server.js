@@ -170,6 +170,12 @@ app.post("/update-rpc", async (req, res) => {
       showSource: true,
       customCover: false,
       customCoverUrl: null,
+      customButton1: false,
+      customButton1Text: null,
+      customButton1Link: null,
+      customButton2: false,
+      customButton2Text: null,
+      customButton2Link: null,
       showButtons: true,
       showTimeLeft: true,
     };
@@ -244,6 +250,60 @@ app.post("/update-rpc", async (req, res) => {
     }
 
     // Buttons
+    // custom buttons override
+    const existingButtons = Array.isArray(data.buttons)
+      ? data.buttons.filter((btn) => btn && typeof btn === "object" && btn.text && String(btn.text).trim() && isValidUrl(btn.link))
+      : [];
+
+    const customButtons = [];
+
+    // Prepare customButton1
+    if (
+      activitySettings.customButton1 &&
+      activitySettings.customButton1Text &&
+      activitySettings.customButton1Text.trim() &&
+      isValidUrl(activitySettings.customButton1Link)
+    ) {
+      customButtons[0] = {
+        text: activitySettings.customButton1Text,
+        link: activitySettings.customButton1Link,
+      };
+    }
+
+    // Prepare customButton2
+    if (
+      activitySettings.customButton2 &&
+      activitySettings.customButton2Text &&
+      activitySettings.customButton2Text.trim() &&
+      isValidUrl(activitySettings.customButton2Link)
+    ) {
+      customButtons[1] = {
+        text: activitySettings.customButton2Text,
+        link: activitySettings.customButton2Link,
+      };
+    }
+
+    // Override logic
+    if (existingButtons.length === 0) {
+      // If there are no buttons, use custom buttons
+      data.buttons = customButtons.filter(Boolean);
+    } else if (existingButtons.length === 1) {
+      // If there is 1 button, add customButton1 below it
+      if (customButtons[0]) {
+        data.buttons = [existingButtons[0], customButtons[0]];
+      }
+    } else if (existingButtons.length >= 2) {
+      // If there are 2 buttons, override it
+      const finalButtons = [...existingButtons];
+      if (customButtons[0]) {
+        finalButtons[0] = customButtons[0];
+      }
+      if (customButtons[1]) {
+        finalButtons[1] = customButtons[1];
+      }
+      data.buttons = finalButtons.slice(0, 2);
+    }
+
     if (activitySettings.showButtons) {
       const buttonsRaw = (Array.isArray(data.buttons) ? data.buttons : []).filter((btn) => {
         return btn && typeof btn === "object" && btn.text && String(btn.text).trim() && isValidUrl(btn.link);

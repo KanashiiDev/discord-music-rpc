@@ -8,6 +8,12 @@ const DEFAULT_PARSER_OPTIONS = {
   showFavIcon: { label: "Show Small Site Icon", type: "checkbox", value: false },
   customCover: { label: "Custom Cover", type: "checkbox", value: false },
   customCoverUrl: { label: "Custom Cover URL", type: "text", value: "" },
+  customButton1: { label: "Enable Custom Button 1", type: "checkbox", value: false },
+  customButton1Text: { label: "Button 1 Text", type: "text", value: "" },
+  customButton1Link: { label: "Button 1 Link", type: "text", value: "" },
+  customButton2: { label: "Enable Custom Button 2", type: "checkbox", value: false },
+  customButton2Text: { label: "Button 2 Text", type: "text", value: "" },
+  customButton2Link: { label: "Button 2 Link", type: "text", value: "" },
 };
 
 // Logs
@@ -1530,16 +1536,27 @@ const simpleBarInstances = new WeakMap();
 const panelPromises = new WeakMap();
 const allPanels = new Set();
 
-async function activateSimpleBar(targetIds, timeout = 500, interval = 30, maxWaitMs = 1000) {
-  if (!Array.isArray(targetIds)) targetIds = [targetIds];
-  const ids = targetIds.map((id) => String(id).replace(/^#/, ""));
+async function activateSimpleBar(targets, timeout = 500, interval = 30) {
+  if (!Array.isArray(targets)) targets = [targets];
 
   const results = [];
 
-  for (const id of ids) {
+  for (const target of targets) {
     try {
-      // Find the element
-      const panel = document.getElementById(id);
+      let panel;
+      let id = null;
+
+      // If it is an HTMLElement, use it directly
+      if (target instanceof HTMLElement) {
+        panel = target;
+        id = panel.id || "(no-id)";
+      }
+      // If not, treat it as an id string
+      else {
+        id = String(target).replace(/^#/, "");
+        panel = document.getElementById(id);
+      }
+
       if (!panel) {
         results.push({ id, success: false, reason: "not_found" });
         continue;
@@ -1564,7 +1581,7 @@ async function activateSimpleBar(targetIds, timeout = 500, interval = 30, maxWai
       } else {
         // Clear the old instance
         if (instance?.unMount) {
-          instance.unMount?.();
+          instance.unMount();
           simpleBarInstances.delete(panel);
           panelPromises.delete(panel);
           panel.dataset.sbInit = "";
@@ -1580,21 +1597,28 @@ async function activateSimpleBar(targetIds, timeout = 500, interval = 30, maxWai
       // Update the padding
       await updatePanelPadding(panel, timeout, interval);
     } catch (error) {
-      results.push({ id, success: false, reason: "error", error: error.message });
+      results.push({
+        id: typeof target === "string" ? target : target?.id || null,
+        success: false,
+        reason: "error",
+        error: error.message,
+      });
     }
   }
 
   return results;
 }
+
 // Destroy Single Simplebar
 async function destroySimplebar(panelOrId) {
   const panel = typeof panelOrId === "string" ? document.getElementById(panelOrId) : panelOrId;
 
-  if (!panel || !simpleBarInstances.has(panel)) return;
+  if (!panel) return;
 
   const instance = simpleBarInstances.get(panel);
-  instance.el.querySelectorAll(":scope > .simplebar-track").forEach((el) => el.remove());
+  if (!instance) return;
   instance.unMount?.();
+  instance.el.querySelectorAll(":scope > .simplebar-track").forEach((el) => el.remove());
 
   await new Promise((r) => requestAnimationFrame(r));
   await new Promise((r) => setTimeout(r, 16));

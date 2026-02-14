@@ -239,20 +239,8 @@ const popupModule = {
         // Parser options
         const openOptions = e.target.closest(".parser-options.open");
         if (!openOptions) {
-          // If the clicked element is not inside an open parser-options
           document.querySelectorAll(".parser-options.open").forEach((optionsContainer) => {
-            const siteListContainer = document.getElementById("siteListContainer");
-            const searchBox = document.getElementById("searchBox");
-            const allEntries = document.querySelectorAll(".parser-entry");
-
-            optionsContainer.classList.remove("open");
-            optionsContainer.style.maxHeight = "0";
-            siteListContainer.style.transform = "translateY(0)";
-            siteListContainer.style.marginBottom = "";
-            searchBox.classList.remove("fading");
-            allEntries.forEach((entry) => {
-              entry.classList.remove("fading");
-            });
+            closeParserOptions(optionsContainer);
           });
         }
       }

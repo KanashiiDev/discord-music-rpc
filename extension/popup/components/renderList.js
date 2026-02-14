@@ -219,42 +219,45 @@ async function renderList(filteredList = null, isSearch = null) {
       e.stopPropagation();
 
       const isOpen = optionsContainer.classList.contains("open");
-      const siteList = document.getElementById("siteList");
-      const siteListContainer = document.getElementById("siteListContainer");
-      const searchBox = document.getElementById("searchBox");
+      const elements = {
+        siteList: document.getElementById("siteList"),
+        siteListContainer: document.getElementById("siteListContainer"),
+        searchBox: document.getElementById("searchBox"),
+      };
 
-      if (!isOpen) {
-        optionsContainer.classList.add("open");
-        wrapper.dataset.originalScrollTop = siteList.scrollTop;
-        const wrapperRect = wrapper.getBoundingClientRect();
-        const listRect = siteList.getBoundingClientRect();
-        wrapper.dataset.originalOffset = wrapperRect.top - listRect.top;
-        const targetOffset = -wrapper.dataset.originalOffset;
-
-        siteListContainer.style.transform = `translateY(${targetOffset}px)`;
-        siteListContainer.style.marginBottom = `-${-targetOffset}px`;
-
-        container.querySelectorAll(".parser-entry").forEach((el) => {
-          if (el !== wrapper) el.classList.add("fading");
-        });
-        searchBox?.classList.add("fading");
-        optionsContainer.style.maxHeight = optionsContainer.scrollHeight + "px";
-      } else {
-        optionsContainer.classList.remove("open");
-        optionsContainer.style.maxHeight = "0";
-        siteListContainer.style.transform = "translateY(0)";
-        siteListContainer.style.marginBottom = "";
-        searchBox?.classList.remove("fading");
-        container.querySelectorAll(".parser-entry").forEach((el) => el.classList.remove("fading"));
-
+      if (isOpen) {
+        closeParserOptions(optionsContainer);
         setTimeout(() => {
           const original = wrapper.dataset.originalScrollTop;
           if (original !== undefined) {
-            siteList.scrollTo({ top: original, behavior: "smooth" });
+            elements.siteList.scrollTo({ top: original, behavior: "smooth" });
           }
         }, 400);
+      } else {
+        openOptions(elements);
       }
     };
+
+    const openOptions = ({ siteList, siteListContainer, searchBox }) => {
+      optionsContainer.classList.add("open");
+
+      const wrapperRect = wrapper.getBoundingClientRect();
+      const listRect = siteList.getBoundingClientRect();
+      const targetOffset = listRect.top - wrapperRect.top;
+
+      wrapper.dataset.originalScrollTop = siteList.scrollTop;
+      wrapper.dataset.originalOffset = targetOffset;
+
+      siteListContainer.style.transform = `translateY(${targetOffset}px)`;
+      siteListContainer.style.marginBottom = `-${targetOffset}px`;
+      optionsContainer.style.maxHeight = optionsContainer.scrollHeight + "px";
+
+      container.querySelectorAll(".parser-entry").forEach((el) => {
+        if (el !== wrapper) el.classList.add("fading");
+      });
+      searchBox?.classList.add("fading");
+    };
+
     entryInner.append(favIconContainer, siteTitle);
     addListener(entryInner, "click", handleEntryInnerClick);
 
@@ -357,16 +360,108 @@ async function renderOptions(container, parserOptions, settingKey, addListener) 
     container.appendChild(defaultHeader);
   }
 
-  const defaultKeys = Object.keys(DEFAULT_PARSER_OPTIONS).filter((k) => !["customCover", "customCoverUrl"].includes(k));
+  // Default options
+  const defaultKeys = Object.keys(DEFAULT_PARSER_OPTIONS).filter(
+    (k) =>
+      !["customCover", "customCoverUrl", "customButton1", "customButton1Text", "customButton1Link", "customButton2", "customButton2Text", "customButton2Link"].includes(
+        k,
+      ),
+  );
+
   for (const key of defaultKeys) {
     await renderOption(key, parserOptions[key], container, settingKey, addListener);
   }
 
-  ["customCover", "customCoverUrl"].forEach((key) => {
+  // Custom Settings Accordion
+  const accordionContainer = document.createElement("div");
+  accordionContainer.className = "accordion-container";
+
+  const accordionHeader = document.createElement("h4");
+  accordionHeader.className = "accordion-header";
+
+  const accordionHeaderLabel = document.createElement("label");
+  accordionHeaderLabel.className = "accordion-header";
+  accordionHeaderLabel.textContent = "Custom Settings";
+
+  accordionHeader.append(accordionHeaderLabel, createSVG(svg_paths.forwardIconPaths));
+
+  const accordionContent = document.createElement("div");
+  accordionContent.className = "accordion-content";
+  accordionContent.style.display = "none";
+
+  const customSettingKeys = [
+    "customCover",
+    "customCoverUrl",
+    "customButton1",
+    "customButton1Text",
+    "customButton1Link",
+    "customButton2",
+    "customButton2Text",
+    "customButton2Link",
+  ];
+
+  customSettingKeys.forEach((key) => {
     if (parserOptions[key]) {
-      renderOption(key, parserOptions[key], container, settingKey, addListener);
+      renderOption(key, parserOptions[key], accordionContent, settingKey, addListener);
     }
   });
+
+  // Toggle accordion
+  addListener(accordionHeader, "click", () => {
+    toggleSettingAccordion(accordionHeader, accordionContent, container);
+  });
+
+  accordionContainer.append(accordionHeader, accordionContent);
+  container.appendChild(accordionContainer);
+}
+
+const closeParserOptions = (optionsContainer) => {
+  const siteListContainer = document.getElementById("siteListContainer");
+  const searchBox = document.getElementById("searchBox");
+
+  optionsContainer.classList.remove("open");
+  optionsContainer.style.maxHeight = "0";
+
+  siteListContainer.style.transform = "translateY(0)";
+  siteListContainer.style.marginBottom = "";
+
+  searchBox?.classList.remove("fading");
+  document.querySelectorAll(".parser-entry").forEach((el) => el.classList.remove("fading"));
+
+  toggleSettingAccordion(optionsContainer.querySelector(".accordion-header"), optionsContainer.querySelector(".accordion-content"), optionsContainer, 1);
+};
+
+function toggleSettingAccordion(accordionHeader, accordionContent, container, hide = false) {
+  const isOpen = accordionContent.style.display !== "none";
+  const hideAcc = () => {
+    accordionContent.style.maxHeight = "0";
+    accordionContent.style.opacity = "";
+    accordionHeader.querySelector("svg").style.transform = "rotate(90deg)";
+    if (!hide) container.style.maxHeight = container.scrollHeight + "px";
+    setTimeout(() => {
+      accordionContent.style.display = "none";
+    }, 300);
+  };
+
+  const showAcc = () => {
+    accordionContent.style.display = "block";
+    void accordionContent.offsetHeight;
+    accordionContent.style.opacity = "1";
+    accordionContent.style.maxHeight = accordionContent.scrollHeight + "px";
+    accordionHeader.querySelector("svg").style.transform = "rotate(270deg)";
+    container.style.maxHeight = container.scrollHeight + "px";
+  };
+
+  if (hide) {
+    hideAcc();
+    return;
+  }
+
+  if (isOpen) {
+    hideAcc();
+  } else {
+    showAcc();
+  }
 }
 
 async function renderOption(key, data, container, settingKey, addListener) {

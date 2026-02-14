@@ -107,6 +107,10 @@
 svg:not(.flatpickr-calendar svg) {
   display: block;
   place-self: center;
+  -webkit-transition: -webkit-transform 0.3s ease;
+  transition: -webkit-transform 0.3s ease;
+  transition: transform 0.3s ease;
+  transition: transform 0.3s ease, -webkit-transform 0.3s ease;
 }
 
 .popup-message {
