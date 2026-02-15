@@ -148,33 +148,108 @@ Moving the AppImage after first launch requires re-enabling "Run at Startup" in 
 ### Activity Not Showing in Discord?
 
 <details>
-<summary>Click to view common solutions</summary>
-
-**Check these first:**
+<summary><strong>Click to view common solutions</strong></summary>
 
 - Desktop app is running in system tray
-- Website is supported and extension is active
-- Song is playing and not muted
-- Music tab is not minimized
+- Website is supported and extension is enabled
+- A song is actually playing (not paused or muted)
+- The music tab is not minimized
 - **"Share my activity"** is enabled in Discord:
   - User Settings (gear icon) → Activity Privacy → Toggle on
-
-**Advanced fixes:**
-
 - If Discord runs as administrator, run Discord Music RPC as administrator too
-- Try factory reset: Extension popup → Settings → "Factory Reset"
 - Check logs for errors:
   - **Server logs:** Tray app → "Open logs" (Debug section)
   - **Extension logs:** Extension popup → Settings → Toggle "Activate Debug Mode" → Check browser console
 
+---
+
 </details>
 
+### Browser Related Issues
+
+Modern browsers use methods such as freezing background tabs and restricting JavaScript to save resources. This can cause issues with RPC updates.
+
+<details>
+<summary><strong>Chrome</strong></summary>
+
+#### Disable Memory Saver and Energy Saver
+
+1. Open:
+
+   ```
+   chrome://settings/performance
+   ```
+
+2. Turn **OFF "Memory Saver"**
+
+3. Turn **OFF "Energy Saver"**
+
 ---
+
+#### Add Site Exception
+
+1. Open:
+
+   ```
+   chrome://settings/performance
+   ```
+
+2. Click **"Add"** next to:
+
+   ```
+   Always keep these sites active
+   ```
+
+3. Add your music site
+
+---
+
+</details>
+
+<details>
+<summary><strong>Firefox</strong></summary>
+
+#### About Config Method
+
+1. Open:
+
+   ```
+   about:config
+   ```
+
+2. Click **Accept the Risk**
+3. Search and set these to `false`:
+
+   ```
+   dom.suspend_inactive.enabled
+   browser.tabs.freezeOnMinimize
+   ```
+
+---
+
+#### Performance Settings
+
+1. Open:
+
+   ```
+   about:preferences
+   ```
+
+2. Scroll to **Performance**
+3. Uncheck:
+
+   ```
+   Use recommended performance settings
+   ```
+
+---
+
+</details>
 
 ### Linux-Specific Issues
 
 <details>
-<summary>Click to view Linux troubleshooting</summary>
+<summary><strong>Click to view Linux troubleshooting</strong></summary>
 
 #### Quick Diagnostic (Recommended)
 
