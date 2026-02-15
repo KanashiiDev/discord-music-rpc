@@ -103,7 +103,7 @@
   animation: spin 1s linear infinite;
   margin: 40px auto;
 }
-
+/* autoprefixer: off */
 svg:not(.flatpickr-calendar svg) {
   display: block;
   place-self: center;
@@ -114,7 +114,7 @@ svg:not(.flatpickr-calendar svg) {
     transform 0.3s ease,
     -webkit-transform 0.3s ease;
 }
-
+/* autoprefixer: on */
 .popup-message {
   position: absolute;
   overflow: hidden;
