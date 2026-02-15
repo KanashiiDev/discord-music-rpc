@@ -5,9 +5,10 @@ import { initTheme, handleThemeToggle } from "./components/theme/theme.js";
 import { initSettingsUI } from "./components/settings/settings.js";
 import { initializeHistory } from "./components/history/history.js";
 import { initializeLogs } from "./components/logs/logs.js";
-import { updateDashboard } from "./components/dashboard/dashboard.js";
-import { updateMusicCard } from "./components/musicCard/musicCard.js";
+import { initDashboard } from "./components/dashboard/dashboard.js";
+import { initMusicCard } from "./components/musicCard/musicCard.js";
 import { updateHistoryChart } from "./components/chart/chartRenderer.js";
+import { FetchManager } from "./core/fetchManager.js";
 
 // EVENT DELEGATION
 function initEventListeners() {
@@ -32,27 +33,20 @@ function initEventListeners() {
 // LIFECYCLE CONTROLS
 export function startAutoUpdate() {
   stopAutoUpdate();
-  AppState.updateInterval = setInterval(updateMusicCard, 1000);
-  AppState.dashboardUpdateInterval = setInterval(updateDashboard, 3000);
+  FetchManager.startAll();
 }
 
 export function stopAutoUpdate() {
-  if (AppState.updateInterval) {
-    clearInterval(AppState.updateInterval);
-    AppState.updateInterval = null;
-  }
-  if (AppState.dashboardUpdateInterval) {
-    clearInterval(AppState.dashboardUpdateInterval);
-    AppState.dashboardUpdateInterval = null;
-  }
+  FetchManager.stopAll();
 }
 
 window.onload = async () => {
   initTheme();
   initEventListeners();
   initSettingsUI();
+  initDashboard();
+  initMusicCard();
   await Promise.allSettled([initializeHistory().catch(console.error), initializeLogs().catch(console.error)]);
-  await Promise.allSettled([updateDashboard(), updateMusicCard()]);
   await updateHistoryChart();
   startAutoUpdate();
 };

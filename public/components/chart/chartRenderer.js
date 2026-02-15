@@ -1,7 +1,7 @@
 import { HC_COLORS, HC_RANGES, chartState } from "./chart.js";
 import { hc_prepareData } from "./chartData.js";
 import { hc_showDetails, hc_hideDetails } from "./chartDetails.js";
-import { HistoryState } from "../history/history.js";
+import { DataStore } from "../../core/dataStore.js";
 import { getCSS } from "../../utils.js";
 
 // Destroy the current Chart.js instance if it exists
@@ -156,16 +156,16 @@ function switchHistoryChartRange(range) {
   drawHistoryChart(chartState.mode, range);
 }
 
-// Wait until HistoryState.fullData is populated
-async function hc_waitForData(maxMs = 10_000) {
-  const deadline = Date.now() + maxMs;
-  while (Date.now() < deadline) {
-    if (Array.isArray(HistoryState?.fullData)) return true;
-    await new Promise((r) => setTimeout(r, 300));
+// Redraw the chart
+function redrawChart() {
+  const historyData = DataStore.get("history");
+  if (historyData && Array.isArray(historyData) && historyData.length > 0) {
+    drawHistoryChart(chartState.mode, chartState.range);
   }
-  console.warn("[history-chart] Data load timed out.");
-  return false;
 }
+
+// DataStore subscription reference
+let historyUnsubscribe = null;
 
 // Main entry point – call once when the history panel opens
 export async function updateHistoryChart() {
@@ -202,12 +202,32 @@ export async function updateHistoryChart() {
   document.querySelectorAll(".chart-mode-btn").forEach((btn) => btn.classList.toggle("active", btn.dataset.mode === chartState.mode));
   document.querySelectorAll(".chart-range-btn").forEach((btn) => btn.classList.toggle("active", btn.dataset.range === chartState.range));
 
-  const ready = await hc_waitForData();
-  if (!ready) {
-    loadingEl.textContent = "Failed to load history data.";
-    loadingEl.classList.add("error");
-    return;
+  // Get history data from DataStore
+  const historyData = DataStore.get("history");
+
+  if (historyData && Array.isArray(historyData) && historyData.length > 0) {
+    // If there is data, draw it immediately
+    drawHistoryChart(chartState.mode, chartState.range);
+  } else {
+    loadingEl.style.display = "flex";
+    loadingEl.textContent = "Waiting for data…";
   }
 
-  drawHistoryChart(chartState.mode, chartState.range);
+  // Update the chart when the history data changes (subscribe only once)
+  if (!historyUnsubscribe) {
+    historyUnsubscribe = DataStore.subscribe("history", (newHistoryData) => {
+      if (newHistoryData && Array.isArray(newHistoryData) && newHistoryData.length > 0) {
+        // Redraw the chart when new data arrives
+        redrawChart();
+      }
+    });
+  }
+}
+
+export function destroyHistoryChart() {
+  hc_destroyChart();
+  if (historyUnsubscribe) {
+    historyUnsubscribe();
+    historyUnsubscribe = null;
+  }
 }

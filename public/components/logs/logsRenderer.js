@@ -1,4 +1,5 @@
 import { dom, simpleBars } from "../../core/dom.js";
+import { DataStore } from "../../core/dataStore.js";
 import { ScrollManager } from "../../manager/scrollManager.js";
 import { LogState } from "./logs.js";
 import { fullDateTime, relativeTime, updateSimpleBarPadding } from "../../utils.js";
@@ -56,8 +57,12 @@ export const LogRenderer = {
         if (LogState.fullData.length === 0 && !this.isFetching) {
           this.isFetching = true;
           try {
-            const response = await fetch("/logs");
-            LogState.fullData = (await response.json()).reverse();
+            const logsData = DataStore.get("logs");
+            if (logsData && Array.isArray(logsData)) {
+              LogState.fullData = [...logsData].reverse();
+            } else {
+              LogState.fullData = [];
+            }
 
             if (!this._scrollManagerActivated) {
               await ScrollManager.activate("logs", simpleBars.logs, LogRenderer, LogState, "logsWrapper", "logs");

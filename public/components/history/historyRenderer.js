@@ -1,4 +1,5 @@
 import { simpleBars } from "../../core/dom.js";
+import { DataStore } from "../../core/dataStore.js";
 import { ScrollManager } from "../../manager/scrollManager.js";
 import { HistoryState } from "../history/history.js";
 import { createHistoryItem } from "../history/historyItem.js";
@@ -33,9 +34,12 @@ export const HistoryRenderer = {
           targetContainer.appendChild(spinner);
 
           try {
-            const response = await fetch("/history");
-            const result = await response.json();
-            HistoryState.fullData = result.reverse();
+            const historyData = DataStore.get("history");
+            if (historyData && Array.isArray(historyData)) {
+              HistoryState.fullData = [...historyData].reverse();
+            } else {
+              HistoryState.fullData = [];
+            }
 
             await ScrollManager.activate("history", simpleBars.history, HistoryRenderer, HistoryState, "historyWrapper", "songs");
 
