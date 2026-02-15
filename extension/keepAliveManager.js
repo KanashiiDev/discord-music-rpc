@@ -2,17 +2,19 @@ class KeepAliveManager {
   constructor() {
     this.initialized = false;
     this.intervals = [];
-    this.workers = [];
+    this.oscillators = [];
     this.wakeLock = null;
     this.audioContext = null;
     this.videoElement = null;
-    this.sharedWorker = null;
-    this.loopInterval = 1000;
+    this.peerConnection = null;
+    this.rafId = null;
+    this.canvasRafId = null;
+    this.broadcastChannel = null;
   }
 
   log = async (...args) => {
     const stored = await browser.storage.local.get("debugMode");
-    const debugMode = stored.debugMode === 1 ? true : CONFIG.debugMode;
+    const debugMode = stored.debugMode === 1 ? true : typeof CONFIG !== "undefined" ? CONFIG.debugMode : false;
 
     if (!debugMode) return;
 
@@ -28,8 +30,9 @@ class KeepAliveManager {
     if (this.initialized) return;
     this.initialized = true;
 
+    this.initWebRTC();
     this.initAudioContext();
-    this.initVideoElement();
+    this.initCanvasVideo();
     this.requestWakeLock();
     this.startRAFLoop();
     this.initBroadcastChannel();
@@ -38,51 +41,110 @@ class KeepAliveManager {
     this.log("Keep alive initialized");
   }
 
+  async initWebRTC() {
+    try {
+      if (!window.RTCPeerConnection) {
+        return;
+      }
+
+      this.peerConnection = new RTCPeerConnection({
+        iceServers: [{ urls: "stun:stun.l.google.com:19302" }, { urls: "stun:stun1.l.google.com:19302" }],
+      });
+
+      this.peerConnection.createDataChannel("keepalive", {
+        ordered: false,
+        maxRetransmits: 0,
+      });
+
+      const keepAlive = async () => {
+        if (!this.peerConnection || this.peerConnection.connectionState === "closed") return;
+        try {
+          const offer = await this.peerConnection.createOffer({
+            offerToReceiveAudio: false,
+            offerToReceiveVideo: false,
+          });
+          await this.peerConnection.setLocalDescription(offer);
+        } catch (e) {
+          this.log("WebRTC offer error:", e.message);
+        }
+      };
+
+      await keepAlive();
+      const webRTCInterval = setInterval(keepAlive, 12000);
+      this.intervals.push(webRTCInterval);
+
+      const reconnectTimer = setInterval(() => {
+        if (!this.peerConnection || this.peerConnection.connectionState === "closed" || this.peerConnection.connectionState === "failed") {
+          this.peerConnection?.close();
+          this.peerConnection = new RTCPeerConnection({
+            iceServers: [{ urls: "stun:stun.l.google.com:19302" }, { urls: "stun:stun1.l.google.com:19302" }],
+          });
+
+          this.peerConnection.createDataChannel("keepalive", {
+            ordered: false,
+            maxRetransmits: 0,
+          });
+
+          keepAlive().catch((e) => this.log("Reconnect error:", e));
+        }
+      }, 30000);
+      this.intervals.push(reconnectTimer);
+    } catch (e) {
+      this.log("WebRTC initialization error:", e);
+    }
+  }
+
   initAudioContext() {
     try {
       this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
 
-      // Multiple oscillators - more activity
-      for (let i = 0; i < 3; i++) {
-        const oscillator = this.audioContext.createOscillator();
-        const gainNode = this.audioContext.createGain();
+      const oscillator = this.audioContext.createOscillator();
+      const gainNode = this.audioContext.createGain();
 
-        gainNode.gain.value = 0.0001; // Completely silent
-        oscillator.connect(gainNode);
-        gainNode.connect(this.audioContext.destination);
+      oscillator.frequency.value = 1;
 
-        oscillator.frequency.value = 20 + i; // Different frequencies
-        oscillator.start();
-      }
+      gainNode.gain.value = 0.000001;
 
-      this.log("AudioContext with multiple oscillators initialized");
+      oscillator.connect(gainNode);
+      gainNode.connect(this.audioContext.destination);
+
+      oscillator.start();
+      this.oscillators.push(oscillator);
     } catch (e) {
       this.log("AudioContext error:", e);
     }
   }
 
-  initVideoElement() {
+  initCanvasVideo() {
     try {
-      // Invisible video element
       this.videoElement = document.createElement("video");
-      this.videoElement.style.position = "fixed";
-      this.videoElement.style.top = "-1000px";
-      this.videoElement.style.width = "1px";
-      this.videoElement.style.height = "1px";
+      Object.assign(this.videoElement.style, {
+        position: "fixed",
+        top: "-1000px",
+        left: "-1000px",
+        width: "1px",
+        height: "1px",
+        opacity: "0",
+        pointerEvents: "none",
+      });
+
       this.videoElement.muted = true;
       this.videoElement.loop = true;
       this.videoElement.disablePictureInPicture = true;
       this.videoElement.setAttribute("disablePictureInPicture", "true");
 
-      // Block PiP events
+      const exitPiP = () => {
+        if (document.pictureInPictureElement === this.videoElement) {
+          document.exitPictureInPicture().catch(() => {});
+        }
+      };
+
       this.videoElement.addEventListener(
         "enterpictureinpicture",
         (e) => {
           e.preventDefault();
           e.stopImmediatePropagation();
-          if (document.pictureInPictureElement) {
-            document.exitPictureInPicture();
-          }
+          exitPiP();
         },
         true,
       );
@@ -96,188 +158,194 @@ class KeepAliveManager {
         true,
       );
 
-      // Create video stream from canvas
       const canvas = document.createElement("canvas");
-      canvas.width = 1;
-      canvas.height = 1;
+      canvas.width = canvas.height = 1;
       const ctx = canvas.getContext("2d");
 
-      // Draw something in each frame
-      const drawFrame = () => {
+      const draw = () => {
         ctx.fillStyle = `rgb(${Math.random() * 255},${Math.random() * 255},${Math.random() * 255})`;
         ctx.fillRect(0, 0, 1, 1);
-        requestAnimationFrame(drawFrame);
+        this.canvasRafId = requestAnimationFrame(draw);
       };
-      drawFrame();
+      draw();
 
-      // Convert the canvas to a video stream
-      const stream = canvas.captureStream(10); // 10 FPS
-      this.videoElement.srcObject = stream;
-      this.videoElement.play();
+      this.videoElement.srcObject = canvas.captureStream(4);
+      this.videoElement.play().catch(() => {});
 
-      document.body.appendChild(this.videoElement);
+      const target = document.body || document.documentElement;
+      if (target) {
+        target.appendChild(this.videoElement);
+      } else {
+        document.addEventListener(
+          "DOMContentLoaded",
+          () => {
+            const target = document.body || document.documentElement;
+            target?.appendChild(this.videoElement);
+          },
+          { once: true },
+        );
+      }
 
-      // Continuously check PiP
-      setInterval(() => {
-        if (document.pictureInPictureElement === this.videoElement) {
-          document.exitPictureInPicture().catch(() => {});
-        }
-      }, 100);
-
-      this.log("Video element with canvas stream initialized (PiP disabled)");
+      const pipInterval = setInterval(() => exitPiP(), 100);
+      this.intervals.push(pipInterval);
     } catch (e) {
-      this.log("Video element error:", e);
+      this.log("Canvas video error:", e);
     }
   }
 
   async requestWakeLock() {
-    if ("wakeLock" in navigator) {
+    if (!("wakeLock" in navigator)) return;
+
+    const acquire = async () => {
+      if (document.visibilityState !== "visible") return;
       try {
-        // Wake Lock only works when the page is visible
-        if (document.visibilityState === "visible") {
-          this.wakeLock = await navigator.wakeLock.request("screen");
-          this.log("Wake Lock acquired");
-
-          this.wakeLock.addEventListener("release", () => {
-            this.log("Wake Lock released");
-            this.wakeLock = null;
-          });
-        } else {
-          this.log("Wake Lock skipped (page not visible)");
-        }
-
-        // Try again on visibility change
-        document.addEventListener("visibilitychange", async () => {
-          if (document.visibilityState === "visible" && !this.wakeLock) {
-            try {
-              this.wakeLock = await navigator.wakeLock.request("screen");
-              this.log("Wake Lock re-acquired after visibility change");
-            } catch (e) {
-              this.log("Wake Lock re-acquire failed:", e.message);
-            }
-          }
+        this.wakeLock = await navigator.wakeLock.request("screen");
+        this.wakeLock.addEventListener("release", () => {
+          this.wakeLock = null;
         });
       } catch (e) {
         this.log("Wake Lock error:", e.message);
       }
-    }
+    };
+
+    await acquire();
+
+    document.addEventListener("visibilitychange", async () => {
+      if (document.visibilityState === "visible" && !this.wakeLock) {
+        await acquire();
+      }
+    });
+  }
+
+  startRAFLoop() {
+    const loop = () => {
+      let s = 0;
+      for (let i = 0; i < 15; i++) {
+        s += Math.random() * 0.1;
+      }
+      this.rafId = requestAnimationFrame(loop);
+    };
+    loop();
   }
 
   initBroadcastChannel() {
     try {
-      const channel = new BroadcastChannel("keepalive_channel");
+      this.broadcastChannel = new BroadcastChannel("keepalive_channel");
 
-      channel.onmessage = (e) => {
-        if (e.data.type === "ping") {
-          channel.postMessage({ type: "pong", time: Date.now() });
+      this.broadcastChannel.onmessage = (e) => {
+        if (e.data?.type === "ping") {
+          this.broadcastChannel.postMessage({ type: "pong", t: Date.now() });
         }
       };
 
-      setInterval(() => {
-        channel.postMessage({ type: "ping", time: Date.now() });
-      }, 1500);
+      const interval = setInterval(() => {
+        this.broadcastChannel.postMessage({ type: "ping", t: Date.now() });
+      }, 5000);
+      this.intervals.push(interval);
     } catch (e) {
       this.log("BroadcastChannel error:", e);
     }
   }
 
-  startRAFLoop() {
-    // requestAnimationFrame loop
-    const rafLoop = () => {
-      // A small calculation in every frame
-      let sum = 0;
-      for (let i = 0; i < 100; i++) {
-        sum += Math.random();
-      }
-
-      requestAnimationFrame(rafLoop);
-    };
-
-    rafLoop();
-    this.log("RAF loop started");
-  }
-
   createIndexedDBActivity() {
-    // Continuous IndexedDB operations
-    const dbInterval = setInterval(() => {
-      if (window.indexedDB) {
-        try {
-          const request = indexedDB.open("ActivityDB", 1);
-          request.onupgradeneeded = (e) => {
-            const db = e.target.result;
-            if (!db.objectStoreNames.contains("activity")) {
-              db.createObjectStore("activity", { keyPath: "id", autoIncrement: true });
-            }
-          };
-          request.onsuccess = (e) => {
-            const db = e.target.result;
+    const interval = setInterval(() => {
+      if (!window.indexedDB) return;
 
-            // Check if the object store exists
-            if (!db.objectStoreNames.contains("activity")) {
-              db.close();
-              return;
-            }
+      const req = indexedDB.open("KeepAliveDB", 1);
 
-            try {
-              const tx = db.transaction(["activity"], "readwrite");
-              const store = tx.objectStore("activity");
-
-              // Add data
-              store.add({ timestamp: Date.now(), data: Math.random() });
-
-              // Clear old data (keep only the last 10)
-              const getAllRequest = store.getAll();
-              getAllRequest.onsuccess = () => {
-                const records = getAllRequest.result;
-                if (records.length > 10) {
-                  for (let i = 0; i < records.length - 10; i++) {
-                    store.delete(records[i].id);
-                  }
-                }
-              };
-
-              tx.oncomplete = () => {
-                db.close();
-              };
-
-              tx.onerror = (err) => {
-                this.log("Transaction error:", err);
-                db.close();
-              };
-            } catch (txError) {
-              this.log("Transaction creation error:", txError);
-              db.close();
-            }
-          };
-          request.onerror = (e) => {
-            this.log("ActivityDB error:", e.target.error);
-          };
-        } catch (e) {
-          this.log("ActivityDB init error:", e);
+      req.onupgradeneeded = (e) => {
+        const db = e.target.result;
+        if (!db.objectStoreNames.contains("activity")) {
+          db.createObjectStore("activity", { keyPath: "id", autoIncrement: true });
         }
-      }
-    }, 4000);
+      };
 
-    this.intervals.push(dbInterval);
+      req.onsuccess = (e) => {
+        const db = e.target.result;
+        if (!db.objectStoreNames.contains("activity")) {
+          db.close();
+          return;
+        }
+
+        try {
+          const tx = db.transaction("activity", "readwrite");
+          const store = tx.objectStore("activity");
+
+          store.add({ ts: Date.now(), r: Math.random() });
+
+          store.getAll().onsuccess = (ev) => {
+            const recs = ev.target.result;
+            if (recs.length > 8) {
+              for (let i = 0; i < recs.length - 8; i++) {
+                store.delete(recs[i].id);
+              }
+            }
+          };
+
+          tx.oncomplete = () => db.close();
+          tx.onerror = () => db.close();
+        } catch (txError) {
+          this.log("IndexedDB transaction error:", txError);
+          db.close();
+        }
+      };
+
+      req.onerror = (e) => this.log("IndexedDB error:", e.target.error);
+    }, 12000);
+
+    this.intervals.push(interval);
   }
 
   destroy() {
     if (!this.initialized) return;
-    this.intervals.forEach((interval) => clearInterval(interval));
+    this.intervals.forEach(clearInterval);
+    this.intervals = [];
 
-    if (this.wakeLock) {
-      this.wakeLock.release();
+    if (this.rafId) {
+      cancelAnimationFrame(this.rafId);
+      this.rafId = null;
     }
 
+    if (this.canvasRafId) {
+      cancelAnimationFrame(this.canvasRafId);
+      this.canvasRafId = null;
+    }
+
+    if (this.wakeLock) {
+      this.wakeLock.release().catch(() => {});
+      this.wakeLock = null;
+    }
+
+    this.oscillators.forEach((osc) => {
+      try {
+        osc.stop();
+        osc.disconnect();
+      } catch (e) {}
+    });
+    this.oscillators = [];
+
     if (this.audioContext) {
-      this.audioContext.close();
+      this.audioContext.close().catch(() => {});
+      this.audioContext = null;
     }
 
     if (this.videoElement) {
       this.videoElement.pause();
       this.videoElement.srcObject = null;
       this.videoElement.remove();
+      this.videoElement = null;
     }
+
+    if (this.peerConnection) {
+      this.peerConnection.close();
+      this.peerConnection = null;
+    }
+
+    if (this.broadcastChannel) {
+      this.broadcastChannel.close();
+      this.broadcastChannel = null;
+    }
+
     this.initialized = false;
     this.log("Keep alive stopped");
   }
