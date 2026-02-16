@@ -18,8 +18,6 @@ const musicCardState = {
 };
 
 function updateMusicCardUI() {
-  if (document.hidden) return;
-
   const cardContainer = dom.musicCard.container;
   if (!cardContainer || cardContainer.offsetParent === null) return;
 
@@ -43,6 +41,9 @@ function updateMusicCardUI() {
       musicCardState.customStartTime = null;
       musicCardState.lastTrackId = null;
       musicCardState.lastKnownMusic.title = null;
+      musicCardState.lastKnownMusic.artist = null;
+      musicCardState.lastKnownMusic.source = null;
+      musicCardState.lastKnownMusic.cover = null;
       musicCardState.lastKnownMusic.start = null;
       musicCardState.lastKnownMusic.end = null;
     }
@@ -59,18 +60,28 @@ function updateMusicCardUI() {
   const source = act.largeImageText ?? "Unknown Source";
   const cover = act.largeImageKey ?? "assets/icon-dark.png";
 
-  if (title !== musicCardState.lastKnownMusic.title) dom.musicCard.trackTitle.textContent = title;
-  if (artist !== musicCardState.lastKnownMusic.artist) dom.musicCard.trackArtist.textContent = artist;
-  if (source !== musicCardState.lastKnownMusic.source) dom.musicCard.trackSource.textContent = source;
-  if (cover !== musicCardState.lastKnownMusic.cover) dom.musicCard.coverImage.src = cover;
+  // Update UI and state
+  if (title !== musicCardState.lastKnownMusic.title) {
+    dom.musicCard.trackTitle.textContent = title;
+    musicCardState.lastKnownMusic.title = title;
+  }
+  if (artist !== musicCardState.lastKnownMusic.artist) {
+    dom.musicCard.trackArtist.textContent = artist;
+    musicCardState.lastKnownMusic.artist = artist;
+  }
+  if (source !== musicCardState.lastKnownMusic.source) {
+    dom.musicCard.trackSource.textContent = source;
+    musicCardState.lastKnownMusic.source = source;
+  }
+  if (cover !== musicCardState.lastKnownMusic.cover) {
+    dom.musicCard.coverImage.src = cover;
+    musicCardState.lastKnownMusic.cover = cover;
+  }
 
   const trackId = `${title}__${artist}`;
   if (trackId !== musicCardState.lastTrackId) {
     musicCardState.lastTrackId = trackId;
     musicCardState.customStartTime = Date.now();
-
-    dom.musicCard.coverImage.src = cover;
-    musicCardState.lastKnownMusic.cover = cover;
   }
 
   if (act.startTimestamp && act.endTimestamp) {
@@ -125,11 +136,6 @@ function updateMusicCardUI() {
       btnDom.style.display = "none";
     }
   });
-
-  musicCardState.lastKnownMusic.title = title;
-  musicCardState.lastKnownMusic.artist = artist;
-  musicCardState.lastKnownMusic.source = source;
-  musicCardState.lastKnownMusic.cover = cover;
 }
 
 // UI update interval
