@@ -6,6 +6,7 @@ const DEFAULT_PARSER_OPTIONS = {
   showTimeLeft: { label: "Show Time Left", type: "checkbox", value: true },
   showButtons: { label: "Show Buttons", type: "checkbox", value: true },
   showFavIcon: { label: "Show Small Site Icon", type: "checkbox", value: false },
+  saveHistory: { label: "Save History", type: "checkbox", value: true },
   customCover: { label: "Custom Cover", type: "checkbox", value: false },
   customCoverUrl: { label: "Custom Cover URL", type: "text", value: "" },
   customButton1: { label: "Enable Custom Button 1", type: "checkbox", value: false },
@@ -14,6 +15,8 @@ const DEFAULT_PARSER_OPTIONS = {
   customButton2: { label: "Enable Custom Button 2", type: "checkbox", value: false },
   customButton2Text: { label: "Button 2 Text", type: "text", value: "" },
   customButton2Link: { label: "Button 2 Link", type: "text", value: "" },
+  customPlaceholder: { label: "Custom Placeholder", type: "checkbox", value: false },
+  customPlaceholderUrl: { label: "Custom Placeholder URL", type: "text", value: "" },
 };
 
 // Logs

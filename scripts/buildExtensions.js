@@ -399,6 +399,7 @@ const pendingInlines = {};
 
   // Background Utils
   inlineUtilsFunctions("background.js", "common/utils.js", [
+    "DEFAULT_PARSER_OPTIONS",
     "parseUrlPattern",
     "normalizeHost",
     "normalize",

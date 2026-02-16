@@ -50,15 +50,22 @@ async function scheduleHistoryAdd(tabId, songData) {
     return;
   }
 
-  if (now - tracker.startTime >= 15000) {
+  if (now - tracker.startTime >= 27000) {
     await historyMutex(async () => {
       try {
         const history = await historyData();
 
         const last = history[0];
         const sameAsLast = last && last.t === songData.title && last.a === songData.artist && last.s === songData.source;
+        const activeTab = state.activeTabMap.get(tabId);
+        let saveHistory = true;
 
-        if (!sameAsLast) {
+        if (activeTab?.parserId) {
+          const parserSettings = await getParserSettings(activeTab.parserId);
+          saveHistory = parserSettings?.saveHistory ?? true;
+        }
+
+        if (!sameAsLast && saveHistory) {
           // Add to History
           await addToHistory({
             image: songData.image,
@@ -138,21 +145,30 @@ async function loadParserList() {
 async function getParserSettings(parserId) {
   if (!parserId) return {};
 
-  const cached = state.parserMap[parserId]?.settings;
-  if (cached && Object.keys(cached).length > 0) {
-    return cached;
+  try {
+    const cached = state.parserMap?.[parserId]?.settings;
+    if (cached && Object.keys(cached).length > 0) {
+      return cached;
+    }
+
+    const storageResult = await browser.storage.local.get("parserSettings");
+    const parserSettings = storageResult?.parserSettings ?? {};
+
+    const parserKey = `settings_${parserId}`;
+    const rawSettings = parserSettings?.[parserKey] ?? {};
+
+    const parsedSettings =
+      typeof rawSettings === "object" && rawSettings !== null ? Object.fromEntries(Object.entries(rawSettings).map(([key, obj]) => [key, obj?.value])) : {};
+
+    if (state.parserMap?.[parserId]) {
+      state.parserMap[parserId].settings = parsedSettings;
+    }
+
+    return parsedSettings;
+  } catch (err) {
+    console.error("getParserSettings failed:", err);
+    return {};
   }
-
-  const { parserSettings = {} } = await browser.storage.local.get("parserSettings");
-  const parserKey = `settings_${parserId}`;
-  const rawSettings = parserSettings[parserKey] || {};
-  const parsedSettings = Object.fromEntries(Object.entries(rawSettings).map(([key, obj]) => [key, obj.value]));
-
-  if (state.parserMap[parserId]) {
-    state.parserMap[parserId].settings = parsedSettings;
-  }
-
-  return parsedSettings;
 }
 
 // Load the parsers once, return true if they exist.
@@ -413,12 +429,14 @@ const updateRpc = async (data, tabId) => {
     }
 
     const parserSettings = await getParserSettings(parserId);
+    const defaultParserSettings = Object.fromEntries(Object.entries(DEFAULT_PARSER_OPTIONS).map(([key, option]) => [key, option.value]));
 
     const payload = {
       data: {
         ...data,
         status: data.playStatus ?? base?.isAudioPlaying ?? false,
         settings: parserSettings,
+        settingsDefault: defaultParserSettings,
       },
       clientId: `tab_${tabId}`,
       timestamp: Date.now(),

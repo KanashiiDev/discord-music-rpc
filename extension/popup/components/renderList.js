@@ -361,12 +361,7 @@ async function renderOptions(container, parserOptions, settingKey, addListener) 
   }
 
   // Default options
-  const defaultKeys = Object.keys(DEFAULT_PARSER_OPTIONS).filter(
-    (k) =>
-      !["customCover", "customCoverUrl", "customButton1", "customButton1Text", "customButton1Link", "customButton2", "customButton2Text", "customButton2Link"].includes(
-        k,
-      ),
-  );
+  const defaultKeys = Object.keys(DEFAULT_PARSER_OPTIONS).filter((k) => !k.startsWith("custom"));
 
   for (const key of defaultKeys) {
     await renderOption(key, parserOptions[key], container, settingKey, addListener);
@@ -389,16 +384,7 @@ async function renderOptions(container, parserOptions, settingKey, addListener) 
   accordionContent.className = "accordion-content";
   accordionContent.style.display = "none";
 
-  const customSettingKeys = [
-    "customCover",
-    "customCoverUrl",
-    "customButton1",
-    "customButton1Text",
-    "customButton1Link",
-    "customButton2",
-    "customButton2Text",
-    "customButton2Link",
-  ];
+  const customSettingKeys = Object.keys(DEFAULT_PARSER_OPTIONS).filter((k) => k.startsWith("custom"));
 
   customSettingKeys.forEach((key) => {
     if (parserOptions[key]) {

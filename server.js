@@ -22,7 +22,7 @@ const CLIENT_TIMEOUT = 30000; // 30 seconds
 const AUTO_CLEAR_TIMEOUT = 24000; // 24 seconds
 const STUCK_TIMEOUT = 12000; // 12 seconds
 const MAX_CLEAR_RETRIES = 3;
-const HISTORY_SAVE_TIMEOUT = 25000;
+const HISTORY_SAVE_TIMEOUT = 27000;
 let reconnectScheduled = false;
 let historyTimeout = null;
 const settingsFilePath = process.env.SETTINGS_FILE_PATH;
@@ -60,6 +60,7 @@ let isShuttingDown = false;
 let shutdownPromise = null;
 let currentActivity = null;
 let lastActiveClient = null;
+let isHistorySaveEnabled = true;
 let lastSavedHistoryEntry = null;
 let lastUpdateAt = null;
 let healthCheckInterval = null;
@@ -161,29 +162,12 @@ app.post("/update-rpc", async (req, res) => {
     const dataSource = String(data.source || "").trim();
     const artistIsMissingOrSame = artistIsIntentionallyEmpty || dataArtist === dataTitle;
     const dataSettings = data.settings;
-
-    // Default settings
-    const defaultSettings = {
-      showFavIcon: false,
-      showArtist: true,
-      showCover: true,
-      showSource: true,
-      customCover: false,
-      customCoverUrl: null,
-      customButton1: false,
-      customButton1Text: null,
-      customButton1Link: null,
-      customButton2: false,
-      customButton2Text: null,
-      customButton2Link: null,
-      showButtons: true,
-      showTimeLeft: true,
-    };
-
+    const defaultSettings = data.settingsDefault;
     const activitySettings = {
-      ...defaultSettings,
+      ...(defaultSettings && typeof defaultSettings === "object" ? defaultSettings : {}),
       ...(dataSettings && typeof dataSettings === "object" ? dataSettings : {}),
     };
+    isHistorySaveEnabled = activitySettings.saveHistory ?? true;
 
     const shouldShowArtist = !artistIsMissingOrSame && activitySettings.showArtist;
 
@@ -228,6 +212,8 @@ app.post("/update-rpc", async (req, res) => {
       activity.largeImageKey = String(activitySettings.customCoverUrl);
     } else if (activitySettings.showCover && data.image && !/\.webp(\?.*)?$/i.test(data.image)) {
       activity.largeImageKey = String(data.image);
+    } else if (activitySettings.customPlaceholder && activitySettings.customPlaceholderUrl) {
+      activity.largeImageKey = String(activitySettings.customPlaceholderUrl);
     }
 
     // Large image text
@@ -367,10 +353,10 @@ app.post("/update-rpc", async (req, res) => {
         }
         historySaveLock = false;
 
-        // Save song after 25 seconds
+        // Save song after 27 seconds
         historyTimeout = setTimeout(() => {
-          if (!isSameActivityIgnore(activity, lastSavedHistoryEntry)) {
-            // 25 seconds have passed and it's still the same song - unlock
+          if (!isSameActivityIgnore(activity, lastSavedHistoryEntry) && isHistorySaveEnabled) {
+            // 27 seconds have passed and it's still the same song - unlock
             historySaveLock = true;
             addHistoryEntry(activity, historyFilePath);
             lastSavedHistoryEntry = JSON.parse(JSON.stringify(activity));
@@ -383,7 +369,7 @@ app.post("/update-rpc", async (req, res) => {
 
         historySaveLock = true;
         historyTimeout = setTimeout(() => {
-          if (!isSameActivityIgnore(activity, lastSavedHistoryEntry)) {
+          if (!isSameActivityIgnore(activity, lastSavedHistoryEntry) && isHistorySaveEnabled) {
             addHistoryEntry(activity, historyFilePath);
             lastSavedHistoryEntry = JSON.parse(JSON.stringify(activity));
           }

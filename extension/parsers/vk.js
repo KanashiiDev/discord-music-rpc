@@ -13,7 +13,7 @@ window.registerParser({
       artist: ap[4],
       duration: ap[5] || 0,
       timePassed: Math.floor(progress * (ap[5] || 0)),
-      image: ap[14]?.split(",")[0] || null,
+      image: ap[14]?.split(",")[0] || "https://cdn.discordapp.com/app-assets/1366752683628957767/1472958246636617829.png?size=160",
       songUrl: `https://vk.com/audio${ap[26]}`,
       source: "VK",
     };

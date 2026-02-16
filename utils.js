@@ -273,8 +273,8 @@ function saveListeningTime(song, listenedMs, historyFilePath) {
     return;
   }
 
-  // Do not save the song if it has been played for less than 25 seconds or more than 24 hours
-  if (listenedMs < 25000 || listenedMs > 86400000) {
+  // Do not save the song if it has been played for less than 27 seconds or more than 24 hours
+  if (listenedMs < 27000 || listenedMs > 86400000) {
     return;
   }
 
