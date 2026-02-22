@@ -224,7 +224,10 @@ const clearRpcForTab = async (tabId, reason = "Tab closed") => {
     try {
       // Clear pending update timeouts
       const pending = state.pendingUpdates.get(tabId);
-      if (pending?.timeout) clearTimeout(pending.timeout);
+      if (pending?.timeout) {
+        clearTimeout(pending.timeout);
+        logInfo(`clearRpcForTab: cleared pending update for tab ${tabId}`);
+      }
       state.pendingUpdates.delete(tabId);
 
       // if there is an audible timer, cancel it
@@ -237,7 +240,9 @@ const clearRpcForTab = async (tabId, reason = "Tab closed") => {
       const controller = state.pendingFetches.get(tabId);
       if (controller) {
         controller.abort();
+        logInfo(`clearRpcForTab: aborted fetch for tab ${tabId}`);
       }
+      state.pendingFetches.delete(tabId);
 
       if (wasActive) {
         let tab;
@@ -287,7 +292,6 @@ const clearRpcForTab = async (tabId, reason = "Tab closed") => {
     } finally {
       state.activeTabMap.delete(tabId);
       state.pendingClear.delete(tabId);
-      state.pendingFetches.delete(tabId);
       state.cleanupQueue.delete(tabId);
       state.historyCounters.delete(tabId);
 
@@ -391,10 +395,15 @@ const updateActiveTabMap = async (state, tabs) => {
 
 // RPC Update
 const updateRpc = async (data, tabId) => {
-  const existing = state.pendingFetches.get(tabId);
-  if (existing) {
-    existing.abort();
+  try {
+    await browser.tabs.get(tabId);
+  } catch (err) {
+    logInfo(`updateRpc: tab ${tabId} not found in browser, aborting`);
+    return;
   }
+
+  const existing = state.pendingFetches.get(tabId);
+  if (existing) existing.abort();
 
   const controller = new AbortController();
   state.pendingFetches.set(tabId, controller);
@@ -466,11 +475,32 @@ const updateRpc = async (data, tabId) => {
 
 // Schedule RPC Update - It is used on the backgroundListeners.js SetupListeners side.
 const scheduleRpcUpdate = (data, tabId) => {
-  const current = state.pendingUpdates.get(tabId);
+  if (state.pendingClear.has(tabId)) {
+    logInfo(`scheduleRpcUpdate: tab ${tabId} is being cleared, skipping`);
+    return;
+  }
 
+  if (!state.activeTabMap.has(tabId)) {
+    logInfo(`scheduleRpcUpdate: tab ${tabId} not in activeTabMap, skipping`);
+    return;
+  }
+
+  const current = state.pendingUpdates.get(tabId);
   if (current?.timeout) clearTimeout(current.timeout);
 
   const timeout = setTimeout(() => {
+    if (state.pendingClear.has(tabId)) {
+      logInfo(`scheduleRpcUpdate: tab ${tabId} cleared during wait, aborting update`);
+      state.pendingUpdates.delete(tabId);
+      return;
+    }
+
+    if (!state.activeTabMap.has(tabId)) {
+      logInfo(`scheduleRpcUpdate: tab ${tabId} removed during wait, aborting update`);
+      state.pendingUpdates.delete(tabId);
+      return;
+    }
+
     state.pendingUpdates.delete(tabId);
     updateRpc(data, tabId).catch(logError);
   }, 500);

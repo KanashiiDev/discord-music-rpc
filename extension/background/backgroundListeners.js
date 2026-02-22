@@ -501,7 +501,6 @@ const handleUpdateRpc = async (req, sender) => {
 
   const tabId = tab.id;
   // Get the tab info
-  await delay(1000); // Delay to allow audible info to be ready
   let tabInfo;
   try {
     tabInfo = await browser.tabs.get(tabId);
@@ -604,6 +603,15 @@ const handleUpdateRpcPort = async (req) => {
   } catch (err) {
     console.error("Update port error:", err);
     return { success: false, error: err.message };
+  }
+};
+
+const handleIsTabAudible = async (sender) => {
+  try {
+    const tab = await getSenderTab(sender);
+    return { audible: tab?.audible ?? false };
+  } catch {
+    return { audible: false };
   }
 };
 
@@ -847,6 +855,9 @@ const setupListeners = () => {
           case "UPDATE_RPC_PORT":
             result = await handleUpdateRpcPort(req);
             break;
+          case "IS_TAB_AUDIBLE":
+            result = await handleIsTabAudible(sender);
+            break;
           default:
             result = { ok: false, error: "Unknown message type" };
         }
@@ -891,7 +902,7 @@ const setupListeners = () => {
   });
 
   // onRemoved
-  browser.tabs.onRemoved.addListener((tabId) => {
+  browser.tabs.onRemoved.addListener(async (tabId) => {
     if (typeof tabId !== "number" || tabId <= 0) return;
 
     // Cancel pending network operations
@@ -900,14 +911,14 @@ const setupListeners = () => {
     state.pendingFetches.delete(tabId);
 
     // Clear RPC
-    clearRpcForTab(tabId, "tab removed").catch(logError);
+    await clearRpcForTab(tabId, "tab removed").catch(logError);
 
     // Clean URL cache
     state.tabUrlMap.delete(tabId);
   });
 
   // onUpdated
-  browser.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+  browser.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
     const tabState = state.activeTabMap.get(tabId);
     if (!tabState) return;
 
@@ -924,7 +935,7 @@ const setupListeners = () => {
           state.audibleTimers.delete(tabId);
         }
 
-        clearRpcForTab(tabId, "tab muted").catch(logError);
+        await clearRpcForTab(tabId, "tab muted").catch(logError);
         tabState.isAudioPlaying = false;
         state.activeTabMap.set(tabId, tabState);
         return;
@@ -969,8 +980,7 @@ const setupListeners = () => {
           state.audibleTimers.delete(tabId);
         }
 
-        clearRpcForTab(tabId, "domain/navigation changed").catch(logError);
-        state.activeTabMap.delete(tabId);
+        await clearRpcForTab(tabId, "domain/navigation changed").catch(logError);
         state.tabUrlMap.set(tabId, newUrl);
         return;
       }

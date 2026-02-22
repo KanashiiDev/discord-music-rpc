@@ -105,10 +105,14 @@ async function mainLoop() {
     if (!song) {
       logInfo("mainLoop: no valid song data", song);
 
-      if (rpcState.lastActivity?.lastUpdated && !rpcState.cleared) {
-        logInfo("mainLoop: had previous activity, handling no song");
-        await handleNoSong();
+      if (rpcState.lastActivity?.lastUpdated) {
+        const timeSinceLastActivity = Date.now() - rpcState.lastActivity.lastUpdated;
+        if (timeSinceLastActivity > CONSTANTS.ACTIVE_INTERVAL) {
+          logInfo(`mainLoop: no activity for ${Math.round(timeSinceLastActivity / 1000)}s, clearing RPC`);
+          await handleNoSong();
+        }
       }
+
       state.lastRawPosition = null;
       return;
     }
@@ -331,6 +335,18 @@ async function mainLoop() {
         updateReason = "Normal Progress (10s interval)";
       }
     }
+
+    // Audible Check
+    try {
+      const audibleCheck = await browser.runtime.sendMessage({
+        type: "IS_TAB_AUDIBLE",
+      });
+
+      if (!audibleCheck?.audible && updateReason !== "First Update") {
+        shouldUpdate = false;
+        updateReason = "Tab not audible";
+      }
+    } catch (_) {}
 
     if (!shouldUpdate) {
       if (!updateReason) updateReason = "Update skipped (interval not reached)";
