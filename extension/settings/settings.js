@@ -54,4 +54,5 @@ window.addEventListener("load", async () => {
   applySectionFromUrl();
   initFilter();
   initHistoryModal();
+  initBackupButtons();
 });

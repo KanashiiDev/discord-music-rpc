@@ -457,8 +457,3 @@ const statsModule = {
     });
   },
 };
-
-// Add the date picker when the page loads
-document.addEventListener("DOMContentLoaded", () => {
-  statsModule.init();
-});

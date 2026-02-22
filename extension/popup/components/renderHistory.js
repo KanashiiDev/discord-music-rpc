@@ -20,6 +20,11 @@ async function renderHistory({ reset = true, query = "" } = {}) {
   const spinner = document.createElement("div");
   spinner.className = "spinner";
 
+  if (!filterBtn.dataset.listenerAdded) {
+    filterBtn.addEventListener("click", handleFilterButtonClick);
+    filterBtn.dataset.listenerAdded = "true";
+  }
+
   if (cleaningMode) {
     if (panel._cleanupCheckboxListener) panel._cleanupCheckboxListener();
     if (panel._cleanupTrashListener) panel._cleanupTrashListener();
@@ -516,8 +521,6 @@ const handleFilterButtonClick = async (e) => {
   }
   await activateSimpleBar("historyFilterMenuContent");
 };
-
-filterBtn.addEventListener("click", handleFilterButtonClick);
 
 // Create History Entry
 function createHistoryEntry(entry, historyIndex, type, filteredHistory = []) {
