@@ -114,7 +114,7 @@ async function toggleArtistStats(artistName, artistId, range, customStart, custo
   }
 
   // Open
-  const filteredHistory = filterHistoryByRange(fullHistory, range, customStart, customEnd);
+  const filteredHistory = filterHistoryByRange(historyState.fullHistory, range, customStart, customEnd);
   const artistSongs = filteredHistory.filter((e) => normalizeArtistName(e.a) === artistName);
   const grouped = Object.create(null);
   for (const e of artistSongs) {
@@ -328,7 +328,7 @@ const handleDropdownMenuClick = async (e) => {
     spinner.className = "spinner";
     container.appendChild(spinner);
 
-    await renderTopStats(fullHistory, range);
+    await renderTopStats(historyState.fullHistory, range);
 
     const cloned = container.cloneNode(true);
     statsModule._topStatsCache.set(cacheKey, cloned);
@@ -378,7 +378,7 @@ const handleApplyCustomRange = async () => {
   spinner.className = "spinner";
   container.appendChild(spinner);
 
-  await renderTopStats(fullHistory, "custom", 5, statsModule.currentCustomStart, statsModule.currentCustomEnd);
+  await renderTopStats(historyState.fullHistory, "custom", 5, statsModule.currentCustomStart, statsModule.currentCustomEnd);
 
   // Save to cache
   const cloned = container.cloneNode(true);

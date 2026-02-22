@@ -1,0 +1,189 @@
+let historyPanel, clearBtn, cancelCleanBtn, filterBtn, filterMenu, filterMenuContent;
+
+function initHistoryHandlers() {
+  historyPanel = document.getElementById("historyPanel");
+  clearBtn = document.getElementById("clearHistoryBtn");
+  cancelCleanBtn = document.getElementById("cancelCleanBtn");
+  filterBtn = document.getElementById("historyFilterBtn");
+  filterMenu = document.getElementById("historyFilterMenu");
+  filterMenuContent = document.getElementById("historyFilterMenuContent");
+
+  clearBtn.addEventListener("click", handleClearButtonClick);
+  cancelCleanBtn.addEventListener("click", exitCleaningMode);
+}
+
+function attachCheckboxListeners() {
+  historyPanel._cleanupCheckboxListener?.();
+  historyPanel._cleanupTrashListener?.();
+
+  if (!historyPanel._checkboxListenerAttached) {
+    const handlePanelChange = (e) => {
+      if (!historyState.cleaningMode || !e.target.matches(".history-checkbox")) return;
+      const entry = e.target.closest(".history-entry");
+      entry?.classList.toggle("selected", e.target.checked);
+      updateClearBtnText();
+    };
+    historyPanel.addEventListener("change", handlePanelChange);
+    historyPanel._checkboxListenerAttached = true;
+    historyPanel._cleanupCheckboxListener = () => {
+      historyPanel.removeEventListener("change", handlePanelChange);
+      historyPanel._checkboxListenerAttached = false;
+    };
+  }
+
+  // Inject trash icons
+  historyPanel.querySelectorAll(".history-entry").forEach((entry) => {
+    if (entry.querySelector(".history-trash")) return;
+    const cb = entry.querySelector(".history-checkbox");
+    const trashIcon = document.createElement("span");
+    trashIcon.className = "history-trash";
+    trashIcon.appendChild(createSVG(svg_paths.trashIconPaths));
+    const cbId = cb.id || `cb-${Date.now()}-${Math.random()}`;
+    cb.id ||= cbId;
+    trashIcon.dataset.checkboxFor = cbId;
+    cb.insertAdjacentElement("afterend", trashIcon);
+  });
+
+  if (!historyPanel._trashClickListenerAttached) {
+    const handleTrashClick = (e) => {
+      const trashIcon = e.target.closest(".history-trash");
+      if (!trashIcon) return;
+      const cb = document.getElementById(trashIcon.dataset.checkboxFor);
+      if (!cb) return;
+      cb.checked = !cb.checked;
+      cb.closest(".history-entry")?.classList.toggle("selected", cb.checked);
+      updateClearBtnText();
+    };
+    historyPanel.addEventListener("click", handleTrashClick);
+    historyPanel._trashClickListenerAttached = true;
+    historyPanel._cleanupTrashListener = () => {
+      historyPanel.removeEventListener("click", handleTrashClick);
+      historyPanel._trashClickListenerAttached = false;
+    };
+  }
+}
+
+function updateClearBtnText() {
+  if (!historyState.cleaningMode) return;
+  const selectedCount = document.querySelectorAll(".history-checkbox:checked").length;
+  clearBtn.textContent = selectedCount > 0 ? `Delete Selected (${selectedCount})` : "Delete All";
+}
+
+function exitCleaningMode() {
+  historyState.cleaningMode = false;
+  document.body.classList.remove("cleaning-mode");
+  clearBtn.textContent = "Clear History";
+  cancelCleanBtn.style.display = "none";
+  document.querySelectorAll(".history-checkbox").forEach((cb) => {
+    cb.parentElement?.classList.remove("selected");
+    cb.checked = false;
+  });
+  historyPanel._cleanupCheckboxListener?.();
+  historyPanel._cleanupTrashListener?.();
+  activateSimpleBar("historyPanel");
+}
+
+const handleClearButtonClick = async () => {
+  if (!historyState.cleaningMode && historyState.fullHistory.length) {
+    historyState.cleaningMode = true;
+    document.body.classList.add("cleaning-mode");
+    cancelCleanBtn.style.display = "inline-block";
+    updateClearBtnText();
+    attachCheckboxListeners();
+    await activateSimpleBar("historyPanel");
+    return;
+  }
+
+  if (!historyState.fullHistory.length) {
+    alert("History is already empty.");
+    exitCleaningMode();
+    return;
+  }
+
+  const selectedIndexes = Array.from(document.querySelectorAll(".history-checkbox:checked"))
+    .filter((cb) => cb.closest(".history-entry")?.style.display !== "none")
+    .map((cb) => parseInt(cb.dataset.index));
+
+  if (selectedIndexes.length === 0) {
+    if (historyState.isFiltering) {
+      const filteredSet = new Set(historyState.filteredHistory.map((e) => historyState.fullHistory.indexOf(e)));
+      if (!confirm(`Are you sure you want to delete ${filteredSet.size} entries from the current filtered list?`)) return;
+      historyState.fullHistory = historyState.fullHistory.filter((_, i) => !filteredSet.has(i));
+    } else {
+      if (!confirm(`Are you sure you want to delete all ${historyState.fullHistory.length} history entries?`)) return;
+      historyState.fullHistory = [];
+    }
+  } else {
+    const indexSet = new Set(selectedIndexes);
+    if (!confirm(`Are you sure you want to delete ${selectedIndexes.length} history ${selectedIndexes.length > 1 ? "entries" : "entry"}?`)) return;
+    historyState.fullHistory = historyState.fullHistory.filter((_, i) => !indexSet.has(i));
+  }
+
+  historyState.isFiltering = false;
+  historyState.selectedSources.clear();
+  historyState.filteredHistory = [];
+  document.querySelector("#historySearchBox").value = "";
+  await sendAction("saveHistory", { data: historyState.fullHistory });
+
+  historyPanel._cleanupCheckboxListener?.();
+  historyPanel._cleanupTrashListener?.();
+
+  await renderHistory();
+  exitCleaningMode();
+};
+
+function renderSourceFilterMenu() {
+  const { selectedSources } = historyState;
+  filterMenuContent.innerHTML = "";
+
+  const sources = [...new Set(historyState.fullHistory.map((e) => e.s))].sort((a, b) => {
+    const diff = (selectedSources.has(a) ? 0 : 1) - (selectedSources.has(b) ? 0 : 1);
+    return diff !== 0 ? diff : a.localeCompare(b);
+  });
+
+  if (!document.querySelector(".history-filter")) {
+    filterBtn.className = "history-filter";
+    filterBtn.appendChild(createSVG(svg_paths.filterIconPaths));
+  }
+
+  if (filterMenuContent._sourceChangeListener) {
+    filterMenuContent.removeEventListener("change", filterMenuContent._sourceChangeListener);
+  }
+
+  const handleSourceCheckboxChange = async (e) => {
+    if (e.target.type !== "checkbox") return;
+    e.target.checked ? selectedSources.add(e.target.value) : selectedSources.delete(e.target.value);
+
+    historyState.activeScrollCleanup?.();
+    historyState.activeScrollCleanup = null;
+
+    await renderHistory({ reset: true, query: document.getElementById("historySearchBox").value });
+    await destroyOtherSimpleBars();
+    await activateSimpleBar(["historyPanel", "historyFilterMenuContent"]);
+    await activateHistoryScroll();
+  };
+
+  filterMenuContent._sourceChangeListener = handleSourceCheckboxChange;
+  filterMenuContent.addEventListener("change", handleSourceCheckboxChange);
+
+  const fragment = document.createDocumentFragment();
+  sources.forEach((src) => {
+    const label = document.createElement("label");
+    const cb = Object.assign(document.createElement("input"), {
+      type: "checkbox",
+      value: src,
+      checked: selectedSources.has(src),
+    });
+    const span = Object.assign(document.createElement("span"), { textContent: src });
+    label.append(cb, " ", span);
+    fragment.appendChild(label);
+  });
+  filterMenuContent.appendChild(fragment);
+}
+
+const handleFilterButtonClick = async (e) => {
+  e.stopPropagation();
+  filterMenu.classList.toggle("open");
+  filterMenu.style.height = filterMenu.classList.contains("open") ? `${Math.min(filterMenuContent.scrollHeight, 160)}px` : "0";
+  await activateSimpleBar("historyFilterMenuContent");
+};

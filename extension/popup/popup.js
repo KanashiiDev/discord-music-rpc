@@ -110,8 +110,8 @@ const sectionManager = {
     // Section-specific Operations
     switch (newSection) {
       case "main":
-        isFiltering = false;
-        selectedSources.clear();
+        historyState.isFiltering = false;
+        historyState.selectedSources.clear();
         exitCleaningMode();
         await renderList();
         await activateSimpleBar("siteList");
@@ -128,8 +128,8 @@ const sectionManager = {
       case "stats":
         statsModule.init();
         res = await sendAction("loadHistory");
-        fullHistory = res.data;
-        await renderTopStats(fullHistory, "day");
+        historyState.fullHistory = res.data;
+        await renderTopStats(historyState.fullHistory, "day");
         await activateSimpleBar("historyStatsPanel");
         break;
 
@@ -167,9 +167,9 @@ const popupModule = {
     // History Search Box
     const historySearchInput = document.getElementById("historySearchBox");
     this.listeners.historySearchInput = debounce(async () => {
-      if (activeScrollCleanup) {
-        activeScrollCleanup();
-        activeScrollCleanup = null;
+      if (historyState.activeScrollCleanup) {
+        historyState.activeScrollCleanup();
+        historyState.activeScrollCleanup = null;
       }
 
       await renderHistory({
@@ -331,6 +331,9 @@ domLoadedListener = async () => {
       }
     }
 
+    // Initialize History Handlers
+    initHistoryHandlers();
+
     // Initialize popup module
     popupModule.init();
   } catch (error) {
@@ -344,35 +347,3 @@ domLoadedListener = async () => {
 };
 
 document.addEventListener("DOMContentLoaded", domLoadedListener);
-window.addEventListener("pagehide", () => {
-  fullHistory = [];
-  filteredHistory = [];
-  selectedSources.clear();
-
-  if (draggingIntervalRef) {
-    clearInterval(draggingIntervalRef);
-    draggingIntervalRef = null;
-  }
-
-  if (scrollListenerRef && scrollElementGlobal) {
-    scrollElementGlobal.removeEventListener("scroll", scrollListenerRef);
-    scrollListenerRef = null;
-  }
-
-  panel._cleanupCheckboxListener?.();
-  panel._cleanupTrashListener?.();
-
-  if (filterMenuContent._sourceChangeListener) {
-    filterMenuContent.removeEventListener("change", filterMenuContent._sourceChangeListener);
-    filterMenuContent._sourceChangeListener = null;
-  }
-  if (currentRenderCleanup) {
-    currentRenderCleanup();
-    currentRenderCleanup = null;
-  }
-  scrollElementGlobal = null;
-  if (flatpickrInstances.start) flatpickrInstances.start.destroy();
-  if (flatpickrInstances.end) flatpickrInstances.end.destroy();
-  svgCache.clear();
-  destroyOtherSimpleBars();
-});
