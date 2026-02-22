@@ -105,6 +105,7 @@ const sectionManager = {
     dropdownToggle.classList.remove("open");
     dropdownToggle.querySelector(".arrow").style.transform = "rotate(0deg)";
     dropdownToggle.childNodes[0].textContent = "Today";
+    document.body.classList.remove("parser-options-open");
 
     // Section-specific Operations
     switch (newSection) {
@@ -125,6 +126,7 @@ const sectionManager = {
         break;
 
       case "stats":
+        statsModule.init();
         res = await sendAction("loadHistory");
         fullHistory = res.data;
         await renderTopStats(fullHistory, "day");
@@ -239,8 +241,10 @@ const popupModule = {
         // Parser options
         const openOptions = e.target.closest(".parser-options.open");
         if (!openOptions) {
+          if (parserState.isParserAnimating) return;
           document.querySelectorAll(".parser-options.open").forEach((optionsContainer) => {
             closeParserOptions(optionsContainer);
+            parserState.isParserOpen = false;
           });
         }
       }

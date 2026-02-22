@@ -112,7 +112,7 @@
   margin: 40px auto;
 }
 /* autoprefixer: off */
-svg:not(.flatpickr-calendar svg) {
+svg:not(.flatpickr-calendar svg):not(.IroHandle) {
   display: block;
   place-self: center;
   -webkit-transition: -webkit-transform var(--transition-reduced) ease;

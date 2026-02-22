@@ -432,6 +432,94 @@ function waitFor(fn, maxWait = 1000) {
   });
 }
 
+function getTransitionDuration(el, property) {
+  const style = getComputedStyle(el);
+  const props = style.transitionProperty.split(", ");
+  const durations = style.transitionDuration.split(", ");
+  const index = props.indexOf(property);
+  const raw = index !== -1 ? (durations[index] ?? durations[0]) : null;
+  if (!raw) return 0;
+  return parseFloat(raw) * (raw.includes("ms") ? 1 : 1000);
+}
+
+function waitForTransitionEnd(el, property, inner) {
+  if (!el || !shouldAnimate?.()) return Promise.resolve();
+
+  const duration = getTransitionDuration(el, property);
+  if (duration === 0) return Promise.resolve();
+
+  const height = inner?.scrollHeight ?? el.scrollHeight;
+  const adaptive = Math.max(duration, height) + 25;
+
+  return new Promise((resolve) => {
+    let resolved = false;
+
+    const finish = () => {
+      if (resolved) return;
+      resolved = true;
+      clearTimeout(timer);
+      el.removeEventListener("transitionend", handler);
+      resolve();
+    };
+
+    const handler = ({ target, propertyName }) => {
+      if (target === el && propertyName === property) finish();
+    };
+
+    el.addEventListener("transitionend", handler);
+    const timer = setTimeout(finish, adaptive);
+  });
+}
+
+async function smoothScrollTo(element, target, baseDuration = 300) {
+  if (!element || typeof element.scrollTop !== "number") {
+    return Promise.reject(new Error("Invalid scroll element"));
+  }
+
+  if (!shouldAnimate?.()) {
+    element.scrollTop = target;
+    return;
+  }
+
+  const start = element.scrollTop;
+  const change = target - start;
+  const distance = Math.abs(change);
+
+  if (distance < 2) {
+    element.scrollTop = target;
+    return;
+  }
+
+  const durationMs = Math.min(baseDuration, Math.max(100, distance / 0.5));
+  const startTime = performance.now();
+
+  const easeOutCubic = (t) => 1 - (1 - t) ** 3;
+
+  return new Promise((resolve) => {
+    const animate = (now) => {
+      const progress = Math.min((now - startTime) / durationMs, 1);
+      element.scrollTop = Math.round(start + change * easeOutCubic(progress));
+      stickyInstance?.update();
+
+      if (progress < 1 && element.isConnected) {
+        requestAnimationFrame(animate);
+      } else {
+        element.scrollTop = target;
+        resolve();
+      }
+    };
+
+    requestAnimationFrame(animate);
+  });
+}
+
+async function scrollToElementPosition(target, container) {
+  if (!target || !container) return;
+
+  const offset = target.getBoundingClientRect().top - container.getBoundingClientRect().top;
+  await smoothScrollTo(container, container.scrollTop + offset);
+}
+
 // Time
 const getCurrentTime = () => new Date().toLocaleTimeString("en-GB", { hour12: false });
 const dateToday = new Date();
@@ -1621,6 +1709,7 @@ async function activateSimpleBar(targets, timeout = 500, interval = 30) {
       let instance = simpleBarInstances.get(panel);
       if (instance && typeof instance.recalculate === "function") {
         instance.recalculate();
+        await new Promise(requestAnimationFrame);
         results.push({ id, success: true, action: "recalculated" });
       } else {
         // Clear the old instance
@@ -1736,7 +1825,6 @@ async function destroyOtherSimpleBars(keepId) {
 
 // If simplebar is added, update the element's padding
 async function updatePanelPadding(panel, timeout = 1000) {
-  // Parallel process control
   if (panelPromises.has(panel)) return panelPromises.get(panel);
 
   const promise = (async () => {
@@ -1744,10 +1832,9 @@ async function updatePanelPadding(panel, timeout = 1000) {
       const instance = simpleBarInstances.get(panel);
       if (!instance) return { ok: false, reason: "no_instance" };
 
-      // Recalculate
       instance.recalculate?.();
+      await new Promise(requestAnimationFrame);
 
-      // Wait for the scrollbar to appear
       const scrollbar = await waitForScrollbar(instance, timeout);
 
       if (!scrollbar) {
@@ -1757,9 +1844,25 @@ async function updatePanelPadding(panel, timeout = 1000) {
 
       const isVisible = getComputedStyle(scrollbar).visibility === "visible";
       if (!panel.style.transition) {
-        panel.style.transition = "padding .1s";
+        panel.style.transition = "padding var(--transition-reduced-fast), min-height var(--transition-reduced-fast)";
       }
-      panel.style.paddingRight = isVisible ? "16px" : "2px";
+
+      const newPadding = isVisible ? "16px" : "2px";
+
+      if (panel.style.paddingRight === newPadding) {
+        return { ok: true, visible: isVisible };
+      }
+
+      await new Promise((resolve) => {
+        const handler = (e) => {
+          if (e.propertyName !== "padding-right") return;
+          panel.removeEventListener("transitionend", handler);
+          resolve();
+        };
+        panel.addEventListener("transitionend", handler);
+        panel.style.paddingRight = newPadding;
+        setTimeout(resolve, 150);
+      });
 
       return { ok: true, visible: isVisible };
     } catch (error) {
