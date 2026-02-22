@@ -309,6 +309,9 @@ domLoadedListener = async () => {
       return;
     }
 
+    // Motion Preference Check
+    await initMotionPreference();
+
     // Start the Section Manager
     sectionManager.init();
 

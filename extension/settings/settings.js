@@ -49,6 +49,7 @@ function applySectionFromUrl() {
 }
 
 window.addEventListener("load", async () => {
+  initMotionPreference();
   initApplyAttrs();
   initStorageListener();
   applySectionFromUrl();

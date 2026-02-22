@@ -62,6 +62,42 @@ async function renderSettings() {
   themeWrap.appendChild(themeInput);
   panelContainer.appendChild(themeWrap);
 
+  // MOTION PREFERENCE SETTINGS
+  const motionStorage = await browser.storage.local.get(motionKey);
+  let motionConfig = motionStorage[motionKey] || "always";
+
+  const motionWrap = document.createElement("div");
+  motionWrap.className = "settings-option motion-wrapper";
+
+  const motionLabel = document.createElement("label");
+  motionLabel.textContent = "Animations";
+
+  const motionSelect = document.createElement("select");
+  motionSelect.className = "settings-select";
+
+  const motionOptions = [
+    { value: "system", label: "system" },
+    { value: "always", label: "enable" },
+    { value: "never", label: "disable" },
+  ];
+
+  motionOptions.forEach((opt) => {
+    const optionEl = document.createElement("option");
+    optionEl.value = opt.value;
+    optionEl.textContent = opt.label;
+    if (opt.value === motionConfig) optionEl.selected = true;
+    motionSelect.appendChild(optionEl);
+  });
+
+  motionSelect.addEventListener("input", async () => {
+    motionConfig = motionSelect.value;
+    await setMotionPreference(motionConfig);
+  });
+
+  motionWrap.appendChild(motionLabel);
+  motionWrap.appendChild(motionSelect);
+  panelContainer.appendChild(motionWrap);
+
   // BACKGROUND IMAGE SETTINGS
   // Load saved background settings
   const bgStorage = await browser.storage.local.get("backgroundSettings");

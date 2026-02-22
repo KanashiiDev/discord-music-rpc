@@ -503,8 +503,8 @@ code > code {
   width: 90%;
   -webkit-box-shadow: 0 8px 24px var(--shadow-color);
   box-shadow: 0 8px 24px var(--shadow-color);
-  -webkit-animation: popIn 0.25s ease;
-  animation: popIn 0.25s ease;
+  -webkit-animation: popIn var(--transition-reduced) ease;
+  animation: popIn var(--transition-reduced) ease;
 }
 
 .modal-content h2 {
@@ -747,8 +747,8 @@ code > code {
   width: 100%;
   -webkit-box-shadow: 0 0 4px var(--shadow-color);
   box-shadow: 0 0 4px var(--shadow-color);
-  -webkit-animation: fadeInUp var(--transition-normal) ease-out;
-  animation: fadeInUp var(--transition-normal) ease-out;
+  -webkit-animation: fadeInUp var(--transition-reduced) ease-out;
+  animation: fadeInUp var(--transition-reduced) ease-out;
   padding: 6px;
   height: 32px;
 }
@@ -899,8 +899,8 @@ code > code {
 .parser-icon {
   height: 24px;
   border-radius: var(--radius-sm);
-  -webkit-transition: height var(--transition-normal) ease;
-  transition: height var(--transition-normal) ease;
+  -webkit-transition: height var(--transition-reduced) ease;
+  transition: height var(--transition-reduced) ease;
   cursor: pointer;
 }
 

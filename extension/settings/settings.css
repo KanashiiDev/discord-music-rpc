@@ -397,9 +397,9 @@ input[type="text"] {
   box-shadow: 0 2px 4px var(--shadow-color);
   transition:
     background var(--transition-normal),
-    transform var(--transition-normal),
+    transform var(--transition-reduced),
     opacity var(--transition-normal),
-    -webkit-transform var(--transition-normal);
+    -webkit-transform var(--transition-reduced);
 }
 
 .filter-item:hover {
@@ -481,8 +481,8 @@ input[type="text"] {
   gap: 6px;
   max-height: 7em;
   overflow: hidden;
-  -webkit-transition: max-height 0.3s ease;
-  transition: max-height 0.3s ease;
+  -webkit-transition: max-height var(--transition-reduced) ease;
+  transition: max-height var(--transition-reduced) ease;
 }
 
 .filter-entry {
@@ -629,15 +629,15 @@ button.history-modal-close {
   height: 0;
   overflow: hidden;
   -webkit-transition:
-    height var(--transition-normal) ease,
-    padding var(--transition-normal) ease,
-    top var(--transition-normal) ease,
-    opacity var(--transition-normal) ease;
+    height var(--transition-reduced) ease,
+    padding var(--transition-reduced) ease,
+    top var(--transition-reduced) ease,
+    opacity var(--transition-reduced) ease;
   transition:
-    height var(--transition-normal) ease,
-    padding var(--transition-normal) ease,
-    top var(--transition-normal) ease,
-    opacity var(--transition-normal) ease;
+    height var(--transition-reduced) ease,
+    padding var(--transition-reduced) ease,
+    top var(--transition-reduced) ease,
+    opacity var(--transition-reduced) ease;
   width: calc(100% - 28px);
   opacity: 0;
 }

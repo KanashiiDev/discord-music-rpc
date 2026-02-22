@@ -149,8 +149,8 @@ body[data-section="main"] #siteList,
 body[data-section="history"] #historyPanel,
 body[data-section="stats"] #historyStatsPanel,
 body[data-section="settings"] #settingsPanel {
-  -webkit-animation: fadeInUp var(--transition-normal) ease-out;
-  animation: fadeInUp var(--transition-normal) ease-out;
+  -webkit-animation: fadeInUp var(--transition-reduced) ease-out;
+  animation: fadeInUp var(--transition-reduced) ease-out;
 }
 
 .header-container {
@@ -166,18 +166,18 @@ body[data-section="settings"] #settingsPanel {
   position: relative;
   padding: 10px;
   -webkit-transition:
-    opacity var(--transition-normal) ease,
-    -webkit-transform var(--transition-normal) ease;
+    opacity var(--transition-reduced) ease,
+    -webkit-transform var(--transition-reduced) ease;
   transition:
-    opacity var(--transition-normal) ease,
-    -webkit-transform var(--transition-normal) ease;
+    opacity var(--transition-reduced) ease,
+    -webkit-transform var(--transition-reduced) ease;
   transition:
-    opacity var(--transition-normal) ease,
-    transform var(--transition-normal) ease;
+    opacity var(--transition-reduced) ease,
+    transform var(--transition-reduced) ease;
   transition:
-    opacity var(--transition-normal) ease,
-    transform var(--transition-normal) ease,
-    -webkit-transform var(--transition-normal) ease;
+    opacity var(--transition-reduced) ease,
+    transform var(--transition-reduced) ease,
+    -webkit-transform var(--transition-reduced) ease;
 }
 
 #mainHeader {
@@ -227,16 +227,17 @@ a:hover {
 .site-list-container {
   overflow: visible;
   position: relative;
-  padding: 4px 0 0 4px;
-  -webkit-transition: -webkit-transform var(--transition-normal) ease;
-  transition: -webkit-transform var(--transition-normal) ease;
-  transition: transform var(--transition-normal) ease;
+  padding: 0 0 0 4px;
+  z-index: 2;
+  -webkit-transition: -webkit-transform var(--transition-reduced) ease;
+  transition: -webkit-transform var(--transition-reduced) ease;
+  transition: transform var(--transition-reduced) ease;
   transition:
-    transform var(--transition-normal) ease,
-    -webkit-transform var(--transition-normal) ease;
+    transform var(--transition-reduced) ease,
+    -webkit-transform var(--transition-reduced) ease;
   transition:
-    transform var(--transition-normal) ease,
-    -webkit-transform var(--transition-normal) ease;
+    transform var(--transition-reduced) ease,
+    -webkit-transform var(--transition-reduced) ease;
 }
 
 html,
@@ -260,6 +261,10 @@ body,
 
 #siteList {
   min-height: 402px;
+}
+
+.parser-options-open #siteList {
+  min-height: 432px;
 }
 
 .setup-dialog-open #siteList {
@@ -396,8 +401,8 @@ footer {
   -webkit-box-sizing: border-box;
   box-sizing: border-box;
   width: calc(100% - 10px);
-  -webkit-transition: width var(--transition-normal) ease;
-  transition: width var(--transition-normal) ease;
+  -webkit-transition: width var(--transition-reduced) ease;
+  transition: width var(--transition-reduced) ease;
 }
 
 body.setup-dialog-open footer,
@@ -430,11 +435,11 @@ body[data-section="history"] footer {
   border-radius: var(--radius-default);
   overflow: hidden;
   transition:
-    transform var(--transition-normal),
-    opacity var(--transition-normal),
-    border-color var(--transition-normal),
-    background-color var(--transition-normal),
-    -webkit-transform var(--transition-normal);
+    transform var(--transition-reduced),
+    opacity var(--transition-reduced),
+    border-color var(--transition-reduced),
+    background-color var(--transition-reduced),
+    -webkit-transform var(--transition-reduced);
 }
 
 #historySearchBox {
@@ -509,21 +514,34 @@ body[data-section="history"] footer {
   -webkit-transform: scaleY(1);
   -ms-transform: scaleY(1);
   transform: scaleY(1);
-  margin-bottom: 10px;
+  margin-bottom: 11px;
   -webkit-transition:
-    opacity var(--transition-normal) ease,
-    -webkit-transform var(--transition-normal) ease;
+    opacity var(--transition-reduced) ease,
+    -webkit-transform var(--transition-reduced) ease;
   transition:
-    opacity var(--transition-normal) ease,
-    -webkit-transform var(--transition-normal) ease;
+    opacity var(--transition-reduced) ease,
+    -webkit-transform var(--transition-reduced) ease;
   transition:
-    opacity var(--transition-normal) ease,
-    transform var(--transition-normal) ease;
+    opacity var(--transition-reduced) ease,
+    transform var(--transition-reduced) ease;
   transition:
-    opacity var(--transition-normal) ease,
-    transform var(--transition-normal) ease,
-    -webkit-transform var(--transition-normal) ease;
+    opacity var(--transition-reduced) ease,
+    transform var(--transition-reduced) ease,
+    -webkit-transform var(--transition-reduced) ease;
   overflow: hidden;
+  contain: layout style paint;
+}
+.parser-entry.tutorialTooltip-highlight {
+  margin-top: 4px;
+}
+
+.parser-border {
+  display: none;
+  position: absolute;
+  width: 100%;
+  height: 12px;
+  background: var(--background-color);
+  top: 0;
 }
 
 .parser-span {
@@ -563,8 +581,8 @@ body[data-section="history"] footer {
   height: 24px;
   margin-right: 6px;
   border-radius: var(--radius-sm);
-  -webkit-transition: height var(--transition-normal) ease;
-  transition: height var(--transition-normal) ease;
+  -webkit-transition: height var(--transition-reduced) ease;
+  transition: height var(--transition-reduced) ease;
   cursor: pointer;
 }
 
@@ -589,20 +607,25 @@ body[data-section="history"] footer {
   margin: 2px;
   position: relative;
   z-index: -2;
+  opacity: 0;
   background: var(--foreground-color-200);
   font-size: var(--font-md);
-  display: block;
-  max-height: 0;
-  overflow: hidden;
-  -webkit-transition:
-    max-height var(--transition-normal) ease,
-    padding-top var(--transition-normal) ease;
+  display: grid;
+  grid-template-rows: 0fr;
   transition:
-    max-height var(--transition-normal) ease,
-    padding-top var(--transition-normal) ease;
+    grid-template-rows var(--transition-reduced) ease,
+    opacity var(--transition-reduced) ease,
+    padding-top var(--transition-reduced) ease;
+}
+
+.parser-options-inner {
+  overflow: hidden;
+  min-height: 0;
 }
 
 .parser-options.open {
+  opacity: 1;
+  grid-template-rows: 1fr;
   padding: 16px;
   margin-bottom: 20px;
   background: var(--foreground-color-200);
@@ -611,26 +634,58 @@ body[data-section="history"] footer {
   position: relative;
 }
 
+.options-content,
+.options-container {
+  position: relative;
+  transition: opacity var(--transition-normal) ease;
+  opacity: 1;
+}
+
+.options-container {
+  contain: layout style;
+}
+
+.options-content.close,
+.options-container.close {
+  opacity: 0;
+}
+
+.parser-options .accordion-content {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition:
+    grid-template-rows var(--transition-reduced) ease,
+    opacity var(--transition-reduced) ease;
+}
+
+.parser-options .accordion-content:not(.close) {
+  grid-template-rows: 1fr;
+}
+
+.accordion-content {
+  contain: layout;
+}
+
+.accordion-inner {
+  min-height: 0;
+}
+
 .parser-options h4 {
   margin: 8px 0;
 }
 
 .parser-options .accordion-header {
-  padding-left: 0 !important;
+  padding: 8px 8px 8px 0 !important;
+}
+
+.parser-options .accordion-header,
+.parser-options .accordion-label {
   cursor: pointer;
 }
 
 .parser-options .accordion-header svg {
   transform: rotate(90deg);
   width: 38px;
-}
-
-.parser-options .accordion-content {
-  max-height: 0;
-  opacity: 0;
-  transition:
-    max-height var(--transition-normal) ease,
-    opacity var(--transition-normal) ease;
 }
 
 .settings-option,
@@ -815,18 +870,18 @@ input[type="range"]::-moz-range-thumb {
   align-items: center;
   opacity: 0.7;
   -webkit-transition:
-    opacity var(--transition-normal) ease,
-    -webkit-transform var(--transition-normal) ease;
+    opacity var(--transition-reduced) ease,
+    -webkit-transform var(--transition-reduced) ease;
   transition:
-    opacity var(--transition-normal) ease,
-    -webkit-transform var(--transition-normal) ease;
+    opacity var(--transition-reduced) ease,
+    -webkit-transform var(--transition-reduced) ease;
   transition:
-    opacity var(--transition-normal) ease,
-    transform var(--transition-normal) ease;
+    opacity var(--transition-reduced) ease,
+    transform var(--transition-reduced) ease;
   transition:
-    opacity var(--transition-normal) ease,
-    transform var(--transition-normal) ease,
-    -webkit-transform var(--transition-normal) ease;
+    opacity var(--transition-reduced) ease,
+    transform var(--transition-reduced) ease,
+    -webkit-transform var(--transition-reduced) ease;
 }
 
 .song-link,
@@ -966,15 +1021,15 @@ body[data-theme="dark"] #githubLink img {
   height: 0;
   overflow: hidden;
   -webkit-transition:
-    height var(--transition-normal) ease,
-    padding var(--transition-normal) ease,
-    top var(--transition-normal) ease,
-    opacity var(--transition-normal) ease;
+    height var(--transition-reduced) ease,
+    padding var(--transition-reduced) ease,
+    top var(--transition-reduced) ease,
+    opacity var(--transition-reduced) ease;
   transition:
-    height var(--transition-normal) ease,
-    padding var(--transition-normal) ease,
-    top var(--transition-normal) ease,
-    opacity var(--transition-normal) ease;
+    height var(--transition-reduced) ease,
+    padding var(--transition-reduced) ease,
+    top var(--transition-reduced) ease,
+    opacity var(--transition-reduced) ease;
   width: calc(100% - 28px);
   opacity: 0;
 }
@@ -1080,17 +1135,17 @@ body[data-theme="dark"] #githubLink img {
 
 #historyStatsPanel {
   -webkit-transition:
-    padding var(--transition-normal) ease,
-    min-height var(--transition-normal) ease,
-    top var(--transition-normal) ease,
-    margin-bottom var(--transition-normal) ease,
-    max-height var(--transition-normal) ease !important;
+    padding var(--transition-reduced) ease,
+    min-height var(--transition-reduced) ease,
+    top var(--transition-reduced) ease,
+    margin-bottom var(--transition-reduced) ease,
+    max-height var(--transition-reduced) ease !important;
   transition:
-    padding var(--transition-normal) ease,
-    min-height var(--transition-normal) ease,
-    top var(--transition-normal) ease,
-    margin-bottom var(--transition-normal) ease,
-    max-height var(--transition-normal) ease !important;
+    padding var(--transition-reduced) ease,
+    min-height var(--transition-reduced) ease,
+    top var(--transition-reduced) ease,
+    margin-bottom var(--transition-reduced) ease,
+    max-height var(--transition-reduced) ease !important;
   position: relative;
   max-height: 452px;
   min-height: 120px;
@@ -1164,10 +1219,10 @@ body[data-theme="dark"] #githubLink img {
   display: inline-block;
   -webkit-transition:
     background var(--transition-normal) ease,
-    max-height var(--transition-normal) ease;
+    max-height var(--transition-reduced) ease;
   transition:
     background var(--transition-normal) ease,
-    max-height var(--transition-normal) ease;
+    max-height var(--transition-reduced) ease;
   cursor: pointer;
   overflow: hidden;
 }
@@ -1233,6 +1288,10 @@ body[data-theme="dark"] #githubLink img {
   opacity: 1;
 }
 
+.history-entry img[src*="chrome-extension"] {
+  border-radius: 16px;
+}
+
 body.cleaning-mode .song-link,
 .history-checkbox,
 .history-trash {
@@ -1245,15 +1304,15 @@ body.cleaning-mode .history-trash {
   cursor: pointer;
   margin-right: 10px;
   padding-bottom: 5px;
-  -webkit-transition: -webkit-transform var(--transition-normal) ease;
-  transition: -webkit-transform var(--transition-normal) ease;
-  transition: transform var(--transition-normal) ease;
+  -webkit-transition: -webkit-transform var(--transition-reduced) ease;
+  transition: -webkit-transform var(--transition-reduced) ease;
+  transition: transform var(--transition-reduced) ease;
   transition:
-    transform var(--transition-normal) ease,
-    -webkit-transform var(--transition-normal) ease;
+    transform var(--transition-reduced) ease,
+    -webkit-transform var(--transition-reduced) ease;
   transition:
-    transform var(--transition-normal) ease,
-    -webkit-transform var(--transition-normal) ease;
+    transform var(--transition-reduced) ease,
+    -webkit-transform var(--transition-reduced) ease;
 }
 
 body.cleaning-mode .history-trash:hover {
@@ -1515,15 +1574,15 @@ body.cleaning-mode .selected .history-trash {
 }
 
 .arrow {
-  -webkit-transition: -webkit-transform var(--transition-normal) ease;
-  transition: -webkit-transform var(--transition-normal) ease;
-  transition: transform var(--transition-normal) ease;
+  -webkit-transition: -webkit-transform var(--transition-reduced) ease;
+  transition: -webkit-transform var(--transition-reduced) ease;
+  transition: transform var(--transition-reduced) ease;
   transition:
-    transform var(--transition-normal) ease,
-    -webkit-transform var(--transition-normal) ease;
+    transform var(--transition-reduced) ease,
+    -webkit-transform var(--transition-reduced) ease;
   transition:
-    transform var(--transition-normal) ease,
-    -webkit-transform var(--transition-normal) ease;
+    transform var(--transition-reduced) ease,
+    -webkit-transform var(--transition-reduced) ease;
 }
 
 .dropdown-menu {
@@ -1535,8 +1594,8 @@ body.cleaning-mode .selected .history-trash {
   max-height: 0;
   width: 100%;
   overflow: hidden;
-  -webkit-transition: max-height var(--transition-normal) ease;
-  transition: max-height var(--transition-normal) ease;
+  -webkit-transition: max-height var(--transition-reduced) ease;
+  transition: max-height var(--transition-reduced) ease;
   z-index: 10;
   border-radius: 0 0 4px 4px;
   border: 1px solid var(--border-color);
@@ -1597,6 +1656,27 @@ body.cleaning-mode .selected .history-trash {
 
 #mainFooterButtons {
   position: relative;
+  transition:
+    transform,
+    opacity,
+    max-height,
+    max-width,
+    var(--transition-reduced) ease;
+  opacity: 1;
+  transform: translateY(0);
+  max-height: 45px;
+  max-width: 325px;
+}
+
+#mainFooterButtons a {
+  height: 17px;
+}
+
+.parser-options-open #mainFooterButtons {
+  opacity: 0 !important;
+  transform: translateY(-25px) scale(0.9);
+  max-height: 0px;
+  pointer-events: none;
 }
 
 .color-control {
@@ -1654,15 +1734,9 @@ body.cleaning-mode .selected .history-trash {
 }
 
 .bg-expand-btn {
-  -webkit-transition: -webkit-transform 0.2s;
-  transition: -webkit-transform 0.2s;
-  transition: transform 0.2s;
   transition:
-    transform 0.2s,
-    -webkit-transform 0.2s;
-  transition:
-    transform 0.2s,
-    -webkit-transform 0.2s;
+    transform,
+    -webkit-transform var(--transition-reduced-fast);
 }
 
 .bg-expand-btn.expanded {
@@ -1672,8 +1746,8 @@ body.cleaning-mode .selected .history-trash {
 }
 
 .bg-expandable-section {
-  -webkit-transition: all 0.3s ease;
-  transition: all 0.3s ease;
+  -webkit-transition: all var(--transition-reduced) ease;
+  transition: all var(--transition-reduced) ease;
   overflow: hidden;
   position: absolute;
   top: 35px;
@@ -1835,6 +1909,10 @@ span.gradient-color-btn.button {
   font-size: 11px;
   min-width: 0px;
   margin: 0;
+}
+
+.flatpickr-calendar.animate {
+  animation-duration: var(--transition-reduced) !important;
 }
 
 /*CSS-GLOBAL*/

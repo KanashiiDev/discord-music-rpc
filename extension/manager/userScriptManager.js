@@ -1208,5 +1208,8 @@ class UserScriptUI {
   }
 }
 
+// Motion Preference Check
+initMotionPreference();
+
 // Initialize the UI when the script loads
 const userScriptUI = new UserScriptUI();

@@ -34,8 +34,16 @@
   min-height: 10px;
   min-width: 5px;
   border-radius: var(--radius-sm);
-  -webkit-animation: fadeInUp var(--transition-normal) ease-out;
-  animation: fadeInUp var(--transition-normal) ease-out;
+  -webkit-animation: var(--transition-reduced) ease-out;
+  animation: fadeInUp var(--transition-reduced) ease-out;
+}
+
+.simplebar-track.smooth .simplebar-scrollbar.simplebar-visible {
+  transition: var(--transition-reduced) ease-out;
+}
+
+.simplebar-content-wrapper.locked {
+  overflow: hidden !important;
 }
 
 /* Switch */
@@ -107,12 +115,12 @@
 svg:not(.flatpickr-calendar svg) {
   display: block;
   place-self: center;
-  -webkit-transition: -webkit-transform 0.3s ease;
-  transition: -webkit-transform 0.3s ease;
-  transition: transform 0.3s ease;
+  -webkit-transition: -webkit-transform var(--transition-reduced) ease;
+  transition: -webkit-transform var(--transition-reduced) ease;
+  transition: transform var(--transition-reduced) ease;
   transition:
-    transform 0.3s ease,
-    -webkit-transform 0.3s ease;
+    transform var(--transition-reduced) ease,
+    -webkit-transform var(--transition-reduced) ease;
 }
 /* autoprefixer: on */
 .popup-message {
@@ -128,14 +136,14 @@ svg:not(.flatpickr-calendar svg) {
   z-index: 22222;
   -webkit-box-shadow: 0 0 8px var(--shadow-color);
   box-shadow: 0 0 8px var(--shadow-color);
-  -webkit-animation: fadeInUp var(--transition-normal) ease-out;
-  animation: fadeInUp var(--transition-normal) ease-out;
+  -webkit-animation: fadeInUp var(--transition-reduced) ease-out;
+  animation: fadeInUp var(--transition-reduced) ease-out;
   padding: 6px;
 }
 
 .popup-message.hide {
-  -webkit-animation: fadeOutDown var(--transition-normal) ease-out both;
-  animation: fadeOutDown var(--transition-normal) ease-out both;
+  -webkit-animation: fadeOutDown var(--transition-reduced) ease-out both;
+  animation: fadeOutDown var(--transition-reduced) ease-out both;
 }
 
 .popup-message.warning {
