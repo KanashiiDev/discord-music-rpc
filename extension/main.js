@@ -103,7 +103,7 @@ async function mainLoop() {
   try {
     const song = await safeGetSongInfo();
     if (!song) {
-      logInfo("mainLoop: no valid song data", song);
+      logInfo("mainloop: no song info");
 
       if (rpcState.lastActivity?.lastUpdated) {
         const timeSinceLastActivity = Date.now() - rpcState.lastActivity.lastUpdated;
@@ -352,7 +352,7 @@ async function mainLoop() {
       if (!updateReason) updateReason = "Update skipped (interval not reached)";
       if (state.lastUpdateStatus !== "skipped") {
         logInfo(
-          `%cSkipping update:%c ${updateReason} (Δpos: ${rawPositionDiff.toFixed(1)}s, Δtime: ${(timeSinceLastUpdate / 1000).toFixed(1)}s).`,
+          `%cSkipping update:%c ${updateReason} (Δpos: ${rawPositionDiff.toFixed(1)}s, Δtime: ${(timeSinceLastUpdate / 1000).toFixed(1)}s)`,
           "color:#ff9800; font-weight:bold;",
           "color:#fff;",
         );

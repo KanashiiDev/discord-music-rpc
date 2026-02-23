@@ -422,11 +422,11 @@ const handleSyncHistory = async () => {
   try {
     const history = await loadHistory();
     const fullHistory = history.map((entry) => ({
-      title: entry.t,
-      artist: entry.a,
-      image: entry.i,
-      source: entry.s,
-      songUrl: entry.u,
+      title: entry.t || "",
+      artist: entry.a || "",
+      image: entry.i || "",
+      source: entry.s || "",
+      songUrl: entry.u || "",
       date: entry.p,
       total_listened_ms: entry.ms || 0,
     }));
@@ -447,25 +447,36 @@ const handleSyncHistory = async () => {
 
     const result = await response.json();
 
-    if (result.success && result.serverHistory) {
+    if (result.success && Array.isArray(result.serverHistory)) {
       const shortHistory = result.serverHistory
-        .map((entry) => ({
-          t: entry.title,
-          a: entry.artist,
-          i: entry.image,
-          s: entry.source,
-          u: entry.songUrl,
-          p: entry.date,
-          ms: entry.total_listened_ms || 0,
-        }))
+        .reduce((acc, entry) => {
+          const title = entry.title?.trim();
+          const artist = entry.artist?.trim();
+          const source = entry.source?.trim();
+
+          if (title && artist && source) {
+            acc.push({
+              t: title,
+              a: artist,
+              i: entry.image || "",
+              s: source,
+              u: entry.songUrl || "",
+              p: entry.date,
+              ms: entry.total_listened_ms || 0,
+            });
+          }
+
+          return acc;
+        }, [])
         .reverse();
 
       await saveHistory(shortHistory);
     }
+
     return {
       ok: true,
       synced: true,
-      count: result.count,
+      count: result.count || 0,
     };
   } catch (err) {
     console.error("History sync error:", err);
@@ -646,57 +657,62 @@ const handleIsRpcConnected = async () => {
 };
 
 const handleIsHostnameMatch = async (sender) => {
-  const tab = await getSenderTab(sender);
-  if (!tab) {
-    return { ok: false, error: { code: 0, message: "No tab info" } };
-  }
+  const noTabError = { ok: false, error: { code: 0, message: "No tab info" } };
 
-  const tabId = tab.id;
+  const tab = await getSenderTab(sender);
+  if (!tab?.id) return noTabError;
+
   let tabInfo;
   try {
-    tabInfo = await browser.tabs.get(tabId);
+    tabInfo = await browser.tabs.get(tab.id);
   } catch {
-    return { ok: false, error: { code: 0, message: "No tab info" } };
+    return noTabError;
   }
 
-  if (!tabInfo.url || tabInfo.url.length === 0) {
-    return { ok: false, error: { code: 0, message: "No tab info" } };
-  }
+  if (!tabInfo?.url) return noTabError;
 
   let url;
   try {
     url = new URL(tabInfo.url);
-  } catch (e) {
-    return { ok: false, error: { code: 0, message: "No tab info" } };
+  } catch {
+    return noTabError;
   }
 
-  if (state.activeTabMap.size > 0 && !state.activeTabMap.has(tabId)) {
-    for (const [activeTabId, tabData] of state.activeTabMap.entries()) {
-      if (tabData.isAudioPlaying) {
-        try {
-          const activeTab = await browser.tabs.get(activeTabId);
-          if (activeTab.audible) {
-            return {
-              ok: false,
-              error: {
-                code: 1,
-                message: `⏸️ Another tab (${activeTabId}${tabData?.source ? " | " + tabData.source : ""}) is currently playing audio.`,
-              },
-            };
-          } else {
-            logInfo(`Tab ${activeTabId} in map but not audible, updating state`);
-            tabData.isAudioPlaying = false;
-            state.activeTabMap.set(activeTabId, tabData);
-          }
-        } catch (err) {
-          logInfo(`Tab ${activeTabId} not found, removing from map`);
-          state.activeTabMap.delete(activeTabId);
+  // Allowed Domain Control
+  const allowed = await isAllowedDomain(url.hostname, url.pathname);
+  if (!allowed.ok) {
+    return { ok: false, match: allowed.match, error: allowed.error };
+  }
+
+  // Audible Control
+  const { activeTabMap } = state;
+  if (activeTabMap.size > 0 && !activeTabMap.has(tab.id)) {
+    for (const [activeTabId, tabData] of activeTabMap) {
+      if (!tabData.isAudioPlaying) continue;
+
+      try {
+        const activeTab = await browser.tabs.get(activeTabId);
+        if (activeTab.audible) {
+          const source = tabData.source ? ` | ${tabData.source}` : "";
+          return {
+            ok: false,
+            error: {
+              code: 1,
+              message: `⏸️ Another tab (${activeTabId}${source}) is currently playing audio.`,
+            },
+          };
         }
+
+        logInfo(`Tab ${activeTabId} in map but not audible, updating state`);
+        tabData.isAudioPlaying = false;
+      } catch {
+        logInfo(`Tab ${activeTabId} not found, removing from map`);
+        activeTabMap.delete(activeTabId);
       }
     }
   }
-  const allowed = await isAllowedDomain(url.hostname, url.pathname);
-  return { ok: allowed.ok, match: allowed.match, error: allowed.error };
+
+  return { ok: true, match: allowed.match };
 };
 
 // Main Setup Function
