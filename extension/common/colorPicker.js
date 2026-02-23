@@ -207,6 +207,10 @@ function setupPickerEventsOnce() {
     }
     e.stopPropagation();
   });
+
+  globalPickerElements.popoverInner.addEventListener("pointerdown", (e) => {
+    globalPickerElements.popoverInner.setPointerCapture(e.pointerId);
+  });
 }
 
 // Setup dynamic picker events (called each time picker opens)
@@ -240,7 +244,7 @@ function updateGradient() {
 }
 
 async function pickerEnd() {
-  if (!currentEditingItem || !currentSwatch) return;
+  if (!currentEditingItem?.key || !currentSwatch) return;
 
   let value;
   if (isGradientMode && globalPicker.colors.length > 1) {
@@ -544,13 +548,6 @@ async function openPickerForSwatch(item, swatch, btnDelete) {
 
   globalPicker.setActiveColor(0);
 
-  // set current state
-  currentEditingItem = item;
-  currentSwatch = swatch;
-  currentDeleteBtn = btnDelete;
-
-  setupDynamicPickerEvents();
-
   // Update UI
   const { btnGradient, gradientControls, hexInputContainer, hexInput, colorCount, degreeSlider, degreeValue, popover } = globalPickerElements;
 
@@ -572,6 +569,13 @@ async function openPickerForSwatch(item, swatch, btnDelete) {
       globalPickerElements.colorListContainer.removeChild(globalPickerElements.colorListContainer.firstChild);
     }
   }
+
+  // set current state
+  currentEditingItem = item;
+  currentSwatch = swatch;
+  currentDeleteBtn = btnDelete;
+
+  setupDynamicPickerEvents();
 
   // Append popover to swatch's parent control
   const control = swatch.parentElement;
