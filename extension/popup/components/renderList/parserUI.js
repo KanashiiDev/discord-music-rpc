@@ -49,7 +49,6 @@ function createEntryClickHandler(container, wrapper, optionsContainer) {
 
 function stickyParserHeader(entry, scrollEl) {
   const span = entry?.querySelector(".parser-span");
-  const border = entry?.querySelector(".parser-border");
   if (!span || !scrollEl) return null;
 
   let entryOffsetTop = 0;
@@ -76,11 +75,8 @@ function stickyParserHeader(entry, scrollEl) {
     if (bottomOffset > spanOffsetHeight) {
       const delta = Math.min(Math.max(-topOffset, 0), entryOffsetHeight - spanOffsetHeight);
       span.style.transform = `translateY(${delta}px)`;
-      border.style.transform = `translateY(${delta}px)`;
-      border.style.display = "block";
     } else {
-      span.style.transform = border.style.transform = "";
-      border.style.display = "";
+      span.style.transform = "";
     }
   }
 
@@ -104,8 +100,7 @@ function stickyParserHeader(entry, scrollEl) {
     disable() {
       enabled = false;
       scrollEl.removeEventListener("scroll", onScroll);
-      span.style.transform = border.style.transform = "";
-      border.style.display = "";
+      span.style.transform = "";
     },
     recalculate,
     update,

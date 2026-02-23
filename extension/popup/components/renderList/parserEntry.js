@@ -9,7 +9,6 @@ async function buildParserEntry({ entry, parserEnabledState, parserSettings, con
   const favIconContainer = createFavIconElement(domain, title, homepage, addListener);
 
   const entryInner = Object.assign(document.createElement("span"), { className: "parser-span" });
-  const entryBorder = Object.assign(document.createElement("div"), { className: "parser-border" });
   const siteTitle = Object.assign(document.createElement("a"), {
     className: "parser-title",
     textContent: title ?? domain,
@@ -76,7 +75,7 @@ async function buildParserEntry({ entry, parserEnabledState, parserSettings, con
   }
 
   entryInner.append(switchLabel);
-  wrapper.append(entryBorder, entryInner, optionsContainer);
+  wrapper.append(entryInner, optionsContainer);
 
   return { wrapper, settingsDirty };
 }
