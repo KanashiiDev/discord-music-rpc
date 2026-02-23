@@ -56,9 +56,9 @@ function updateMusicCardUI() {
   }
 
   const title = act.details ?? "Unknown Title";
-  const artist = act.state ?? "Unknown Artist";
-  const source = act.largeImageText ?? "Unknown Source";
-  const cover = act.largeImageKey ?? "assets/icon-dark.png";
+  const artist = act._artist ?? act.state ?? "Unknown Artist";
+  const source = act._source ?? act.largeImageText ?? "Unknown Source";
+  const cover = act._cover ?? act.largeImageKey ?? "assets/icon-dark.png";
 
   // Update UI and state
   if (title !== musicCardState.lastKnownMusic.title) {

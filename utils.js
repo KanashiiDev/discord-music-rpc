@@ -255,10 +255,10 @@ function addHistoryEntry(song, historyPath) {
 
   // Add new entry
   const entry = {
-    title: song.details,
-    artist: song.state,
-    image: song.largeImageKey || "",
-    source: song.largeImageText || "",
+    title: song.details || "",
+    artist: song._artist || song.state || "",
+    image: song._cover || song.largeImageKey || "",
+    source: song._source || song.largeImageText || "",
     songUrl: song.detailsUrl || "",
     date: Date.now(),
     total_listened_ms: 0,

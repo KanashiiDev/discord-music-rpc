@@ -159,7 +159,9 @@ app.post("/update-rpc", async (req, res) => {
     const rawArtist = String(data.artist ?? "").trim();
     const artistIsIntentionallyEmpty = !rawArtist || rawArtist === "-1";
     const dataArtist = artistIsIntentionallyEmpty ? "" : rawArtist;
+    const dataImage = String(data.image || "").trim();
     const dataSource = String(data.source || "").trim();
+    const dataSongUrl = String(data.songUrl || "").trim();
     const artistIsMissingOrSame = artistIsIntentionallyEmpty || dataArtist === dataTitle;
     const dataSettings = data.settings;
     const defaultSettings = data.settingsDefault;
@@ -180,14 +182,11 @@ app.post("/update-rpc", async (req, res) => {
 
     // Creating FavIcon
     let favIcon = null;
-    if (serverSettings.showSmallIcon && data.songUrl) {
+    if (serverSettings.showSmallIcon && dataSongUrl) {
       try {
-        const songUrl = String(data.songUrl).trim();
-        if (songUrl) {
-          const iconUrl = new URL(songUrl);
-          const iconSize = 64;
-          favIcon = `https://www.google.com/s2/favicons?domain=${encodeURIComponent(iconUrl.hostname)}&sz=${iconSize}`;
-        }
+        const iconUrl = new URL(dataSongUrl);
+        const iconSize = 64;
+        favIcon = `https://www.google.com/s2/favicons?domain=${encodeURIComponent(iconUrl.hostname)}&sz=${iconSize}`;
       } catch (err) {
         console.warn("Invalid songUrl for favicon:", err.message);
         favIcon = null;
@@ -207,17 +206,24 @@ app.post("/update-rpc", async (req, res) => {
       activity.statusDisplayType = StatusDisplayType.STATE;
     }
 
+    // Persist artist/cover/source for history
+    activity._artist = dataArtist;
+    activity._cover = dataImage;
+    activity._source = dataSource;
+
     // Large image
     if (activitySettings.customCover && activitySettings.customCoverUrl) {
       activity.largeImageKey = String(activitySettings.customCoverUrl);
-    } else if (activitySettings.showCover && data.image && !/\.webp(\?.*)?$/i.test(data.image)) {
-      activity.largeImageKey = String(data.image);
+    } else if (activitySettings.showCover && dataImage && !/\.webp(\?.*)?$/i.test(dataImage)) {
+      activity.largeImageKey = dataImage;
     } else if (activitySettings.customPlaceholder && activitySettings.customPlaceholderUrl) {
       activity.largeImageKey = String(activitySettings.customPlaceholderUrl);
+    } else {
+      activity.largeImageKey = "key-default";
     }
 
     // Large image text
-    if (!artistIsIntentionallyEmpty && activitySettings.showSource && dataTitle !== dataArtist && dataTitle !== dataSource) {
+    if (!artistIsIntentionallyEmpty && activitySettings.showSource && activitySettings.showArtist && dataTitle !== dataArtist && dataTitle !== dataSource) {
       activity.largeImageText = dataSource;
     }
 
@@ -302,25 +308,26 @@ app.post("/update-rpc", async (req, res) => {
 
       if (buttons.length === 2) {
         activity.buttons = buttons;
-      } else if (buttons.length === 1 && isValidUrl(data.songUrl)) {
+      } else if (buttons.length === 1 && isValidUrl(dataSongUrl)) {
         activity.buttons = [
           buttons[0],
           {
-            label: truncate(`Open on ${data.source || "Source"}`, 32),
-            url: String(data.songUrl),
+            label: truncate(`Open on ${dataSource || "Source"}`, 32),
+            url: dataSongUrl,
           },
         ];
-      } else if (isValidUrl(data.songUrl)) {
+      } else if (isValidUrl(dataSongUrl)) {
         activity.buttons = [
           {
-            label: truncate(`Open on ${data.source || "Source"}`, 32),
-            url: String(data.songUrl),
+            label: truncate(`Open on ${dataSource || "Source"}`, 32),
+            url: dataSongUrl,
           },
         ];
       }
 
-      if (isValidUrl(data.songUrl)) {
-        activity.detailsUrl = String(data.songUrl);
+      if (isValidUrl(dataSongUrl)) {
+        activity.detailsUrl = dataSongUrl;
+        activity.largeImageUrl = dataSongUrl;
       }
     }
 
