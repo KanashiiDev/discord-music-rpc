@@ -229,12 +229,6 @@ a:hover {
   position: relative;
   padding: 0 0 0 4px;
   z-index: 2;
-  -webkit-transition: -webkit-transform var(--transition-reduced) ease;
-  transition: -webkit-transform var(--transition-reduced) ease;
-  transition: transform var(--transition-reduced) ease;
-  transition:
-    transform var(--transition-reduced) ease,
-    -webkit-transform var(--transition-reduced) ease;
   transition:
     transform var(--transition-reduced) ease,
     -webkit-transform var(--transition-reduced) ease;
@@ -447,23 +441,7 @@ body[data-section="history"] footer {
   padding-right: 30px;
 }
 
-/* autoprefixer: off */
-#historySearchBox::-moz-placeholder,
-#searchBox::-moz-placeholder {
-  color: var(--text-color-muted);
-}
-
-#historySearchBox:-ms-input-placeholder,
-#searchBox:-ms-input-placeholder {
-  color: var(--text-color-muted);
-}
-
-#historySearchBox::-webkit-input-placeholder,
-#searchBox::-webkit-input-placeholder {
-  color: var(--text-color-muted);
-}
-/* autoprefixer: on */
-
+/* autoprefixer: ignore next */
 #historySearchBox::-webkit-input-placeholder,
 #historySearchBox::-moz-placeholder,
 #historySearchBox:-ms-input-placeholder,
@@ -511,10 +489,9 @@ body[data-section="history"] footer {
   border-radius: var(--radius-default);
   color: var(--text-color-primary);
   cursor: default;
-  -webkit-transform: scaleY(1);
-  -ms-transform: scaleY(1);
-  transform: scaleY(1);
-  margin-bottom: 11px;
+  -webkit-transform: translateZ(0);
+  transform: translateZ(0);
+  margin-bottom: 14px;
   -webkit-transition:
     opacity var(--transition-reduced) ease,
     -webkit-transform var(--transition-reduced) ease;
@@ -547,6 +524,7 @@ body[data-section="history"] footer {
 
 .parser-span {
   height: 25px;
+  margin: 0;
 }
 
 .parser-entry-authors a {
@@ -613,10 +591,15 @@ body[data-section="history"] footer {
   font-size: var(--font-md);
   display: grid;
   grid-template-rows: 0fr;
-  transition:
+  -webkit-transition:
     grid-template-rows var(--transition-reduced) ease,
     opacity var(--transition-reduced) ease,
     padding-top var(--transition-reduced) ease;
+  transition:
+    grid-template-rows var(--transition-reduced) ease,
+    opacity var(--transition-reduced) ease,
+    padding-top var(--transition-reduced) ease,
+    -ms-grid-rows var(--transition-reduced) ease;
 }
 
 .parser-options-inner {
@@ -638,6 +621,7 @@ body[data-section="history"] footer {
 .options-content,
 .options-container {
   position: relative;
+  -webkit-transition: opacity var(--transition-normal) ease;
   transition: opacity var(--transition-normal) ease;
   opacity: 1;
 }
@@ -654,9 +638,13 @@ body[data-section="history"] footer {
 .parser-options .accordion-content {
   display: grid;
   grid-template-rows: 0fr;
-  transition:
+  -webkit-transition:
     grid-template-rows var(--transition-reduced) ease,
     opacity var(--transition-reduced) ease;
+  transition:
+    grid-template-rows var(--transition-reduced) ease,
+    opacity var(--transition-reduced) ease,
+    -ms-grid-rows var(--transition-reduced) ease;
 }
 
 .parser-options .accordion-content:not(.close) {
@@ -685,6 +673,8 @@ body[data-section="history"] footer {
 }
 
 .parser-options .accordion-header svg {
+  -webkit-transform: rotate(90deg);
+  -ms-transform: rotate(90deg);
   transform: rotate(90deg);
   width: 38px;
 }
@@ -1305,12 +1295,6 @@ body.cleaning-mode .history-trash {
   cursor: pointer;
   margin-right: 10px;
   padding-bottom: 5px;
-  -webkit-transition: -webkit-transform var(--transition-reduced) ease;
-  transition: -webkit-transform var(--transition-reduced) ease;
-  transition: transform var(--transition-reduced) ease;
-  transition:
-    transform var(--transition-reduced) ease,
-    -webkit-transform var(--transition-reduced) ease;
   transition:
     transform var(--transition-reduced) ease,
     -webkit-transform var(--transition-reduced) ease;
@@ -1575,12 +1559,6 @@ body.cleaning-mode .selected .history-trash {
 }
 
 .arrow {
-  -webkit-transition: -webkit-transform var(--transition-reduced) ease;
-  transition: -webkit-transform var(--transition-reduced) ease;
-  transition: transform var(--transition-reduced) ease;
-  transition:
-    transform var(--transition-reduced) ease,
-    -webkit-transform var(--transition-reduced) ease;
   transition:
     transform var(--transition-reduced) ease,
     -webkit-transform var(--transition-reduced) ease;
@@ -1662,8 +1640,11 @@ body.cleaning-mode .selected .history-trash {
     opacity,
     max-height,
     max-width,
-    var(--transition-reduced) ease;
+    var(--transition-reduced) ease,
+    -webkit-transform;
   opacity: 1;
+  -webkit-transform: translateY(0);
+  -ms-transform: translateY(0);
   transform: translateY(0);
   max-height: 45px;
   max-width: 325px;
@@ -1675,6 +1656,8 @@ body.cleaning-mode .selected .history-trash {
 
 .parser-options-open #mainFooterButtons {
   opacity: 0 !important;
+  -webkit-transform: translateY(-25px) scale(0.9);
+  -ms-transform: translateY(-25px) scale(0.9);
   transform: translateY(-25px) scale(0.9);
   max-height: 0px;
   pointer-events: none;
@@ -1913,6 +1896,7 @@ span.gradient-color-btn.button {
 }
 
 .flatpickr-calendar.animate {
+  -webkit-animation-duration: var(--transition-reduced) !important;
   animation-duration: var(--transition-reduced) !important;
 }
 

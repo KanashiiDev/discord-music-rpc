@@ -39,6 +39,7 @@
 }
 
 .simplebar-track.smooth .simplebar-scrollbar.simplebar-visible {
+  -webkit-transition: var(--transition-reduced) ease-out;
   transition: var(--transition-reduced) ease-out;
 }
 
@@ -111,18 +112,16 @@
   animation: spin 1s linear infinite;
   margin: 40px auto;
 }
-/* autoprefixer: off */
+
+/* autoprefixer: ignore next */
 svg:not(.flatpickr-calendar svg):not(.IroHandle) {
   display: block;
   place-self: center;
-  -webkit-transition: -webkit-transform var(--transition-reduced) ease;
-  transition: -webkit-transform var(--transition-reduced) ease;
-  transition: transform var(--transition-reduced) ease;
   transition:
     transform var(--transition-reduced) ease,
     -webkit-transform var(--transition-reduced) ease;
 }
-/* autoprefixer: on */
+
 .popup-message {
   position: absolute;
   overflow: hidden;
