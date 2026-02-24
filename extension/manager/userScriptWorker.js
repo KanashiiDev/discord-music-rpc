@@ -171,6 +171,7 @@ class UserScriptManager {
             trackState.songUrl = typeof songUrl !== "undefined" ? songUrl : null;
             trackState.timePassed = typeof timePassed !== "undefined" ? timePassed : null;
             trackState.duration = typeof duration !== "undefined" ? duration : null;
+            trackState.buttons = typeof buttons !== "undefined" ? buttons : null;
 
             // Track Data
             const trackData = {
@@ -209,6 +210,7 @@ class UserScriptManager {
               console.log("  • Image:      ", song.image || "Default Image");
               console.log("  • Duration:   ", song.duration ?? "N/A");
               console.log("  • Time Passed:", song.timePassed ?? "N/A");
+              console.log("  • Buttons:    ", song.buttons ?? "N/A");
               console.groupEnd();
             }
 

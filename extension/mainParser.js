@@ -835,6 +835,7 @@ window.addEventListener("message", async (event) => {
               songUrl: song.songUrl,
               timePassed: song.timePassed,
               duration: song.duration,
+              buttons: song.buttons,
               mode: msg.data.mode,
             };
           } catch (err) {

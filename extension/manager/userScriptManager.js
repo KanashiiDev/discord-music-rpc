@@ -475,7 +475,9 @@ class UserScriptUI {
          let source = "";
          let songUrl = "";
          let timePassed = null;
-         let duration = null;`,
+         let duration = null;
+         let buttons = [{link: "", text: ""}, {link: "",text: "",}];
+         `,
     );
 
     this.checkSettings(this.codeEditor);
@@ -770,6 +772,7 @@ class UserScriptUI {
         songUrl,
         duration,
         timePassed,
+        buttons,
         };
         },
       });`;
