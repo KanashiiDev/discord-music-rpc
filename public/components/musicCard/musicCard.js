@@ -14,6 +14,10 @@ const musicCardState = {
     start: null,
     end: null,
     isPlaying: null,
+    button1Label: null,
+    button1Url: null,
+    button2Label: null,
+    button2Url: null,
   },
 };
 
@@ -34,7 +38,9 @@ function updateMusicCardUI() {
       dom.musicCard.timePassed.textContent = "0:00";
       dom.musicCard.duration.textContent = "0:00";
       dom.musicCard.trackLink1.style.display = "none";
+      dom.musicCard.trackLink1.textContent = "Button 1";
       dom.musicCard.trackLink2.style.display = "none";
+      dom.musicCard.trackLink2.textContent = "Button 2";
       dom.musicCard.container.classList.add("no-music");
 
       musicCardState.lastKnownMusic.isPlaying = false;
@@ -46,6 +52,10 @@ function updateMusicCardUI() {
       musicCardState.lastKnownMusic.cover = null;
       musicCardState.lastKnownMusic.start = null;
       musicCardState.lastKnownMusic.end = null;
+      musicCardState.lastKnownMusic.button1Label = null;
+      musicCardState.lastKnownMusic.button1Url = null;
+      musicCardState.lastKnownMusic.button2Label = null;
+      musicCardState.lastKnownMusic.button2Url = null;
     }
     return;
   }
@@ -55,10 +65,14 @@ function updateMusicCardUI() {
     musicCardState.lastKnownMusic.isPlaying = true;
   }
 
-  const title = act.details ?? "Unknown Title";
-  const artist = act._artist ?? act.state ?? "Unknown Artist";
-  const source = act._source ?? act.largeImageText ?? "Unknown Source";
-  const cover = act._cover ?? act.largeImageKey ?? "assets/icon-dark.png";
+  const title = act.details || "Unknown Title";
+  const artist = act._artist || act.state || "Unknown Artist";
+  const source = act._source || act.largeImageText || "Unknown Source";
+  let cover = act._cover || act.largeImageKey || "assets/icon-dark.png";
+
+  if (cover.startsWith("key-")) {
+    cover = "assets/icon-dark.png";
+  }
 
   // Update UI and state
   if (title !== musicCardState.lastKnownMusic.title) {
@@ -126,14 +140,30 @@ function updateMusicCardUI() {
     const btnData = act.buttons?.[index];
     const btnDom = index === 0 ? dom.musicCard.trackLink1 : dom.musicCard.trackLink2;
 
+    const labelKey = index === 0 ? "button1Label" : "button2Label";
+    const urlKey = index === 0 ? "button1Url" : "button2Url";
+
     if (btnData) {
-      if (btnDom.textContent !== btnData.label || btnDom.href !== btnData.url) {
-        btnDom.textContent = btnData.label;
-        btnDom.href = btnData.url;
+      const newLabel = btnData.label;
+      const newUrl = btnData.url;
+
+      if (newLabel !== musicCardState.lastKnownMusic[labelKey] || newUrl !== musicCardState.lastKnownMusic[urlKey] || btnDom.style.display === "none") {
+        btnDom.textContent = newLabel;
+        btnDom.href = newUrl;
         btnDom.style.display = "inline-block";
+
+        musicCardState.lastKnownMusic[labelKey] = newLabel;
+        musicCardState.lastKnownMusic[urlKey] = newUrl;
       }
-    } else if (btnDom.style.display !== "none") {
-      btnDom.style.display = "none";
+    } else {
+      if (btnDom.style.display !== "none") {
+        btnDom.style.display = "none";
+        btnDom.textContent = "";
+        btnDom.href = "#";
+
+        musicCardState.lastKnownMusic[labelKey] = null;
+        musicCardState.lastKnownMusic[urlKey] = null;
+      }
     }
   });
 }
