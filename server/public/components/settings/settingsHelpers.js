@@ -86,7 +86,7 @@ export const getDefinition = (key, input, serverDefinitions) => {
   if (input.dataset.def) {
     try {
       return JSON.parse(input.dataset.def);
-    } catch (e) {
+    } catch (_) {
       console.warn(`Failed to parse def for ${key}`);
     }
   }

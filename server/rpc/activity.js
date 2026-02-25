@@ -1,0 +1,252 @@
+const { addHistoryEntry, saveListeningTime, isSameActivityIgnore } = require("../utils.js");
+const { truncate, isValidUrl } = require("../../shared/utils.js");
+
+const { state, HISTORY_SAVE_TIMEOUT } = require("./state.js");
+const { isRpcReady, connectRPC } = require("./client.js");
+
+// Builds a Discord RPC activity object from the raw request payload.
+function buildActivity(data, now) {
+  const { StatusDisplayType } = require("@xhayper/discord-rpc");
+
+  const dataTitle = String(data.title ?? "").trim();
+  const rawArtist = String(data.artist ?? "").trim();
+  const artistIsIntentionallyEmpty = !rawArtist || rawArtist === "-1";
+  const dataArtist = artistIsIntentionallyEmpty ? "" : rawArtist;
+  const dataImage = String(data.image ?? "").trim();
+  const dataSource = String(data.source ?? "").trim();
+  const dataSongUrl = String(data.songUrl ?? "").trim();
+  const artistIsMissingOrSame = artistIsIntentionallyEmpty || dataArtist === dataTitle;
+
+  const activitySettings = {
+    ...(data.settingsDefault && typeof data.settingsDefault === "object" ? data.settingsDefault : {}),
+    ...(data.settings && typeof data.settings === "object" ? data.settings : {}),
+  };
+
+  const shouldShowArtist = !artistIsMissingOrSame && activitySettings.showArtist;
+
+  // FavIcon
+  let favIcon = null;
+  if (activitySettings.showFavIcon && dataSongUrl) {
+    try {
+      const { hostname } = new URL(dataSongUrl);
+      favIcon = `https://www.google.com/s2/favicons?domain=${encodeURIComponent(hostname)}&sz=64`;
+    } catch {
+      // invalid URL — favIcon stays null
+    }
+  }
+
+  const isWatch = data.mode === "watch";
+
+  // Base activity
+  const activity = {
+    details: dataTitle,
+    state: shouldShowArtist ? dataArtist : dataSource,
+    type: isWatch ? 3 : 2,
+    instance: false,
+    // Private metadata (not sent to Discord, used for history)
+    _artist: dataArtist,
+    _cover: dataImage,
+    _source: dataSource,
+  };
+
+  if (typeof StatusDisplayType !== "undefined" && StatusDisplayType.STATE) {
+    activity.statusDisplayType = StatusDisplayType.STATE;
+  }
+
+  // Large image
+  if (activitySettings.customCover && activitySettings.customCoverUrl) {
+    activity.largeImageKey = String(activitySettings.customCoverUrl);
+  } else if (activitySettings.showCover && dataImage && !/\.webp(\?.*)?$/i.test(dataImage)) {
+    activity.largeImageKey = dataImage;
+  } else if (activitySettings.customPlaceholder && activitySettings.customPlaceholderUrl) {
+    activity.largeImageKey = String(activitySettings.customPlaceholderUrl);
+  } else {
+    activity.largeImageKey = "key-default";
+  }
+
+  // Large image text
+  if (!artistIsIntentionallyEmpty && activitySettings.showSource && activitySettings.showArtist && dataTitle !== dataArtist && dataTitle !== dataSource) {
+    activity.largeImageText = dataSource;
+  }
+
+  // Small image
+  const showSmallIcon = Boolean(activitySettings.showFavIcon);
+  if (!artistIsIntentionallyEmpty && showSmallIcon) {
+    activity.smallImageKey = favIcon ?? (isWatch ? "watch" : "listen");
+    activity.smallImageText = dataSource;
+  } else if (!artistIsIntentionallyEmpty) {
+    activity.smallImageText = isWatch ? "Watching" : "Listening";
+  } else {
+    activity.smallImageText = "";
+  }
+
+  // Buttons
+  const existingButtons = Array.isArray(data.buttons) ? data.buttons.filter((btn) => btn?.text && String(btn.text).trim() && isValidUrl(btn.link)) : [];
+
+  const customButtons = [
+    activitySettings.customButton1 && activitySettings.customButton1Text?.trim() && isValidUrl(activitySettings.customButton1Link)
+      ? { text: activitySettings.customButton1Text, link: activitySettings.customButton1Link }
+      : null,
+    activitySettings.customButton2 && activitySettings.customButton2Text?.trim() && isValidUrl(activitySettings.customButton2Link)
+      ? { text: activitySettings.customButton2Text, link: activitySettings.customButton2Link }
+      : null,
+  ];
+
+  let mergedButtons;
+  if (existingButtons.length === 0) {
+    mergedButtons = customButtons.filter(Boolean);
+  } else if (existingButtons.length === 1) {
+    mergedButtons = customButtons[0] ? [existingButtons[0], customButtons[0]] : existingButtons;
+  } else {
+    mergedButtons = [customButtons[0] ?? existingButtons[0], customButtons[1] ?? existingButtons[1]];
+  }
+
+  if (activitySettings.showButtons) {
+    const validButtons = mergedButtons
+      .filter((btn) => btn?.text && String(btn.text).trim() && isValidUrl(btn.link))
+      .slice(0, 2)
+      .map((btn) => ({ label: truncate(btn.text, 32), url: String(btn.link) }));
+
+    const sourceButton = isValidUrl(dataSongUrl) ? { label: truncate(`Open on ${dataSource || "Source"}`, 32), url: dataSongUrl } : null;
+
+    if (validButtons.length === 2) {
+      activity.buttons = validButtons;
+    } else if (validButtons.length === 1 && sourceButton) {
+      activity.buttons = [validButtons[0], sourceButton];
+    } else if (sourceButton) {
+      activity.buttons = [sourceButton];
+    }
+
+    if (isValidUrl(dataSongUrl)) {
+      activity.detailsUrl = dataSongUrl;
+      activity.largeImageUrl = dataSongUrl;
+    }
+  }
+
+  // Timestamps
+  const position = Number(data.position) || 0;
+  const duration = Number(data.duration) || 0;
+
+  if (duration > 0) {
+    const nowSeconds = Math.floor(now / 1000);
+    activity.startTimestamp = nowSeconds - position;
+    if (activitySettings.showTimeLeft) {
+      activity.endTimestamp = nowSeconds + (duration - position);
+    }
+  }
+
+  return { activity, activitySettings };
+}
+
+// Attempts to set a Discord RPC activity. Handles reconnect on failure.
+async function setRpcActivity(activity) {
+  const client = state.rpcClient;
+
+  if (!isRpcReady(client)) {
+    console.error("[ACTIVITY] RPC client not ready");
+    return false;
+  }
+
+  try {
+    await client.user.setActivity(activity);
+    state.currentActivity = activity;
+    return true;
+  } catch (err) {
+    console.error("[ACTIVITY] setActivity failed:", err.message);
+    state.isRpcConnected = false;
+
+    if (!state.reconnectScheduled && !state.isConnecting && !state.isShuttingDown) {
+      state.reconnectScheduled = true;
+      setTimeout(async () => {
+        state.reconnectScheduled = false;
+        if (!state.isConnecting && !state.isShuttingDown) await connectRPC();
+      }, 2000);
+    }
+    return false;
+  }
+}
+
+// Clears the Discord RPC activity with optional retries.
+async function clearRpcActivity({ maxRetries = 1, timeoutMs = 5000 } = {}) {
+  if (!state.rpcClient?.user?.clearActivity) return false;
+
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      await Promise.race([state.rpcClient.user.clearActivity(), new Promise((_, reject) => setTimeout(() => reject(new Error("Clear timeout")), timeoutMs))]);
+      return true;
+    } catch (err) {
+      console.warn(`[ACTIVITY] clearActivity failed (attempt ${attempt}/${maxRetries}):`, err.message);
+      if (attempt < maxRetries) await new Promise((r) => setTimeout(r, 1000));
+    }
+  }
+  return false;
+}
+
+// Resets all activity-related state fields to their defaults.
+function resetActivityState(historyFilePath) {
+  if (historyFilePath) flushListeningTime(historyFilePath);
+  cancelHistoryTimer();
+  state.currentActivity = null;
+  state.lastActiveClient = null;
+  state.lastUpdateAt = null;
+  state.listeningStartTime = null;
+}
+
+// Persists the listening duration for the currently playing track, if any.
+function flushListeningTime(historyFilePath) {
+  if (!state.currentActivity || !state.listeningStartTime) return;
+  const listenedMs = Date.now() - state.listeningStartTime;
+  saveListeningTime(state.currentActivity, listenedMs, historyFilePath);
+}
+
+// Cancels any pending history-save timer and resets the lock.
+function cancelHistoryTimer() {
+  if (state.historyTimeout) {
+    clearTimeout(state.historyTimeout);
+    state.historyTimeout = null;
+    state.historySaveLock = false;
+  }
+}
+
+// Schedules a history-save for activity after HISTORY_SAVE_TIMEOUT ms.
+function scheduleHistorySave(activity, historyFilePath) {
+  state.historyTimeout = setTimeout(() => {
+    if (!isSameActivityIgnore(activity, state.lastSavedHistoryEntry) && state.isHistorySaveEnabled) {
+      state.historySaveLock = true;
+      addHistoryEntry(activity, historyFilePath);
+      state.lastSavedHistoryEntry = structuredClone(activity);
+    }
+    state.historyTimeout = null;
+  }, HISTORY_SAVE_TIMEOUT);
+}
+
+// Handles history update whenever an activity update arrives.
+function handleHistoryUpdate(activity, historyFilePath) {
+  const trackChanged = !isSameActivityIgnore(activity, state.currentActivity);
+
+  if (trackChanged) {
+    // Flush previous track's listening time before switching
+    flushListeningTime(historyFilePath);
+    state.listeningStartTime = Date.now();
+    cancelHistoryTimer();
+    scheduleHistorySave(activity, historyFilePath);
+    return;
+  }
+
+  // Same track — start timer only if neither lock nor timer is active
+  if (!state.historySaveLock && !state.historyTimeout) {
+    state.listeningStartTime ??= Date.now();
+    state.historySaveLock = true;
+    scheduleHistorySave(activity, historyFilePath);
+  }
+}
+
+module.exports = {
+  buildActivity,
+  setRpcActivity,
+  clearRpcActivity,
+  resetActivityState,
+  handleHistoryUpdate,
+  flushListeningTime,
+  cancelHistoryTimer,
+};

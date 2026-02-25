@@ -9,7 +9,7 @@ module.exports = function registerInlines(inlineUtilsFunctions) {
   inlineUtilsFunctions(["background.js", "common/utils.js", "mainParser.js", "popup/popup.js"], "config.js", [], "start", true);
 
   // Truncate
-  inlineUtilsFunctions(["common/utils.js", "popup/selector/selector.js", "background.js"], "../utils.js", ["truncate", "normalizeTitleAndArtist"]);
+  inlineUtilsFunctions(["common/utils.js", "popup/selector/selector.js", "background.js"], "../shared/utils.js", ["truncate", "normalizeTitleAndArtist"]);
 
   // Logs
   inlineUtilsFunctions(["background.js", "mainParser.js"], "common/utils.js", [

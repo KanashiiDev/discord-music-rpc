@@ -25,7 +25,7 @@
     "node": ">=22.11.0"
   },
   "scripts": {
-    "start": "node server.js",
+    "start": "node server/server.js",
     "start:app": "electron .",
     "clean": "rimraf dist",
     "lint": "eslint .",
@@ -181,10 +181,9 @@
       "main.js",
       "scripts/electron-log.js",
       "scripts/configManagement.js",
-      "utils.js",
-      "server.js",
+      "server/**",
+      "shared/**",
       "assets/**/*",
-      "public/**",
       "package.json",
       "!**/*.map",
       "!**/*.md"

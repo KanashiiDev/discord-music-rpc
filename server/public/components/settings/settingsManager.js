@@ -122,7 +122,7 @@ export const SettingsManager = {
       try {
         await waitForServer(newPort);
         window.location.href = `http://${window.location.hostname}:${newPort}`;
-      } catch (err) {
+      } catch (_) {
         showInfoMessage("Redirect failed, please refresh manually", "error");
       }
     } else {

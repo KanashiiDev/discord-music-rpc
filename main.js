@@ -231,7 +231,7 @@ app.whenReady().then(async () => {
 // Start Server
 async function startServer() {
   const { fork } = require("child_process");
-  const serverPath = getAppPath("server.js");
+  const serverPath = getAppPath("server", "server.js");
   if (!config.KEEP_LOGS) fs.writeFileSync(logFilePath, JSON.stringify([], null, 2));
   if (!config.KEEP_HISTORY) fs.writeFileSync(historyFilePath, JSON.stringify([], null, 2));
 
@@ -569,7 +569,7 @@ async function initializeApp() {
 
     if (isPackaged) {
       try {
-        const serverPath = getAppPath("server.js");
+        const serverPath = getAppPath("server", "server.js");
         log.info("Pre-warming: Reading server file to cache...");
         fs.readFileSync(serverPath, "utf8");
         log.info("Pre-warming completed");
@@ -1097,7 +1097,7 @@ function updateTrayMenu() {
             checked: config.LOG_SONG_UPDATE,
             click: (item) => {
               config.LOG_SONG_UPDATE = !!item.checked;
-              updateConfig();
+              ConfigManager.updateConfigValue("LOG_SONG_UPDATE", !!item.checked);
               log.info(`Log Song Updates ${config.LOG_SONG_UPDATE ? "enabled" : "disabled"} successfully.`);
               updateServerSettings();
               updateTrayMenu();
