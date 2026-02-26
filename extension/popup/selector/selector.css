@@ -186,8 +186,8 @@ br[id*="buttonLink"] {
   border-radius: 8px !important;
   background: var(--foreground-color-300);
   cursor: pointer;
-  -webkit-transition: background 0.2s;
-  transition: background 0.2s;
+  -webkit-transition: background 0.2s ease;
+  transition: background 0.2s ease;
   color: var(--text-color-primary);
   text-decoration: none;
   text-align: center;
@@ -463,8 +463,8 @@ br[id*="buttonLink"] {
   border-radius: 4px;
   cursor: pointer;
   width: auto;
-  -webkit-transition: background-color 0.2s;
-  transition: background-color 0.2s;
+  -webkit-transition: background-color 0.2s ease;
+  transition: background-color 0.2s ease;
   display: block;
   text-align: center;
   text-decoration: none;

@@ -366,8 +366,8 @@ input[type="text"] {
   border: 1px solid var(--border-color);
   border-radius: 8px;
   font-size: 12px;
-  -webkit-transition: background var(--transition-normal);
-  transition: background var(--transition-normal);
+  -webkit-transition: background var(--transition-normal) ease;
+  transition: background var(--transition-normal) ease;
 }
 
 .entry-item input:focus {
@@ -396,10 +396,10 @@ input[type="text"] {
   -webkit-box-shadow: 0 2px 4px var(--shadow-color);
   box-shadow: 0 2px 4px var(--shadow-color);
   transition:
-    background var(--transition-normal),
-    transform var(--transition-reduced),
-    opacity var(--transition-normal),
-    -webkit-transform var(--transition-reduced);
+    background var(--transition-normal) ease,
+    transform var(--transition-reduced) ease,
+    opacity var(--transition-normal) ease,
+    -webkit-transform var(--transition-reduced) ease;
 }
 
 .filter-item:hover {

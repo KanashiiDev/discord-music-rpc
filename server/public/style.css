@@ -204,7 +204,7 @@ select {
   pointer-events: none;
   background: linear-gradient(to bottom, rgba(255, 255, 255, 0), var(--bg-card));
   opacity: 1;
-  transition: opacity 0.3s;
+  transition: opacity 0.3s ease;
 }
 
 .activity-box.open::after {
@@ -231,7 +231,7 @@ h2.collapsible {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  transition: color 0.2s;
+  transition: color 0.2s ease;
   color: var(--text-color-primary);
 }
 
@@ -311,7 +311,7 @@ footer {
 footer a {
   text-decoration: none;
   color: var(--text-header);
-  transition: color var(--transition-normal);
+  transition: color var(--transition-normal) ease;
 }
 
 footer a:hover {
@@ -430,7 +430,7 @@ img[src*="assets/icon-dark.png"] {
   text-align: center;
   text-decoration: none;
   width: 100%;
-  transition: background var(--transition-normal);
+  transition: background var(--transition-normal) ease;
 }
 
 .link-container a:hover {
@@ -503,7 +503,7 @@ img[src*="assets/icon-dark.png"] {
   border-radius: 8px;
   overflow: hidden;
   background-color: var(--bg-card-bright);
-  transition: background-color 0.2s;
+  transition: background-color 0.2s ease;
 }
 
 .song:hover {
@@ -557,8 +557,8 @@ img[src*="assets/icon-dark.png"] {
   height: 20px;
   background-color: var(--foreground-color-500);
   border-radius: 20px;
-  -webkit-transition: var(--transition-normal);
-  transition: var(--transition-normal);
+  -webkit-transition: var(--transition-normal) ease;
+  transition: var(--transition-normal) ease;
   padding: 0;
 }
 
@@ -578,8 +578,8 @@ img[src*="assets/icon-dark.png"] {
   transform: translateY(-50%);
   background-color: var(--switch-toggle-color);
   border-radius: 50%;
-  -webkit-transition: var(--transition-normal);
-  transition: var(--transition-normal);
+  -webkit-transition: var(--transition-normal) ease;
+  transition: var(--transition-normal) ease;
 }
 
 .switch-label input:checked + .slider {

@@ -67,8 +67,8 @@
   height: 20px;
   background: var(--foreground-color-500);
   border-radius: 20px;
-  -webkit-transition: var(--transition-normal);
-  transition: var(--transition-normal);
+  -webkit-transition: var(--transition-normal) ease;
+  transition: var(--transition-normal) ease;
   padding: 0;
 }
 
@@ -88,8 +88,8 @@
   transform: translateY(-50%);
   background: var(--switch-toggle-color);
   border-radius: 50%;
-  -webkit-transition: var(--transition-normal);
-  transition: var(--transition-normal);
+  -webkit-transition: var(--transition-normal) ease;
+  transition: var(--transition-normal) ease;
 }
 
 .switch-label input:checked + .slider {
