@@ -656,11 +656,9 @@ window.getSongInfo = async function () {
               let dataSource = String(song.source || "").trim();
 
               // Normalization
-              if (dataTitle && dataArtist) {
-                const normalized = normalizeTitleAndArtist(dataTitle, dataArtist);
-                dataTitle = normalized?.title || dataTitle;
-                dataArtist = normalized?.artist || dataArtist;
-              }
+              const normalized = normalizeTitleAndArtist(dataTitle, dataArtist);
+              dataTitle = normalized?.title || dataTitle;
+              dataArtist = normalized?.artist || dataArtist;
 
               dataTitle = truncate(dataTitle, 128, { fallback: "Unknown Song" });
               dataArtist = truncate(dataArtist, 128, { fallback: "Unknown Artist" });
