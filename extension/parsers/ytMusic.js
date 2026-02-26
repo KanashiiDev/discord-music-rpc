@@ -11,8 +11,13 @@ registerParser({
       const artistNames = [];
       for (const node of artistSelector.childNodes) {
         if (node.textContent.includes("•")) break;
-        if (node.nodeType === Node.ELEMENT_NODE && node.tagName === "A") {
-          artistNames.push(node.textContent.trim());
+        if (node.nodeType === Node.ELEMENT_NODE) {
+          if (node.tagName === "A") {
+            artistNames.push(node.textContent.trim());
+          } else if (node.tagName === "SPAN" && !node.textContent.includes("•")) {
+            const spanText = node.textContent.trim();
+            if (spanText) artistNames.push(spanText);
+          }
         }
       }
       artist = artistNames.join(" & ");
