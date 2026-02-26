@@ -65,7 +65,7 @@ module.exports = async function (context) {
   }
   if (platform === "linux") {
     try {
-      const iconsSrcDir = path.join(__dirname, "..", "assets", "icon");
+      const iconsSrcDir = path.join(__dirname, "..", "app", "assets", "icon");
       const iconSizes = [
         { size: "16x16", file: "16x16.png" },
         { size: "24x24", file: "24x24.png" },

@@ -46,7 +46,7 @@ module.exports = [
    */
   {
     files: ["*.js", "scripts/**/*.js"],
-    ignores: ["eslint.config.cjs", "main.js"],
+    ignores: ["eslint.config.cjs", "app/**/*.js"],
     languageOptions: {
       ecmaVersion: "latest",
       sourceType: "commonjs",
@@ -74,7 +74,7 @@ module.exports = [
    * ============================================
    */
   {
-    files: ["main.js"],
+    files: ["app/**/*.js"],
     languageOptions: {
       ecmaVersion: "latest",
       sourceType: "commonjs",

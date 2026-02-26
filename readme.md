@@ -1,4 +1,4 @@
-# <img align="center" src="assets/icon/icon.png" alt="Extension Icon" width="48" height="48"> Discord Music RPC
+# <img align="center" src="app/assets/icon/icon.png" alt="Extension Icon" width="48" height="48"> Discord Music RPC
 
 <p align="center">
   <strong>🎵 Show what you're listening to on Discord — from ANY music website 🎵 </strong>
