@@ -170,18 +170,61 @@ function getColorSettings() {
       label: "Background Color",
       cssVar: "--background-color",
       default: getCSSThemeDefault("--background-color"),
+      enableGradient: 1,
     },
     {
       key: "foregroundColor",
       label: "Foreground Color",
       cssVar: "--foreground-color",
       default: getCSSThemeDefault("--foreground-color-100"),
+      enableGradient: 1,
     },
     {
       key: "accentColor",
       label: "Accent Color",
       cssVar: "--accent-color",
       default: getCSSThemeDefault("--accent-color"),
+      enableGradient: 1,
+    },
+    {
+      key: "scrollbarColor",
+      label: "Scrollbar Color",
+      cssVar: "--scrollbar-color",
+      default: getCSSThemeDefault("--scrollbar-color"),
+      enableGradient: 1,
+      bright: { value: "hover", amount: 12 },
+    },
+    {
+      key: "borderColor",
+      label: "Border Color",
+      cssVar: "--border-color",
+      default: getCSSThemeDefault("--border-color"),
+      bright: { value: "hover", amount: 12 },
+    },
+    {
+      key: "shadowColor",
+      label: "Shadow Color",
+      cssVar: "--shadow-color",
+      default: getCSSThemeDefault("--shadow-color"),
+    },
+    {
+      key: "textColor",
+      label: "Text Color",
+      cssVar: "--text-color-primary",
+      default: getCSSThemeDefault("--text-color-primary"),
+    },
+    {
+      key: "accentButtonColor",
+      label: "Active Button Text Color",
+      cssVar: "--text-color-btn",
+      default: getCSSThemeDefault("--text-color-btn"),
+    },
+    {
+      key: "linkColor",
+      label: "Link Color",
+      cssVar: "--link-color",
+      default: getCSSThemeDefault("--link-color"),
+      bright: { value: "bright", amount: 12 },
     },
   ];
 }
@@ -235,6 +278,19 @@ async function applyColorSettings() {
         }
       }
     }
+    if (item.bright) {
+      if (config[item.key]) {
+        document.body.style.setProperty(`${item.cssVar}-${item.bright.value}`, getColorVariant(config[item.key], item.bright.amount));
+      } else {
+        document.body.style.removeProperty(`${item.cssVar}-${item.bright.value}`);
+      }
+    }
+  }
+
+  if (config.applyFgBlur) {
+    document.body.classList.add("fg-blur");
+  } else {
+    document.body.classList.remove("fg-blur");
   }
 
   // Foreground derivation
@@ -255,6 +311,16 @@ async function applyColorSettings() {
         document.body.style.setProperty(`--foreground-color-${(index + 1) * 100}`, color);
       });
     }
+  }
+
+  if (config.textColor) {
+    document.body.style.setProperty("--text-color-primary", config.textColor);
+    document.body.style.setProperty("--text-color-secondary", getColorVariant(config.textColor, -12));
+    document.body.style.setProperty("--text-color-muted", getColorVariant(config.textColor, -24));
+  } else {
+    document.body.style.removeProperty("--text-color-primary");
+    document.body.style.removeProperty("--text-color-secondary");
+    document.body.style.removeProperty("--text-color-muted");
   }
 
   // Accent color bright variant
@@ -365,6 +431,26 @@ function getDefaultCSSValue(item) {
     return getCSSThemeDefault("--foreground-color-100");
   }
   return getCSSThemeDefault(item.cssVar);
+}
+
+function getColorVariant(value, brightValue) {
+  if (isGradient(value)) {
+    const gradientInfo = parseGradient(value);
+    const brightenedColors = gradientInfo.colors.map((color) => {
+      const base = tinycolor(color);
+      const alpha = base.getAlpha();
+      const bright = brightValue > 0 ? base.clone().lighten(brightValue) : base.clone().darken(Math.abs(brightValue));
+      bright.setAlpha(alpha);
+      return bright.toRgbString();
+    });
+    return `linear-gradient(${gradientInfo.degree}deg, ${brightenedColors.join(", ")})`;
+  }
+
+  const base = tinycolor(value);
+  const alpha = base.getAlpha();
+  const bright = brightValue > 0 ? base.clone().lighten(brightValue) : base.clone().darken(Math.abs(brightValue));
+  bright.setAlpha(alpha);
+  return bright.toRgbString();
 }
 
 // Delay

@@ -20,6 +20,19 @@ body[data-theme] {
   opacity: 1;
 }
 
+body.wideMode {
+  width: 95%;
+  margin: auto;
+  height: 100vh;
+}
+
+body.wideMode #siteList,
+body.wideMode #historyPanel,
+body.wideMode #historyStatsPanel {
+  height: calc(100% - 205px) !important;
+  max-height: unset !important;
+}
+
 body.setup-dialog-open {
   min-height: 360px;
 }
@@ -301,7 +314,9 @@ body,
   transition: background var(--transition-normal) ease;
 }
 
+.color-expand-btn,
 .bg-expand-btn,
+.all-colors-delete-btn,
 .color-delete-btn,
 .port-apply-btn {
   opacity: 1;
@@ -324,6 +339,12 @@ body,
     margin 0.2s ease;
 }
 
+.all-colors-delete-btn:not(.disabled),
+.color-delete-btn:not(.disabled) {
+  margin-left: 4px;
+}
+
+.all-colors-delete-btn.disabled,
 .color-delete-btn.disabled {
   opacity: 0;
   pointer-events: none;
@@ -732,6 +753,11 @@ body[data-section="history"] footer {
   position: relative;
 }
 
+.settings-option.bg-url-wrapper,
+.settings-option.color-section-wrapper {
+  gap: 0;
+}
+
 input[type="range"] {
   -webkit-appearance: none !important;
   -moz-appearance: none !important;
@@ -887,7 +913,7 @@ input[type="range"]::-moz-range-thumb {
   opacity: 0;
 }
 
-.hidden:not(.bg-expandable-section.hidden) {
+.hidden:not(.expandable-section.hidden) {
   display: none;
 }
 
@@ -935,6 +961,15 @@ body[data-theme="dark"] #githubLink img {
   left: 10px;
 }
 
+.date-range-picker {
+  margin-top: 5px;
+  width: calc(100% - 22px);
+  border: 1px solid var(--border-color);
+  padding: 10px;
+  background: var(--foreground-color-200);
+  border-radius: var(--radius-sm);
+}
+
 .date-range-picker .container {
   display: -webkit-box;
   display: -ms-flexbox;
@@ -945,12 +980,44 @@ body[data-theme="dark"] #githubLink img {
   align-items: center;
   -ms-flex-wrap: wrap;
   flex-wrap: wrap;
+  -webkit-box-orient: vertical;
+  -webkit-box-direction: normal;
+  -ms-flex-direction: column;
+  flex-direction: column;
 }
 
 .date-range-picker .picker-label {
   display: block;
   margin-bottom: 5px;
   font-size: var(--font-md);
+}
+
+.date-range-picker .picker-input {
+  max-width: calc(100% - 10px);
+}
+
+.date-range-picker .picker-inputs,
+.date-range-picker .picker-buttons {
+  display: -webkit-box;
+  display: -ms-flexbox;
+  display: flex;
+  gap: 10px;
+  width: 100%;
+}
+
+.date-range-picker .picker-inputs > div {
+  -webkit-box-flex: 1;
+  -ms-flex: 1;
+  flex: 1;
+  min-width: 0;
+  display: -webkit-box;
+  display: -ms-flexbox;
+  display: flex;
+  -webkit-box-orient: vertical;
+  -webkit-box-direction: normal;
+  -ms-flex-direction: column;
+  flex-direction: column;
+  gap: 6px;
 }
 
 .date-range-picker .picker-apply,
@@ -1157,10 +1224,9 @@ body[data-theme="dark"] #githubLink img {
 
 #statsFilters {
   display: block;
-  position: fixed;
+  position: absolute;
   z-index: 22;
   width: 100%;
-  max-width: 323px;
   -webkit-box-sizing: border-box;
   box-sizing: border-box;
   display: none;
@@ -1515,6 +1581,10 @@ body.cleaning-mode .selected .history-trash {
   margin: 0;
 }
 
+.filter-select-wrapper {
+  position: relative;
+}
+
 .dropdown-toggle {
   padding: 8px 12px;
   border: 1px solid var(--border-color);
@@ -1565,7 +1635,7 @@ body.cleaning-mode .selected .history-trash {
   padding: 0;
   background: var(--foreground-color-200);
   max-height: 0;
-  width: 100%;
+  width: auto;
   overflow: hidden;
   -webkit-transition: max-height var(--transition-reduced) ease;
   transition: max-height var(--transition-reduced) ease;
@@ -1590,19 +1660,6 @@ body.cleaning-mode .selected .history-trash {
 .dropdown-menu li:hover {
   background: var(--foreground-color-400);
   color: var(--text-color-primary);
-}
-
-.date-range-picker {
-  margin-top: 5px;
-  width: calc(100% - 22px);
-  border: 1px solid var(--border-color);
-  padding: 10px;
-  background: var(--foreground-color-200);
-  border-radius: var(--radius-sm);
-}
-
-.date-range-picker .picker-input {
-  max-width: 134px;
 }
 
 #tutorialTooltip {
@@ -1640,7 +1697,6 @@ body.cleaning-mode .selected .history-trash {
   -ms-transform: translateY(0);
   transform: translateY(0);
   max-height: 45px;
-  max-width: 325px;
 }
 
 #mainFooterButtons a {
@@ -1672,12 +1728,15 @@ body.cleaning-mode .selected .history-trash {
   position: absolute;
   top: 0;
   z-index: 1000;
+  padding-bottom: 6px;
+  right: 0px;
+}
+.picker-popover-wrapper {
   background: var(--foreground-color-400);
   padding: 6px;
   border-radius: var(--radius-default);
   -webkit-box-shadow: 0 4px 12px var(--shadow-color);
   box-shadow: 0 4px 12px var(--shadow-color);
-  right: 0px;
 }
 
 .picker-popover-inner {
@@ -1685,10 +1744,6 @@ body.cleaning-mode .selected .history-trash {
   display: -ms-flexbox;
   display: flex;
   gap: 10px;
-}
-
-.bg-url-wrapper {
-  position: relative;
 }
 
 .bg-url-control {
@@ -1699,9 +1754,6 @@ body.cleaning-mode .selected .history-trash {
   -ms-flex-align: center;
   align-items: center;
   gap: 8px;
-  -webkit-box-flex: 1;
-  -ms-flex: 1;
-  flex: 1;
 }
 
 .bg-url-input {
@@ -1710,42 +1762,56 @@ body.cleaning-mode .selected .history-trash {
   flex: 1;
 }
 
+.color-expand-btn,
 .bg-expand-btn {
-  transition: -webkit-transform var(--transition-reduced-fast) ease;
+  transition:
+    -webkit-transform var(--transition-reduced-fast) ease,
+    background var(--transition-reduced-fast) ease;
   /* autoprefixer: ignore next */
-  transition: transform var(--transition-reduced-fast) ease;
+  transition:
+    transform var(--transition-reduced-fast) ease,
+    background var(--transition-reduced-fast) ease;
 }
 
+.color-expand-btn.expanded,
 .bg-expand-btn.expanded {
   -webkit-transform: rotate(180deg);
   -ms-transform: rotate(180deg);
   transform: rotate(180deg);
 }
 
-.bg-expandable-section {
-  -webkit-transition: all var(--transition-reduced) ease;
-  transition: all var(--transition-reduced) ease;
+.expandable-section {
+  -webkit-transition: all var(--transition-reduced) ease !important;
+  transition: all var(--transition-reduced) ease !important;
   overflow: hidden;
-  position: absolute;
+  position: absolute !important;
   top: 35px;
+  left: 0;
   background: var(--foreground-color-300);
   z-index: 1001;
   border-radius: var(--radius-default);
   -webkit-box-shadow: 0 4px 12px var(--shadow-color);
   box-shadow: 0 4px 12px var(--shadow-color);
   padding: 6px;
-  opacity: 1;
-  width: 290px;
-  height: 115px;
+  opacity: 1 !important;
+  width: calc(100% - 24px) !important;
+  min-width: 300px;
+  height: 115px !important;
 }
 
-.bg-expandable-section.hidden {
-  height: 0;
-  padding: 0 6px;
-  opacity: 0;
+.color.expandable-section {
+  height: 250px !important;
+  overflow: auto;
 }
 
-.bg-expandable-section .settings-option {
+.expandable-section.hidden {
+  height: 0 !important;
+  opacity: 0 !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+}
+
+.expandable-section .settings-option {
   padding: 4px !important;
 }
 

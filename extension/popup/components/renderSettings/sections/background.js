@@ -49,7 +49,7 @@ async function buildBackground(container) {
 
   // Expandable section
   const bgExpandableSection = document.createElement("div");
-  bgExpandableSection.className = "bg-expandable-section hidden";
+  bgExpandableSection.className = "bg expandable-section hidden";
 
   const {
     wrap: blurWrap,
@@ -123,5 +123,6 @@ async function buildBackground(container) {
     e.stopPropagation();
     bgExpandableSection.classList.toggle("hidden");
     btnExpand.classList.toggle("expanded");
+    closeColorsModal();
   });
 }

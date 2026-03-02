@@ -282,11 +282,19 @@ const popupModule = {
 
         // Close Background Image Settings
         const btnExpandEl = document.querySelector(".bg-expand-btn");
-        const bgExpandableSectionEl = document.querySelector(".bg-expandable-section");
+        const bgExpandableSectionEl = document.querySelector(".bg.expandable-section");
         if (btnExpandEl && bgExpandableSectionEl) {
           if (!bgExpandableSectionEl.contains(e.target) && e.target !== btnExpandEl) {
             bgExpandableSectionEl.classList.add("hidden");
             btnExpandEl.classList.remove("expanded");
+          }
+        }
+        // Close Color Settings
+        const btnColorEl = document.querySelector(".color-expand-btn");
+        const colorExpandableSectionEl = document.querySelector(".color.expandable-section");
+        if (btnColorEl && colorExpandableSectionEl) {
+          if (!colorExpandableSectionEl.contains(e.target) && e.target !== btnColorEl) {
+            closeColorsModal();
           }
         }
       }
@@ -301,6 +309,10 @@ let domLoadedListener = null;
 
 domLoadedListener = async () => {
   try {
+    // Check for wide mode parameter
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("wideMode")) document.body.classList.add("wideMode");
+
     // Set Theme
     const theme = await browser.storage.local.get("theme");
     document.body.dataset.theme = theme.theme || "dark";

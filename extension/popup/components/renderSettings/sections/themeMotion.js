@@ -4,8 +4,8 @@ async function buildThemeMotion(container) {
   let themeConfig = savedTheme ?? "dark";
 
   const themeOptions = [
-    { value: "dark", text: "dark" },
-    { value: "light", text: "light" },
+    { value: "dark", text: "Dark" },
+    { value: "light", text: "Light" },
   ];
 
   const themeWrap = createSelectRow(
@@ -37,9 +37,9 @@ async function buildThemeMotion(container) {
   const motionConfig = motionStorage[motionKey] ?? "always";
 
   const motionOptions = [
-    { value: "system", text: "system" },
-    { value: "always", text: "enable" },
-    { value: "never", text: "disable" },
+    { value: "system", text: "System" },
+    { value: "always", text: "Enable" },
+    { value: "never", text: "Disable" },
   ];
 
   const motionWrap = createSelectRow("Animations", "motion-wrapper", motionOptions, motionConfig, async (e) => {

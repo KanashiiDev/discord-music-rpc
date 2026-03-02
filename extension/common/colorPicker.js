@@ -13,6 +13,9 @@ function createPickerPopover() {
   const popover = document.createElement("div");
   popover.className = "picker-popover hidden";
 
+  const popoverWrapper = document.createElement("div");
+  popoverWrapper.className = "picker-popover-wrapper";
+
   const popoverInner = document.createElement("div");
   popoverInner.className = "picker-popover-inner";
 
@@ -96,9 +99,8 @@ function createPickerPopover() {
   const btnGradient = document.createElement("span");
   btnGradient.className = "gradient-btn button";
 
-  popover.appendChild(popoverInner);
-  popover.appendChild(hexInputContainer);
-  popover.appendChild(btnGradient);
+  popoverWrapper.append(popoverInner, hexInputContainer, btnGradient);
+  popover.append(popoverWrapper);
 
   return {
     popover,
@@ -174,24 +176,30 @@ function setupPickerEventsOnce() {
 
   // Add/Remove colors
   btnAddColor.addEventListener("click", (e) => {
+    e.preventDefault();
     e.stopPropagation();
+
+    if (!globalPicker || !globalPicker.colors) return;
+
     const lastColor = globalPicker.colors[globalPicker.colors.length - 1];
     globalPicker.addColor(lastColor.rgbaString);
-    colorCount.textContent = globalPicker.colors.length;
+    globalPickerElements.colorCount.textContent = globalPicker.colors.length;
     rebuildColorList();
     updateGradient();
     pickerEnd();
   });
 
   btnRemoveColor.addEventListener("click", (e) => {
+    e.preventDefault();
     e.stopPropagation();
-    if (globalPicker.colors.length > 2) {
-      globalPicker.removeColor(globalPicker.colors.length - 1);
-      colorCount.textContent = globalPicker.colors.length;
-      rebuildColorList();
-      updateGradient();
-      pickerEnd();
-    }
+
+    if (!globalPicker || globalPicker.colors.length <= 2) return;
+
+    globalPicker.removeColor(globalPicker.colors.length - 1);
+    globalPickerElements.colorCount.textContent = globalPicker.colors.length;
+    rebuildColorList();
+    updateGradient();
+    pickerEnd();
   });
 
   // Gradient toggle
@@ -209,7 +217,9 @@ function setupPickerEventsOnce() {
   });
 
   globalPickerElements.popoverInner.addEventListener("pointerdown", (e) => {
-    globalPickerElements.popoverInner.setPointerCapture(e.pointerId);
+    if (e.target.closest(".IroColorPicker")) {
+      globalPickerElements.popoverInner.setPointerCapture(e.pointerId);
+    }
   });
 }
 
@@ -259,9 +269,17 @@ async function pickerEnd() {
   config[currentEditingItem.key] = value;
   currentSwatch.style.background = value;
 
+  if (currentEditingItem.key === "foregroundColor") {
+    const hasTransparency = isGradientMode ? globalPicker.colors.some((c) => c.alpha < 1) : globalPicker.colors[0].alpha < 1;
+    config["applyFgBlur"] = hasTransparency;
+  }
+
   await browser.storage.local.set({ colorSettings: config });
   await applyColorSettings();
   await updateCurrentDeleteBtn();
+
+  const deleteColorsBtn = document.querySelector(".all-colors-delete-btn");
+  deleteColorsBtn.classList.toggle("disabled", Object.keys(config).length === 0);
 }
 
 // Toggle gradient mode
@@ -294,7 +312,6 @@ function toggleGradientMode() {
     degreeValue.textContent = `${gradientDegree}°`;
     rebuildColorList();
     updateGradient();
-    pickerEnd();
   } else {
     // Switch to single color
     lastGradientColors = globalPicker.colors.map((c) => c.rgbaString);
@@ -315,8 +332,6 @@ function toggleGradientMode() {
     gradientControls.classList.add("hidden");
     hexInputContainer.classList.remove("hidden");
     hexInput.value = globalPicker.colors[0].hexString;
-
-    pickerEnd();
   }
   setTimeout(() => {
     popover.classList.remove("hidden");
@@ -470,7 +485,7 @@ async function rebuildColorList() {
     colorItem.appendChild(miniHexInput);
     colorListContainer.appendChild(colorItem);
   });
-  await destroyOtherSimpleBars();
+  await destroyOtherSimpleBars("colorExpandableSection");
   await activateSimpleBar("gradientColorList");
 }
 
@@ -551,6 +566,8 @@ async function openPickerForSwatch(item, swatch, btnDelete) {
   // Update UI
   const { btnGradient, gradientControls, hexInputContainer, hexInput, colorCount, degreeSlider, degreeValue, popover } = globalPickerElements;
 
+  btnGradient.style.display = item.enableGradient ? "inline-block" : "none";
+
   if (isGradientMode) {
     gradientControls.classList.remove("hidden");
     hexInputContainer.classList.add("hidden");
@@ -582,16 +599,22 @@ async function openPickerForSwatch(item, swatch, btnDelete) {
   control.appendChild(popover);
 
   popover.classList.remove("hidden");
+  const colorList = document.querySelector(".color.expandable-section");
+  const scrollEl = simpleBarInstances.get(colorList)?.getScrollElement();
+  const containerRect = scrollEl.getBoundingClientRect();
+  const popoverTop = popover.getBoundingClientRect().top - containerRect.top + scrollEl.scrollTop - 10;
+  await smoothScrollTo(scrollEl, popoverTop);
 }
 
 // Close picker
-function closePicker() {
+async function closePicker() {
   if (globalPickerElements) {
     globalPickerElements.popover.classList.add("hidden");
   }
   currentEditingItem = null;
   currentSwatch = null;
   currentDeleteBtn = null;
+  await activateSimpleBar(document.querySelector(".color.expandable-section"));
 }
 
 // Update all swatches when theme changes
@@ -625,6 +648,9 @@ async function updateAllSwatchesForTheme() {
       }
     }
   });
+
+  const deleteColorsBtn = document.querySelector(".all-colors-delete-btn");
+  deleteColorsBtn.classList.toggle("disabled", Object.keys(colorConfig).length === 0);
 
   // If picker is currently open, update it too
   if (currentEditingItem && currentSwatch) {
