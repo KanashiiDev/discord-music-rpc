@@ -82,6 +82,16 @@ a {
   padding: 16px;
 }
 
+.content.fg-blur {
+  .userRpc-select,
+  .userRpc-selectBtn,
+  .userRpc-optionButtons,
+  .rpc-preview .card,
+  #userRpc-selectorStatus.open {
+    backdrop-filter: blur(var(--backdrop-blur-amount));
+  }
+}
+
 #userRpc-selectorChooser-container {
   position: fixed;
   top: 20px;

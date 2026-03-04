@@ -165,32 +165,37 @@ export function shallowEqual(objA, objB) {
   return true;
 }
 
-export function getCSS(variable, fallback = null, mode = "hex", element = document.documentElement) {
-  const value = getComputedStyle(element).getPropertyValue(variable).trim();
+export function getCSS(variable, fallback = null, format = "hex", el = document.body) {
+  const raw = getComputedStyle(el).getPropertyValue(variable).trim();
+  if (!raw) return fallback;
 
-  if (!value) return fallback;
+  const color = tinycolor(raw);
+  if (!color.isValid()) return fallback;
 
-  if (value.startsWith("rgb")) {
-    const rgb = value.match(/\d+/g);
+  const { r, g, b, a } = color.toRgb();
 
-    if (!rgb) return fallback;
+  switch (format) {
+    case "hex":
+      return color.toHexString();
 
-    if (mode === "rgb-string") {
-      return rgb.join(",");
-    }
+    case "hexa":
+      return color.toHex8String();
 
-    if (mode === "hex") {
-      return (
-        "#" +
-        rgb
-          .slice(0, 3)
-          .map((x) => parseInt(x).toString(16).padStart(2, "0"))
-          .join("")
-      );
-    }
+    case "rgb":
+      return color.toRgbString();
+
+    case "rgba":
+      return color.toRgbString();
+
+    case "rgb-string":
+      return `${r}, ${g}, ${b}`;
+
+    case "rgba-string":
+      return `${r}, ${g}, ${b}, ${a}`;
+
+    default:
+      return raw;
   }
-
-  return value;
 }
 
 export function handleCollapsible(header, AppState, simpleBars) {

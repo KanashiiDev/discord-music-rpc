@@ -6,7 +6,7 @@
  */
 module.exports = function registerInlines(inlineUtilsFunctions) {
   // CONFIG
-  inlineUtilsFunctions(["background.js", "common/utils.js", "mainParser.js", "popup/popup.js"], "config.js", [], "start", true);
+  inlineUtilsFunctions(["background.js", "common/utils.js", "mainParser.js"], "config.js", [], "start", true);
 
   // Truncate
   inlineUtilsFunctions(["common/utils.js", "popup/selector/selector.js", "background.js"], "../shared/utils.js", ["truncate", "normalizeTitleAndArtist"]);
@@ -47,6 +47,24 @@ module.exports = function registerInlines(inlineUtilsFunctions) {
   inlineUtilsFunctions("background.js", ["manager/userScriptWorker.js"], []);
   inlineUtilsFunctions("background.js", ["background/historyBackground.js", "background/backgroundListeners.js"], [], "start", true);
 
+  // Main Utils
+  inlineUtilsFunctions("main.js", "common/utils.js", [
+    "debounce",
+    "getColorSettings",
+    "saveStyleAttrs",
+    "applyThemeSettings",
+    "applyBackgroundSettings",
+    "applyColorSettings",
+    "isGradient",
+    "parseGradient",
+    "extractGradientColors",
+    "generateForegroundScaleGradients",
+    "generateForegroundScale",
+    "getCSSThemeDefault",
+    "getDefaultCSSValue",
+    "getColorVariant",
+  ]);
+
   // Main Parser Utils
   inlineUtilsFunctions("mainParser.js", "common/utils.js", [
     "extractTimeParts",
@@ -85,24 +103,6 @@ module.exports = function registerInlines(inlineUtilsFunctions) {
 
   // Popup Components
   inlineUtilsFunctions("popup/popup.js", [], [], "start", true, { dir: "popup/components" });
-
-  // Popup Utils/Libs
-  inlineUtilsFunctions(
-    "popup/popup.js",
-    [
-      "common/utils.js",
-      "common/colorPicker.js",
-      "libs/simplebar.js",
-      "libs/lazysizes.js",
-      "libs/browser-polyfill.js",
-      "libs/flatpickr.js",
-      "libs/tinycolor.js",
-      "libs/iro@5.js",
-    ],
-    [],
-    "start",
-    false,
-  );
 
   // Build CodeMirror 5
   inlineUtilsFunctions("libs/codemirror/codemirror.js", ["libs/codemirror/libs/jshint.js", "libs/codemirror/addons/", "libs/beautify.js"], [], "end", true);

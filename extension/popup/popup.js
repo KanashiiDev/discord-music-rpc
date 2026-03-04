@@ -203,11 +203,12 @@ const popupModule = {
       };
 
       try {
-        const theme = await browser.storage.local.get("theme");
-        const currentTheme = theme.theme || "dark";
-        document.body.dataset.theme = currentTheme;
-        document.documentElement.dataset.theme = currentTheme;
-
+        const currentTheme = await applyThemeSettings();
+        let blurMode = false;
+        const { colorSettings } = await browser.storage.local.get("colorSettings");
+        if (colorSettings) {
+          blurMode = colorSettings.applyFgBlur;
+        }
         clearTimeout(buttonDisableTimeout);
 
         const isEdit = button.textContent.includes("Edit");
@@ -224,6 +225,8 @@ const popupModule = {
           editMode: isEdit,
           theme: currentTheme,
           style: getCurrentStyleAttributes(),
+          bg: getCurrentStyleAttributes("#bg-layer"),
+          blur: blurMode,
         });
 
         window.close();
@@ -314,9 +317,7 @@ domLoadedListener = async () => {
     if (params.get("wideMode")) document.body.classList.add("wideMode");
 
     // Set Theme
-    const theme = await browser.storage.local.get("theme");
-    document.body.dataset.theme = theme.theme || "dark";
-    document.documentElement.dataset.theme = theme.theme || "dark";
+    await applyThemeSettings();
 
     // Initial Setup
     const setup = await browser.storage.local.get("initialSetupDone");
@@ -354,8 +355,8 @@ domLoadedListener = async () => {
 
   // Apply Custom Colors
   await new Promise((resolve) => requestAnimationFrame(() => resolve()));
-  applyColorSettings();
-  applyBackgroundSettings();
+  applyColorSettings(0);
+  applyBackgroundSettings(0);
 };
 
 document.addEventListener("DOMContentLoaded", domLoadedListener);

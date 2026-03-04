@@ -31,6 +31,15 @@ body {
   min-height: 100vh;
 }
 
+.fg-blur {
+  .header,
+  .content.backup,
+  .filter-actions-header,
+  #filtersList .filter-item {
+    backdrop-filter: blur(var(--backdrop-blur-amount));
+  }
+}
+
 .header {
   margin-bottom: 20px;
   padding: 10px;

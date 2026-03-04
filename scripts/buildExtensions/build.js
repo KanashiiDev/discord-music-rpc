@@ -11,6 +11,7 @@ const registerInlines = require("./inlineConfig");
 const ROOT_DIR = path.join(__dirname, "..", "..");
 const TARGET = process.env.TARGET || "chrome";
 const EXTENSION_DIR = path.join(ROOT_DIR, "extension");
+const SHARED_DIR = path.join(ROOT_DIR, "shared");
 const DIST_DIR = path.join(ROOT_DIR, "extensionBuilds", TARGET);
 const pkgVersion = JSON.parse(fs.readFileSync(path.join(ROOT_DIR, "package.json"), "utf8")).version;
 
@@ -39,8 +40,8 @@ const CSS_TARGETS = ["popup/popup.css", "popup/selector/selector.css", "manager/
   buildInlineFunctions();
 
   // 7. Apply CSS config
-  applyCssConfig(EXTENSION_DIR, DIST_DIR, "css-config.css", CSS_TARGETS);
-  applyCssConfig(EXTENSION_DIR, DIST_DIR, "css-global.css", CSS_TARGETS, "/*CSS-GLOBAL*/");
+  applyCssConfig(SHARED_DIR, DIST_DIR, "css-config.css", CSS_TARGETS);
+  applyCssConfig(SHARED_DIR, DIST_DIR, "css-global.css", CSS_TARGETS, "/*CSS-GLOBAL*/");
 
   // 8. Write manifest
   writeManifest(DIST_DIR, manifest);

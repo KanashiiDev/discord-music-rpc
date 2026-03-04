@@ -37,6 +37,28 @@ body.setup-dialog-open {
   min-height: 360px;
 }
 
+body.fg-blur[data-section="main"] #searchBox,
+body.fg-blur[data-section="main"] #mainFooterButtons a,
+body.fg-blur[data-section="main"] .parser-span,
+body.fg-blur[data-section="main"] .parser-options.open,
+body.fg-blur[data-section="stats"] .history-entry,
+body.fg-blur[data-section="stats"] .history-stats-artist-entry,
+body.fg-blur[data-section="stats"] #dropdownToggle,
+body.fg-blur[data-section="stats"] #statsFilters,
+body.fg-blur[data-section="stats"] .date-range-picker,
+body.fg-blur[data-section="history"] #historySearchBox,
+body.fg-blur[data-section="history"] #historyFilterMenu,
+body.fg-blur[data-section="history"] .history-entry,
+body.fg-blur[data-section="history"] .history-stats-artist-entry,
+body.fg-blur[data-section="history"] #clearHistoryBtn,
+body.fg-blur[data-section="settings"] input,
+body.fg-blur[data-section="settings"] a,
+body.fg-blur[data-section="settings"] .button,
+body.fg-blur[data-section="settings"] select,
+body.fg-blur[data-section="settings"] .expandable-section {
+  backdrop-filter: blur(var(--backdrop-blur-amount));
+}
+
 #historyPanel,
 #historyStatsPanel,
 #siteList,
@@ -270,8 +292,12 @@ body,
   min-height: 402px;
 }
 
-.parser-options-open #siteList .simplebar-content-wrapper {
+body:not(.fg-blur).parser-options-open #siteList .simplebar-content-wrapper {
   clip-path: inset(0 16px 0 4px round 8px);
+}
+
+body.fg-blur.parser-options-open #siteList .simplebar-content-wrapper {
+  border-radius: 15px;
 }
 
 .parser-options-open #siteList {
@@ -533,6 +559,7 @@ body[data-section="history"] footer {
   overflow: hidden;
   contain: layout style paint;
 }
+
 .parser-entry.tutorialTooltip-highlight {
   margin-top: 4px;
 }
@@ -1731,6 +1758,7 @@ body.cleaning-mode .selected .history-trash {
   padding-bottom: 6px;
   right: 0px;
 }
+
 .picker-popover-wrapper {
   background: var(--foreground-color-400);
   padding: 6px;
@@ -1744,6 +1772,21 @@ body.cleaning-mode .selected .history-trash {
   display: -ms-flexbox;
   display: flex;
   gap: 10px;
+}
+
+.picker-popover .button {
+  width: 88px;
+  font-size: 11px;
+  padding: 4px;
+  text-align: center;
+}
+
+.picker-popover .blur-btn.button {
+  margin-bottom: 8px;
+}
+
+.picker-popover.gradient-mode .blur-btn.button {
+  margin-right: 18px;
 }
 
 .bg-url-control {

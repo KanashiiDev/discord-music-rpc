@@ -11,13 +11,11 @@ export const chartState = {
 
 export const HC_COLORS = {
   minutes: {
-    rgb: getCSS("--chart-time", "#4a6a94", "rgb-string"),
-    accent: getCSS("--chart-time", "#4a6a94"),
+    rgb: getCSS("--chart-time", "#4a6a94", "rgb"),
     label: "Listening time",
   },
   songs: {
-    rgb: getCSS("--chart-songs", "#44864e", "rgb-string"),
-    accent: getCSS("--chart-songs", "#44864e"),
+    rgb: getCSS("--chart-songs", "#44864e", "rgb"),
     label: "Songs",
   },
 };
@@ -38,7 +36,7 @@ export const HC_RANGES = {
     },
   },
   month: {
-    barThickness: 10,
+    barThickness: 16,
     labelFormat: { day: "numeric", month: "short" },
     getStart() {
       const d = new Date();

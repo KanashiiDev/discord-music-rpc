@@ -229,27 +229,64 @@ function getColorSettings() {
   ];
 }
 
+// Apply Theme
+async function applyThemeSettings() {
+  const theme = await browser.storage.local.get("theme");
+  const currentTheme = theme.theme || "dark";
+  document.body.dataset.theme = currentTheme;
+  document.documentElement.dataset.theme = currentTheme;
+  return currentTheme;
+}
+
+// Apply Attrs
+async function initApplyAttrs() {
+  const { styleAttrs } = await browser.storage.local.get("styleAttrs");
+  document.body.setAttribute("style", styleAttrs ?? "");
+
+  const { colorSettings } = await browser.storage.local.get("colorSettings");
+  document.body.classList.toggle("fg-blur", !!colorSettings?.applyFgBlur);
+
+  const { theme } = await browser.storage.local.get("theme");
+  document.body.dataset.theme = theme ?? "dark";
+}
+
+// Init Storage Listener
+function initStorageListener() {
+  browser.storage.onChanged.addListener((changes, area) => {
+    if (area !== "local") return;
+
+    if (changes.colorSettings) {
+      const applyFgBlur = changes.colorSettings.newValue?.applyFgBlur;
+      document.body.classList.toggle("fg-blur", !!applyFgBlur);
+    }
+
+    if (changes.styleAttrs) {
+      const styleString = changes.styleAttrs.newValue ?? "";
+      document.body.setAttribute("style", styleString);
+    }
+
+    if (changes.theme) {
+      document.body.dataset.theme = changes.theme.newValue ?? "dark";
+    }
+  });
+}
+
 // Background Image settings
-async function applyBackgroundSettings() {
+async function applyBackgroundSettings(save = true) {
   const bgStorage = await browser.storage.local.get("backgroundSettings");
   const bgSettings = bgStorage.backgroundSettings;
 
   if (!bgSettings || !bgSettings.image) {
-    document.body.style.backgroundImage = "";
-    document.body.style.backdropFilter = "";
+    document.body.style.removeProperty("--backgroundImage");
+    document.body.style.removeProperty("--backgroundPositionX");
+    document.body.style.removeProperty("--filter");
     return;
   }
 
-  document.body.style.backgroundImage = `url(${bgSettings.image})`;
-  document.body.style.backgroundSize = "cover";
-  document.body.style.backgroundPosition = "center";
-  document.body.style.backgroundRepeat = "no-repeat";
-  document.body.style.backgroundPositionX = `${bgSettings.positionX}%`;
-  document.body.style.backdropFilter = `blur(${bgSettings.blur}px) brightness(${bgSettings.brightness}%) saturate(${bgSettings.saturation}%)`;
-  debounce(async () => {
-    // save style attribute to local storage
-    await browser.storage.local.set({ styleAttrs: document.body.getAttribute("style") });
-  }, 100)();
+  document.body.style.setProperty("--backgroundImage", `url(${bgSettings.image})`);
+  document.body.style.setProperty("--backgroundPositionX", `${bgSettings.positionX}%`);
+  document.body.style.setProperty("--filter", `blur(${bgSettings.blur}px) brightness(${bgSettings.brightness}%) saturate(${bgSettings.saturation}%)`);
+  if (save) saveStyleAttrs();
 }
 
 // Color Settings
@@ -259,7 +296,7 @@ const saveStyleAttrs = debounce(async () => {
   });
 }, 100);
 
-async function applyColorSettings() {
+async function applyColorSettings(save = true) {
   const stored = await browser.storage.local.get("colorSettings");
   const config = stored.colorSettings || {};
   const COLORS = getColorSettings();
@@ -359,7 +396,7 @@ async function applyColorSettings() {
     document.body.style.removeProperty("--accent-color-border");
   }
 
-  saveStyleAttrs();
+  if (save) saveStyleAttrs();
 }
 
 // Check if value is a gradient

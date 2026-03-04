@@ -5,6 +5,7 @@ let currentEditingItem = null;
 let currentSwatch = null;
 let currentDeleteBtn = null;
 let isGradientMode = false;
+let isBlurMode = false;
 let gradientDegree = 90;
 let lastGradientColors = null;
 
@@ -95,11 +96,15 @@ function createPickerPopover() {
 
   hexInputContainer.appendChild(hexInput);
 
+  // Blur Button
+  const btnBlur = document.createElement("span");
+  btnBlur.className = "blur-btn button";
+
   // Gradient Button
   const btnGradient = document.createElement("span");
   btnGradient.className = "gradient-btn button";
 
-  popoverWrapper.append(popoverInner, hexInputContainer, btnGradient);
+  popoverWrapper.append(popoverInner, btnBlur, hexInputContainer, btnGradient);
   popover.append(popoverWrapper);
 
   return {
@@ -114,6 +119,7 @@ function createPickerPopover() {
     colorListContainer,
     hexInput,
     hexInputContainer,
+    btnBlur,
     btnGradient,
   };
 }
@@ -143,7 +149,7 @@ function initGlobalPicker() {
 
 // Setup all picker events
 function setupPickerEventsOnce() {
-  const { degreeSlider, degreeValue, btnAddColor, btnRemoveColor, colorCount, hexInput, btnGradient, popover } = globalPickerElements;
+  const { degreeSlider, degreeValue, btnAddColor, btnRemoveColor, colorCount, hexInput, btnBlur, btnGradient, popover } = globalPickerElements;
 
   // Hex input
   hexInput.addEventListener("mousedown", (e) => e.stopPropagation());
@@ -199,6 +205,14 @@ function setupPickerEventsOnce() {
     globalPickerElements.colorCount.textContent = globalPicker.colors.length;
     rebuildColorList();
     updateGradient();
+    pickerEnd();
+  });
+
+  // Blur toggle
+  btnBlur.addEventListener("click", (e) => {
+    e.stopPropagation();
+    isBlurMode = !isBlurMode;
+    btnBlur.textContent = isBlurMode ? "Disable Blur" : "Enable Blur";
     pickerEnd();
   });
 
@@ -271,7 +285,7 @@ async function pickerEnd() {
 
   if (currentEditingItem.key === "foregroundColor") {
     const hasTransparency = isGradientMode ? globalPicker.colors.some((c) => c.alpha < 1) : globalPicker.colors[0].alpha < 1;
-    config["applyFgBlur"] = hasTransparency;
+    config["applyFgBlur"] = isBlurMode && hasTransparency;
   }
 
   await browser.storage.local.set({ colorSettings: config });
@@ -304,6 +318,7 @@ function toggleGradientMode() {
     globalPicker.setActiveColor(0);
 
     isGradientMode = true;
+    popover.classList.add("gradient-mode");
     btnGradient.textContent = "Single Color";
     gradientControls.classList.remove("hidden");
     hexInputContainer.classList.add("hidden");
@@ -328,6 +343,7 @@ function toggleGradientMode() {
     globalPicker.setActiveColor(0);
 
     isGradientMode = false;
+    popover.classList.remove("gradient-mode");
     btnGradient.textContent = "Make Gradient";
     gradientControls.classList.add("hidden");
     hexInputContainer.classList.remove("hidden");
@@ -564,11 +580,16 @@ async function openPickerForSwatch(item, swatch, btnDelete) {
   globalPicker.setActiveColor(0);
 
   // Update UI
-  const { btnGradient, gradientControls, hexInputContainer, hexInput, colorCount, degreeSlider, degreeValue, popover } = globalPickerElements;
+  const { btnBlur, btnGradient, gradientControls, hexInputContainer, hexInput, colorCount, degreeSlider, degreeValue, popover } = globalPickerElements;
 
+  btnBlur.style.display = item.key === "foregroundColor" ? "inline-block" : "none";
   btnGradient.style.display = item.enableGradient ? "inline-block" : "none";
 
+  isBlurMode = colorConfig.applyFgBlur;
+  btnBlur.textContent = isBlurMode ? "Disable Blur" : "Enable Blur";
+
   if (isGradientMode) {
+    popover.classList.add("gradient-mode");
     gradientControls.classList.remove("hidden");
     hexInputContainer.classList.add("hidden");
     btnGradient.textContent = "Single Color";
@@ -577,6 +598,7 @@ async function openPickerForSwatch(item, swatch, btnDelete) {
     colorCount.textContent = globalPicker.colors.length;
     await rebuildColorList();
   } else {
+    popover.classList.remove("gradient-mode");
     gradientControls.classList.add("hidden");
     hexInputContainer.classList.remove("hidden");
     btnGradient.textContent = "Make Gradient";

@@ -1,28 +1,3 @@
-async function initApplyAttrs() {
-  const { styleAttrs } = await browser.storage.local.get("styleAttrs");
-  if (styleAttrs) {
-    document.body.setAttribute("style", styleAttrs);
-  }
-
-  const { theme } = await browser.storage.local.get("theme");
-  if (theme) {
-    document.body.dataset.theme = theme;
-  }
-}
-
-function initStorageListener() {
-  browser.storage.onChanged.addListener((changes, area) => {
-    if (area !== "local") return;
-    if (changes.styleAttrs) {
-      const styleString = changes.styleAttrs.newValue || "";
-      document.body.setAttribute("style", styleString);
-    }
-    if (changes.theme) {
-      document.body.dataset.theme = changes.theme.newValue || "dark";
-    }
-  });
-}
-
 // LOG helper
 function log(msg) {
   const logEl = document.getElementById("log");

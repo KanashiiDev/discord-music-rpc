@@ -598,6 +598,10 @@ const handleUpdateRpc = async (req, sender) => {
   return { ok: true };
 };
 
+const handleGetRpcPort = async () => {
+  return { ok: true, port: state.serverPort || 3000 };
+};
+
 const handleUpdateRpcPort = async (req) => {
   try {
     const response = await fetchWithTimeout(
@@ -867,6 +871,9 @@ const setupListeners = () => {
             break;
           case "IS_HOSTNAME_MATCH":
             result = await handleIsHostnameMatch(sender);
+            break;
+          case "GET_RPC_PORT":
+            result = await handleGetRpcPort();
             break;
           case "UPDATE_RPC_PORT":
             result = await handleUpdateRpcPort(req);

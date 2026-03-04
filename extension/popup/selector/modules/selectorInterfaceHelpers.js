@@ -134,23 +134,29 @@ function setupContainerStyles(container) {
   `;
 }
 
-function createRootElement(theme, style = {}) {
+function createRootElement(theme, style = {}, bg = {}, blur = false) {
   const root = document.createElement("div");
   root.id = "userRpc-selectorRoot";
   root.dataset.theme = theme || "dark";
 
-  const contentLayer = document.createElement("div");
-  contentLayer.className = "content";
-
-  for (const [key, value] of Object.entries(style)) {
-    if (key === "backdrop-filter") {
-      contentLayer.style.setProperty(key, value);
-    } else {
-      root.style.setProperty(key, value);
-    }
+  const bgLayer = document.createElement("div");
+  bgLayer.id = "bg-layer";
+  bgLayer.style.position = "absolute";
+  for (const [key, value] of Object.entries(bg)) {
+    bgLayer.style.setProperty(key, value);
   }
 
+  const contentLayer = document.createElement("div");
+  contentLayer.className = "content";
+  if (blur) contentLayer.classList.add("fg-blur");
+
+  for (const [key, value] of Object.entries(style)) {
+    root.style.setProperty(key, value);
+  }
+
+  contentLayer.appendChild(bgLayer);
   root.appendChild(contentLayer);
+  root.bgLayer = bgLayer;
   root._contentLayer = contentLayer;
 
   return root;

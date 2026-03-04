@@ -536,6 +536,19 @@ const waitForHostname = async () => {
   }
 };
 
+async function applyLocalCustomCSS() {
+  const { port } = await browser.runtime.sendMessage({
+    type: "GET_RPC_PORT",
+  });
+
+  const serverHref = `http://localhost:${port}/`;
+  if (location.href === serverHref) {
+    await applyColorSettings(0);
+    await applyBackgroundSettings(0);
+    await applyThemeSettings();
+  }
+}
+
 // Initialize the extension
 function init() {
   logInfo("%c╔════════════════════════════════════════════════╗", "color:#2196f3; font-weight:bold;");
@@ -567,6 +580,8 @@ function init() {
     registerRuntimeMessageListener();
     startWatching();
   };
+
+  if (location.href.includes("http://localhost")) applyLocalCustomCSS();
 
   if (document.readyState !== "loading") {
     logInfo("Document ready, starting immediately");

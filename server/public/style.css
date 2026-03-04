@@ -1,49 +1,10 @@
 :root {
-  --bg-body: #0d0d0d;
-  --bg-header: #191919;
-  --bg-container: #191919;
-  --bg-card: #242424;
-  --bg-card-bright: #323232;
-  --bg-card-bright-hover: #383838;
-  --foreground-color-100: #262626;
-  --foreground-color-200: #303030;
-  --foreground-color-300: #383838;
-  --foreground-color-400: #464646;
-  --foreground-color-500: #565656;
-  --foreground-color-600: #686868;
-  --border-color: #464646;
-  --border-color-bright: #666;
-  --radius-sm: 4px;
-  --radius-default: 6px;
-  --radius-md: 8px;
-  --radius-lg: 10px;
-  --scrollbar-color: #424242;
-  --text-color-btn: #ddd;
-  --text-color-primary: #ddd;
-  --text-color-secondary: #c5c5c5;
-  --text-color-muted: #999;
-  --text-color-button: #ddd;
-  --text-h2: #cbcbcb;
-  --text-header: #ddd;
   --text-connected: #3cff7b;
   --text-disconnected: #ff4f4f;
-  --text-button: #eeeeee;
-  --accent-color: #425c83;
-  --accent-color-bright: #4e6f97;
-  --card-shadow: rgba(0, 0, 0, 0.4);
-  --container-shadow: rgba(0, 0, 0, 0.5);
-  --progress-bg: #1a1a1a;
-  --progress-fill: #959595;
-  --icon-color: #b8b8b8;
-  --switch-toggle-color: #ddd;
-  --red-color: #f44336;
-  --yellow-color: #ffc107;
-  --green-color: #4caf50;
   --chart-time: rgb(74, 106, 148);
   --chart-songs: rgb(68, 134, 78);
   --chart-time-btn: rgba(74, 106, 148, 0.5);
   --chart-songs-btn: rgb(68, 134, 78, 0.5);
-  --transition-normal: 0.3s;
 }
 
 * {
@@ -52,49 +13,49 @@
   box-sizing: border-box;
 }
 
-.simplebar-scrollbar {
-  z-index: 22;
-  pointer-events: all;
-}
-
-.simplebar-scrollbar:before,
-.simplebar-scrollbar.simplebar-visible:before {
-  background-color: var(--scrollbar-color);
-  border-radius: 6px;
-  opacity: 1;
-  min-height: 5px;
-  min-width: 30px;
-}
-
-.simplebar-vertical .simplebar-scrollbar:before,
-.simplebar-vertical .simplebar-scrollbar.simplebar-visible:before {
-  min-height: 30px;
-  min-width: 5px;
-}
-
 .simplebar-track.simplebar-vertical,
 .simplebar-track.simplebar-horizontal {
-  background: var(--bg-container);
+  background: var(--foreground-color-100);
   border-radius: 6px;
 }
 
 body {
   font-family: "Segoe UI", Arial, sans-serif;
-  background: var(--bg-body);
+  background: var(--background-color);
   color: var(--text-color-primary);
   line-height: 1.4;
   padding: 0;
   min-width: 840px;
 }
 
+#bg-layer {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background-image: var(--backgroundImage);
+  background-size: cover;
+  background-position: center;
+  background-position-x: var(--backgroundPositionX);
+  background-repeat: no-repeat;
+  -webkit-filter: var(--filter);
+  filter: var(--filter);
+}
+
+.fg-blur {
+  header,
+  .container {
+    backdrop-filter: blur(var(--backdrop-blur-amount));
+  }
+}
+
 header {
-  background: var(--bg-header);
+  background: var(--foreground-color-100);
   padding: 20px;
   text-align: center;
   font-size: 28px;
   font-weight: bold;
-  color: var(--text-header);
-  box-shadow: 0 2px 10px var(--card-shadow);
+  color: var(--text-color-primary);
+  box-shadow: 0 2px 10px var(--shadow-color);
 }
 
 .switch {
@@ -106,10 +67,10 @@ header {
   position: relative;
   max-width: 850px;
   margin: 30px auto 3px auto;
-  background: var(--bg-container);
+  background: var(--foreground-color-100);
   padding: 25px;
   border-radius: var(--radius-lg);
-  box-shadow: 0 0 15px var(--container-shadow);
+  box-shadow: 0 0 15px var(--shadow-color);
   transition: opacity 0.3s ease;
   opacity: 1;
 }
@@ -158,30 +119,30 @@ pre {
 }
 
 h2 {
-  color: var(--text-h2);
+  color: var(--text-color-primary);
   margin-bottom: 8px;
 }
 
 select {
-  background: var(--bg-card-bright);
+  background: var(--foreground-color-300);
   outline: 0;
   border: 0;
   border-radius: 6px;
   height: 30px;
   color: var(--text-color-primary);
   padding: 2px 5px;
-  -webkit-box-shadow: var(--card-shadow) 0px 1px 3px;
-  box-shadow: var(--card-shadow) 0px 1px 3px;
+  -webkit-box-shadow: var(--shadow-color) 0px 1px 3px;
+  box-shadow: var(--shadow-color) 0px 1px 3px;
 }
 
 .status-box,
 .activity-box,
 .chart-container {
-  background: var(--bg-card);
+  background: var(--foreground-color-200);
   padding: 14px;
   border-radius: 8px;
   margin-bottom: 15px;
-  box-shadow: 0 0 10px var(--card-shadow);
+  box-shadow: 0 0 10px var(--shadow-color);
   color: var(--text-color-primary);
   display: -webkit-box;
 }
@@ -202,7 +163,7 @@ select {
   width: 100%;
   height: 25px;
   pointer-events: none;
-  background: linear-gradient(to bottom, rgba(255, 255, 255, 0), var(--bg-card));
+  background: linear-gradient(to bottom, rgba(255, 255, 255, 0), var(--foreground-color-200));
   opacity: 1;
   transition: opacity 0.3s ease;
 }
@@ -264,7 +225,7 @@ h2.collapsible.logs {
   opacity: 1;
   transition: opacity 0.3s ease;
   font-size: 14px;
-  box-shadow: 0 0 6px var(--container-shadow);
+  box-shadow: 0 0 6px var(--shadow-color);
   border-radius: var(--radius-default);
   background: var(--foreground-color-500);
   color: var(--text-color-primary);
@@ -310,7 +271,7 @@ footer {
 
 footer a {
   text-decoration: none;
-  color: var(--text-header);
+  color: var(--text-color-primary);
   transition: color var(--transition-normal) ease;
 }
 
@@ -319,18 +280,18 @@ footer a:hover {
 }
 
 .music-card {
-  background: var(--bg-card);
+  background: var(--foreground-color-200);
   border-radius: var(--radius-lg);
   padding: 18px;
   margin: 0 0 20px 0;
-  box-shadow: 0 0 10px var(--card-shadow);
+  box-shadow: 0 0 10px var(--shadow-color);
 }
 
 .music-header {
   font-size: 18px;
   font-weight: bold;
   margin-bottom: 15px;
-  color: var(--text-header);
+  color: var(--text-color-primary);
 }
 
 .music-body {
@@ -347,8 +308,8 @@ footer a:hover {
   height: 100px;
   border-radius: var(--radius-lg);
   object-fit: cover;
-  box-shadow: 0 0 6px var(--card-shadow);
-  background: var(--bg-card-bright);
+  box-shadow: 0 0 6px var(--shadow-color);
+  background: var(--foreground-color-300);
 }
 
 img[src*="assets/icon-dark.png"] {
@@ -392,7 +353,7 @@ img[src*="assets/icon-dark.png"] {
 .progress-bar {
   flex: 1;
   height: 6px;
-  background: var(--progress-bg);
+  background: var(--foreground-color-100);
   border-radius: 10px;
   overflow: hidden;
 }
@@ -400,7 +361,7 @@ img[src*="assets/icon-dark.png"] {
 .progress {
   height: 100%;
   width: 0%;
-  background: var(--progress-fill);
+  background: var(--foreground-color-400);
   transition: width 0.3s linear;
 }
 
@@ -423,7 +384,7 @@ img[src*="assets/icon-dark.png"] {
 .link-container a {
   display: inline-block;
   background: var(--accent-color);
-  color: var(--text-button);
+  color: var(--text-color-button);
   padding: 6px 12px;
   border-radius: 6px;
   font-size: 13px;
@@ -465,7 +426,7 @@ img[src*="assets/icon-dark.png"] {
   border: 1px solid var(--accent-color-bright);
   padding: 8px;
   margin-bottom: 6px;
-  background: var(--bg-card-bright);
+  background: var(--foreground-color-300);
   border-radius: 4px;
   font-family: monospace;
   color: var(--text-color-primary);
@@ -478,7 +439,7 @@ img[src*="assets/icon-dark.png"] {
   display: flex;
   justify-content: space-between;
   padding-bottom: 6px;
-  border-bottom: 1px solid var(--bg-card);
+  border-bottom: 1px solid var(--foreground-color-200);
   color: var(--text-color-muted);
 }
 .logEntry .message {
@@ -502,12 +463,12 @@ img[src*="assets/icon-dark.png"] {
   padding: 10px;
   border-radius: 8px;
   overflow: hidden;
-  background-color: var(--bg-card-bright);
+  background-color: var(--foreground-color-300);
   transition: background-color 0.2s ease;
 }
 
 .song:hover {
-  background-color: var(--bg-card-bright-hover);
+  background-color: var(--foreground-color-400);
 }
 
 .song-info {
@@ -658,7 +619,7 @@ input[type="number"] {
   outline: none;
   border: 0;
   padding: 6px;
-  color: var(--text-button);
+  color: var(--text-color-button);
   width: 100%;
   cursor: pointer;
   transition: background var(--transition-normal) ease;

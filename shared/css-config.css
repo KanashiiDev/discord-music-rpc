@@ -1,5 +1,6 @@
 :root,
-:host {
+:host,
+#userRpc-selectorRoot {
   /*Transitions*/
   --transition-reduced: 0.3s;
   --transition-reduced-fast: 0.2s;
@@ -20,6 +21,7 @@
   --font-h2: 16px;
   --font-h3: 14px;
   --font-h4: 12px;
+  --backdrop-blur-amount: 5px;
 }
 
 :root.reduced-motion,
@@ -35,7 +37,7 @@
   /*Foreground*/
   --foreground-color-100: #262626;
   --foreground-color-200: #303030;
-  --foreground-color-300: #383838;
+  --foreground-color-300: #3c3c3c;
   --foreground-color-400: #464646;
   --foreground-color-500: #565656;
   --foreground-color-600: #686868;

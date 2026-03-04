@@ -27,18 +27,18 @@ const SELECTOR_CONSTANTS = {
 // User Add RPC - Add Selector UI to the page
 browser.runtime.onMessage.addListener((msg) => {
   if (msg.action === "startSelectorUI") {
-    injectSelectorUI(msg.editMode, msg.theme, msg.style);
+    injectSelectorUI(msg.editMode, msg.theme, msg.style, msg.bg, msg.blur);
   }
 });
 
 // Main function
-async function injectSelectorUI(editMode = false, theme = "dark", style = {}) {
+async function injectSelectorUI(editMode = false, theme = "dark", style = {}, bg = {}, blur = false) {
   if (document.getElementById("userRpc-selectorContainer")) return;
 
   const container = createContainer();
   const shadow = container.attachShadow({ mode: "open" });
   setupContainerStyles(container);
-  const root = createRootElement(theme, style);
+  const root = createRootElement(theme, style, bg, blur);
   const content = root._contentLayer;
 
   createTitleElements(content, editMode);

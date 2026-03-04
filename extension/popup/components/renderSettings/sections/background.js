@@ -55,7 +55,7 @@ async function buildBackground(container) {
     wrap: blurWrap,
     slider: blurSlider,
     display: blurDisplay,
-  } = createSliderSection("Blur", 0, 20, 1, bgSettings.blur, "px", async (v) => {
+  } = createSliderSection("Blur", 0, 40, 1, bgSettings.blur, "px", async (v) => {
     bgSettings.blur = v;
     await saveBgSettings();
     applyBackgroundSettings();

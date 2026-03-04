@@ -51,12 +51,19 @@ function drawHistoryChart(mode, range) {
         {
           label: color.label,
           data: chartData.data,
-          backgroundColor(ctx) {
+          backgroundColor: (ctx) => {
             const val = Number(ctx.dataset.data[ctx.dataIndex]) || 0;
             const max = chartData.maxValue || 1;
-            const ratio = Math.max(0, Math.min(val / max, 1));
-            const alpha = 0.35 + ratio * 0.65;
-            return `rgba(${color.rgb}, ${alpha})`;
+            let ratio = Math.max(0, Math.min(val / max, 1));
+            ratio = Math.pow(1 - ratio, 0.8);
+            const maxDarken = 15;
+            return tinycolor(`rgb(${color.rgb})`)
+              .darken(ratio * maxDarken)
+              .toRgbString();
+          },
+          hoverBackgroundColor: (ctx) => {
+            const baseColor = ctx.dataset.backgroundColor instanceof Function ? ctx.dataset.backgroundColor(ctx) : ctx.dataset.backgroundColor;
+            return tinycolor(baseColor).brighten(8).toRgbString();
           },
           barThickness,
           fill: true,
@@ -65,8 +72,7 @@ function drawHistoryChart(mode, range) {
           pointHoverRadius: 6,
           borderRadius: 6,
           borderWidth: 0,
-          hoverBorderWidth: 2,
-          hoverBorderColor: color.accent,
+          hoverBorderWidth: 0,
         },
       ],
     },
@@ -81,7 +87,7 @@ function drawHistoryChart(mode, range) {
         x: {
           grid: { display: false },
           ticks: {
-            color: getCSS("--text-color-muted", "#555"),
+            color: getCSS("--text-color-muted", "#555", "hexa"),
             maxRotation: 0,
             minRotation: 0,
             font: { size: 11 },
@@ -92,7 +98,7 @@ function drawHistoryChart(mode, range) {
           beginAtZero: true,
           max: yMax,
           ticks: {
-            color: getCSS("--text-color-muted", "#555"),
+            color: getCSS("--text-color-muted", "#555", "hexa"),
             stepSize,
             callback: (v) => (isSongs ? v : `${v} min`),
           },
@@ -103,7 +109,10 @@ function drawHistoryChart(mode, range) {
       plugins: {
         legend: { display: false },
         tooltip: {
-          backgroundColor: getCSS("--foreground-color-300", "rgba(47, 47, 47, 0.95)"),
+          backgroundColor: getCSS("--foreground-color-300", "rgba(47, 47, 47, 0.95)", "hex"),
+          multiKeyBackground: getCSS("--foreground-color-300", "rgba(47, 47, 47, 0.95)", "hex"),
+          titleColor: getCSS("--text-color-primary", "#ddd", "hexa"),
+          bodyColor: getCSS("--text-color-secondary", "#bbb", "hexa"),
           padding: 10,
           cornerRadius: 8,
           callbacks: {

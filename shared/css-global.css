@@ -47,6 +47,20 @@
   overflow: hidden !important;
 }
 
+/* custom background */
+#bg-layer {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background-image: var(--backgroundImage);
+  background-size: cover;
+  background-position: center;
+  background-position-x: var(--backgroundPositionX);
+  background-repeat: no-repeat;
+  -webkit-filter: var(--filter);
+  filter: var(--filter);
+}
+
 /* Switch */
 .switch-label {
   -webkit-box-flex: 0 !important;
