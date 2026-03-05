@@ -133,6 +133,16 @@ const logError = (...a) => {
   }
 };
 
+function detectBrowser() {
+  const url = browser.runtime.getURL("");
+
+  if (url.startsWith("moz-extension://")) {
+    return "firefox";
+  }
+
+  return "chrome";
+}
+
 // Update Color Delete Button Visibility
 function updateDeleteButtonVisibility(item, pickerValue, btnDelete, colorConfig) {
   const currentValue = colorConfig[item.key];

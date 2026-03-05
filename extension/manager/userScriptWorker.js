@@ -266,16 +266,6 @@ class UserScriptManager {
           },
         ]);
         this.registeredScripts.set(script.id, registeredUserScript);
-      } else {
-        registeredUserScript = await browser.userScripts.register({
-          js: [{ code: trackingCode }],
-          matches,
-          runAt: script.runAt || "document_idle",
-          scriptMetadata: { id: script.id, domain: script.domain },
-          world: this.resolveWorld(trackingCode),
-        });
-
-        this.registeredScripts.set(script.id, registeredUserScript);
       }
 
       return { ok: true, registrationId: script.id, raw: registeredUserScript };

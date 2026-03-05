@@ -448,13 +448,6 @@ code > code {
 
 /* MV3 Alert */
 #mv3Alert {
-  width: 0;
-  height: 0;
-  display: none;
-  overflow: hidden;
-}
-
-#mv3Alert.active {
   width: 100vw;
   position: fixed;
   height: 100vh;

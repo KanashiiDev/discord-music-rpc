@@ -1172,16 +1172,107 @@ class UserScriptUI {
     msgElement.textContent = message;
     msgElement.className = `message ${type}`;
   }
-  // If mv3 and the user have not granted userscript permission, show a warning.
-  async checkUserScriptsPermission() {
-    const manifest = browser.runtime.getManifest();
-    const isMV3 = manifest.manifest_version === 3;
 
-    if (isMV3) {
-      if (!browser.userScripts) {
-        $("mv3Alert").classList.add("active");
-        return;
-      }
+  // If mv3 and the user have not granted userscript permission, show a warning.
+  createMv3PermissionAlert(config) {
+    const wrapper = document.createElement("div");
+    wrapper.id = "mv3Alert";
+
+    const box = document.createElement("div");
+    box.className = "box";
+
+    // Title
+    const title = document.createElement("h2");
+    title.textContent = "⚠️ User Scripts Permission Required! ⚠️";
+
+    // Intro
+    const intro = document.createElement("p");
+    intro.append(
+      document.createTextNode("This section relies on the "),
+      this.createBold("User Scripts API"),
+      document.createTextNode(" to inject and manage custom scripts."),
+      document.createElement("br"),
+      document.createTextNode("However, your browser has not granted this permission yet."),
+    );
+
+    // Why section
+    const whyTitle = document.createElement("h4");
+    whyTitle.textContent = "Why this matters";
+
+    const whyText = document.createElement("p");
+    whyText.textContent = "Without this permission, you cannot create your custom user scripts for music websites.";
+
+    // Fix section
+    const fixTitle = document.createElement("h4");
+    fixTitle.textContent = "How to fix it";
+
+    const fixText = document.createElement("p");
+
+    // Step 1
+    fixText.append(
+      document.createTextNode("1. Open your browser's "),
+      this.createBold("Extension Management page: "),
+      this.createCode(config.extensionPage),
+      document.createTextNode(" and locate this extension."),
+      document.createElement("br"),
+    );
+
+    if (config.showPermissionAndDataStep) {
+      fixText.append(document.createTextNode('Click "Permissions and data".'), document.createElement("br"));
+    }
+
+    // Step 2
+    fixText.append(
+      document.createTextNode("2. Look for a permission setting related to "),
+      this.createCode(config.permissionLabel),
+      document.createTextNode(" and enable it."),
+      document.createElement("br"),
+    );
+
+    // Step 3
+    fixText.append(document.createTextNode("3. After changing the permission, please refresh the page."));
+    box.append(title, intro, document.createElement("br"), whyTitle, whyText, document.createElement("br"), fixTitle, fixText);
+    wrapper.appendChild(box);
+    return wrapper;
+  }
+
+  createBold(text) {
+    const b = document.createElement("b");
+    b.textContent = text;
+    return b;
+  }
+
+  createCode(text) {
+    const code = document.createElement("code");
+    code.textContent = text;
+    return code;
+  }
+
+  async checkUserScriptsPermission() {
+    const BROWSER_CONFIG = {
+      chrome: {
+        extensionPage: "chrome://extensions/",
+        permissionLabel: "Allow User Scripts",
+        showPermissionAndDataStep: false,
+      },
+      firefox: {
+        extensionPage: "about:addons",
+        permissionLabel: "Allow unverified third-party scripts to access your data",
+        showPermissionAndDataStep: true,
+      },
+    };
+
+    const manifest = browser.runtime.getManifest();
+    if (manifest.manifest_version !== 3) return;
+
+    const hasPermission = browser.userScripts;
+
+    if (!hasPermission) {
+      const browserType = detectBrowser();
+      const config = BROWSER_CONFIG[browserType];
+      if (document.getElementById("mv3Alert")) return;
+      const alertNode = this.createMv3PermissionAlert(config);
+      document.body.appendChild(alertNode);
     }
   }
 }
