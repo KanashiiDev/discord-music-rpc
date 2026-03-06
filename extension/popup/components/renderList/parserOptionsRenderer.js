@@ -4,7 +4,7 @@ async function renderOptions(container, parserOptions, settingKey, addListener) 
   const sections = [
     { title: "Settings", keys: defaultKeys.filter((k) => !k.startsWith("custom")), prefix: "", collapsible: false },
     { title: "Custom Settings", keys: defaultKeys.filter((k) => k.startsWith("custom")), prefix: "custom", collapsible: true },
-    { title: "UserScript Settings", keys: Object.keys(parserOptions).filter((k) => !defaultKeys.includes(k)), prefix: "user", collapsible: true },
+    { title: "Other Settings", keys: Object.keys(parserOptions).filter((k) => !defaultKeys.includes(k)), prefix: "user", collapsible: true },
   ];
 
   for (const { title, keys, prefix, collapsible } of sections) {

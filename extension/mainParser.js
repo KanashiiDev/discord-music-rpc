@@ -225,12 +225,17 @@ async function initializeAllParserSettings() {
   }
 
   // Create defaults for initialSettings
-  for (const [domain, data] of Object.entries(initial)) {
+  for (const [primaryDomain, data] of Object.entries(initial)) {
     if (!data?.urlPatterns) continue;
-    const id = makeIdFromDomainAndPatterns(domain, data.urlPatterns);
-    const settingKey = `settings_${id}`;
 
-    // If there is no settingsCache for this parser, get it from storage
+    // If there is a domain array, use it; if not, use the key
+    const domainArg = data.domain ?? primaryDomain;
+
+    // id always based on primaryDomain
+    const resolvedPrimary = Array.isArray(domainArg) ? domainArg[0] : domainArg;
+    const id = makeIdFromDomainAndPatterns(resolvedPrimary, data.urlPatterns);
+
+    const settingKey = `settings_${id}`;
     if (!settingsCache[settingKey]) {
       settingsCache[settingKey] = parserSettings[settingKey] || {};
     }
@@ -264,7 +269,8 @@ window.registerParser = async function ({
   initOnly = false,
   ...rest
 }) {
-  if (!domain || typeof fn !== "function") return;
+  const domains = (Array.isArray(domain) ? domain : [domain]).filter(Boolean);
+  if (!domains.length || typeof fn !== "function") return;
 
   // wait initialSettings ready
   while (!window.initialSettings) {
@@ -288,250 +294,250 @@ window.registerParser = async function ({
     })
     .sort();
 
-  // Generate a deterministic parser ID based on domain and URL patterns
-  const id = makeIdFromDomainAndPatterns(domain, urlPatterns);
-
-  const existingUserScript = window.parsers[domain]?.find((p) => p.id === id && p.userScript === userScript);
-
-  if (existingUserScript) {
-    existingUserScript.parse = fn;
-    Object.assign(existingUserScript, rest);
-    return existingUserScript.id;
-  }
-
-  if (!window.parsers[domain]) window.parsers[domain] = [];
-  if (window.parsers[domain].some((p) => p.id === id)) return;
-
   // bind the id
+  const primaryDomain = domains[0];
+  const id = makeIdFromDomainAndPatterns(primaryDomain, urlPatterns);
   const boundUseSetting = (key, label, type = "text", defaultValue = "", newValue) => useSetting(id, key, label, type, defaultValue, newValue);
   const patternRegexes = (urlPatterns || []).map(parseUrlPattern);
-  window.parsers[domain].push({
-    id,
-    patterns: patternRegexes,
-    authors,
-    authorsLinks,
-    homepage,
-    description,
-    mode,
-    parse: async () => {
-      if (initOnly) return null;
-      const rawData = await fn({
-        useSetting: boundUseSetting,
-        accessWindow,
-      });
-      if (!rawData) return null;
 
-      // eslint-disable-next-line prefer-const
-      let { timePassed = "", duration: durationElem = "", ...rest } = rawData;
+  for (const d of domains) {
+    const existingUserScript = window.parsers[d]?.find((p) => p.id === id && p.userScript === userScript);
+    if (existingUserScript) {
+      existingUserScript.parse = fn;
+      Object.assign(existingUserScript, rest);
+      continue;
+    }
 
-      // Validates and normalizes raw time values; returns null if unusable
-      const safeFormat = (val) => {
-        if (typeof val === "number") return formatTime(Math.floor(val));
-        if (typeof val === "string") {
-          const trimmed = val.trim();
-          if (/^-?\d+:\d{2}(:\d{2})?$/.test(trimmed)) {
-            const parsed = parseTime(trimmed);
-            if (isFinite(parsed)) {
-              return trimmed;
+    if (!window.parsers[d]) window.parsers[d] = [];
+    if (window.parsers[d].some((p) => p.id === id)) continue;
+
+    window.parsers[d].push({
+      id,
+      patterns: patternRegexes,
+      authors,
+      authorsLinks,
+      homepage,
+      description,
+      mode,
+      parse: async () => {
+        if (initOnly) return null;
+        const rawData = await fn({
+          useSetting: boundUseSetting,
+          accessWindow,
+        });
+        if (!rawData) return null;
+
+        // eslint-disable-next-line prefer-const
+        let { timePassed = "", duration: durationElem = "", ...rest } = rawData;
+
+        // Validates and normalizes raw time values; returns null if unusable
+        const safeFormat = (val) => {
+          if (typeof val === "number") return formatTime(Math.floor(val));
+          if (typeof val === "string") {
+            const trimmed = val.trim();
+            if (/^-?\d+:\d{2}(:\d{2})?$/.test(trimmed)) {
+              const parsed = parseTime(trimmed);
+              if (isFinite(parsed)) {
+                return trimmed;
+              }
             }
           }
-        }
-        return null;
-      };
+          return null;
+        };
 
-      // Extract time parts
-      const [tp, dur] = extractTimeParts(timePassed);
-      if (tp && dur) {
-        timePassed = tp;
-        durationElem = dur;
-      } else {
-        // Extract from duration if timePassed failed
-        const [tp2, dur2] = extractTimeParts(durationElem);
-        if (tp2 && dur2) {
-          timePassed = tp2;
-          durationElem = dur2;
-        }
-      }
-
-      // Original values from the parser
-      const rawSnapshot = {
-        reportedTime: parseTime(timePassed || "0:00"),
-        reportedDuration: parseTime(durationElem || "0:00"),
-      };
-
-      let effectiveTimePassed = safeFormat(timePassed);
-      let effectiveDuration = safeFormat(durationElem);
-
-      // Has only duration Mode
-      // Activated when timePassed is consistently missing but duration exists
-      if (!effectiveTimePassed && effectiveDuration) {
-        if (rpcState.hasOnlyDurationCount < 5) {
-          rpcState.hasOnlyDurationCount++;
-        }
-        // Enter Has only duration Mode if timePassed is missing but duration exists
-        if (!rpcState.hasOnlyDuration || (rpcState.isSongChanged(rest) && rpcState.hasOnlyDurationCount > 2)) {
-          rpcState.hasOnlyDuration = true;
-          rpcState.startDurationTimer();
-          rpcState.resetRemainingState();
+        // Extract time parts
+        const [tp, dur] = extractTimeParts(timePassed);
+        if (tp && dur) {
+          timePassed = tp;
+          durationElem = dur;
+        } else {
+          // Extract from duration if timePassed failed
+          const [tp2, dur2] = extractTimeParts(durationElem);
+          if (tp2 && dur2) {
+            timePassed = tp2;
+            durationElem = dur2;
+          }
         }
 
-        // Use the timer as timePassed
-        effectiveTimePassed = rpcState.getDurationTimer();
+        // Original values from the parser
+        const rawSnapshot = {
+          reportedTime: parseTime(timePassed || "0:00"),
+          reportedDuration: parseTime(durationElem || "0:00"),
+        };
 
-        // If reported duration suddenly decreases, assume it represents remaining time and reconstruct total duration using the internal timer
-        const currentTimerSec = rpcState.durationTimer;
+        let effectiveTimePassed = safeFormat(timePassed);
+        let effectiveDuration = safeFormat(durationElem);
+
+        // Has only duration Mode
+        // Activated when timePassed is consistently missing but duration exists
+        if (!effectiveTimePassed && effectiveDuration) {
+          if (rpcState.hasOnlyDurationCount < 5) {
+            rpcState.hasOnlyDurationCount++;
+          }
+          // Enter Has only duration Mode if timePassed is missing but duration exists
+          if (!rpcState.hasOnlyDuration || (rpcState.isSongChanged(rest) && rpcState.hasOnlyDurationCount > 2)) {
+            rpcState.hasOnlyDuration = true;
+            rpcState.startDurationTimer();
+            rpcState.resetRemainingState();
+          }
+
+          // Use the timer as timePassed
+          effectiveTimePassed = rpcState.getDurationTimer();
+
+          // If reported duration suddenly decreases, assume it represents remaining time and reconstruct total duration using the internal timer
+          const currentTimerSec = rpcState.durationTimer;
+          const durSecRaw = rawSnapshot.reportedDuration;
+
+          if (rpcState.lastReportedDuration !== null && durSecRaw < rpcState.lastReportedDuration - 0.5) {
+            const newTotalDuration = currentTimerSec + durSecRaw;
+
+            if (rpcState.calculatedTotalDuration === null) {
+              rpcState.calculatedTotalDuration = newTotalDuration;
+            } else {
+              rpcState.calculatedTotalDuration = Math.max(rpcState.calculatedTotalDuration, newTotalDuration);
+            }
+
+            effectiveDuration = formatTime(rpcState.calculatedTotalDuration);
+          } else if (rpcState.calculatedTotalDuration !== null) {
+            // If there is already a calculated total duration, use it
+            effectiveDuration = formatTime(rpcState.calculatedTotalDuration);
+          }
+
+          rpcState.lastReportedDuration = durSecRaw;
+        } else {
+          // Exit duration-only mode and reset timing state
+          if (rpcState.hasOnlyDuration) {
+            rpcState.hasOnlyDuration = false;
+            rpcState.resetDurationTimer();
+            rpcState.lastReportedDuration = null;
+          }
+        }
+
+        // Parse Times
+        const tpSec = parseTime(effectiveTimePassed);
         const durSecRaw = rawSnapshot.reportedDuration;
+        let durSec = durSecRaw;
 
-        if (rpcState.lastReportedDuration !== null && durSecRaw < rpcState.lastReportedDuration - 0.5) {
-          const newTotalDuration = currentTimerSec + durSecRaw;
+        // Remaining Signal
+        const isRemainingSignal = durSec < 0;
+        let totalDurationSec = Math.abs(durSec);
 
-          if (rpcState.calculatedTotalDuration === null) {
-            rpcState.calculatedTotalDuration = newTotalDuration;
+        if (isRemainingSignal) {
+          totalDurationSec = tpSec + Math.abs(durSec);
+          effectiveDuration = formatTime(totalDurationSec);
+          durSec = totalDurationSec;
+        }
+
+        // Check if the track has changed
+        const lastAct = rpcState.lastActivity;
+        const sameTrack = lastAct && lastAct.title === rest.title && lastAct.artist === rest.artist;
+
+        if (!sameTrack) {
+          rpcState.resetRemainingState();
+          rpcState.hasOnlyDurationCount = 0;
+        }
+
+        // Remaining Mode
+        if (
+          sameTrack &&
+          !rpcState.hasOnlyDuration &&
+          effectiveTimePassed &&
+          effectiveDuration &&
+          rpcState.lastReportedTime !== null &&
+          rpcState.lastReportedDuration !== null
+        ) {
+          const timeDiff = tpSec - rpcState.lastReportedTime;
+          const rawDurationDiff = Math.abs(durSecRaw - rpcState.lastReportedDuration);
+
+          // Remaining pattern: raw duration stable, time decreasing or within jitter tolerance
+          const rawDurationStable = rawDurationDiff < 2;
+          const timeDecreasingOrStable = timeDiff <= 1;
+
+          // Normal pattern: raw duration stable, time increases within expected sampling interval
+          const timeIncreasing = timeDiff >= 2 && timeDiff <= 6;
+
+          // Require fewer samples to enter a mode, more to switch between modes
+          const requiredCountForEntering = 2;
+          const requiredCountForSwitching = 3;
+
+          if (rawDurationStable && timeDecreasingOrStable && !isRemainingSignal) {
+            rpcState.consecutiveRemaining++;
+            rpcState.consecutiveNormal = 0;
+            const threshold = rpcState.isRemainingMode ? requiredCountForSwitching : requiredCountForEntering;
+
+            if (rpcState.consecutiveRemaining >= threshold) {
+              if (!rpcState.isRemainingMode) {
+                logInfo("Entering remaining mode - time decreasing pattern detected");
+              }
+              rpcState.isRemainingMode = true;
+            }
+          } else if (rawDurationStable && timeIncreasing) {
+            rpcState.consecutiveNormal++;
+            rpcState.consecutiveRemaining = 0;
+
+            const threshold = !rpcState.isRemainingMode ? requiredCountForSwitching : requiredCountForEntering;
+
+            if (rpcState.consecutiveNormal >= threshold) {
+              if (rpcState.isRemainingMode) {
+                logInfo("Exiting remaining mode - normal playback detected");
+              }
+              rpcState.isRemainingMode = false;
+            }
           } else {
-            rpcState.calculatedTotalDuration = Math.max(rpcState.calculatedTotalDuration, newTotalDuration);
+            // Uncertain pattern: gradually decay counters to avoid abrupt mode changes
+            if (rpcState.consecutiveRemaining > 0) rpcState.consecutiveRemaining--;
+            if (rpcState.consecutiveNormal > 0) rpcState.consecutiveNormal--;
           }
-
-          effectiveDuration = formatTime(rpcState.calculatedTotalDuration);
-        } else if (rpcState.calculatedTotalDuration !== null) {
-          // If there is already a calculated total duration, use it
-          effectiveDuration = formatTime(rpcState.calculatedTotalDuration);
         }
 
-        rpcState.lastReportedDuration = durSecRaw;
-      } else {
-        // Exit duration-only mode and reset timing state
-        if (rpcState.hasOnlyDuration) {
-          rpcState.hasOnlyDuration = false;
-          rpcState.resetDurationTimer();
-          rpcState.lastReportedDuration = null;
+        // Save state
+        // Persist last known valid playback state for mode detection and recovery
+        if (effectiveTimePassed && effectiveDuration && !rpcState.hasOnlyDuration) {
+          rpcState.lastReportedTime = rawSnapshot.reportedTime;
+          rpcState.lastReportedDuration = rawSnapshot.reportedDuration;
+          rpcState.lastEffectiveDuration = durSec;
         }
-      }
 
-      // Parse Times
-      const tpSec = parseTime(effectiveTimePassed);
-      const durSecRaw = rawSnapshot.reportedDuration;
-      let durSec = durSecRaw;
+        // Remaining Mode Active
+        // Convert remaining time into a normal playback duration
+        if (rpcState.isRemainingMode && !isRemainingSignal && effectiveTimePassed && effectiveDuration) {
+          const calculatedDuration = tpSec + durSecRaw;
+          const lastEffectiveDuration = lastAct?.duration ? parseTime(lastAct.duration) : null;
 
-      // Remaining Signal
-      const isRemainingSignal = durSec < 0;
-      let totalDurationSec = Math.abs(durSec);
-
-      if (isRemainingSignal) {
-        totalDurationSec = tpSec + Math.abs(durSec);
-        effectiveDuration = formatTime(totalDurationSec);
-        durSec = totalDurationSec;
-      }
-
-      // Check if the track has changed
-      const lastAct = rpcState.lastActivity;
-      const sameTrack = lastAct && lastAct.title === rest.title && lastAct.artist === rest.artist;
-
-      if (!sameTrack) {
-        rpcState.resetRemainingState();
-        rpcState.hasOnlyDurationCount = 0;
-      }
-
-      // Remaining Mode
-      if (
-        sameTrack &&
-        !rpcState.hasOnlyDuration &&
-        effectiveTimePassed &&
-        effectiveDuration &&
-        rpcState.lastReportedTime !== null &&
-        rpcState.lastReportedDuration !== null
-      ) {
-        const timeDiff = tpSec - rpcState.lastReportedTime;
-        const rawDurationDiff = Math.abs(durSecRaw - rpcState.lastReportedDuration);
-
-        // Remaining pattern: raw duration stable, time decreasing or within jitter tolerance
-        const rawDurationStable = rawDurationDiff < 2;
-        const timeDecreasingOrStable = timeDiff <= 1;
-
-        // Normal pattern: raw duration stable, time increases within expected sampling interval
-        const timeIncreasing = timeDiff >= 2 && timeDiff <= 6;
-
-        // Require fewer samples to enter a mode, more to switch between modes
-        const requiredCountForEntering = 2;
-        const requiredCountForSwitching = 3;
-
-        if (rawDurationStable && timeDecreasingOrStable && !isRemainingSignal) {
-          rpcState.consecutiveRemaining++;
-          rpcState.consecutiveNormal = 0;
-          const threshold = rpcState.isRemainingMode ? requiredCountForSwitching : requiredCountForEntering;
-
-          if (rpcState.consecutiveRemaining >= threshold) {
-            if (!rpcState.isRemainingMode) {
-              logInfo("Entering remaining mode - time decreasing pattern detected");
+          if (lastEffectiveDuration && lastEffectiveDuration > 0) {
+            const ratio = calculatedDuration / lastEffectiveDuration;
+            if (ratio > 0.7 && ratio < 1.3) {
+              effectiveDuration = formatTime(calculatedDuration);
+            } else {
+              effectiveDuration = formatTime(lastEffectiveDuration);
             }
-            rpcState.isRemainingMode = true;
-          }
-        } else if (rawDurationStable && timeIncreasing) {
-          rpcState.consecutiveNormal++;
-          rpcState.consecutiveRemaining = 0;
-
-          const threshold = !rpcState.isRemainingMode ? requiredCountForSwitching : requiredCountForEntering;
-
-          if (rpcState.consecutiveNormal >= threshold) {
-            if (rpcState.isRemainingMode) {
-              logInfo("Exiting remaining mode - normal playback detected");
-            }
-            rpcState.isRemainingMode = false;
-          }
-        } else {
-          // Uncertain pattern: gradually decay counters to avoid abrupt mode changes
-          if (rpcState.consecutiveRemaining > 0) rpcState.consecutiveRemaining--;
-          if (rpcState.consecutiveNormal > 0) rpcState.consecutiveNormal--;
-        }
-      }
-
-      // Save state
-      // Persist last known valid playback state for mode detection and recovery
-      if (effectiveTimePassed && effectiveDuration && !rpcState.hasOnlyDuration) {
-        rpcState.lastReportedTime = rawSnapshot.reportedTime;
-        rpcState.lastReportedDuration = rawSnapshot.reportedDuration;
-        rpcState.lastEffectiveDuration = durSec;
-      }
-
-      // Remaining Mode Active
-      // Convert remaining time into a normal playback duration
-      if (rpcState.isRemainingMode && !isRemainingSignal && effectiveTimePassed && effectiveDuration) {
-        const calculatedDuration = tpSec + durSecRaw;
-        const lastEffectiveDuration = lastAct?.duration ? parseTime(lastAct.duration) : null;
-
-        if (lastEffectiveDuration && lastEffectiveDuration > 0) {
-          const ratio = calculatedDuration / lastEffectiveDuration;
-          if (ratio > 0.7 && ratio < 1.3) {
+          } else {
             effectiveDuration = formatTime(calculatedDuration);
-          } else {
-            effectiveDuration = formatTime(lastEffectiveDuration);
           }
-        } else {
-          effectiveDuration = formatTime(calculatedDuration);
         }
-      }
 
-      const { currentPosition, totalDuration, currentProgress, timestamps } = processPlaybackInfo(effectiveTimePassed, effectiveDuration);
+        const { currentPosition, totalDuration, currentProgress, timestamps } = processPlaybackInfo(effectiveTimePassed, effectiveDuration);
 
-      return {
-        ...rest,
-        source: rest.artist === rest.source ? title : rest.source,
-        timePassed: currentPosition,
-        position: currentPosition,
-        duration: totalDuration,
-        progress: currentProgress,
-        ...timestamps,
-      };
-    },
-    userAdd,
-  });
+        return {
+          ...rest,
+          source: rest.artist === rest.source ? title : rest.source,
+          timePassed: currentPosition,
+          position: currentPosition,
+          duration: totalDuration,
+          progress: currentProgress,
+          ...timestamps,
+        };
+      },
+      userAdd,
+    });
+  }
 
   if (!userScript) {
-    // Metadata Registration
     if (!window.parserMeta.some((m) => m.id === id)) {
       window.parserMeta.push({
         id,
         title,
-        domain,
+        domain: domains,
         urlPatterns: patternStrings,
         authors,
         authorsLinks,
@@ -541,8 +547,13 @@ window.registerParser = async function ({
         userAdd,
         userScript,
       });
-      window.parserMeta.sort((a, b) => (a.title || a.domain).toLowerCase().localeCompare((b.title || b.domain).toLowerCase()));
     }
+
+    window.parserMeta.sort((a, b) => {
+      const aTitle = a.title || (Array.isArray(a.domain) ? a.domain[0] : a.domain) || "";
+      const bTitle = b.title || (Array.isArray(b.domain) ? b.domain[0] : b.domain) || "";
+      return aTitle.toLowerCase().localeCompare(bTitle.toLowerCase());
+    });
 
     scheduleParserListSaveOnce();
   }
@@ -575,8 +586,10 @@ async function scheduleParserListSave() {
       }));
     }
 
-    const mergedList = [...new Map([...parserList, ...meta, ...userScriptsList].map((item) => [`${item.id}|${item.domain}|${item.title}`, item])).values()].sort((a, b) =>
-      (a.title || a.domain).toLowerCase().localeCompare((b.title || b.domain).toLowerCase()),
+    const getTitle = (item) => item.title || (Array.isArray(item.domain) ? item.domain[0] : item.domain) || "";
+
+    const mergedList = [...new Map([...parserList, ...meta, ...userScriptsList].map((item) => [item.id, item])).values()].sort((a, b) =>
+      getTitle(a).toLowerCase().localeCompare(getTitle(b).toLowerCase()),
     );
 
     await browser.storage.local.set({ parserList: mergedList });

@@ -420,7 +420,8 @@ const updateRpc = async (data, tabId) => {
           const hostname = url.hostname.replace(/^www\./, "");
           const exactMatch = state.parserList.find((parser) => {
             try {
-              return isDomainMatch(parser.domain, hostname);
+              const domains = Array.isArray(p.domain) ? p.domain : [p.domain];
+              return domains.some((d) => isDomainMatch(d, hostname));
             } catch (e) {
               logError("Domain match error:", e);
               return false;

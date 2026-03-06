@@ -1,5 +1,5 @@
 registerParser({
-  domain: "en.anison.fm",
+  domain: ["anison.fm", "en.anison.fm", "cn.anison.fm"],
   title: "ANISON.FM",
   urlPatterns: [/.*/],
   fn: function () {

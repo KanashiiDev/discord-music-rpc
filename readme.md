@@ -411,7 +411,7 @@ Create a new file in the `extension/parsers/` directory, named `<yourSite>.js`. 
 
 ```js
 registerParser({
-  domain: "example.com", // Website domain
+  domain: "example.com", // Website domain (string | string[])
   title: "Example", // Display title
   homepage: "https://example.com/homepage", // The page the user will be redirected to when they click on the parser image in the pop-up window (optional)
   urlPatterns: [/.*/], // Only run on specific paths (Regex)

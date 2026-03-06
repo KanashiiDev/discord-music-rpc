@@ -847,8 +847,8 @@ const parseUrlPattern = (pattern) => {
 const findMatchingParsersForUrl = (url, list) => {
   const host = normalizeHost(url);
   return list.filter(({ domain }) => {
-    const d = normalizeHost(domain);
-    return d && host === d;
+    const domains = Array.isArray(domain) ? domain : [domain];
+    return domains.some((d) => normalizeHost(d) === host);
   });
 };
 
@@ -1727,7 +1727,10 @@ const isAllowedDomain = async (hostname, pathname) => {
   try {
     const normHost = normalizeHost(hostname);
     for (const parser of state.parserList) {
-      if (!isDomainMatch(parser.domain, normHost)) continue;
+      const domains = (Array.isArray(parser.domain) ? parser.domain : [parser.domain]).filter(Boolean);
+      const domainMatch = domains.some((d) => isDomainMatch(d, normHost));
+
+      if (!domainMatch) continue;
       // URL pattern check
       const urlPatterns = parser.urlPatterns || [];
       const hasMatch = urlPatterns.length === 0 || urlPatterns.map(parseUrlPattern).some((re) => re.test(pathname));
@@ -2133,7 +2136,7 @@ async function loadFavIcons(icons, concurrency = 3, delayMs = 150, slowAfter = 8
   function loadSingleIcon(icon, domain) {
     return new Promise((resolve) => {
       if (!domain) return resolve();
-
+      if (typeof domain === "string") domain = domain.split(",")[0];
       const proxyUrl = `https://favicons.seadfeng.workers.dev/${domain}.ico`;
       const googleUrl = `https://www.google.com/s2/favicons?domain=${domain}&sz=32`;
       const fallback = browser.runtime.getURL("icons/48x48.png");

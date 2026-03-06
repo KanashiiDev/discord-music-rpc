@@ -126,7 +126,7 @@ const handleDeleteUserScript = async (req) => {
 
   // Clear browser storage
   const parserList = (await browser.storage.local.get("parserList")).parserList || [];
-  const filteredParserList = parserList.filter((p) => !(p.domain === scriptsList[deleteIndex].domain && p.title === scriptsList[deleteIndex].title));
+  const filteredParserList = parserList.filter((p) => p.id !== scriptsList[deleteIndex].id);
   await browser.storage.local.set({ parserList: filteredParserList });
 
   // Remove enable flag
@@ -532,7 +532,8 @@ const handleUpdateRpc = async (req, sender) => {
 
       const exactMatch = state.parserList.find((p) => {
         try {
-          return isDomainMatch(p.domain, hostname);
+          const domains = Array.isArray(p.domain) ? p.domain : [p.domain];
+          return domains.some((d) => isDomainMatch(d, hostname));
         } catch {
           return false;
         }
