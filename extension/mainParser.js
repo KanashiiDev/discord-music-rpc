@@ -205,27 +205,11 @@ async function initializeAllParserSettings() {
     }
   }
 
-  // If nothing to migrate, exit early
-  if (!Object.keys(merged).length) {
-    return;
+  if (Object.keys(merged).length) {
+    const { parserSettings: existing = {} } = await browser.storage.local.get("parserSettings");
+    await browser.storage.local.set({ parserSettings: { ...existing, ...merged } });
+    await browser.storage.local.remove(Object.keys(merged));
   }
-
-  // Get existing parserSettings (if any)
-  const { parserSettings: existing = {} } = await browser.storage.local.get("parserSettings");
-
-  // Merge without overwriting existing entries
-  const nextParserSettings = {
-    ...existing,
-    ...merged,
-  };
-
-  // Save merged parserSettings
-  await browser.storage.local.set({
-    parserSettings: nextParserSettings,
-  });
-
-  // Remove old individual settings_* keys
-  await browser.storage.local.remove(Object.keys(merged));
 
   // Load all existing settings into cache
   const { parserSettings = {} } = await browser.storage.local.get("parserSettings");
@@ -242,8 +226,7 @@ async function initializeAllParserSettings() {
 
   // Create defaults for initialSettings
   for (const [domain, data] of Object.entries(initial)) {
-    if (!data || !data.urlPatterns) continue;
-
+    if (!data?.urlPatterns) continue;
     const id = makeIdFromDomainAndPatterns(domain, data.urlPatterns);
     const settingKey = `settings_${id}`;
 
@@ -251,31 +234,17 @@ async function initializeAllParserSettings() {
     if (!settingsCache[settingKey]) {
       settingsCache[settingKey] = parserSettings[settingKey] || {};
     }
-
-    // Process all the settings in the parser
-    if (Array.isArray(data.settings)) {
-      for (const s of data.settings) {
-        await useSetting(id, s.key, s.label, s.type, s.defaultValue);
-      }
-    }
+    await syncParserSettings(id, data.settings || []);
   }
 
   // initialize the user script settings in userScriptsList
   for (const script of userScriptsList) {
-    if (!script || !script.id) continue;
-
+    if (!script?.id) continue;
     const settingKey = `settings_${script.id}`;
-
-    // otherwise, create
     if (!settingsCache[settingKey]) {
       settingsCache[settingKey] = parserSettings[settingKey] || {};
     }
-
-    if (Array.isArray(script.settings)) {
-      for (const setting of script.settings) {
-        await useSetting(script.id, setting.key, setting.label, setting.type, setting.defaultValue);
-      }
-    }
+    await syncParserSettings(script.id, script.settings || []);
   }
 }
 
@@ -620,9 +589,7 @@ async function scheduleParserListSave() {
         processedScripts.add(script.id);
 
         const settings = script.settings || [];
-        for (const setting of settings) {
-          await useSetting(script.id, setting.key, setting.label, setting.type, setting.defaultValue);
-        }
+        await syncParserSettings(script.id, settings);
       }
     }
   } catch (error) {
@@ -938,6 +905,51 @@ async function loadAllSavedUserParsers() {
         }
       },
     });
+  }
+}
+
+// Sync Parser Settings
+async function syncParserSettings(id, declaredSettings = []) {
+  const settingKey = `settings_${id}`;
+
+  if (!settingsCache[settingKey]) {
+    const { parserSettings = {} } = await browser.storage.local.get("parserSettings");
+    settingsCache[settingKey] = parserSettings[settingKey] || {};
+  }
+
+  const declaredKeys = new Set([...Object.keys(DEFAULT_PARSER_OPTIONS), ...declaredSettings.map((s) => s.key)]);
+
+  const cached = settingsCache[settingKey];
+  let changed = false;
+
+  for (const key of Object.keys(cached)) {
+    if (!declaredKeys.has(key)) {
+      logInfo(`[settings] Deleting orphan key "${key}" from parser "${id}"`);
+      delete cached[key];
+      changed = true;
+    }
+  }
+
+  if (changed) {
+    if (saveTimers[settingKey]) {
+      clearTimeout(saveTimers[settingKey]);
+      delete saveTimers[settingKey];
+    }
+
+    settingsCache[settingKey] = cached;
+
+    const { parserSettings = {} } = await browser.storage.local.get("parserSettings");
+    await browser.storage.local.set({
+      parserSettings: { ...parserSettings, [settingKey]: cached },
+    });
+  }
+
+  for (const [key, opt] of Object.entries(DEFAULT_PARSER_OPTIONS)) {
+    await useSetting(id, key, opt.label, opt.type, opt.value);
+  }
+
+  for (const s of declaredSettings) {
+    await useSetting(id, s.key, s.label, s.type, s.defaultValue);
   }
 }
 
