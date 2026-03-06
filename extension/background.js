@@ -111,7 +111,7 @@ async function loadParserList() {
     // UserScript Parsers
     const userScriptList = userScriptsList.map((u) => ({
       ...u,
-      id: u.id || `${u.domain}_${hashFromPatternStrings(u.urlPatterns || [".*"])}`,
+      id: u.id || `${Array.isArray(u.domain) ? u.domain[0] : u.domain}_${hashFromPatternStrings(u.urlPatterns || [".*"])}`,
       urlPatterns: u.urlPatterns || [".*"],
       userScript: true,
     }));

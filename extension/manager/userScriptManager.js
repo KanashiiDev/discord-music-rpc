@@ -35,10 +35,14 @@ class UserScriptUI {
   }
 
   handlePatternStatus() {
-    const domain = $("inDomain").value.trim();
-    const status = $("patternStatus");
+    const domainRaw = $("inDomain").value.trim();
+    const domains = domainRaw
+      .split(",")
+      .map((d) => d.trim())
+      .filter(Boolean);
     const patterns = $("inUrlPatterns").value.split(",");
-    const matches = patterns.map((p) => PatternValidator.toChromeMatch(domain, p));
+    const matches = domains.flatMap((domain) => patterns.map((p) => PatternValidator.toChromeMatch(domain, p)));
+    const status = $("patternStatus");
     while (status.firstChild) {
       status.removeChild(status.firstChild);
     }
@@ -276,6 +280,8 @@ class UserScriptUI {
       title.className = "script-title";
       title.textContent = script.title || "";
 
+      const primaryDomain = Array.isArray(script.domain) ? script.domain[0] : script.domain;
+
       // FavIcon
       const favIconContainer = document.createElement("div");
       favIconContainer.className = "parser-icon-container spinner";
@@ -283,7 +289,7 @@ class UserScriptUI {
       const favIcon = document.createElement("img");
       favIcon.className = "parser-icon hidden-visibility";
       favIcon.title = `Open ${script.title || script.domain}`;
-      favIcon.dataset.src = script.domain;
+      favIcon.dataset.src = primaryDomain;
       favIcon.loading = "lazy";
       favIcon.decoding = "async";
       favIconContainer.appendChild(favIcon);
@@ -322,7 +328,7 @@ class UserScriptUI {
 
       const domain = document.createElement("small");
       domain.className = "script-domain";
-      domain.textContent = `${script.domain || "No domain"} [${this.formatPatterns(script.urlPatterns)}]`;
+      domain.textContent = `${Array.isArray(script.domain) ? script.domain.join(", ") : script.domain} [${this.formatPatterns(script.urlPatterns)}]`;
       details.appendChild(domain);
 
       // script-meta
@@ -436,7 +442,7 @@ class UserScriptUI {
     $("inDesc").value = script?.description || "";
     $("inAuthors").value = script?.authors || "";
     $("inAuthorsLinks").value = script?.authorsLinks || "";
-    $("inDomain").value = script?.domain || "";
+    $("inDomain").value = Array.isArray(script?.domain) ? script.domain.join(", ") : script?.domain || "";
     $("inHomepage").value = script?.homepage || "";
     $("inMode").value = script?.mode || "listen";
     $("inDebug").checked = script?.debug || false;
@@ -488,11 +494,18 @@ class UserScriptUI {
   }
 
   async saveScript() {
-    const domain = $("inDomain")
-      .value.replace(/^https?:\/\//, "")
-      .replace(/^www\./, "")
-      .replace(/\/.*$/, "")
-      .trim();
+    const domainRaw = $("inDomain").value.trim();
+    const domain = domainRaw.includes(",")
+      ? domainRaw
+          .split(",")
+          .map((d) => this.cleanDomain(d))
+          .filter(Boolean)
+      : this.cleanDomain(domainRaw);
+    const domainEmpty = Array.isArray(domain) ? domain.length === 0 : !domain;
+    if (domainEmpty) {
+      this.showMessage("Domain is required", "error");
+      return;
+    }
     const rawPatterns = $("inUrlPatterns").value.trim() || ".*";
     const { normalizedList } = PatternValidator.processPatterns(rawPatterns);
     $("editor").setAttribute("current", "0");
@@ -704,6 +717,14 @@ class UserScriptUI {
     }
   }
 
+  cleanDomain = (d) => {
+    return d
+      .replace(/^https?:\/\//, "")
+      .replace(/^www\./, "")
+      .replace(/\/.*$/, "")
+      .trim();
+  };
+
   async onDelete(id, title) {
     if (!confirm(`Are you sure you want to delete this script? \n[${title}]`)) return;
 
@@ -765,10 +786,7 @@ class UserScriptUI {
       const block = match[1];
 
       let domain = /domain:\s*["'`](.*?)["'`]/.exec(block)?.[1] || "";
-      domain = domain
-        .replace(/^https?:\/\//, "")
-        .replace(/^www\./, "")
-        .replace(/\/.*$/, "");
+      domain = this.cleanDomain(domain);
       const title = /title:\s*["'`](.*?)["'`]/.exec(block)?.[1] || "";
       const description = /description:\s*["'`](.*?)["'`]/.exec(block)?.[1] || "";
       const lastUpdated = /lastUpdated:\s*["'`](.*?)["'`]/.exec(block)?.[1] || "";

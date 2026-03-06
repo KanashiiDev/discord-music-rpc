@@ -281,7 +281,8 @@ const handleFilterHistoryReplace = async (request) => {
     parsers.forEach((id) => {
       const parser = parserList.find((p) => p.id === id);
       if (parser) {
-        const name = (parser.title || parser.domain || "").toLowerCase().trim();
+        const domainStr = Array.isArray(parser.domain) ? parser.domain[0] : parser.domain;
+        const name = (parser.title || domainStr || "").toLowerCase().trim();
         if (name) sourceNames.add(name);
       }
     });

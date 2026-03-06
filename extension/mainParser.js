@@ -792,7 +792,7 @@ window.addEventListener("message", async (event) => {
     if (typeof window.registerParser === "function") {
       window.registerParser?.({
         title: msg.data.title,
-        domain: msg.data.domain,
+        domain: msg.data.domains || msg.data.domain,
         authors: msg.data.authors,
         authorsLinks: msg.data.authorsLinks,
         homepage: msg.data.homepage,

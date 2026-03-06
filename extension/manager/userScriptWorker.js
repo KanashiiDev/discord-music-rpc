@@ -110,6 +110,7 @@ class UserScriptManager {
   }
 
   generateScriptId(domain, urlPatterns) {
+    const primaryDomain = Array.isArray(domain) ? domain[0] : domain;
     const patternStrings = (Array.isArray(urlPatterns) ? urlPatterns : [urlPatterns])
       .map((pattern) => this.validator.normalizePatterns(pattern))
       .flat()
@@ -119,7 +120,7 @@ class UserScriptManager {
       .replace(/[^a-zA-Z0-9]/g, "")
       .slice(0, 10);
 
-    return `${domain}_${hash}`;
+    return `${primaryDomain}_${hash}`;
   }
 
   buildTrackDataScript(script) {
@@ -176,7 +177,8 @@ class UserScriptManager {
             // Track Data
             const trackData = {
               id: "${script.id}",
-              domain: "${script.domain}",
+              domain: "${Array.isArray(script.domain) ? script.domain[0] : script.domain}",
+              domains: ${JSON.stringify(Array.isArray(script.domain) ? script.domain : [script.domain])},
               authors: ${JSON.stringify(script.authors || [])},
               authorsLinks: ${JSON.stringify(script.authorsLinks || [])},
               homepage: "${script.homepage || ""}",
@@ -191,7 +193,7 @@ class UserScriptManager {
             if (${script.debug} && trackData) {
               const now = new Date();
               const timeString = \`\${String(now.getHours()).padStart(2,'0')}:\${String(now.getMinutes()).padStart(2,'0')}:\${String(now.getSeconds()).padStart(2,'0')}\`;
-              console.groupCollapsed(\`%c DISCORD MUSIC RPC - DEBUG [%c\${timeString}%c]: %c\${trackData.title}\`,
+              console.groupCollapsed(\`%c DISCORD MUSIC RPC - USERSCRIPT DEBUG [%c\${timeString}%c]: %c\${trackData.title}\`,
                 "color: #7bd583ff; font-weight: bold; font-size: 14px;",
                 "color: #cfa600ff; font-weight: bold; font-size: 14px;",
                 "color: #7bd583ff; font-weight: bold; font-size: 14px;",
@@ -216,7 +218,18 @@ class UserScriptManager {
 
             window.postMessage({ type: "USER_SCRIPT_TRACK_DATA", data: trackData }, "*");
           } catch (error) {
-            console.warn("UserScript tracking error:", error);
+            const now = new Date();
+            const timeString = \`\${String(now.getHours()).padStart(2,'0')}:\${String(now.getMinutes()).padStart(2,'0')}:\${String(now.getSeconds()).padStart(2,'0')}\`;
+            console.groupCollapsed(\`%c DISCORD MUSIC RPC - USERSCRIPT ERROR [%c\${timeString}%c]: %cTracking Failed\`,
+              "color: #ff5555ff; font-weight: bold; font-size: 14px;",
+              "color: #cfa600ff; font-weight: bold; font-size: 14px;",
+              "color: #ff5555ff; font-weight: bold; font-size: 14px;",
+              "color: #efefefff; font-weight: bold; font-size: 14px;"
+            );
+            console.log("%cError Details:", "color: #ff5555; font-weight: bold; font-size: 13px;");
+            console.log("  • Message :", error.message || String(error));
+            if (error.stack) console.log("  • Stack   :", error.stack);
+            console.groupEnd();
           }
         }
         await updateTrackData();
@@ -243,7 +256,8 @@ class UserScriptManager {
       const manifest = browser.runtime.getManifest();
       const isMV3 = manifest.manifest_version === 3;
       const patterns = Array.isArray(script.urlPatterns) ? script.urlPatterns : [script.urlPatterns];
-      const matches = patterns.map((p) => PatternValidator.toChromeMatch(script.domain, p));
+      const domains = (Array.isArray(script.domain) ? script.domain : [script.domain]).filter(Boolean);
+      const matches = domains.flatMap((d) => patterns.map((p) => PatternValidator.toChromeMatch(d, p))).filter((m) => m !== "*://*/*");
       const { parserEnabledState = {} } = await browser.storage.local.get("parserEnabledState");
       const isEnabled = parserEnabledState[`enable_${script.id}`] !== false;
 
