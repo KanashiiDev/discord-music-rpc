@@ -125,7 +125,7 @@ function updateTrayMenu() {
       },
       {
         label: "Check for Updates",
-        click: up.runManualUpdateCheck(),
+        click: () => up.runManualUpdateCheck(),
       },
       {
         label: "Debug",

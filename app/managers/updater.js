@@ -49,11 +49,6 @@ function setupAutoUpdater() {
     const versionLabel = info.releaseName ?? info.version ?? "new version";
     log.info(`Update downloaded: ${versionLabel}`);
 
-    if (isLinuxPackage) {
-      log.warn("update-downloaded fired for Linux package (unexpected)");
-      return;
-    }
-
     if (isWindows && parseInt(os.release().split(".")[0], 10) < 10) {
       state.tray?.displayBalloon({ icon: icons.notification, title: "Update Ready", content: `${versionLabel} - Restart to install` });
     } else {
@@ -99,43 +94,41 @@ function _showModernNotification(versionLabel, { isWindows, isLinux } = {}) {
   notification.show();
 }
 
-function runManualUpdateCheck() {
-  return async () => {
-    try {
-      log.info("Manual update check triggered by user");
-      const result = await autoUpdater.checkForUpdates();
+async function runManualUpdateCheck() {
+  try {
+    log.info("Manual update check triggered by user");
+    const result = await autoUpdater.checkForUpdates();
 
-      if (result?.updateInfo?.version && semver.gt(result.updateInfo.version, app.getVersion())) {
-        dialog.showMessageBox({
-          type: "info",
-          buttons: ["OK"],
-          title: "Discord Music RPC - Update Available",
-          message: `A new version (${result.updateInfo.version}) is available.`,
-          detail: "The update will be downloaded automatically. You can start the installation from the tray menu.",
-          icon: icons.message,
-        });
-      } else {
-        dialog.showMessageBox({
-          type: "info",
-          buttons: ["OK"],
-          title: "Discord Music RPC - Up to Date",
-          message: "You're using the latest version.",
-          detail: `Version: ${app.getVersion()}`,
-          icon: icons.message,
-        });
-      }
-    } catch (err) {
-      log.error("Manual update check failed:", err);
+    if (result?.updateInfo?.version && semver.gt(result.updateInfo.version, app.getVersion())) {
       dialog.showMessageBox({
-        type: "error",
+        type: "info",
         buttons: ["OK"],
-        title: "Discord Music RPC - Update Check Failed",
-        message: "Could not check for updates.",
-        detail: err.message,
+        title: "Discord Music RPC - Update Available",
+        message: `A new version (${result.updateInfo.version}) is available.`,
+        detail: "The update will be downloaded automatically. You can start the installation from the tray menu.",
+        icon: icons.message,
+      });
+    } else {
+      dialog.showMessageBox({
+        type: "info",
+        buttons: ["OK"],
+        title: "Discord Music RPC - Up to Date",
+        message: "You're using the latest version.",
+        detail: `Version: ${app.getVersion()}`,
         icon: icons.message,
       });
     }
-  };
+  } catch (err) {
+    log.error("Manual update check failed:", err);
+    dialog.showMessageBox({
+      type: "error",
+      buttons: ["OK"],
+      title: "Discord Music RPC - Update Check Failed",
+      message: "Could not check for updates.",
+      detail: err.message,
+      icon: icons.message,
+    });
+  }
 }
 
 module.exports = { setupAutoUpdater, runManualUpdateCheck };
