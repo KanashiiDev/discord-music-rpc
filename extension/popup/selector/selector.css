@@ -416,7 +416,7 @@ br[id*="buttonLink"] {
   margin: 0;
   font-size: 16px;
   font-weight: 600;
-  color: var(var(--text-color-primary));
+  color: var(--text-color-primary);
 }
 
 .rpc-preview .details .artist,
