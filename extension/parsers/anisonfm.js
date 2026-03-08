@@ -3,16 +3,16 @@ registerParser({
   title: "ANISON.FM",
   urlPatterns: [/.*/],
   fn: function () {
-    const titleText = getText(".track_info span:last-child");
+    const titleText = getText(".player-wrapper .player-item .song-box__subtitle");
     if (titleText === "Отбивочка") return;
     return {
       title: titleText,
-      artist: getText(".track_info span:first-child"),
-      image: getImage("#current_poster_img"),
+      artist: getText(".player-wrapper .player-item .song-box__title"),
+      image: getImage(".player-wrapper .player-item .song-item__img--title"),
       source: "ANISON.FM",
       songUrl: location.href,
       position: 0,
-      duration: getText(".on_air_text .time #duration"),
+      duration: getText(".player-wrapper .player-item .song-item__time"),
       progress: 0,
     };
   },
