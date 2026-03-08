@@ -1,6 +1,6 @@
 {
   "name": "discord-music-rpc",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Discord Music RPC Application",
   "homepage": "https://github.com/KanashiiDev/discord-music-rpc",
   "main": "app/main.js",
@@ -83,8 +83,8 @@
     "electron": "^39.5.2",
     "electron-builder": "^26.8.1",
     "eslint": "^9.39.2",
-    "fs-extra": "^11.3.3",
-    "postcss": "^8.5.6",
+    "fs-extra": "^11.3.4",
+    "postcss": "^8.5.8",
     "prettier": "^3.8.1",
     "rimraf": "^6.1.3"
   },
