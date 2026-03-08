@@ -131,7 +131,7 @@ function updateTrayMenu() {
         label: "Debug",
         submenu: [
           { label: `Status: ${state.isServerRunning ? "Running" : "Stopped"}`, enabled: false },
-          { label: `RPC: ${state.isRPCConnected ? "Connected" : "Disconnected"}`, enabled: false },
+          { label: `RPC: ${state.isRpcConnected ? "Connected" : "Disconnected"}`, enabled: false },
           { label: `Port: ${config?.PORT ?? "3000"}`, enabled: false },
           { label: "Config", click: () => openConfig() },
           { type: "separator" },
@@ -173,7 +173,7 @@ function updateTrayMenu() {
 
     currentMenu = Menu.buildFromTemplate(menuTemplate);
     state.tray.setContextMenu(currentMenu);
-    state.tray.setToolTip(`Discord Music RPC\nServer: ${state.isServerRunning ? "Running" : "Stopped"}\nRPC: ${state.isRPCConnected ? "Connected" : "Disconnected"}`);
+    state.tray.setToolTip(`Discord Music RPC\nServer: ${state.isServerRunning ? "Running" : "Stopped"}\nRPC: ${state.isRpcConnected ? "Connected" : "Disconnected"}`);
   } catch (err) {
     log.error("Error updating tray menu:", err);
   }

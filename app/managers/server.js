@@ -51,7 +51,6 @@ async function startServer() {
       timeoutIds.forEach(clearTimeout);
       timeoutIds.clear();
       const p = state.serverProcess;
-      p?.removeAllListeners("message");
       p?.removeAllListeners("error");
       p?.removeAllListeners("exit");
       p?.removeAllListeners("disconnect");
@@ -136,7 +135,7 @@ async function startServer() {
       if (msg === "ready") {
         handleSuccess();
       } else if (msg?.type === "RPC_STATUS") {
-        state.isRPCConnected = msg.value;
+        state.isRpcConnected = msg.value;
         updateTrayMenu();
       } else if (msg === "RESTART_SERVER") {
         log.info("Server requested restart");

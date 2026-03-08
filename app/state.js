@@ -10,7 +10,7 @@ const state = {
   isRestartingPromise: null,
   restartAttempts: 0,
   serverStartTime: null,
-  isRPCConnected: false,
+  isRpcConnected: false,
   scheduledRestartTimer: null,
 };
 

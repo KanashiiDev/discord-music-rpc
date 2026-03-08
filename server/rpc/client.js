@@ -103,10 +103,8 @@ async function _connect() {
 
       if (attempt === 1) console.log("[RPC] Connecting...");
 
-      state.isRpcConnected = isRpcReady(client);
       state.hasLoggedRpcFailure = false;
       state.isConnecting = false;
-      notifyRpcStatus(state.isRpcConnected);
       console.log("[RPC] Connected successfully");
       return true;
     } catch (err) {
