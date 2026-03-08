@@ -1,24 +1,33 @@
-import { HC_RANGES } from "./chart.js";
+import { HC_RANGES, chartState } from "./chart.js";
 import { HistoryState } from "../history/history.js";
 
 // Aggregate HistoryState.fullData into chart-ready buckets
 export function hc_prepareData(mode, range) {
   const cfg = HC_RANGES[range];
-  const start = cfg.getStart();
-  const days = cfg.getDayCount();
+  const offset = chartState.offset;
+
+  const start = cfg.getStart(offset);
+  const days = cfg.getDayCount(offset);
   const buckets = new Array(days).fill(0);
   const items = HistoryState?.fullData;
+
   if (!Array.isArray(items) || items.length === 0) {
     return { labels: [], data: [], maxValue: 1 };
   }
 
-  const now = Date.now();
+  // Filter future records (do not go beyond today when offset=0)
+  const periodEnd = new Date(start);
+  if (range === "week") periodEnd.setDate(periodEnd.getDate() + days);
+  else if (range === "month") periodEnd.setMonth(periodEnd.getMonth() + 1);
+  else periodEnd.setFullYear(periodEnd.getFullYear() + 1);
+
+  const effectiveEnd = Math.min(periodEnd.getTime(), Date.now());
 
   for (const item of items) {
     if (!item.date) continue;
 
     const ts = new Date(item.date);
-    if (ts.getTime() > now) continue;
+    if (ts.getTime() > effectiveEnd) continue;
 
     ts.setHours(0, 0, 0, 0);
     const idx = Math.floor((ts - start) / 86_400_000);
@@ -42,7 +51,7 @@ export function hc_prepareData(mode, range) {
       d.setDate(start.getDate() + i);
       monthly[d.getMonth()] += values[i];
     }
-    const labels = Array.from({ length: 12 }, (_, m) => new Date(2000, m, 1).toLocaleString("en-US", { month: "short" }));
+    const labels = Array.from({ length: 12 }, (_, m) => new Date(2000, m, 1).toLocaleString(navigator.language || "en-US", { month: "short" }));
     return { labels, data: monthly, maxValue: Math.max(...monthly, 1) };
   }
 
@@ -50,7 +59,7 @@ export function hc_prepareData(mode, range) {
   const labels = Array.from({ length: days }, (_, i) => {
     const d = new Date(start);
     d.setDate(start.getDate() + i);
-    return d.toLocaleDateString("en-US", cfg.labelFormat);
+    return d.toLocaleString(navigator.language || "en-US", cfg.labelFormat);
   });
 
   return { labels, data: values, maxValue: Math.max(...values, 1) };

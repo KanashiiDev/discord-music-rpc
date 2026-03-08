@@ -735,6 +735,38 @@ input[type="number"] {
   margin-bottom: 10px;
 }
 
+#chartPeriodLabel {
+  font-size: 13px;
+}
+
+#chartPeriodNext,
+#chartPeriodPrev {
+  cursor: pointer;
+  background: 0;
+  border: 0;
+  outline: 0;
+  opacity: 0.8;
+  -webkit-transition: var(--transition-normal) ease;
+  transition: var(--transition-normal) ease;
+  height: 15px;
+}
+
+#chartPeriodNext:hover,
+#chartPeriodPrev:hover {
+  opacity: 1;
+}
+
+#chartPeriodNext[disabled],
+#chartPeriodPrev[disabled] {
+  cursor: default;
+}
+
+.chart-period-nav {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
 #chartRangeToggle,
 #chartModeToggle {
   display: flex;
@@ -770,7 +802,7 @@ input[type="number"] {
 
 .chart-range-btn.active {
   background: var(--foreground-color-300);
-  border-color: var(var(--border-color-bright));
+  border-color: var(--border-color-bright);
   color: var(--text-color-primary);
 }
 
@@ -784,21 +816,16 @@ input[type="number"] {
 
 .chart-details {
   overflow: hidden;
-  margin-top: 10px;
-  border-top: 1px solid var(--border-color);
-  padding-top: 10px;
   transition:
-    max-height 0.32s ease,
-    opacity 0.25s ease,
-    padding-top 0.32s ease;
+    height var(--transition-normal) ease,
+    opacity var(--transition-normal) ease;
   opacity: 1;
 }
 
 .chart-details.hidden {
-  max-height: 0;
+  height: 0 !important;
   opacity: 0;
-  padding-top: 0;
-  border-top-color: transparent;
+  pointer-events: none;
 }
 
 .chart-details-header {

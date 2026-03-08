@@ -159,22 +159,40 @@ async function hc_toggleSongList(platformRow, songs, platName) {
   updateSimpleBarPadding("hcSongList");
 }
 
+let _detailsAnimTimer = null;
+
+function _animatePanel(panel, { fromHeight, toHeight, fromOpacity, toOpacity, onComplete }) {
+  clearTimeout(_detailsAnimTimer);
+
+  panel.style.height = typeof fromHeight === "number" ? `${fromHeight}px` : fromHeight;
+  panel.style.opacity = String(fromOpacity);
+
+  // Force reflow
+  panel.offsetHeight;
+
+  requestAnimationFrame(() => {
+    panel.style.height = typeof toHeight === "number" ? `${toHeight}px` : toHeight;
+    panel.style.opacity = String(toOpacity);
+  });
+
+  _detailsAnimTimer = setTimeout(onComplete, 300);
+}
+
 // Populate and reveal the detail panel for the clicked bar
 export function hc_showDetails(barIndex, chartData, mode, range) {
   const panel = document.getElementById("chartDetails");
   const titleEl = document.getElementById("chartDetailsTitle");
   const totalEl = document.getElementById("chartDetailsTotal");
   const platformEl = document.getElementById("chartDetailsPlatforms");
-  if (!panel) return;
+  if (!panel || !titleEl || !totalEl || !platformEl) return;
 
   chartState.expandedPlatform = null;
-
   titleEl.textContent = chartData.labels[barIndex] ?? "";
   totalEl.textContent = "";
   platformEl.textContent = "";
 
   const cfg = HC_RANGES[range];
-  const periodStart = new Date(cfg.getStart());
+  const periodStart = new Date(cfg.getStart(chartState.offset));
   const isYear = range === "year";
   const targetMonth = isYear ? barIndex : null;
 
@@ -182,6 +200,9 @@ export function hc_showDetails(barIndex, chartData, mode, range) {
     periodStart.setDate(periodStart.getDate() + barIndex);
     periodStart.setHours(0, 0, 0, 0);
   }
+
+  const periodTime = periodStart.getTime();
+  const periodYear = periodStart.getFullYear();
 
   let totalCount = 0;
   let totalMs = 0;
@@ -193,21 +214,22 @@ export function hc_showDetails(barIndex, chartData, mode, range) {
     const src = item.source || "Unknown";
     if (src === "Unknown") continue;
 
+    if (mode === "minutes" && !(item.total_listened_ms > 0)) continue;
+
     const d = new Date(item.date);
     d.setHours(0, 0, 0, 0);
 
-    const hit = isYear ? d.getFullYear() === periodStart.getFullYear() && d.getMonth() === targetMonth : d.getTime() === periodStart.getTime();
+    const hit = isYear ? d.getFullYear() === periodYear && d.getMonth() === targetMonth : d.getTime() === periodTime;
 
     if (!hit) continue;
-    if (mode === "minutes" && !(item.total_listened_ms > 0)) continue;
 
-    if (!byPlatform[src]) byPlatform[src] = { count: 0, ms: 0, items: [] };
-    byPlatform[src].count += 1;
-    byPlatform[src].items.push(item);
+    const plat = (byPlatform[src] ??= { count: 0, ms: 0, items: [] });
+    plat.count += 1;
+    plat.items.push(item);
     totalCount += 1;
 
     if (item.total_listened_ms > 0) {
-      byPlatform[src].ms += item.total_listened_ms;
+      plat.ms += item.total_listened_ms;
       totalMs += item.total_listened_ms;
     }
   }
@@ -220,9 +242,9 @@ export function hc_showDetails(barIndex, chartData, mode, range) {
 
   totalEl.textContent = mode === "songs" ? `${totalCount} song${totalCount !== 1 ? "s" : ""}` : `${Math.round(totalMs / 60_000)} min total`;
 
-  const sorted = Object.entries(byPlatform).sort((a, b) => b[1].count - a[1].count);
+  const fragment = document.createDocumentFragment();
 
-  for (const [plat, stat] of sorted) {
+  for (const [plat, stat] of Object.entries(byPlatform).sort((a, b) => b[1].count - a[1].count)) {
     const row = document.createElement("div");
     row.className = "chart-detail-row";
 
@@ -238,28 +260,47 @@ export function hc_showDetails(barIndex, chartData, mode, range) {
     chevron.className = "chart-detail-chevron";
     chevron.append(createSVG(svg_paths.expand));
 
-    row.appendChild(name);
-    row.appendChild(val);
-    row.appendChild(chevron);
-    platformEl.appendChild(row);
+    row.append(name, val, chevron);
 
-    row.addEventListener("click", () => hc_toggleSongList(row, stat.items, plat));
+    const items = stat.items.slice();
+    row.addEventListener("click", () => hc_toggleSongList(row, items, plat));
+
+    fragment.appendChild(row);
   }
 
+  platformEl.appendChild(fragment);
+
+  const wasOpen = !panel.classList.contains("hidden");
   panel.classList.remove("hidden");
-  panel.addEventListener(
-    "transitionend",
-    () => {
-      panel.scrollIntoView({ behavior: "smooth", block: "start" });
+
+  _animatePanel(panel, {
+    fromHeight: wasOpen ? panel.offsetHeight : 0,
+    toHeight: panel.scrollHeight,
+    fromOpacity: wasOpen ? 1 : 0,
+    toOpacity: 1,
+    onComplete: () => {
+      panel.style.height = "auto";
     },
-    { once: true },
-  );
+  });
 }
 
 // Collapse the detail panel and any open song list
 export function hc_hideDetails() {
   const panel = document.getElementById("chartDetails");
-  if (panel) panel.classList.add("hidden");
+  if (!panel) return;
+
+  _animatePanel(panel, {
+    fromHeight: panel.offsetHeight,
+    toHeight: 0,
+    fromOpacity: 1,
+    toOpacity: 0,
+    onComplete: () => {
+      panel.classList.add("hidden");
+      panel.style.height = "";
+      panel.style.opacity = "";
+    },
+  });
+
   chartState.lastClickedBarIndex = null;
   chartState.expandedPlatform = null;
 }

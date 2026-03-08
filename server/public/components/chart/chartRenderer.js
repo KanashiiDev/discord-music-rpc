@@ -2,7 +2,22 @@ import { HC_COLORS, HC_RANGES, chartState } from "./chart.js";
 import { hc_prepareData } from "./chartData.js";
 import { hc_showDetails, hc_hideDetails } from "./chartDetails.js";
 import { DataStore } from "../../core/dataStore.js";
-import { getCSS } from "../../utils.js";
+import { createSVG, getCSS, svg_paths } from "../../utils.js";
+
+// Update Navigation Label
+function _updateNavLabel() {
+  const labelEl = document.getElementById("chartPeriodLabel");
+  const nextBtn = document.getElementById("chartPeriodNext");
+  if (!labelEl) return;
+
+  const cfg = HC_RANGES[chartState.range];
+  labelEl.textContent = cfg.getLabel(chartState.offset);
+
+  if (nextBtn) {
+    nextBtn.disabled = chartState.offset >= 0;
+    nextBtn.style.opacity = chartState.offset >= 0 ? "0.3" : "1";
+  }
+}
 
 // Destroy the current Chart.js instance if it exists
 function hc_destroyChart() {
@@ -17,6 +32,8 @@ function drawHistoryChart(mode, range) {
   const canvas = document.getElementById("listeningWaveform");
   const loadingEl = document.getElementById("historyChartLoading");
   if (!canvas) return;
+
+  _updateNavLabel();
 
   const chartData = hc_prepareData(mode, range);
   const isEmpty = !chartData.data.length || chartData.data.every((v) => v === 0);
@@ -81,7 +98,7 @@ function drawHistoryChart(mode, range) {
       maintainAspectRatio: false,
       devicePixelRatio: window.devicePixelRatio ?? 1,
 
-      layout: { padding: { right: 8, bottom: 4 } },
+      layout: { padding: 8 },
 
       scales: {
         x: {
@@ -145,7 +162,7 @@ function drawHistoryChart(mode, range) {
         hc_showDetails(idx, chartData, mode, range);
       },
 
-      animation: { duration: 550, easing: "easeOutQuart" },
+      animation: { duration: 400, easing: "easeOutQuart" },
     },
   });
 }
@@ -160,9 +177,35 @@ function switchHistoryChartMode(mode) {
 
 function switchHistoryChartRange(range) {
   chartState.range = range;
+  chartState.offset = 0;
   document.querySelectorAll(".chart-range-btn").forEach((btn) => btn.classList.toggle("active", btn.dataset.range === range));
   hc_hideDetails();
   drawHistoryChart(chartState.mode, range);
+}
+
+// Period Navigation
+function navigatePeriod(direction) {
+  const newOffset = chartState.offset + direction;
+  if (newOffset > 0) return;
+  chartState.offset = newOffset;
+  hc_hideDetails();
+  drawHistoryChart(chartState.mode, chartState.range);
+}
+
+function _initNavigation() {
+  const prevBtn = document.getElementById("chartPeriodPrev");
+  const nextBtn = document.getElementById("chartPeriodNext");
+
+  if (prevBtn && !prevBtn.__hcBound) {
+    prevBtn.__hcBound = true;
+    prevBtn.addEventListener("click", () => navigatePeriod(-1));
+    prevBtn.appendChild(createSVG(svg_paths.leftChev, { width: 20, height: 20 }));
+  }
+  if (nextBtn && !nextBtn.__hcBound) {
+    nextBtn.__hcBound = true;
+    nextBtn.addEventListener("click", () => navigatePeriod(+1));
+    nextBtn.appendChild(createSVG(svg_paths.rightChev, { width: 20, height: 20 }));
+  }
 }
 
 // Redraw the chart
@@ -188,7 +231,7 @@ export async function updateHistoryChart() {
   canvas.style.display = "none";
   hc_hideDetails();
 
-  // Wire up toggles exactly once for each element's lifetime
+  // Mode toggle
   const modeToggle = document.getElementById("chartModeToggle");
   if (modeToggle && !modeToggle.__hcBound) {
     modeToggle.__hcBound = true;
@@ -198,6 +241,7 @@ export async function updateHistoryChart() {
     });
   }
 
+  // Range toggle
   const rangeToggle = document.getElementById("chartRangeToggle");
   if (rangeToggle && !rangeToggle.__hcBound) {
     rangeToggle.__hcBound = true;
@@ -206,6 +250,9 @@ export async function updateHistoryChart() {
       if (btn?.dataset.range) switchHistoryChartRange(btn.dataset.range);
     });
   }
+
+  // Navigation buttons
+  _initNavigation();
 
   // Restore persisted active states
   document.querySelectorAll(".chart-mode-btn").forEach((btn) => btn.classList.toggle("active", btn.dataset.mode === chartState.mode));
