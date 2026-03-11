@@ -51,6 +51,44 @@ function createHistoryRouter(historyFilePath, logFilePath) {
     });
   });
 
+  // POST /delete-history-entries
+  router.post("/delete-history-entries", (req, res) => {
+    const { entries } = req.body;
+    if (!Array.isArray(entries)) {
+      return res.status(400).json({ error: "Invalid entries data" });
+    }
+
+    fs.readFile(historyFilePath, "utf8", (readErr, data) => {
+      let serverHistory = [];
+      if (!readErr && data) {
+        try {
+          const parsed = JSON.parse(data);
+          if (Array.isArray(parsed)) serverHistory = parsed;
+        } catch (e) {
+          console.error("[HISTORY] Parse error:", e.message);
+        }
+      }
+
+      const TOLERANCE_MS = 60 * 1000;
+
+      const isMatchingEntry = (serverEntry, deleteEntry) => {
+        if (serverEntry.title?.trim() !== deleteEntry.title?.trim()) return false;
+        if (serverEntry.artist?.trim() !== deleteEntry.artist?.trim()) return false;
+        const timeDiff = Math.abs(new Date(serverEntry.date) - new Date(deleteEntry.date));
+        return timeDiff <= TOLERANCE_MS;
+      };
+
+      const filtered = serverHistory.filter((serverEntry) => !entries.some((deleteEntry) => isMatchingEntry(serverEntry, deleteEntry)));
+
+      fs.writeFile(historyFilePath, JSON.stringify(filtered, null, 2), "utf8", (writeErr) => {
+        if (writeErr) {
+          return res.status(500).json({ error: "Delete failed: " + writeErr.message });
+        }
+        res.json({ success: true, deleted: serverHistory.length - filtered.length });
+      });
+    });
+  });
+
   // GET /logs
   router.get("/logs", (_req, res) => {
     try {

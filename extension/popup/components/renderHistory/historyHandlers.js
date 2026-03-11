@@ -108,16 +108,25 @@ const handleClearButtonClick = async () => {
     if (historyState.isFiltering) {
       const filteredSet = new Set(historyState.filteredHistory.map((e) => historyState.fullHistory.indexOf(e)));
       if (!confirm(`Are you sure you want to delete ${filteredSet.size} entries from the current filtered list?`)) return;
+      showPopupMessage("Deleting please wait...", "warning", null, 1);
+      const deletedEntries = historyState.fullHistory.filter((_, i) => filteredSet.has(i));
       historyState.fullHistory = historyState.fullHistory.filter((_, i) => !filteredSet.has(i));
+      await sendAction("syncDeleteToServer", { data: deletedEntries });
     } else {
       if (!confirm(`Are you sure you want to delete all ${historyState.fullHistory.length} history entries?`)) return;
+      showPopupMessage("Deleting please wait...", "warning", null, 1);
+      await sendAction("syncDeleteToServer", { data: historyState.fullHistory });
       historyState.fullHistory = [];
     }
   } else {
     const indexSet = new Set(selectedIndexes);
     if (!confirm(`Are you sure you want to delete ${selectedIndexes.length} history ${selectedIndexes.length > 1 ? "entries" : "entry"}?`)) return;
+    showPopupMessage("Deleting please wait...", "warning", null, 1);
+    const deletedEntries = historyState.fullHistory.filter((_, i) => indexSet.has(i));
     historyState.fullHistory = historyState.fullHistory.filter((_, i) => !indexSet.has(i));
+    await sendAction("syncDeleteToServer", { data: deletedEntries });
   }
+  hidePopupMessage();
 
   historyState.isFiltering = false;
   historyState.selectedSources.clear();

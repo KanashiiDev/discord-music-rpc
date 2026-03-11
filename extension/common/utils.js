@@ -2197,7 +2197,7 @@ async function loadFavIcons(icons, concurrency = 3, delayMs = 150, slowAfter = 8
 // Popup Message
 let showPopupMessageTimeout = null;
 let currentMessageContainer = null;
-function showPopupMessage(text, type = "info", closeAfter = null) {
+function showPopupMessage(text, type = "info", closeAfter = null, preventClick = false) {
   const section = document.querySelector("body").dataset.section;
   const footer = section === "main" ? document.getElementById("mainFooterButtons") : document.getElementById("historyFooter");
 
@@ -2222,6 +2222,8 @@ function showPopupMessage(text, type = "info", closeAfter = null) {
 
   messageContainer.textContent = text;
 
+  if (preventClick) document.body.style.pointerEvents = "none";
+
   if (closeAfter) {
     clearTimeout(showPopupMessageTimeout);
     const loadingIndicator = document.createElement("div");
@@ -2242,6 +2244,7 @@ function hidePopupMessage() {
   if (currentMessageContainer && currentMessageContainer.parentNode) {
     currentMessageContainer.classList.add("hide");
     setTimeout(() => {
+      document.body.style.pointerEvents = "";
       currentMessageContainer.remove();
       currentMessageContainer = null;
     }, 300);

@@ -485,6 +485,29 @@ const handleSyncHistory = async () => {
   }
 };
 
+const handleSyncDeleteToServer = async (req) => {
+  const deletedEntries = req.data;
+  try {
+    const serverEntries = deletedEntries.map((entry) => ({
+      title: entry.t || "",
+      artist: entry.a || "",
+      date: entry.p,
+    }));
+
+    await fetchWithTimeout(
+      `http://localhost:${state.serverPort}/delete-history-entries`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ entries: serverEntries }),
+      },
+      CONFIG.requestTimeout,
+    );
+  } catch (err) {
+    console.error("Server history delete error:", err);
+  }
+};
+
 // Song Info
 const handleGetSongInfo = async () => {
   const map = state.activeTabMap;
@@ -849,6 +872,10 @@ const setupListeners = () => {
           case "syncHistory":
             result = await handleSyncHistory();
             break;
+          case "syncDeleteToServer":
+            result = await handleSyncDeleteToServer(req);
+            break;
+
           case "getSongInfo":
             result = await handleGetSongInfo();
             break;
