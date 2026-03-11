@@ -16,17 +16,18 @@ const HistoryUtils = {
     if (!source) return null;
     const s = source.toLowerCase().trim();
 
+    const getDomains = (p) => (Array.isArray(p.domain) ? p.domain : [p.domain]).filter(Boolean).map((d) => d.toLowerCase());
+
     const strategies = [
-      (p) => (p.title || "").toLowerCase() === s || (p.domain || "").toLowerCase() === s,
-      (p) => (p.domain || "").split(".")[0].toLowerCase() === s,
+      (p) => (p.title || "").toLowerCase() === s || getDomains(p).some((d) => d === s),
+      (p) => getDomains(p).some((d) => d.split(".")[0] === s),
       (p) => {
         const t = (p.title || "").toLowerCase();
-        const d = (p.domain || "").toLowerCase();
-        return t.includes(s) || s.includes(t) || d.includes(s) || s.includes(d);
+        return t.includes(s) || s.includes(t) || getDomains(p).some((d) => d.includes(s) || s.includes(d));
       },
       (p) => {
         const clean = (str) => (str || "").toLowerCase().replace(/[\s\-_.]/g, "");
-        return clean(p.title) === clean(s) || clean(p.domain) === clean(s);
+        return clean(p.title) === clean(s) || getDomains(p).some((d) => clean(d) === clean(s));
       },
     ];
 
