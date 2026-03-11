@@ -17,23 +17,40 @@ const sectionManager = {
     historyStatsToggleBtn.appendChild(createSVG(svg_paths.historyStatsIconPaths));
     settingsToggleBtn.appendChild(createSVG(svg_paths.gearIconPaths));
 
+    // Lock button functionality to prevent multiple clicks while processing
+    const withLock = (btn, fn) => {
+      let locked = false;
+      return async () => {
+        if (locked) return;
+        locked = true;
+        btn.disabled = true;
+        try {
+          await fn();
+        } finally {
+          locked = false;
+          btn.disabled = false;
+        }
+      };
+    };
+
     // History toggle
-    this.listeners.historyToggle = async () => {
+    this.listeners.historyToggle = withLock(historyToggleBtn, async () => {
       if (this.currentSection === "main") {
         await this.switchTo("history");
       } else {
         await this.switchTo("main");
       }
-    };
+    });
 
     // Stats toggle
-    this.listeners.statsToggle = async () => {
+    this.listeners.statsToggle = withLock(historyStatsToggleBtn, async () => {
       await this.switchTo("stats");
-    };
+    });
 
-    this.listeners.settingsToggle = async () => {
+    // Settings toggle
+    this.listeners.settingsToggle = withLock(settingsToggleBtn, async () => {
       await this.switchTo("settings");
-    };
+    });
 
     historyToggleBtn.addEventListener("click", this.listeners.historyToggle);
     historyStatsToggleBtn.addEventListener("click", this.listeners.statsToggle);
