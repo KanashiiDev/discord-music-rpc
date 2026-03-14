@@ -91,6 +91,7 @@ registerParser({
       source: station,
       songUrl: location.href,
       duration: data.duration?.trim(),
+      isPlaying: Boolean(document.querySelector("#button_play_stop-3.active")),
     };
   },
 });

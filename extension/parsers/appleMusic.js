@@ -18,6 +18,7 @@ registerParser({
       songUrl: "https://www.music.apple.com/",
       timePassed: times?.[0],
       duration: times?.[1],
+      isPlaying: Boolean(lcd.querySelector(".playback-play__play")?.aria - hidden === "true"),
     };
   },
 });

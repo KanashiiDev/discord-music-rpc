@@ -460,6 +460,7 @@ registerParser({
       source: "Example", // Source label (optional)
       songUrl: "example.com", // Link to song/station (optional)
       mode: "listen", // Activity Type ("listen" or "watch") (optional)
+      isPlaying: Boolean(document.querySelector("#pauseSongButton")), // Any truthy value indicating active playback; used for cast support (optional)
       buttons: [
         // Buttons (max 2) (optional)
         {

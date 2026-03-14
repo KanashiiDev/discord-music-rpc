@@ -24,6 +24,7 @@ registerParser({
       songUrl: sourceUrl || "https://www.deezer.com/",
       timePassed,
       duration,
+      isPlaying: Boolean(document.querySelector("[data-testid='play_button_pause']")),
     };
   },
 });

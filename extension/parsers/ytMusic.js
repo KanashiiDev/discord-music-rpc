@@ -25,10 +25,11 @@ registerParser({
     const video = document.querySelector("video");
     let timePassed = getText("#left-controls .time-info") || "";
     let duration = getText("#left-controls .time-info") || "";
+    const isWatchingBtn = Boolean(document.querySelectorAll(".ytmusic-player-bar #button > yt-icon > span > div > svg > path")[2]?.getAttribute("d").startsWith("M6.5"));
     let isWatching = 0;
 
     if (video) {
-      isWatching = video.paused ? 0 : 1;
+      isWatching = !video.paused;
       if (!timePassed) timePassed = video.currentTime;
       if (!duration) duration = video.duration;
     }
@@ -42,7 +43,7 @@ registerParser({
       image,
       source: "YouTube Music",
       songUrl: songLink || window.location.href,
-      playStatus: isWatching,
+      isPlaying: isWatching || isWatchingBtn,
       timePassed,
       duration,
     };

@@ -13,6 +13,7 @@ registerParser({
       image,
       source: "LISTEN.moe",
       songUrl: "https://listen.moe/",
+      isPlaying: document.querySelector(".playerContainer .shadow > svg > g > path")?.getAttribute("d")?.startsWith("M9.5"),
     };
   },
 });

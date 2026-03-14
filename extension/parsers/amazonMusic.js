@@ -23,6 +23,7 @@ registerParser({
       songUrl: songUrl || "https://www.music.amazon.com/",
       timePassed,
       duration: remaining,
+      isPlaying: Boolean(main.querySelector("button[aria-label='Pause']")),
     };
   },
 });

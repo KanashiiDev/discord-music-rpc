@@ -10,6 +10,7 @@ registerParser({
 
     const counter = getText("#playerCounter");
     const [timePassed, duration] = counter.split("/").map((s) => s.trim());
+    const playButton = document.getElementById("shape")?.animatedPoints;
 
     return {
       title,
@@ -19,6 +20,7 @@ registerParser({
       duration,
       source: "Gensokyo Radio",
       songUrl: "https://gensokyoradio.net/playing/",
+      isPlaying: Boolean(playButton?.getItem(0).x === 45),
     };
   },
 });

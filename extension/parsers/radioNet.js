@@ -37,6 +37,7 @@ registerParser({
       image,
       source: sourceTitle,
       songUrl: sourceUrl,
+      isPlaying: Boolean(document.querySelector("button[data-item='stop_button']")),
     };
   },
 });

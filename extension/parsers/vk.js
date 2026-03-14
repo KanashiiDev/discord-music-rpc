@@ -16,6 +16,7 @@ window.registerParser({
       image: ap[14]?.split(",")[0] || "https://cdn.discordapp.com/app-assets/1366752683628957767/1472958246636617829.png?size=160",
       songUrl: `https://vk.com/audio${ap[26]}`,
       source: "VK",
+      isPlaying: Boolean(document.querySelector("button[data-testid='TopAudioPlayer_TogglePlayAction'][data-testactive='true']")),
     };
   },
 });

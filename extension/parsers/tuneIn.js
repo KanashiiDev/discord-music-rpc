@@ -15,6 +15,7 @@ registerParser({
       image,
       source: sourceTitle,
       songUrl: sourceUrl,
+      isPlaying: Boolean(document.querySelector("svg[data-testid='player-status-playing']")),
     };
   },
 });

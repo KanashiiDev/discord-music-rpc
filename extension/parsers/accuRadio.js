@@ -19,6 +19,7 @@ registerParser({
       songUrl: sourceElem,
       timePassed: timeElem,
       duration: timeElem,
+      isPlaying: Boolean(document.querySelector("#playerPauseButton")),
     };
   },
 });

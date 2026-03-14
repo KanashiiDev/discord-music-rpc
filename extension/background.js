@@ -444,7 +444,7 @@ const updateRpc = async (data, tabId) => {
     const payload = {
       data: {
         ...data,
-        status: data.playStatus ?? base?.isAudioPlaying ?? false,
+        status: data.isPlaying ?? base?.isAudioPlaying ?? false,
         settings: parserSettings,
         settingsDefault: defaultParserSettings,
       },
@@ -584,7 +584,14 @@ const mainLoop = async () => {
   }
 
   try {
-    const tabs = await browser.tabs.query({ audible: true });
+    const audibleTabs = await browser.tabs.query({ audible: true });
+
+    let tabs = audibleTabs;
+    const trackedIds = [...state.activeTabMap.keys()];
+    const extraTabs = (await Promise.all(trackedIds.filter((id) => !audibleTabs.some((t) => t.id === id)).map((id) => browser.tabs.get(id).catch(() => null)))).filter(
+      (t) => t !== null,
+    );
+    tabs = [...audibleTabs, ...extraTabs];
 
     if (!tabs.length) {
       await deferredCleanup();

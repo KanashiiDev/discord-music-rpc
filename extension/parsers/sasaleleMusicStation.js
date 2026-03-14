@@ -34,6 +34,7 @@ registerParser({
           text: "Sasalele Music Station",
         },
       ],
+      isPlaying: Boolean(document.querySelector("#media-controller > media-control-bar > media-play-button[aria-label='pause']")),
     };
   },
 });

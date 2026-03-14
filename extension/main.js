@@ -102,6 +102,8 @@ async function mainLoop() {
 
   try {
     const song = await safeGetSongInfo();
+    window._lastParsedSong = song ?? null;
+
     if (!song) {
       logInfo("mainloop: no song info");
 
@@ -327,26 +329,27 @@ async function mainLoop() {
     } else if (isRadioOrStream) {
       if (timeSinceLastUpdate >= CONSTANTS.NORMAL_UPDATE_INTERVAL) {
         shouldUpdate = true;
-        updateReason = "Radio/Stream (10s interval)";
+        updateReason = "Radio/Stream";
       }
     } else {
       if (timeSinceLastUpdate >= CONSTANTS.NORMAL_UPDATE_INTERVAL) {
         shouldUpdate = true;
-        updateReason = "Normal Progress (10s interval)";
+        updateReason = "Normal Progress";
       }
     }
 
     // Audible Check
+    let audibleCheck = null;
     try {
-      const audibleCheck = await browser.runtime.sendMessage({
-        type: "IS_TAB_AUDIBLE",
-      });
+      audibleCheck = await browser.runtime.sendMessage({ type: "IS_TAB_AUDIBLE" });
+    } catch (_) {}
 
-      if (!audibleCheck?.audible && updateReason !== "First Update") {
+    if (!audibleCheck?.audible && updateReason !== "First Update") {
+      if (song.isPlaying !== true) {
         shouldUpdate = false;
         updateReason = "Tab not audible";
       }
-    } catch (_) {}
+    }
 
     if (!shouldUpdate) {
       if (!updateReason) updateReason = "Update skipped (interval not reached)";
@@ -426,7 +429,7 @@ async function processRPCUpdate(song, progress) {
 
   if (res?.waiting) {
     if (res?.ok) logInfo("processRPCUpdate: RPC waiting (tab not audible yet)");
-    if (keepAliveManager.initialized) {
+    if (!res?.ok && keepAliveManager.initialized) {
       keepAliveManager.destroy();
     }
     return false;
@@ -600,10 +603,9 @@ function init() {
 // Listen for messages from the background script
 function messageHandler(message, sender, sendResponse) {
   if (message.type === "PING_FOR_DATA") {
-    safeGetSongInfo().then((info) => {
-      const response = info?.title && info?.artist ? info : null;
-      sendResponse(response);
-    });
+    const cached = window._lastParsedSong;
+    const response = cached?.title && cached?.artist ? cached : null;
+    sendResponse(response);
     return true;
   }
 

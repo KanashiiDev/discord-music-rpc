@@ -69,6 +69,7 @@ registerParser({
       image: imageElem,
       source: stationName,
       songUrl: fetchedData?.trackLink || document.querySelector(".player__station__title a")?.href || "https://onlineradiobox.com/",
+      isPlaying: Boolean(document.querySelector("#b_top_play.b-stop")),
       position: 0,
     };
   },

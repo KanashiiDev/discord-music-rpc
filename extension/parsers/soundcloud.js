@@ -51,6 +51,7 @@ registerParser({
       duration,
       source: "SoundCloud",
       songUrl: url,
+      isPlaying: Boolean(document.querySelector("#app > .playControls .playControl")?.title?.includes("Pause")),
     };
   },
 });

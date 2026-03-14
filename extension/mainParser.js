@@ -432,7 +432,7 @@ window.registerParser = async function ({
         const lastAct = rpcState.lastActivity;
         const sameTrack = lastAct && lastAct.title === rest.title && lastAct.artist === rest.artist;
 
-        if (!sameTrack) {
+        if (!sameTrack || (sameTrack && tpSec === 0 && rpcState.lastReportedTime > 5)) {
           rpcState.resetRemainingState();
           rpcState.hasOnlyDurationCount = 0;
         }
@@ -441,6 +441,7 @@ window.registerParser = async function ({
         if (
           sameTrack &&
           !rpcState.hasOnlyDuration &&
+          tpSec > 0 &&
           effectiveTimePassed &&
           effectiveDuration &&
           rpcState.lastReportedTime !== null &&
@@ -449,44 +450,53 @@ window.registerParser = async function ({
           const timeDiff = tpSec - rpcState.lastReportedTime;
           const rawDurationDiff = Math.abs(durSecRaw - rpcState.lastReportedDuration);
 
-          // Remaining pattern: raw duration stable, time decreasing or within jitter tolerance
-          const rawDurationStable = rawDurationDiff < 2;
-          const timeDecreasingOrStable = timeDiff <= 1;
-
-          // Normal pattern: raw duration stable, time increases within expected sampling interval
-          const timeIncreasing = timeDiff >= 2 && timeDiff <= 6;
-
-          // Require fewer samples to enter a mode, more to switch between modes
-          const requiredCountForEntering = 2;
-          const requiredCountForSwitching = 3;
-
-          if (rawDurationStable && timeDecreasingOrStable && !isRemainingSignal) {
-            rpcState.consecutiveRemaining++;
-            rpcState.consecutiveNormal = 0;
-            const threshold = rpcState.isRemainingMode ? requiredCountForSwitching : requiredCountForEntering;
-
-            if (rpcState.consecutiveRemaining >= threshold) {
-              if (!rpcState.isRemainingMode) {
-                logInfo("Entering remaining mode - time decreasing pattern detected");
-              }
-              rpcState.isRemainingMode = true;
-            }
-          } else if (rawDurationStable && timeIncreasing) {
-            rpcState.consecutiveNormal++;
-            rpcState.consecutiveRemaining = 0;
-
-            const threshold = !rpcState.isRemainingMode ? requiredCountForSwitching : requiredCountForEntering;
-
-            if (rpcState.consecutiveNormal >= threshold) {
-              if (rpcState.isRemainingMode) {
-                logInfo("Exiting remaining mode - normal playback detected");
-              }
-              rpcState.isRemainingMode = false;
-            }
+          // Frozen detection
+          if (timeDiff === 0 && rawDurationDiff === 0) {
+            rpcState.frozenCount = (rpcState.frozenCount || 0) + 1;
           } else {
-            // Uncertain pattern: gradually decay counters to avoid abrupt mode changes
-            if (rpcState.consecutiveRemaining > 0) rpcState.consecutiveRemaining--;
-            if (rpcState.consecutiveNormal > 0) rpcState.consecutiveNormal--;
+            rpcState.frozenCount = 0;
+          }
+
+          if (rpcState.frozenCount < 2) {
+            // Remaining pattern: raw duration stable, time decreasing or within jitter tolerance
+            const rawDurationStable = rawDurationDiff < 2;
+            const timeDecreasingOrStable = timeDiff <= 0;
+
+            // Normal pattern: raw duration stable, time increases within expected sampling interval
+            const timeIncreasing = timeDiff >= 2 && timeDiff <= 6;
+
+            // Require fewer samples to enter a mode, more to switch between modes
+            const requiredCountForEntering = 3;
+            const requiredCountForSwitching = 4;
+
+            if (rawDurationStable && timeDecreasingOrStable && !isRemainingSignal) {
+              rpcState.consecutiveRemaining++;
+              rpcState.consecutiveNormal = 0;
+              const threshold = rpcState.isRemainingMode ? requiredCountForSwitching : requiredCountForEntering;
+
+              if (rpcState.consecutiveRemaining >= threshold) {
+                if (!rpcState.isRemainingMode) {
+                  logInfo("Entering remaining mode - time decreasing pattern detected");
+                }
+                rpcState.isRemainingMode = true;
+              }
+            } else if (rawDurationStable && timeIncreasing) {
+              rpcState.consecutiveNormal++;
+              rpcState.consecutiveRemaining = 0;
+
+              const threshold = !rpcState.isRemainingMode ? requiredCountForSwitching : requiredCountForEntering;
+
+              if (rpcState.consecutiveNormal >= threshold) {
+                if (rpcState.isRemainingMode) {
+                  logInfo("Exiting remaining mode - normal playback detected");
+                }
+                rpcState.isRemainingMode = false;
+              }
+            } else {
+              // Uncertain pattern: gradually decay counters to avoid abrupt mode changes
+              if (rpcState.consecutiveRemaining > 0) rpcState.consecutiveRemaining--;
+              if (rpcState.consecutiveNormal > 0) rpcState.consecutiveNormal--;
+            }
           }
         }
 
@@ -815,6 +825,7 @@ window.addEventListener("message", async (event) => {
               duration: song.duration,
               buttons: song.buttons,
               mode: msg.data.mode,
+              isPlaying: Boolean(msg.data.isPlaying),
             };
           } catch (err) {
             logError("User script parser error:", err);

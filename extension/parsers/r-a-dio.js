@@ -18,6 +18,7 @@ registerParser({
       songUrl: sourceElem,
       timePassed: timePassedElem,
       duration: timeElem,
+      isPlaying: Boolean(document.querySelector("#stream-play-pause")?.textContent.startsWith("Stop")),
     };
   },
 });

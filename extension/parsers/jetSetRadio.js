@@ -21,6 +21,7 @@ registerParser({
       image: coverElem,
       source: stationName,
       songUrl: sourceElem,
+      isPlaying: Boolean(document.querySelector("#pauseTrackButton")?.style.visibility === "visible"),
     };
   },
 });

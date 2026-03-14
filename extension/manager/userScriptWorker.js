@@ -173,6 +173,7 @@ class UserScriptManager {
             trackState.timePassed = typeof timePassed !== "undefined" ? timePassed : null;
             trackState.duration = typeof duration !== "undefined" ? duration : null;
             trackState.buttons = typeof buttons !== "undefined" ? buttons : null;
+            trackState.isPlaying = typeof isPlaying !== "undefined" ? isPlaying : null;
 
             // Track Data
             const trackData = {

@@ -568,43 +568,39 @@ const handleUpdateRpc = async (req, sender) => {
   }
 
   // 1️) Audible check
-  const isAudioPlaying = tabInfo.audible ?? false;
-  if (isAudioPlaying) {
-    if (state.audibleTimers.has(tabId)) {
-      clearTimeout(state.audibleTimers.get(tabId));
-      state.audibleTimers.delete(tabId);
-      logInfo(`Tab ${tabId} resumed audio in UPDATE_RPC, timer cancelled`);
-    }
+  const isAudible = tabInfo.audible ?? false;
+  const isPlaying = isAudible || req.data?.isPlaying;
+
+  if (isAudible && state.audibleTimers.has(tabId)) {
+    clearTimeout(state.audibleTimers.get(tabId));
+    state.audibleTimers.delete(tabId);
+    logInfo(`Tab ${tabId} resumed audio in UPDATE_RPC, timer cancelled`);
   }
 
-  if (!isAudioPlaying) {
-    // The tab is silent, but the player might be loading
-    if (!state.activeTabMap.has(tabId)) {
-      logInfo(`Tab ${tabId} UPDATE_RPC received but not audible and not in map, rejecting`);
-      return { ok: false, waiting: true };
-    }
-
-    state.activeTabMap.set(tabId, {
-      ...req.data,
-      isAudioPlaying: false,
-      lastKey: `${title}|${artist}`,
-      lastUpdated: now,
-      progress,
-      parserId,
-    });
-    logInfo(`Tab ${tabId} UPDATE_RPC received but not audible`);
-    return { ok: true, waiting: true };
+  // If it is not on the map and there is no play, reject it
+  if (!isPlaying && !state.activeTabMap.has(tabId)) {
+    logInfo(`Tab ${tabId} UPDATE_RPC: not audible, not playing, not in map, rejecting`);
+    return { ok: false, waiting: true };
   }
 
   // 2️) Update state
   state.activeTabMap.set(tabId, {
     ...req.data,
-    isAudioPlaying: true,
+    isAudioPlaying: isPlaying,
     lastKey: `${title}|${artist}`,
     lastUpdated: now,
     progress,
     parserId,
   });
+
+  if (!isPlaying) {
+    if (state.activeTabMap.has(tabId)) {
+      logInfo(`Tab ${tabId} UPDATE_RPC: not playing but already tracked, keeping RPC`);
+      return { ok: true };
+    }
+    logInfo(`Tab ${tabId} UPDATE_RPC: not audible, not playing, waiting`);
+    return { ok: true, waiting: true };
+  }
 
   // 3) RPC update
   scheduleRpcUpdate(req.data, tabId)?.catch((err) => logError("RPC schedule failed", err));
@@ -721,7 +717,10 @@ const handleIsHostnameMatch = async (sender) => {
 
       try {
         const activeTab = await browser.tabs.get(activeTabId);
-        if (activeTab.audible) {
+        const pingRes = await safePingTab(activeTabId).catch(() => null);
+        const isActuallyPlaying = activeTab.audible || pingRes?.isPlaying === true;
+
+        if (isActuallyPlaying) {
           const source = tabData.source ? ` | ${tabData.source}` : "";
           return {
             ok: false,
@@ -734,6 +733,7 @@ const handleIsHostnameMatch = async (sender) => {
 
         logInfo(`Tab ${activeTabId} in map but not audible, updating state`);
         tabData.isAudioPlaying = false;
+        activeTabMap.set(activeTabId, tabData);
       } catch {
         logInfo(`Tab ${activeTabId} not found, removing from map`);
         activeTabMap.delete(activeTabId);
@@ -980,17 +980,18 @@ const setupListeners = () => {
     try {
       // 1) Tab muted check
       if (changeInfo.mutedInfo?.muted === true) {
-        logInfo(`Tab ${tabId} muted, clearing RPC`);
-
-        if (state.audibleTimers.has(tabId)) {
-          clearTimeout(state.audibleTimers.get(tabId));
-          state.audibleTimers.delete(tabId);
+        const pingRes = await safePingTab(tabId).catch(() => null);
+        if (!pingRes?.isPlaying) {
+          logInfo(`Tab ${tabId} muted and not playing, clearing RPC`);
+          if (state.audibleTimers.has(tabId)) {
+            clearTimeout(state.audibleTimers.get(tabId));
+            state.audibleTimers.delete(tabId);
+          }
+          await clearRpcForTab(tabId, "tab muted").catch(logError);
+          state.tabUrlMap.delete(tabId);
+          return;
         }
-
-        await clearRpcForTab(tabId, "tab muted").catch(logError);
-        tabState.isAudioPlaying = false;
-        state.activeTabMap.set(tabId, tabState);
-        return;
+        logInfo(`Tab ${tabId} muted but isPlaying is true, keeping RPC`);
       }
 
       // 2) Domain change control
@@ -1056,6 +1057,14 @@ const setupListeners = () => {
       } else {
         // The tab no longer active → just update the state
         if (tabState.isAudioPlaying) {
+          const pingRes = await safePingTab(tabId).catch(() => null);
+          const isStillPlaying = pingRes?.isPlaying;
+
+          if (isStillPlaying) {
+            logInfo(`Tab ${tabId} not audible but isPlaying is true, keeping RPC`);
+            return;
+          }
+
           tabState.isAudioPlaying = false;
           state.activeTabMap.set(tabId, tabState);
           logInfo(`Tab ${tabId} lost audio, will clear RPC in 5s if not recovered`);
@@ -1066,12 +1075,18 @@ const setupListeners = () => {
               try {
                 const t = await browser.tabs.get(tabId);
                 const currentState = state.activeTabMap.get(tabId);
-                if (!t.audible && currentState?.isAudioPlaying === false) {
+                const pingRes2 = await safePingTab(tabId).catch(() => null);
+                const stillPlaying = pingRes2?.isPlaying;
+
+                if (!t.audible && !stillPlaying) {
                   logInfo(`Tab ${tabId} still not audible after 5s, clearing RPC`);
                   await clearRpcForTab(tabId, "audio stopped for 5+ seconds");
-                  state.activeTabMap.delete(tabId);
                 } else {
                   logInfo(`Tab ${tabId} recovered audio within 5s, keeping RPC active`);
+                  if (currentState) {
+                    currentState.isAudioPlaying = true;
+                    state.activeTabMap.set(tabId, currentState);
+                  }
                 }
               } catch (err) {
                 logInfo(`Tab ${tabId} not found during cleanup timer, removing from map`);

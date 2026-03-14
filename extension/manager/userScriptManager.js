@@ -458,6 +458,7 @@ class UserScriptUI {
          let timePassed = null;
          let duration = null;
          let buttons = [{link: "", text: ""}, {link: "",text: "",}];
+         let isPlaying = false;
          `,
     );
 
@@ -769,6 +770,7 @@ class UserScriptUI {
         duration,
         timePassed,
         buttons,
+        isPlaying,
         };
         },
       });`;

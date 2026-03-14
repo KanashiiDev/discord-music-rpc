@@ -25,6 +25,7 @@ registerParser({
       image: coverElem,
       source: "Radio Paradise",
       songUrl: sourceElem,
+      isPlaying: Boolean(document.querySelector("mat-icon#play-button[title='Pause']")),
     };
   },
 });

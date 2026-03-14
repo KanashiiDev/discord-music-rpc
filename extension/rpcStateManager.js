@@ -21,6 +21,7 @@ window.RPCStateManager = class {
     this.lastEffectiveDuration = null;
     this.consecutiveRemaining = 0;
     this.consecutiveNormal = 0;
+    this.frozenCount = 0;
 
     this.lastCheckTime = null;
   }
@@ -110,6 +111,7 @@ window.RPCStateManager = class {
     this.isRemainingMode = false;
     this.consecutiveRemaining = 0;
     this.consecutiveNormal = 0;
+    this.frozenCount = 0;
     this.lastReportedTime = null;
     this.lastReportedDuration = null;
     this.lastEffectiveDuration = null;

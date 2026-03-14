@@ -14,6 +14,7 @@ registerParser({
       image,
       source: "Radio Garden",
       songUrl: "https://radio.garden",
+      isPlaying: Boolean(document.querySelector("button[aria-label='stop']")),
     };
   },
 });

@@ -12,6 +12,7 @@ registerParser({
       source: "ANISON.FM",
       songUrl: location.href,
       position: 0,
+      isPlaying: document.querySelector("svg.song-play__start")?.classList.contains("hide"),
       duration: getText(".player-wrapper .player-item .song-item__time"),
       progress: 0,
     };

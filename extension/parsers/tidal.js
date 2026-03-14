@@ -20,6 +20,7 @@ registerParser({
       songUrl: musicLink || "https://www.tidal.com/",
       duration,
       timePassed,
+      isPlaying: Boolean(document.querySelector("button[data-test='pause']")),
     };
   },
 });

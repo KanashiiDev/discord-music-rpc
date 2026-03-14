@@ -3,19 +3,13 @@ registerParser({
   title: "iHeart",
   urlPatterns: [/.*/],
   fn: function () {
-    const player = document.querySelector("[data-test='player-container']");
+    const player = document.querySelector("body > div > div > div:last-child");
     if (!player) return null;
-    let titleElem = player.querySelector("[data-test='player-text'] [data-test='line-text']:nth-child(2)")?.textContent;
-    let artistElem = player.querySelector("[data-test='player-text'] [data-test='line-text']:nth-child(3)")?.textContent;
-    const coverElem = player.querySelector("[data-test='player-artwork-image'] img")?.src;
-    const sourceElem = player.querySelector("[data-test='player-text'] [data-test='line-text']:nth-child(2) a")?.href;
-    const timeElem = player.querySelector("[aria-label='Seekbar Duration']")?.textContent;
-    const timePassedElem = player.querySelector("[aria-label='Seekbar Position']")?.textContent;
-
-    if (!artistElem) {
-      titleElem = player.querySelector("[data-test='player-text'] [data-test='line-text']:nth-child(2)")?.textContent;
-      artistElem = player.querySelector("[data-test='player-text'] [data-test='line-text']:nth-child(1)")?.textContent;
-    }
+    const titleElem = player.querySelector("div > div > div > div > div > div:nth-child(2) > span")?.textContent;
+    const artistElem = player.querySelector("div > div > div > div > div > div:nth-child(3) > div")?.textContent;
+    const coverElem = player.querySelector("div > div > div > div > div > div:nth-child(1) > img")?.src;
+    const timeElem = player.querySelectorAll("div > div > div > div > div > div:nth-child(1) > span")[2]?.textContent;
+    const timePassedElem = player.querySelectorAll("div > div > div > div > div > div:nth-child(1) > span")[1]?.textContent;
 
     function decodeCoverImage(url, size = "small") {
       try {
@@ -45,9 +39,9 @@ registerParser({
       artist: artistElem,
       image: decodeCoverImage(coverElem),
       source: "iHeart",
-      songUrl: sourceElem,
       timePassed: timePassedElem,
       duration: timeElem,
+      isPlaying: Boolean(document.querySelector("[data-test='player-play-button'] svg[aria-label='Pause']")),
     };
   },
 });

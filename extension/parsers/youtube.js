@@ -9,12 +9,13 @@ registerParser({
     const artist = getText("#upload-info #text > a");
     const video = document.querySelector("video");
     const isLive = Boolean(document.querySelector("button.ytp-live-badge")?.offsetParent);
+    const isWatchingBtn = Boolean(document.querySelector(".ytp-left-controls > button > svg > path")?.getAttribute("d").startsWith("M 12"));
     let timePassed = "",
       duration = "",
       isWatching = 0;
 
     if (video) {
-      isWatching = video.paused ? 0 : 1;
+      isWatching = !video.paused;
       timePassed = isLive ? "" : video.currentTime;
       duration = isLive ? "" : video.duration;
     }
@@ -29,7 +30,7 @@ registerParser({
       source: "YouTube",
       songUrl: url,
       mode: "watch",
-      playStatus: isWatching,
+      isPlaying: isWatching || isWatchingBtn,
       timePassed,
       duration,
     };

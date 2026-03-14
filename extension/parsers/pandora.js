@@ -20,6 +20,7 @@ registerParser({
       songUrl: sourceElem,
       timePassed: timePassedElem,
       duration: timeElem,
+      isPlaying: Boolean(document.querySelector("button[data-qa='pause_button']")),
     };
   },
 });

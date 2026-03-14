@@ -12,6 +12,7 @@ registerParser({
       duration: getText(".time-display-total"),
       source: "wap-fm",
       songUrl: "https://radio.wapchan.org/public/wapfm",
+      isPlaying: document.querySelector(".radio-control-play-button")?.title?.includes("Stop"),
     };
   },
 });
