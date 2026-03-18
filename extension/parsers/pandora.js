@@ -2,6 +2,9 @@ registerParser({
   domain: "pandora.com",
   title: "Pandora",
   urlPatterns: [/.*/],
+  description: "Personalized music streaming and radio with on-demand options.",
+  category: "platform",
+  tags: [],
   fn: function () {
     const player = document.querySelector(".region-bottomBar");
     if (!player) return null;

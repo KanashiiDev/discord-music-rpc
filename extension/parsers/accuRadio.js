@@ -2,6 +2,9 @@ registerParser({
   domain: "accuradio.com",
   title: "AccuRadio",
   urlPatterns: [/.*/],
+  description: "Free online radio platform with hundreds of curated music channels across genres.",
+  category: "radio",
+  tags: [],
   fn: function () {
     const player = document.querySelector("#playerContents");
     if (!player) return null;
@@ -10,6 +13,7 @@ registerParser({
     const coverElem = player.querySelector("#albumArtImg")?.src;
     const sourceElem = player.querySelector("#playerName")?.href;
     const timeElem = player.querySelector("#progressWrapper")?.textContent;
+    const playStatus = titleElem && artistElem && document.querySelector("#playerPauseButton");
 
     return {
       title: titleElem,
@@ -19,7 +23,7 @@ registerParser({
       songUrl: sourceElem,
       timePassed: timeElem,
       duration: timeElem,
-      isPlaying: Boolean(document.querySelector("#playerPauseButton")),
+      isPlaying: Boolean(playStatus),
     };
   },
 });

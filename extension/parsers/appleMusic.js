@@ -2,6 +2,9 @@ registerParser({
   domain: "music.apple.com",
   title: "Apple Music",
   urlPatterns: [/.*/],
+  description: "Subscription-based music streaming service with on-demand playback, curated playlists, and Apple ecosystem integration.",
+  category: "platform",
+  tags: [],
   fn: function getSongInfo() {
     // Element selectors
     const lcd = document.querySelector("amp-lcd")?.shadowRoot;

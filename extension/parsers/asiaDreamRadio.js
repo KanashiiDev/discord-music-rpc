@@ -2,6 +2,9 @@ registerParser({
   domain: "asiadreamradio.torontocast.stream",
   title: "Asia Dream Radio",
   urlPatterns: [/stations.*/],
+  description: "Online radio focused on J-Pop, Asian hits, and Japanese music.",
+  category: "radio",
+  tags: ["jpop", "asia"],
   fn: async function getSongInfo() {
     function isoToTimeString(iso) {
       const match = iso?.match(/PT(?:(\d+)M)?(?:(\d+(?:\.\d+)?)S)?/);

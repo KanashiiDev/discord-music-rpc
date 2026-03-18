@@ -2,6 +2,9 @@ registerParser({
   domain: "tidal.com",
   title: "Tidal",
   urlPatterns: [/.*/],
+  description: "High-fidelity on-demand music streaming service.",
+  category: "platform",
+  tags: [],
   fn: async function () {
     const main = document.querySelector("[data-test='footer-player']");
     const titleElem = main?.querySelector("[data-test='footer-track-title']")?.innerText ?? "";

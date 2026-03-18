@@ -2,6 +2,9 @@ registerParser({
   domain: "jetsetradio.live",
   title: "Jet Set Radio",
   urlPatterns: [/.*/],
+  description: "Fan-made browser radio station inspired by the Jet Set Radio game, streaming funky retro and hip-hop tracks 24/7.",
+  category: "radio",
+  tags: ["retro", "community"],
   fn: function () {
     const tvFrame = document.querySelector("#tvFrame")?.style?.visibility !== "hidden";
     if (tvFrame) {

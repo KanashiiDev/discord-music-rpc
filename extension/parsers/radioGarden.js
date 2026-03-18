@@ -2,6 +2,9 @@ registerParser({
   domain: "radio.garden",
   title: "Radio Garden",
   urlPatterns: [/.*/],
+  description: "Interactive globe for exploring live radio stations worldwide.",
+  category: "aggregator",
+  tags: [],
   fn: function () {
     const root = document.querySelector("div[class*='_channelTitle_']");
     const title = root?.querySelector("[class*='_title_']")?.textContent;

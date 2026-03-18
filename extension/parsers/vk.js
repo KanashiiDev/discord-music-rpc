@@ -2,6 +2,9 @@ window.registerParser({
   domain: "vk.com",
   title: "VK",
   urlPatterns: [/.*/],
+  description: "Music streaming and discovery integrated into the VK social platform, with playlists, radio mixes, and offline access.",
+  category: "platform",
+  tags: ["community"],
   fn: async ({ accessWindow }) => {
     const ap = await accessWindow("ap.getCurrentAudio");
     if (!ap) return null;

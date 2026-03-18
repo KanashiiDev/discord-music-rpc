@@ -3,6 +3,9 @@ registerParser({
   homepage: "https://www.j1fm.tokyo/player/j1hits/",
   title: "J1FM",
   urlPatterns: [/player.*/],
+  description: "Online radio playing Japanese pop hits and related music.",
+  category: "radio",
+  tags: ["japan"],
   fn: function () {
     const title = getText("strong[data-station-metadata-target=playBarSecondaryTitle]");
     const artist = getText("span[data-station-metadata-target=playBarSecondarySubtitle]");

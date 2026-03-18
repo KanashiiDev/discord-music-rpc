@@ -2,6 +2,9 @@ registerParser({
   domain: "radioparadise.com",
   title: "Radio Paradise",
   urlPatterns: [/.*/],
+  description: "Listener-supported, ad-free curated online radio with eclectic music selections.",
+  category: "radio",
+  tags: [],
   fn: function () {
     const titleElem = getText(".player-title");
     const artistElem = getText(".player-artist");

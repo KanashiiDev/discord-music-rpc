@@ -2,6 +2,9 @@ registerParser({
   domain: "radio.net",
   title: "radio.net",
   urlPatterns: [/.*/],
+  description: "Large aggregator providing access to thousands of global radio stations.",
+  category: "aggregator",
+  tags: [],
   fn: function () {
     function getStemFromUrl(input) {
       if (typeof input !== "string") return "";

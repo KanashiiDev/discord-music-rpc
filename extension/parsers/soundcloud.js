@@ -2,6 +2,9 @@ registerParser({
   domain: "soundcloud.com",
   title: "Soundcloud",
   urlPatterns: [/.*/],
+  description: "Community platform for discovering and sharing independent music uploads.",
+  category: "platform",
+  tags: ["community"],
   fn: async function () {
     if (document.querySelector(".fullScreenOverlay")) return;
     async function getValidImageUrl(baseUrl, timeoutMs = 3000) {

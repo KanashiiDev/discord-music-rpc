@@ -2,6 +2,9 @@ registerParser({
   domain: ["anison.fm", "en.anison.fm", "cn.anison.fm"],
   title: "ANISON.FM",
   urlPatterns: [/.*/],
+  description: "Online radio station specializing in anime openings, endings, and Japanese tracks.",
+  category: "radio",
+  tags: ["anime", "japan", "community"],
   fn: function () {
     const titleText = getText(".player-wrapper .player-item .song-box__subtitle");
     if (titleText === "Отбивочка") return;

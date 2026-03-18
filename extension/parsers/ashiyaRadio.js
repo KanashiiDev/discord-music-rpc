@@ -2,6 +2,9 @@ registerParser({
   domain: "ashiya.radio",
   title: "Ashiya Radio",
   urlPatterns: [/.*/],
+  description: "Japanese online radio station featuring jazz and international music.",
+  category: "radio",
+  tags: ["jazz", "japan"],
   fn: async function getSongInfo() {
     async function getStatus() {
       try {

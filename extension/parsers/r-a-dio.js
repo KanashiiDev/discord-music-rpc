@@ -2,6 +2,9 @@ registerParser({
   domain: "r-a-d.io",
   title: "R/a/dio",
   urlPatterns: [/.*/],
+  description: "Community-driven 24/7 online radio streaming anime, Japanese, J-pop, and related music with song requests and occasional live DJs.",
+  category: "radio",
+  tags: ["anime", "japan", "community"],
   fn: function () {
     const titleElem = getText("#metadata");
     const artistElem = getText("#metadata");

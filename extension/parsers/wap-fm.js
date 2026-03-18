@@ -3,6 +3,9 @@ registerParser({
   homepage: "https://radio.wapchan.org/public/wapfm",
   title: "Wap-FM",
   urlPatterns: [/public\/wapfm/],
+  description: "Community-run online radio on the Wapchan anime/manga forum, streaming retro anime soundtracks, otaku music, and user-curated tracks 24/7.",
+  category: "radio",
+  tags: ["anime", "community"],
   fn: function () {
     return {
       title: getText(".now-playing-title"),

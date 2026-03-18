@@ -2,6 +2,9 @@ registerParser({
   domain: "iheart.com",
   title: "iHeart",
   urlPatterns: [/.*/],
+  description: "Aggregator for live radio stations, custom music channels, and podcasts.",
+  category: "aggregator",
+  tags: ["music", "podcast", "radio"],
   fn: function () {
     const player = document.querySelector("body > div > div > div:last-child");
     if (!player) return null;

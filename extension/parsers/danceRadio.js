@@ -2,6 +2,9 @@ registerParser({
   domain: "danceradio.show",
   title: "Dance Radio",
   urlPatterns: [/.*/],
+  description: "Online dance music radio station streaming current hits and '00s/'90s throwbacks 24/7.",
+  category: "radio",
+  tags: [],
   fn: async function getSongInfo() {
     async function getStatus() {
       try {

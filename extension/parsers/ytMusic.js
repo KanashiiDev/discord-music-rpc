@@ -2,6 +2,9 @@ registerParser({
   domain: "music.youtube.com",
   title: "YouTube Music",
   urlPatterns: [/.*/],
+  description: "Music streaming service with official tracks, remixes, and video integration.",
+  category: "platform",
+  tags: [],
   fn: async function () {
     const songLink = document.querySelector("#movie_player .ytp-title a")?.href;
     const title = getText(".ytmusic-player-bar yt-formatted-string:first-child");
@@ -9,17 +12,29 @@ registerParser({
     const artistSelector = document.querySelector("ytmusic-player-bar yt-formatted-string.byline");
     if (artistSelector) {
       const artistNames = [];
+      let foundAnchor = false;
+      let spanModeFirstCaptured = false;
+
       for (const node of artistSelector.childNodes) {
         if (node.textContent.includes("•")) break;
-        if (node.nodeType === Node.ELEMENT_NODE) {
-          if (node.tagName === "A") {
-            artistNames.push(node.textContent.trim());
-          } else if (node.tagName === "SPAN" && !node.textContent.includes("•")) {
-            const spanText = node.textContent.trim();
-            if (spanText) artistNames.push(spanText);
+
+        if (node.nodeType !== Node.ELEMENT_NODE) continue;
+
+        if (node.tagName === "A") {
+          foundAnchor = true;
+          const text = node.textContent.trim();
+          if (text) artistNames.push(text);
+        } else if (!foundAnchor && node.tagName === "SPAN") {
+          if (!spanModeFirstCaptured) {
+            const text = node.textContent.trim();
+            if (text) {
+              artistNames.push(text.split(/\s+/)[0]);
+              spanModeFirstCaptured = true;
+            }
           }
         }
       }
+
       artist = artistNames.join(" & ");
     }
     const video = document.querySelector("video");

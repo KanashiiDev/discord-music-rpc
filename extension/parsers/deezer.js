@@ -2,6 +2,9 @@ registerParser({
   domain: "deezer.com",
   title: "Deezer",
   urlPatterns: [/.*/],
+  description: "Global on-demand music streaming with playlists and recommendations.",
+  category: "platform",
+  tags: [],
   fn: function () {
     // Element selectors
     let titleElem = document.querySelector("[data-testid='item_title']")?.textContent;

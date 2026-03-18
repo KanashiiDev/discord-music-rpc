@@ -2,6 +2,9 @@ registerParser({
   domain: "music.amazon.com",
   title: "Amazon Music",
   urlPatterns: [/.*/],
+  description: "On-demand music streaming service with songs, playlists, and integrated podcasts.",
+  category: "platform",
+  tags: [],
   fn: async function () {
     const main = document.querySelector("music-horizontal-item")?.shadowRoot;
     const title = getText("music-link", { root: main });

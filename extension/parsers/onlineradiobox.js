@@ -2,6 +2,9 @@ registerParser({
   domain: "onlineradiobox.com",
   title: "Online Radio Box",
   urlPatterns: [/.*/],
+  description: "Directory and streaming platform that aggregates thousands of online radio stations worldwide.",
+  category: "aggregator",
+  tags: [],
   fn: async function () {
     async function fetchTrackHistory() {
       const stationLink = document.querySelector(".player__station__title a");

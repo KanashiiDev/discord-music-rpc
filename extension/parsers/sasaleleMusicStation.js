@@ -2,6 +2,9 @@ registerParser({
   domain: "basic.pp.ua",
   title: "Sasalele Music Station",
   urlPatterns: [/^\/$/],
+  description: "Curated directory for hundreds of music radio streams.",
+  category: "aggregator",
+  tags: [],
   fn: async function () {
     const meta = getText("#metadataDisplay").split(" - ");
     let artist = meta[0] || "";

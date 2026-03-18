@@ -2,6 +2,9 @@ registerParser({
   domain: "tunein.com",
   title: "TuneIn",
   urlPatterns: [/.*/],
+  description: "Aggregator for live radio, music streams, podcasts, and news audio.",
+  category: "aggregator",
+  tags: [],
   fn: function () {
     const title = getText("#playerTitle");
     const artist = getText("#playerTitle");

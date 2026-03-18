@@ -2,6 +2,9 @@ registerParser({
   domain: "plaza.one",
   title: "Nightwave Plaza",
   urlPatterns: [/.*/],
+  description: "24/7 online radio focused on vaporwave and retro aesthetic music.",
+  category: "radio",
+  tags: ["vaporwave", "retro"],
   fn: function () {
     const titleElem = getText(".track-title");
     const artistElem = getText(".track-artist");

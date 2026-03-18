@@ -418,6 +418,8 @@ registerParser({
   authors: [""], // Contributors names for the code to be displayed in the parser's settings (optional)
   authorsLinks: [""], // Contributors links (optional)
   description: "", // Short description of the parser (optional)
+  category: "radio", // Category of the parser (radio, platform, aggregator)
+  tags: ["anime", "japan"], // Tags to describe the parser's content type (rock, japan, community, retro)
 
   fn: async function ({ accessWindow, useSetting }) {
     /* --- USE CUSTOM SETTINGS ---
