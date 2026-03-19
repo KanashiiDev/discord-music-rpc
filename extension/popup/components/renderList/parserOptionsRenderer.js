@@ -2,7 +2,7 @@ async function renderOptions(container, parserOptions, settingKey, addListener) 
   const defaultKeys = Object.keys(DEFAULT_PARSER_OPTIONS);
 
   const sections = [
-    { title: "Settings", keys: defaultKeys.filter((k) => !k.startsWith("custom")), prefix: "", collapsible: false },
+    { title: "Settings", keys: defaultKeys.filter((k) => !k.startsWith("custom")), prefix: "", collapsible: true },
     { title: "Custom Settings", keys: defaultKeys.filter((k) => k.startsWith("custom")), prefix: "custom", collapsible: true },
     { title: "Other Settings", keys: Object.keys(parserOptions).filter((k) => !defaultKeys.includes(k)), prefix: "user", collapsible: true },
   ];
@@ -11,20 +11,20 @@ async function renderOptions(container, parserOptions, settingKey, addListener) 
     if (!keys.length) continue;
 
     const section = Object.assign(document.createElement("div"), {
-      className: `${prefix} options-container${collapsible ? " accordion-container" : ""}`,
+      className: `${prefix ? prefix + " " : ""}options-container${collapsible ? " accordion-container" : ""}`,
     });
 
     const header = Object.assign(document.createElement("h4"), {
-      className: `${prefix} options-header${collapsible ? " accordion-header" : ""}`,
+      className: `${prefix ? prefix + " " : ""}options-header${collapsible ? " accordion-header" : ""}`,
     });
 
     const label = Object.assign(document.createElement("label"), {
-      className: `${prefix} options-header${collapsible ? " accordion-label" : ""}`,
+      className: `${prefix ? prefix + " " : ""}options-header${collapsible ? " accordion-label" : ""}`,
       textContent: title,
     });
 
     const content = Object.assign(document.createElement("div"), {
-      className: `${prefix} options-content${collapsible ? " accordion-content close" : ""}`,
+      className: `${prefix ? prefix + " " : ""}options-content${collapsible ? " accordion-content close" : ""}`,
     });
 
     const inner = Object.assign(document.createElement("div"), { className: "accordion-inner" });

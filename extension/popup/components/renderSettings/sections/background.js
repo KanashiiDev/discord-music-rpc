@@ -40,7 +40,7 @@ async function buildBackground(container) {
   // Delete button
   const btnDeleteBg = document.createElement("span");
   btnDeleteBg.appendChild(createSVG(svg_paths.crossIconPaths));
-  btnDeleteBg.className = "color-delete-btn button";
+  btnDeleteBg.className = "bg-delete-btn button";
   btnDeleteBg.title = "Remove Background";
   btnDeleteBg.classList.toggle("disabled", !bgSettings.image);
 

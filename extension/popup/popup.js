@@ -260,12 +260,11 @@ const popupModule = {
       if (sectionManager.currentSection === "main") {
         // Parser options
         const openOptions = e.target.closest(".parser-options.open");
-        if (!openOptions) {
+        const openedPaserOptions = document.querySelector(".parser-options.open");
+        if (!openOptions && openedPaserOptions) {
           if (parserState.isParserAnimating) return;
-          document.querySelectorAll(".parser-options.open").forEach((optionsContainer) => {
-            closeParserOptions(optionsContainer);
-            parserState.isParserOpen = false;
-          });
+          closeParserOptions(openedPaserOptions);
+          parserState.isParserOpen = false;
         }
       }
 

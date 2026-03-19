@@ -3,6 +3,8 @@ async function toggleSettingAccordion(header, content) {
 
   const scrollEl = simpleBarInstances.get(document.getElementById("siteList"))?.getScrollElement();
   if (!scrollEl) return;
+  const scrollBar = simpleBarInstances.get(document.getElementById("siteList"))?.el.children[2];
+  document.body.classList.remove("scrollbar-visible");
 
   const icon = header.querySelector("svg");
   const isOpen = !content.classList.contains("close");
@@ -19,20 +21,19 @@ async function toggleSettingAccordion(header, content) {
       if (entryEl) {
         const relativeTop = entryEl.getBoundingClientRect().top - scrollEl.getBoundingClientRect().top;
         await smoothScrollTo(scrollEl, scrollEl.scrollTop + relativeTop);
-        await waitForTransitionEnd(content, "grid-template-rows", content.querySelector(".parser-options-inner, .accordion-inner"));
+        await waitForTransitionEnd(content, "grid-template-rows");
         await activateSimpleBar("siteList");
-        stickyInstance?.recalculate();
       }
     }
   } else {
     content.classList.remove("close");
     if (icon) icon.style.transform = "rotate(270deg)";
 
-    await waitForTransitionEnd(content, "grid-template-rows", content.querySelector(".parser-options-inner, .accordion-inner"));
+    await waitForTransitionEnd(content, "grid-template-rows");
     await activateSimpleBar("siteList");
-    stickyInstance?.recalculate();
     requestAnimationFrame(() => scrollToAccordion(header, content, scrollEl));
   }
+  document.body.classList.toggle("scrollbar-visible", scrollBar?.style.visibility !== "hidden");
 }
 
 async function scrollToAccordion(header, content, scrollEl) {

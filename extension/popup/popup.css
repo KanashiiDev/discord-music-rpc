@@ -1,18 +1,64 @@
+html,
 body {
+  margin: 0;
+  padding: 0;
+  height: 600px;
+  max-height: 600px;
+}
+
+body {
+  -webkit-box-sizing: border-box;
+  box-sizing: border-box;
   font-family: "Segoe UI", sans-serif;
   font-size: 75%;
   margin: 0;
   padding: 16px;
   background: #1e1e1e;
-  width: 325px;
+  width: 340px;
   color: var(--text-color-primary);
   opacity: 0;
+  display: -webkit-box;
+  display: -ms-flexbox;
+  display: flex;
+  -webkit-box-orient: vertical;
+  -webkit-box-direction: normal;
+  -ms-flex-direction: column;
+  flex-direction: column;
   -webkit-transition:
-    opacity 0.6s,
+    opacity var(--transition-reduced-fast),
     background-color var(--transition-normal) ease;
   transition:
-    opacity 0.6s,
+    opacity var(--transition-reduced-fast),
     background-color var(--transition-normal) ease;
+}
+
+.header {
+  -webkit-box-flex: 0;
+  -ms-flex: 0 0 auto;
+  flex: 0 0 auto;
+  z-index: 4;
+}
+
+.footer {
+  -webkit-box-flex: 0;
+  -ms-flex: 0 0 auto;
+  flex: 0 0 auto;
+  z-index: 2;
+}
+
+.content {
+  -webkit-box-flex: 1;
+  -ms-flex: 1;
+  flex: 1;
+  min-height: 0;
+  display: -webkit-box;
+  display: -ms-flexbox;
+  display: flex;
+  -webkit-box-orient: vertical;
+  -webkit-box-direction: normal;
+  -ms-flex-direction: column;
+  flex-direction: column;
+  z-index: 3;
 }
 
 body[data-theme] {
@@ -24,17 +70,12 @@ body.wideMode {
   width: 95%;
   margin: auto;
   height: 100vh;
+  max-height: 100vh;
 }
 
-body.wideMode #siteList,
-body.wideMode #historyPanel,
-body.wideMode #historyStatsPanel {
-  height: calc(100% - 205px) !important;
-  max-height: unset !important;
-}
-
-body.setup-dialog-open {
-  min-height: 360px;
+html.setup-dialog-open,
+.setup-dialog-open body {
+  height: auto;
 }
 
 body.fg-blur[data-section="main"] #searchBox,
@@ -158,7 +199,7 @@ body[data-section="stats"] #dropdownToggle {
   display: flex !important;
 }
 
-body.setup-dialog-open #settingsToggle,
+html.setup-dialog-open #settingsToggle,
 body[data-section="settings"] #settingsToggle,
 body[data-section="settings"] #historyStatsToggle,
 body[data-section="settings"] #siteList,
@@ -255,8 +296,12 @@ a:hover {
 .site-list {
   padding-right: 5px;
   overflow-y: auto;
-  max-height: 400px;
   position: relative;
+}
+
+#siteList .simplebar-content-wrapper {
+  -webkit-transition: padding var(--transition-reduced) ease;
+  transition: padding var(--transition-reduced) ease;
 }
 
 .site-list-container {
@@ -288,20 +333,34 @@ body,
   display: none;
 }
 
-#siteList {
-  min-height: 402px;
+body:not(.fg-blur).scrollbar-visible.parser-options-open #siteList .simplebar-offset {
+  clip-path: inset(0 18px 0 6px round 10px) !important;
 }
 
-body:not(.fg-blur).parser-options-open #siteList .simplebar-content-wrapper {
-  clip-path: inset(0 16px 0 4px round 8px);
-}
-
-body.fg-blur.parser-options-open #siteList .simplebar-content-wrapper {
+body.fg-blur.parser-options-open #siteList .simplebar-offset {
   border-radius: 15px;
 }
 
-.parser-options-open #siteList {
-  min-height: 432px;
+#settingsPanel,
+#historyPanel,
+#historyStatsPanel,
+#siteList {
+  height: 100%;
+  -webkit-box-flex: 1;
+  -ms-flex: 1;
+  flex: 1;
+  min-height: 0;
+}
+
+.simplebar-content-wrapper {
+  -ms-scroll-chaining: none;
+  overscroll-behavior: contain;
+}
+
+.simplebar-placeholder {
+  display: -webkit-box;
+  display: -ms-flexbox;
+  display: flex;
 }
 
 .setup-dialog-open #siteList {
@@ -309,9 +368,10 @@ body.fg-blur.parser-options-open #siteList .simplebar-content-wrapper {
   pointer-events: none;
 }
 
-#settingsContainer {
+#settingsContainer,
+.settings-option.buttons-wrapper {
   display: grid;
-  gap: 6px;
+  gap: 8px;
 }
 
 .settings-btn,
@@ -344,6 +404,7 @@ body.fg-blur.parser-options-open #siteList .simplebar-content-wrapper {
 .bg-expand-btn,
 .all-colors-delete-btn,
 .color-delete-btn,
+.bg-delete-btn,
 .port-apply-btn {
   opacity: 1;
   padding: 5px;
@@ -365,11 +426,13 @@ body.fg-blur.parser-options-open #siteList .simplebar-content-wrapper {
     margin 0.2s ease;
 }
 
+.bg-delete-btn:not(.disabled),
 .all-colors-delete-btn:not(.disabled),
 .color-delete-btn:not(.disabled) {
   margin-left: 4px;
 }
 
+.bg-delete-btn.disabled,
 .all-colors-delete-btn.disabled,
 .color-delete-btn.disabled {
   opacity: 0;
@@ -423,7 +486,7 @@ body.fg-blur.parser-options-open #siteList .simplebar-content-wrapper {
 .switch-label,
 #openSelector,
 #openManager,
-.parser-entry,
+.parser-span,
 .history-filter-menu-content label {
   -webkit-user-select: none;
   -moz-user-select: none;
@@ -448,15 +511,8 @@ footer {
   width: calc(100% - 10px);
   -webkit-transition: width var(--transition-reduced) ease;
   transition: width var(--transition-reduced) ease;
-}
-
-body.setup-dialog-open footer,
-body[data-section="settings"] footer {
-  width: 100%;
-}
-
-body[data-section="history"] footer {
-  width: calc(100% - 6px);
+  position: relative;
+  z-index: 6;
 }
 
 #historySearchBox,
@@ -484,7 +540,10 @@ body[data-section="history"] footer {
     opacity var(--transition-reduced) ease,
     border-color var(--transition-reduced) ease,
     background-color var(--transition-reduced) ease,
-    -webkit-transform var(--transition-reduced) ease;
+    -webkit-transform var(--transition-reduced) ease,
+    max-height var(--transition-reduced) ease,
+    padding var(--transition-reduced) ease,
+    margin var(--transition-reduced) ease;
 }
 
 #historySearchBox {
@@ -542,7 +601,8 @@ body[data-section="history"] footer {
   cursor: default;
   -webkit-transform: translateZ(0);
   transform: translateZ(0);
-  margin-bottom: 14px;
+  padding: 0 2px;
+  margin-bottom: 13px;
   -webkit-transition:
     opacity var(--transition-reduced) ease,
     -webkit-transform var(--transition-reduced) ease;
@@ -556,7 +616,7 @@ body[data-section="history"] footer {
     opacity var(--transition-reduced) ease,
     transform var(--transition-reduced) ease,
     -webkit-transform var(--transition-reduced) ease;
-  overflow: hidden;
+  overflow: visible;
   contain: layout style paint;
 }
 
@@ -565,8 +625,22 @@ body[data-section="history"] footer {
 }
 
 .parser-span {
-  height: 25px;
+  height: 26px;
   margin: 0;
+}
+
+.parser-span.sticky {
+  position: sticky;
+  top: -0.5px;
+  will-change: transform;
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+  -webkit-font-smoothing: antialiased;
+  z-index: 10;
+}
+
+.parser-entry-description p {
+  margin-top: 0;
 }
 
 .parser-entry-authors a {
@@ -653,7 +727,6 @@ body[data-section="history"] footer {
   opacity: 1;
   grid-template-rows: 1fr;
   padding: 16px;
-  margin-bottom: 20px;
   background: var(--foreground-color-200);
   border-radius: var(--radius-lg);
   z-index: -1;
@@ -719,6 +792,21 @@ body[data-section="history"] footer {
   -ms-transform: rotate(90deg);
   transform: rotate(90deg);
   width: 38px;
+}
+
+.parser-options .parser-tags {
+  display: -webkit-box;
+  display: -ms-flexbox;
+  display: flex;
+  -ms-flex-wrap: wrap;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.parser-options .parser-tag {
+  background: var(--foreground-color-100);
+  padding: 5px;
+  border-radius: 6px;
 }
 
 .settings-option,
@@ -1206,7 +1294,6 @@ body[data-theme="dark"] #githubLink img {
 #historyStatsPanel {
   display: none;
   margin-top: 8px;
-  max-height: 400px;
   padding: 0 5px;
   padding-right: 16px;
   overflow-y: auto;
@@ -1226,8 +1313,6 @@ body[data-theme="dark"] #githubLink img {
     margin-bottom var(--transition-reduced) ease,
     max-height var(--transition-reduced) ease !important;
   position: relative;
-  max-height: 452px;
-  min-height: 120px;
   margin-top: 5px;
   margin-bottom: 0;
   top: 0;
@@ -1280,7 +1365,7 @@ body[data-theme="dark"] #githubLink img {
   -webkit-box-align: center;
   -ms-flex-align: center;
   align-items: center;
-  margin-bottom: 6px;
+  margin-bottom: 8px;
   background: var(--foreground-color-200);
   -webkit-box-shadow: 0 1px 3px var(--shadow-color);
   box-shadow: 0 1px 3px var(--shadow-color);
@@ -1730,6 +1815,7 @@ body.cleaning-mode .selected .history-trash {
   height: 17px;
 }
 
+.parser-options-open #searchBox,
 .parser-options-open #mainFooterButtons {
   opacity: 0 !important;
   -webkit-transform: translateY(-25px) scale(0.9);
@@ -1737,6 +1823,21 @@ body.cleaning-mode .selected .history-trash {
   transform: translateY(-25px) scale(0.9);
   max-height: 0px;
   pointer-events: none;
+}
+
+.parser-options-open #searchBox {
+  padding-bottom: 0;
+  margin-bottom: 0;
+}
+
+.scroll-spacer {
+  width: 100%;
+  height: 0px;
+  pointer-events: none;
+  -ms-flex-negative: 0;
+  flex-shrink: 0;
+  -webkit-transition: height var(--transition-reduced) ease;
+  transition: height var(--transition-reduced) ease;
 }
 
 .color-control {
@@ -1838,12 +1939,13 @@ body.cleaning-mode .selected .history-trash {
   padding: 6px;
   opacity: 1 !important;
   width: calc(100% - 24px) !important;
-  min-width: 300px;
+  min-width: 290px;
   height: 115px !important;
 }
 
 .color.expandable-section {
   height: 250px !important;
+  min-width: 280px;
   overflow: auto;
 }
 

@@ -7,79 +7,87 @@
     <link rel="stylesheet" href="../libs/flatpickr.css" />
     <link rel="stylesheet" href="../libs/simplebar.css" />
   </head>
-  <div id="bg-layer"></div>
+
   <body data-section="main">
-    <div class="header-container">
-      <h1 id="mainHeader">
-        <a id="historyStatsToggle" title="Stats"></a>
-        Discord Music RPC
-        <a id="historyToggle" title="History"></a>
-      </h1>
-    </div>
-    <div class="history-controls" style="display: none; position: relative">
-      <input type="text" id="historySearchBox" placeholder="Search history..." />
-      <span id="historyFilterBtn" title="Filter Source"></span>
-      <div id="historyFilterMenu" class="history-filter-menu">
-        <div id="historyFilterMenuContent" class="history-filter-menu-content"></div>
+    <div id="bg-layer"></div>
+    <div class="header">
+      <div class="header-container">
+        <h1 id="mainHeader">
+          <a id="historyStatsToggle" title="Stats"></a>
+          Discord Music RPC
+          <a id="historyToggle" title="History"></a>
+        </h1>
+      </div>
+      <div class="history-controls" style="display: none; position: relative">
+        <input type="text" id="historySearchBox" placeholder="Search history..." />
+        <span id="historyFilterBtn" title="Filter Source"></span>
+        <div id="historyFilterMenu" class="history-filter-menu">
+          <div id="historyFilterMenuContent" class="history-filter-menu-content"></div>
+        </div>
       </div>
     </div>
-    <div id="historyPanel" data-lazy-container></div>
-    <input type="text" id="searchBox" placeholder="Search site..." />
-    <div class="filter-select-wrapper">
-      <div id="dropdownToggle" class="dropdown-toggle">
-        Today
-        <span class="arrow">▼</span>
-      </div>
-      <div id="statsFilters" class="custom-dropdown-container">
-        <ul id="dropdownMenu" class="dropdown-menu">
-          <li data-range="day">Today</li>
-          <li data-range="yesterday">Yesterday</li>
-          <li data-range="week">This Week</li>
-          <li data-range="month">This Month</li>
-          <li data-range="lastMonth">Last Month</li>
-          <li data-range="3months">Last 3 Months</li>
-          <li data-range="6months">Last 6 Months</li>
-          <li data-range="year">This Year</li>
-          <li data-range="all">All Time</li>
-          <li data-range="custom">Custom Range</li>
-        </ul>
-        <div class="date-range-picker" style="display: none">
-          <div class="container">
-            <div class="picker-inputs">
-              <div>
-                <label class="picker-label">Start Date</label>
-                <input type="text" id="customStartDate" class="picker-input flatpickr-input" readonly />
+    <div class="content">
+      <div id="historyPanel" data-lazy-container></div>
+      <input type="text" id="searchBox" placeholder="Search site..." />
+      <div class="filter-select-wrapper">
+        <div id="dropdownToggle" class="dropdown-toggle">
+          Today
+          <span class="arrow">▼</span>
+        </div>
+        <div id="statsFilters" class="custom-dropdown-container">
+          <ul id="dropdownMenu" class="dropdown-menu">
+            <li data-range="day">Today</li>
+            <li data-range="yesterday">Yesterday</li>
+            <li data-range="week">This Week</li>
+            <li data-range="month">This Month</li>
+            <li data-range="lastMonth">Last Month</li>
+            <li data-range="3months">Last 3 Months</li>
+            <li data-range="6months">Last 6 Months</li>
+            <li data-range="year">This Year</li>
+            <li data-range="all">All Time</li>
+            <li data-range="custom">Custom Range</li>
+          </ul>
+          <div class="date-range-picker" style="display: none">
+            <div class="container">
+              <div class="picker-inputs">
+                <div>
+                  <label class="picker-label">Start Date</label>
+                  <input type="text" id="customStartDate" class="picker-input flatpickr-input" readonly />
+                </div>
+                <div>
+                  <label class="picker-label">End Date</label>
+                  <input type="text" id="customEndDate" class="picker-input flatpickr-input" readonly />
+                </div>
               </div>
-              <div>
-                <label class="picker-label">End Date</label>
-                <input type="text" id="customEndDate" class="picker-input flatpickr-input" readonly />
+              <div class="picker-buttons">
+                <button id="applyCustomRange" class="picker-apply">Apply</button>
+                <button id="clearCustomRange" class="picker-clear">Close</button>
               </div>
-            </div>
-            <div class="picker-buttons">
-              <button id="applyCustomRange" class="picker-apply">Apply</button>
-              <button id="clearCustomRange" class="picker-clear">Close</button>
             </div>
           </div>
         </div>
       </div>
-    </div>
-    <div id="historyStatsPanel" style="display: none">
-      <div id="statsEntries"></div>
-    </div>
-    <div id="siteList" class="site-list" style="padding-right: 16px">
-      <div id="siteListContainer" class="site-list-container"></div>
+      <div id="historyStatsPanel" style="display: none">
+        <div id="statsEntries"></div>
+      </div>
+      <div id="siteList" class="site-list" style="padding-right: 16px">
+        <div id="siteListContainer" class="site-list-container"></div>
+      </div>
+
+      <div id="settingsPanel" class="settings-panel" style="padding-right: 16px">
+        <div id="settingsPanelContainer" class="settings-panel-container"></div>
+      </div>
     </div>
 
-    <div id="settingsPanel" class="settings-panel" style="padding-right: 16px">
-      <div id="settingsPanelContainer" class="settings-panel-container"></div>
-    </div>
-    <div id="historyFooter" style="display: none">
-      <a id="clearHistoryBtn" class="button" style="cursor: pointer; width: 100%">Clear History</a>
-      <a id="cancelCleanBtn" class="button" style="display: none">Cancel</a>
-    </div>
-    <div id="mainFooterButtons">
-      <a id="openSelector">Add Music Site</a>
-      <a id="openManager">Open Script Manager</a>
+    <div class="footer">
+      <div id="historyFooter" style="display: none">
+        <a id="clearHistoryBtn" class="button" style="cursor: pointer; width: 100%">Clear History</a>
+        <a id="cancelCleanBtn" class="button" style="display: none">Cancel</a>
+      </div>
+      <div id="mainFooterButtons">
+        <a id="openSelector">Add Music Site</a>
+        <a id="openManager">Open Script Manager</a>
+      </div>
     </div>
     <div id="tutorialTooltip" class="tutorial-dialog">
       <h2 id="tooltipHeader">Tutorial</h2>

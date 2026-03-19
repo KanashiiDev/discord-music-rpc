@@ -575,14 +575,13 @@ function getTransitionDuration(el, property) {
   return parseFloat(raw) * (raw.includes("ms") ? 1 : 1000);
 }
 
-function waitForTransitionEnd(el, property, inner) {
+function waitForTransitionEnd(el, property) {
   if (!el || !shouldAnimate?.()) return Promise.resolve();
 
   const duration = getTransitionDuration(el, property);
   if (duration === 0) return Promise.resolve();
 
-  const height = inner?.scrollHeight ?? el.scrollHeight;
-  const adaptive = Math.max(duration, height) + 25;
+  const adaptive = Math.max(duration * 1.3, 300);
 
   return new Promise((resolve) => {
     let resolved = false;
@@ -632,7 +631,6 @@ async function smoothScrollTo(element, target, baseDuration = 300) {
     const animate = (now) => {
       const progress = Math.min((now - startTime) / durationMs, 1);
       element.scrollTop = Math.round(start + change * easeOutCubic(progress));
-      stickyInstance?.update();
 
       if (progress < 1 && element.isConnected) {
         requestAnimationFrame(animate);
@@ -1309,7 +1307,7 @@ function showInitialSetupDialog() {
 
   dialog.appendChild(content);
   document.body.appendChild(dialog);
-  document.body.classList.add("setup-dialog-open");
+  document.documentElement.classList.add("setup-dialog-open");
 
   let confirmed = false;
   document.getElementById("confirmSetup").addEventListener("click", async () => {
@@ -1317,7 +1315,7 @@ function showInitialSetupDialog() {
     confirmed = true;
     await browser.storage.local.set({ initialSetupDone: true });
     document.body.removeChild(dialog);
-    document.body.classList.remove("setup-dialog-open");
+    document.documentElement.classList.remove("setup-dialog-open");
     window.location.reload();
   });
 }
@@ -1970,6 +1968,7 @@ async function updatePanelPadding(panel, timeout = 1000) {
 
       instance.recalculate?.();
       await new Promise(requestAnimationFrame);
+      await new Promise(requestAnimationFrame);
 
       const scrollbar = await waitForScrollbar(instance, timeout);
 
@@ -2136,9 +2135,10 @@ async function loadFavIcons(icons, concurrency = 3, delayMs = 150, slowAfter = 8
   function loadSingleIcon(icon, domain) {
     return new Promise((resolve) => {
       if (!domain) return resolve();
-      if (typeof domain === "string") domain = domain.split(",")[0];
-      const proxyUrl = `https://favicons.seadfeng.workers.dev/${domain}.ico`;
-      const googleUrl = `https://www.google.com/s2/favicons?domain=${domain}&sz=32`;
+
+      const primaryDomain = Array.isArray(domain) ? domain[0] : domain.split(",")[0].trim();
+      const proxyUrl = `https://favicons.seadfeng.workers.dev/${primaryDomain}.ico`;
+      const googleUrl = `https://www.google.com/s2/favicons?domain=${primaryDomain}&sz=32`;
       const fallback = browser.runtime.getURL("icons/48x48.png");
       const classRemove = () => {
         icon.classList.remove("hidden-visibility");
@@ -2198,8 +2198,7 @@ async function loadFavIcons(icons, concurrency = 3, delayMs = 150, slowAfter = 8
 let showPopupMessageTimeout = null;
 let currentMessageContainer = null;
 function showPopupMessage(text, type = "info", closeAfter = null, preventClick = false) {
-  const section = document.querySelector("body").dataset.section;
-  const footer = section === "main" ? document.getElementById("mainFooterButtons") : document.getElementById("historyFooter");
+  const footer = document.querySelector("body > footer");
 
   if (currentMessageContainer && currentMessageContainer.parentNode) {
     currentMessageContainer.remove();

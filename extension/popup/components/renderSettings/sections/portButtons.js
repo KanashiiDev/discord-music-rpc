@@ -53,6 +53,10 @@ async function buildPortButtons(container) {
   portWrapper.insertAdjacentElement("afterend", portInfo);
 
   // Buttons
+
+  const buttonsWrapper = document.createElement("div");
+  buttonsWrapper.className = "settings-option buttons-wrapper";
+
   const { debugMode: storedDebug } = await browser.storage.local.get("debugMode");
   let debugState = storedDebug ?? CONFIG.debugMode;
 
@@ -61,12 +65,14 @@ async function buildPortButtons(container) {
   const btnFactory = createBtn("Factory Reset (Default Settings)", "factoryReset");
   const btnBackup = createBtn("Backup / Restore", "backupSettings");
   const btnFilter = createBtn("Manage Filters", "filterSettings");
+  const btnDashboard = createBtn("Open Dashboard", "openDashboard");
 
   if (debugState === 1) btnDebug.classList.add("active");
 
   // Event listeners
   btnBackup.onclick = () => openSettingsPage("backup");
   btnFilter.onclick = () => openSettingsPage("filter");
+  btnDashboard.onclick = () => openDashboardPage();
 
   btnRestart.onclick = async () => {
     const [activeTab] = await browser.tabs.query({ active: true, currentWindow: true });
@@ -103,5 +109,6 @@ async function buildPortButtons(container) {
     }
   };
 
-  container.append(btnFilter, btnBackup, btnRestart, btnDebug, btnFactory);
+  buttonsWrapper.append(btnFilter, btnDashboard, btnBackup, btnRestart, btnDebug, btnFactory);
+  container.append(buttonsWrapper);
 }

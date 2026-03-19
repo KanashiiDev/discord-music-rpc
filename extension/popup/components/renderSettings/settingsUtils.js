@@ -14,6 +14,26 @@ async function openSettingsPage(section) {
   window.close();
 }
 
+async function openDashboardPage() {
+  const { port } = await browser.runtime.sendMessage({
+    type: "GET_RPC_PORT",
+  });
+
+  const url = `http://localhost:${port}/`;
+  try {
+    const [existing] = await browser.tabs.query({ url });
+    if (existing) {
+      await browser.tabs.update(existing.id, { active: true });
+      await browser.windows.update(existing.windowId, { focused: true }).catch(() => {});
+    } else {
+      await browser.tabs.create({ url });
+    }
+  } catch (err) {
+    logError("Open dashboard failed:", err);
+  }
+  window.close();
+}
+
 function createSliderControl(min, max, step, value, unit, onChange) {
   const row = document.createElement("div");
   row.className = "slider-row";

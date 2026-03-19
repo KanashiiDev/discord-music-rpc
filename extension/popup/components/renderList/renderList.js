@@ -14,18 +14,21 @@ async function renderList(filteredList = null, isSearch = null) {
   container.replaceChildren();
   document.querySelector("#searchBox")?.classList.remove("fading");
 
+  const contWrapper = document.querySelector("#siteList .simplebar-content-wrapper");
+  if (contWrapper) contWrapper.style.paddingBottom = "";
+
+  const spinner = Object.assign(document.createElement("div"), { className: "spinner" });
+  container.appendChild(spinner);
+
   const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
   const tabUrl = new URL(tab.url);
   const tabHostname = normalizeHost(tabUrl.hostname);
   const tabPath = tabUrl.pathname;
 
-  const spinner = Object.assign(document.createElement("div"), { className: "spinner" });
-  container.appendChild(spinner);
-
   const list = filteredList ?? (await getFreshParserList());
-  spinner.remove();
 
   if (!list?.length) {
+    spinner.remove();
     createEmptyState(container, isSearch);
     return false;
   }
@@ -60,10 +63,9 @@ async function renderList(filteredList = null, isSearch = null) {
   }
 
   container.appendChild(fragment);
-  updateMinHeight();
   loadFavIcons(document.querySelectorAll(".parser-icon"));
 
   parserState.currentRenderCleanup = removeAll;
-
+  spinner.remove();
   return true;
 }

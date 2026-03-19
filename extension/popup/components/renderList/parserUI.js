@@ -32,7 +32,6 @@ function createEntryClickHandler(container, wrapper, optionsContainer) {
           wrapper,
           optionsContainer,
           siteList: document.getElementById("siteList"),
-          searchBox: document.getElementById("searchBox"),
         });
         parserState.isParserOpen = true;
       } else {
@@ -47,69 +46,41 @@ function createEntryClickHandler(container, wrapper, optionsContainer) {
   };
 }
 
-function stickyParserHeader(entry, scrollEl) {
-  const span = entry?.querySelector(".parser-span");
-  if (!span || !scrollEl) return null;
-
-  let entryOffsetTop = 0;
-  let entryOffsetHeight = 0;
-  let spanOffsetHeight = 0;
-  let enabled = false;
-  let ticking = false;
-
-  function recalculate() {
-    const containerRect = scrollEl.getBoundingClientRect();
-    const entryRect = entry.getBoundingClientRect();
-    entryOffsetTop = entryRect.top - containerRect.top + scrollEl.scrollTop;
-    entryOffsetHeight = entry.offsetHeight;
-    spanOffsetHeight = span.offsetHeight;
-  }
-
-  function update() {
-    if (!enabled) return;
-
-    const scrollTop = scrollEl.scrollTop;
-    const topOffset = entryOffsetTop - scrollTop;
-    const bottomOffset = topOffset + entryOffsetHeight;
-
-    if (bottomOffset > spanOffsetHeight) {
-      const delta = Math.min(Math.max(-topOffset, 0), entryOffsetHeight - spanOffsetHeight);
-      span.style.transform = `translateY(${delta}px)`;
-    } else {
-      span.style.transform = "";
-    }
-  }
-
-  function onScroll() {
-    if (!enabled || ticking) return;
-    ticking = true;
-    requestAnimationFrame(() => {
-      update();
-      ticking = false;
-    });
-  }
-
-  return {
-    enable() {
-      if (enabled) return;
-      enabled = true;
-      recalculate();
-      update();
-      scrollEl.addEventListener("scroll", onScroll, { passive: true });
-    },
-    disable() {
-      enabled = false;
-      scrollEl.removeEventListener("scroll", onScroll);
-      span.style.transform = "";
-    },
-    recalculate,
-    update,
-  };
+async function refreshScrollbar(scrollBar) {
+  await activateSimpleBar("siteList");
+  await new Promise((r) => setTimeout(r, 50));
+  document.body.classList.toggle("scrollbar-visible", scrollBar?.style.visibility !== "hidden");
 }
 
-const updateMinHeight = () => {
-  const container = document.getElementById("siteListContainer");
-  const { classList } = document.body;
-  const minHeight = classList.contains("parser-is-userscript") ? 435 : classList.contains("parser-options-open") ? 408 : 402;
-  document.getElementById("siteList").style.minHeight = `${Math.min(container.scrollHeight, minHeight)}px`;
-};
+// Calculate the padding bottom and scroll
+async function calcHeightAndScroll(wrapper, scrollEl, scroll) {
+  if (!wrapper || !scrollEl) return;
+
+  const scrollTop = scrollEl.scrollTop ?? 0;
+  const scrollHeight = scrollEl.scrollHeight ?? 0;
+  const clientHeight = scrollEl.clientHeight ?? 0;
+  const prevPadding = parseFloat(scrollEl.style.paddingBottom) || 0;
+
+  const normalizedScrollHeight = scrollHeight - prevPadding;
+  const scrollRectTop = scrollEl.getBoundingClientRect?.().top ?? 0;
+  const wrapperRectTop = wrapper.getBoundingClientRect?.().top ?? 0;
+  const wrapperTop = wrapperRectTop - scrollRectTop + scrollTop;
+
+  const currentMaxScrollTop = normalizedScrollHeight - clientHeight;
+  const neededExtraScroll = wrapperTop - currentMaxScrollTop;
+
+  let nextPadding = prevPadding;
+  if (neededExtraScroll > 1) nextPadding = prevPadding + neededExtraScroll;
+  else if (neededExtraScroll < -1) nextPadding = Math.max(0, prevPadding + neededExtraScroll);
+
+  if (Math.abs(prevPadding - nextPadding) > 1) {
+    scrollEl.style.overflowAnchor = "none";
+    scrollEl.style.paddingBottom = nextPadding <= 1 ? "0px" : `${nextPadding}px`;
+    scrollEl.style.overflowAnchor = "";
+  }
+
+  if (scroll) {
+    const target = Math.max(0, Math.min(wrapperTop, normalizedScrollHeight));
+    await smoothScrollTo?.(scrollEl, target);
+  }
+}

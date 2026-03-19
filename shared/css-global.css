@@ -145,7 +145,7 @@ svg:not(.flatpickr-calendar svg):not(.IroHandle) {
   background: var(--accent-color);
   text-align: center;
   width: calc(100% - 20px);
-  top: -24px;
+  top: -85px;
   z-index: 22222;
   -webkit-box-shadow: 0 0 8px var(--shadow-color);
   box-shadow: 0 0 8px var(--shadow-color);

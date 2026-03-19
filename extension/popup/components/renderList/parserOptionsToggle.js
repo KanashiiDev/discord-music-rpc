@@ -1,107 +1,112 @@
-let stickyInstance = null;
-
-const openParserOptions = async ({ container, wrapper, optionsContainer, siteList, searchBox }) => {
-  const scrollEl = simpleBarInstances.get(siteList)?.getScrollElement();
-  const scrollBar = simpleBarInstances.get(document.querySelector("#siteList")).el.children[2];
+// Open Parser Options
+const openParserOptions = async ({ container, wrapper, optionsContainer, siteList }) => {
+  const simpleBar = simpleBarInstances.get(siteList);
+  const scrollEl = simpleBar?.getScrollElement();
+  const scrollBar = simpleBar?.el?.children[2];
   if (!scrollEl) return;
 
-  stickyInstance = stickyParserHeader(wrapper, scrollEl);
-  stickyInstance.enable();
-  wrapper.dataset.originalScrollTop ??= scrollEl.scrollTop;
+  wrapper.querySelector(".parser-span")?.classList.add("sticky");
+  wrapper.dataset.originalScrollTop = scrollEl.scrollTop;
 
-  const scrollRect = scrollEl.getBoundingClientRect();
-  const wrapperTop = wrapper.getBoundingClientRect().top - scrollRect.top + scrollEl.scrollTop;
-  const maxScrollTop = scrollEl.scrollHeight - scrollEl.clientHeight;
-  const neededScroll = wrapperTop - scrollEl.scrollTop;
+  // Get required transition duration
+  const duration = getTransitionDuration(optionsContainer, "grid-template-rows") || 200;
+  const adaptiveTimeout = shouldAnimate() ? duration + 25 : 0;
+  const rAF = () => new Promise(requestAnimationFrame);
 
-  if (neededScroll > 0 && scrollEl.scrollTop + neededScroll > maxScrollTop) {
-    scrollEl.style.paddingBottom = `${neededScroll - (maxScrollTop - scrollEl.scrollTop)}px`;
-  }
+  // If the parser entry is the last entry in the list, remove margin-bottom from options container
+  const parserEntries = [...container.querySelectorAll(".parser-entry")];
+  if (parserEntries.length < 2) optionsContainer.style.marginBottom = "0";
 
-  // Scroll
-  scrollEl?.classList.add("locked");
-  scrollBar?.classList.add("smooth");
-  await smoothScrollTo(scrollEl, wrapperTop);
-
-  // DOM mutation
+  // If the parser is open or a userscript, add a class to the body
   document.body.classList.add("parser-options-open");
-  if (wrapper.querySelector(".userscript")) document.body.classList.add("parser-is-userscript");
+  wrapper.querySelector(".userscript") && document.body.classList.add("parser-is-userscript");
 
-  optionsContainer.classList.add("open");
-  const parserCount = document.querySelectorAll(".parser-entry").length;
-  if (parserCount < 2) optionsContainer.style.marginBottom = "0";
-
-  for (const el of container.querySelectorAll(".parser-entry")) {
+  // Add fading to other parser entries
+  for (const el of parserEntries) {
     if (el !== wrapper) el.classList.add("fading");
   }
-  searchBox?.classList.add("fading");
 
-  // Wait for transition - measure after mutation
-  const inner = optionsContainer.querySelector(".parser-options-inner");
-  const totalHeight = inner?.scrollHeight ?? optionsContainer.scrollHeight;
-  const duration = getTransitionDuration(optionsContainer, "grid-template-rows") || 300;
-  const adaptiveTimeout = !shouldAnimate() ? 0 : Math.max(duration, totalHeight) + 25;
-  await new Promise((resolve) => setTimeout(resolve, adaptiveTimeout));
+  // Lock the scrollbar and add smooth class to it
+  document.body.classList.remove("scrollbar-visible");
+  scrollEl.classList.add("locked");
+  scrollBar?.classList.add("smooth");
 
-  // Cleanup
-  scrollEl.style.paddingBottom = "";
-  scrollEl?.classList.remove("locked");
-  await activateSimpleBar("siteList");
-  stickyInstance?.recalculate();
-  updateMinHeight();
-  await new Promise((resolve) => setTimeout(resolve, adaptiveTimeout));
+  // Calculate required height and scroll to parser entry
+  await delay(adaptiveTimeout);
+  await rAF();
+  await calcHeightAndScroll(wrapper, scrollEl, true);
+
+  // Open parser options
+  optionsContainer.classList.add("open");
+
+  // Unlock the scrollbar and remove smooth class from it
+  scrollEl.classList.remove("locked");
   scrollBar?.classList.remove("smooth");
+  await refreshScrollbar(scrollBar);
 };
 
+// Close Parser Options
 const closeParserOptions = async (optionsContainer) => {
   const siteList = document.querySelector("#siteList");
-  const scrollEl = simpleBarInstances.get(siteList)?.getScrollElement();
+  const simpleBar = simpleBarInstances.get(siteList);
+  const scrollEl = simpleBar?.getScrollElement();
+  const scrollBar = simpleBar?.el?.children[2];
+  if (!scrollEl || !optionsContainer) return;
+
   const wrapper = optionsContainer.closest(".parser-entry");
-  const savedScrollTop = wrapper?.dataset.originalScrollTop;
-  const inner = optionsContainer.querySelector(".parser-options-inner");
-
-  // Read heights before any mutations
+  const parserSpan = wrapper?.querySelector(".parser-span");
   const openAccordions = [...optionsContainer.querySelectorAll(".accordion-content:not(.close)")];
-  const optionsHeight = optionsContainer.querySelector(".options-container")?.scrollHeight ?? 0;
-  const parserIsSticky = wrapper.querySelector(".parser-span").style.transform.trim() !== "";
+  const parserIsSticky = parserSpan != null && getComputedStyle(parserSpan).transform !== "none";
+  const hadPadding = parseFloat(scrollEl.style.paddingBottom) > 0;
+  const originalScrollTop = Number(wrapper?.dataset.originalScrollTop);
+  const duration = shouldAnimate() ? getTransitionDuration(optionsContainer, "grid-template-rows") || 300 : 0;
 
-  const adaptiveTimeout = () => (!shouldAnimate() ? 0 : Math.max(openAccordions.length ? (inner?.scrollHeight ?? 0) - optionsHeight : (inner?.scrollHeight ?? 0), 325));
-
-  const scrollToParser = async () => {
-    if (scrollEl && savedScrollTop !== undefined) {
-      await smoothScrollTo(scrollEl, Number(savedScrollTop));
-    }
-  };
-
+  // Lock the scrollbar and add smooth class to it
   scrollEl.classList.add("locked");
+  scrollBar?.classList.add("smooth");
 
   // If the accordion is open or the header is sticky, scroll to the parser first
   if (openAccordions.length || parserIsSticky) {
     await scrollToElementPosition(wrapper, scrollEl);
   }
 
-  // Close options
+  // Close parser options
   optionsContainer.classList.remove("open");
-  await new Promise((resolve) => setTimeout(resolve, adaptiveTimeout()));
+  await delay(duration);
 
-  // Scroll back
-  await scrollToParser();
-
-  // Cleanup
-  document.body.classList.remove("parser-options-open", "parser-is-userscript");
-  stickyInstance?.disable();
-  stickyInstance = null;
-  document.querySelector("#searchBox")?.classList.remove("fading");
-  document.querySelectorAll(".parser-entry").forEach((el) => el.classList.remove("fading"));
-  scrollEl.classList.remove("locked");
-  await activateSimpleBar("siteList");
-
-  // Close accordions
-  for (const cnt of openAccordions) {
-    cnt.classList.add("close");
-    const icon = cnt.previousElementSibling?.querySelector("svg");
-    if (icon) icon.style.transform = "rotate(90deg)";
+  // Reset bottom padding
+  if (hadPadding) {
+    scrollEl.style.overflowAnchor = "none";
+    scrollEl.style.paddingBottom = "0px";
+    scrollEl.style.overflowAnchor = "";
   }
 
-  updateMinHeight();
+  // Close the accordions
+  for (const cnt of openAccordions) {
+    cnt.classList.add("close");
+    cnt.previousElementSibling?.querySelector("svg")?.style.setProperty("transform", "rotate(90deg)");
+  }
+
+  parserSpan?.classList.remove("sticky");
+  await new Promise(requestAnimationFrame);
+
+  // Calculate the scroll target
+  const scrollRect = scrollEl.getBoundingClientRect();
+  const wrapperTop = wrapper.getBoundingClientRect().top - scrollRect.top + scrollEl.scrollTop;
+  const scrollTarget = hadPadding ? Math.min(wrapperTop, scrollEl.scrollHeight - scrollEl.clientHeight) : originalScrollTop;
+
+  // Return the layout to its previous state
+  document.body.classList.remove("parser-options-open", "parser-is-userscript");
+
+  // Scroll to the parser entry
+  if (hadPadding) await delay(duration);
+  await smoothScrollTo(scrollEl, hadPadding ? Math.min(wrapperTop, scrollEl.scrollHeight - scrollEl.clientHeight) : scrollTarget);
+
+  // Remove fading from other parser entries
+  document.querySelectorAll(".parser-entry").forEach((el) => el.classList.remove("fading"));
+
+  // Unlock the scrollbar and remove smooth class from it
+  scrollEl.classList.remove("locked");
+  scrollBar?.classList.remove("smooth");
+  await refreshScrollbar(scrollBar);
 };
