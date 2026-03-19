@@ -1,5 +1,5 @@
 async function buildParserEntry({ entry, parserEnabledState, parserSettings, container, tabHostname, tabPath, addListener }) {
-  const { id, domain, title, userAdd, userScript, urlPatterns = [], authors, authorsLinks, homepage, description } = entry;
+  const { id, domain, title, userAdd, userScript, urlPatterns = [], authors, authorsLinks, homepage, description, tags, category } = entry;
 
   const isEnabled = parserEnabledState[`enable_${id}`] !== false;
 
@@ -28,6 +28,9 @@ async function buildParserEntry({ entry, parserEnabledState, parserSettings, con
 
   const descriptionSection = createDescriptionSection(description);
   if (descriptionSection) optionsInner.appendChild(descriptionSection);
+
+  const categoryTagsSection = createCategoryTagsSection(entry.category ?? [], entry.tags ?? []);
+  if (categoryTagsSection) optionsInner.appendChild(categoryTagsSection);
 
   // Patch defaults
   const settingKey = `settings_${id}`;

@@ -21,21 +21,21 @@ function createEmptyState(container, isSearch) {
   }
 
   container.appendChild(el);
-  updateMinHeight();
 }
 
 function createFavIconElement(domain, title, homepage, addListener) {
+  const primaryDomain = Array.isArray(domain) ? domain[0] : domain;
   const container = Object.assign(document.createElement("div"), {
     className: "parser-icon-container spinner",
   });
   const img = Object.assign(document.createElement("img"), {
     className: "parser-icon hidden-visibility",
-    title: `Open ${title ?? domain}`,
+    title: `Open ${title ?? primaryDomain}`,
     loading: "lazy",
     decoding: "async",
   });
-  img.dataset.src = domain;
-  addListener(img, "click", () => window.open(homepage || `https://${domain}`, "_blank", "noopener,noreferrer"));
+  img.dataset.src = primaryDomain;
+  addListener(img, "click", () => window.open(homepage || `https://${primaryDomain}`, "_blank", "noopener,noreferrer"));
   container.appendChild(img);
   return container;
 }
@@ -104,6 +104,40 @@ function createDescriptionSection(description) {
   });
   div.append(Object.assign(document.createElement("h4"), { textContent: "Description" }), Object.assign(document.createElement("p"), { textContent: description }));
   return div;
+}
+
+function createCategoryTagsSection(category, tags) {
+  const hasCategory = typeof category === "string" && category.trim();
+  const hasTags = Array.isArray(tags) && tags.some((tag) => typeof tag === "string" && tag.trim());
+
+  if (!hasCategory && !hasTags) return null;
+
+  const section = document.createElement("div");
+  section.className = "parser-tags";
+
+  const fragment = document.createDocumentFragment();
+
+  if (hasCategory) {
+    const pill = document.createElement("span");
+    pill.className = "parser-tag category";
+    pill.textContent = category.trim();
+    fragment.appendChild(pill);
+  }
+
+  if (hasTags) {
+    for (const tag of tags) {
+      const text = tag?.trim();
+      if (!text) continue;
+
+      const pill = document.createElement("span");
+      pill.className = "parser-tag";
+      pill.textContent = text;
+      fragment.appendChild(pill);
+    }
+  }
+
+  section.appendChild(fragment);
+  return section;
 }
 
 function createDeleteButton(id, title, domain, addListener, onDeleted) {
