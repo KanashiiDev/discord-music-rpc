@@ -154,6 +154,10 @@ svg:not(.flatpickr-calendar svg):not(.IroHandle) {
   padding: 6px;
 }
 
+#historyFooter .popup-message {
+  top: -30px;
+}
+
 .popup-message.hide {
   -webkit-animation: fadeOutDown var(--transition-reduced) ease-out both;
   animation: fadeOutDown var(--transition-reduced) ease-out both;

@@ -107,6 +107,12 @@ const FilterListController = {
       return;
     }
 
+    filtered.sort((a, b) => {
+      const getKey = (filter) => (filter.parsers[0] === "*" ? "All Websites" : filter.parsers.join(","));
+
+      return getKey(a).localeCompare(getKey(b));
+    });
+
     // Render filters
     filtered.forEach((filter) => {
       container.appendChild(this.createFilterItem(filter));
@@ -121,21 +127,59 @@ const FilterListController = {
     const isReplace = FilterUtils.isReplaceFilter(filter);
     if (isReplace) item.classList.add("replace-filter");
 
-    // Actions
+    // Card Header
+    const header = document.createElement("div");
+    header.className = "filter-card-header";
+
+    const modePill = document.createElement("span");
+    modePill.className = `filter-mode-pill ${isReplace ? "replace-mode" : "block-mode"}`;
+    modePill.textContent = isReplace ? "Replace" : "Block";
+
+    const sourceTag = document.createElement("span");
+    sourceTag.className = "filter-source-tag";
+    const sourceDot = document.createElement("span");
+    sourceDot.className = "filter-source-dot";
+    const sourceNames =
+      filter.parsers[0] === "*"
+        ? ["All Websites"]
+        : filter.parsers.map((id) => {
+            const parser = FilterState.parserList.find((p) => p.id === id);
+            return parser ? parser.title || parser.domain : id;
+          });
+    sourceTag.append(sourceDot, document.createTextNode(sourceNames.join(", ")));
+
+    const entryCount = document.createElement("span");
+    entryCount.className = "filter-entry-count";
+    entryCount.textContent = `${filter.entries.length} entries`;
+
     const actions = document.createElement("div");
     actions.className = "filter-actions";
 
     const editBtn = document.createElement("button");
-    editBtn.className = "btn-edit";
+    editBtn.className = "btn-edit icon-btn";
+    editBtn.title = "Edit";
     editBtn.appendChild(createSVG(svg_paths.penIconPaths));
-    FilterEvents.add(editBtn, "click", () => FormController.startEdit(filter));
+    FilterEvents.add(editBtn, "click", (e) => {
+      e.stopPropagation();
+      FormController.startEdit(filter);
+    });
 
     const deleteBtn = document.createElement("button");
-    deleteBtn.className = "btn-delete";
+    deleteBtn.className = "btn-delete icon-btn icon-btn-danger";
+    deleteBtn.title = "Delete";
     deleteBtn.appendChild(createSVG(svg_paths.trashIconPaths));
-    FilterEvents.add(deleteBtn, "click", () => this.delete(filter.id));
+    FilterEvents.add(deleteBtn, "click", (e) => {
+      e.stopPropagation();
+      this.delete(filter.id);
+    });
 
     actions.append(editBtn, deleteBtn);
+    header.append(modePill, sourceTag, entryCount, actions);
+
+    FilterEvents.add(header, "click", () => FormController.startEdit(filter));
+
+    const collapsedBody = document.createElement("div");
+    collapsedBody.className = "filter-card-body filter-collapsed-body";
 
     // Entries
     const entriesWrapper = document.createElement("div");
@@ -143,18 +187,19 @@ const FilterListController = {
 
     filter.entries.forEach((entry) => {
       const entryDiv = document.createElement("div");
-      entryDiv.className = "filter-entry";
+      entryDiv.className = isReplace ? "filter-entry filter-entry-replace" : "filter-entry filter-entry-block";
 
       if (isReplace) {
         const original = document.createElement("span");
         original.className = "original";
         original.textContent = `${entry.artist || "*"} - ${entry.title || "*"}`;
-
+        const arrow = document.createElement("span");
+        arrow.className = "filter-entry-arrow";
+        arrow.appendChild(createSVG(svg_paths.forwardIconPaths, { width: "12px", height: "12px" }));
         const replace = document.createElement("span");
         replace.className = "replace";
         replace.textContent = `${entry.replaceArtist || "*"} - ${entry.replaceTitle || "*"}`;
-
-        entryDiv.append(original, createSVG(svg_paths.forwardIconPaths, { height: 12 }), replace);
+        entryDiv.append(original, arrow, replace);
       } else {
         entryDiv.textContent = `${entry.artist || "*"} - ${entry.title || "*"}`;
       }
@@ -167,19 +212,20 @@ const FilterListController = {
     moreBtn.className = "btn-more";
     moreBtn.textContent = "More";
     moreBtn.style.display = "none";
-
-    FilterEvents.add(moreBtn, "click", () => {
+    FilterEvents.add(moreBtn, "click", (e) => {
+      e.stopPropagation();
       const isExpanded = entriesWrapper.classList.toggle("expanded");
-      entriesWrapper.style.maxHeight = isExpanded ? `${entriesWrapper.dataset.maxHeight}px` : "7em";
+      entriesWrapper.style.maxHeight = isExpanded ? `${entriesWrapper.dataset.maxHeight}px` : "";
       moreBtn.textContent = isExpanded ? "Less" : "More";
     });
 
-    const entriesDiv = document.createElement("div");
-    entriesDiv.className = "filter-entries";
-    entriesDiv.append(entriesWrapper, actions);
-    actions.prepend(moreBtn);
+    collapsedBody.append(entriesWrapper, moreBtn);
 
-    item.append(entriesDiv, this.createParserTags(filter));
+    // Inline Editor
+    const editor = document.createElement("div");
+    editor.className = "filter-inline-editor";
+
+    item.append(header, collapsedBody, editor);
 
     // Check if more button needed
     requestAnimationFrame(() => {
@@ -190,36 +236,5 @@ const FilterListController = {
     });
 
     return item;
-  },
-
-  createParserTags(filter) {
-    const wrapper = document.createElement("div");
-    wrapper.className = "filter-parsers";
-
-    const isReplace = FilterUtils.isReplaceFilter(filter);
-
-    // Mode tag
-    const modeTag = document.createElement("span");
-    modeTag.className = `parser-tag mode-tag ${isReplace ? "replace-mode" : "block-mode"}`;
-    modeTag.textContent = isReplace ? "Replace" : "Block";
-    wrapper.appendChild(modeTag);
-
-    // Parser tags
-    const names =
-      filter.parsers[0] === "*"
-        ? ["All Parsers"]
-        : filter.parsers.map((id) => {
-            const parser = FilterState.parserList.find((p) => p.id === id);
-            return parser ? parser.title || parser.domain : id;
-          });
-
-    names.forEach((name) => {
-      const tag = document.createElement("span");
-      tag.className = "parser-tag";
-      tag.textContent = name;
-      wrapper.appendChild(tag);
-    });
-
-    return wrapper;
   },
 };

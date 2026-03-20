@@ -9,7 +9,7 @@ const HistoryActions = {
     const parserId = parser?.id;
 
     if (!parserId) {
-      showPopupMessage(`Parser not found for "${source}"`, "error", 3000);
+      showPopupMessage(`Parser not found for "${source}"`, "error", 3000, 0, "#historyFooter");
       return false;
     }
 
@@ -18,7 +18,7 @@ const HistoryActions = {
       const duplicate = FilterUtils.findDuplicate(checkEntry, false);
 
       if (duplicate.isDuplicate) {
-        showPopupMessage("This song is already in filters", "warning", 3000);
+        showPopupMessage("This song is already in filters", "warning", 3000, 0, "#historyFooter");
         return false;
       }
 
@@ -62,7 +62,7 @@ const HistoryActions = {
     FilterTabsController.render();
     FilterListController.render();
 
-    showPopupMessage(`Song ${action}ed successfully!`, "success", 3000);
+    showPopupMessage(`Song ${action}ed successfully!`, "success", 3000, 0, "#historyFooter");
     this.syncBlockUI(entry, action);
     return true;
   },
@@ -89,25 +89,25 @@ const HistoryActions = {
   async handleReplace(entry) {
     const parser = HistoryUtils.findParserBySource(entry.s);
     if (!parser) {
-      showPopupMessage(`Parser not found for "${entry.s}"`, "error", 3000);
+      showPopupMessage(`Parser not found for "${entry.s}"`, "error", 3000, 0, "#historyFooter");
       return;
     }
 
     const existingReplace = HistoryUtils.findExistingReplace(entry);
+    const entrySource = (entry.s || "").toLowerCase().trim();
 
-    // Close history modal
+    // Find an exclusive replace filter for this parser (title match, no wildcard, single site)
+    const isExclusiveFilter = (parsers) =>
+      parsers.length > 0 &&
+      parsers[0] !== "*" &&
+      parsers.every((id) => {
+        const p = FilterState.parserList.find((p) => p.id === id);
+        return p && (p.title || "").toLowerCase().trim() === entrySource;
+      });
+
+    const existingParserFilter = !existingReplace ? FilterState.parserFilters.find((f) => FilterUtils.isReplaceFilter(f) && isExclusiveFilter(f.parsers)) : null;
+
     HistoryModal.close();
-
-    // If existing replace, open in edit mode
-    if (existingReplace) {
-      if (FilterState.form.isOpen) {
-        FormController.close();
-        await delay(100);
-      }
-
-      await FormController.startEdit(existingReplace.filter, existingReplace.entryIndex);
-      return;
-    }
 
     // Create new replace filter
     if (FilterState.form.isOpen) {
@@ -115,37 +115,37 @@ const HistoryActions = {
       await delay(100);
     }
 
-    const form = document.getElementById("formContainer");
-    const btn = document.getElementById("toggleFormBtn");
-    const container = document.querySelector(".filter-actions-header");
-
-    if (container?.parentNode) {
-      container.parentNode.insertBefore(form, container.nextSibling);
+    // Entry already has a replace rule - scroll to it (exclusive) or open new filter
+    if (existingReplace) {
+      if (isExclusiveFilter(existingReplace.filter.parsers)) {
+        await FormController.startEdit(existingReplace.filter, existingReplace.entryIndex);
+      } else {
+        FilterState.form.mode = "replace";
+        FilterState.form.entries = [{ artist: entry.a || "", title: entry.t || "", replaceArtist: "", replaceTitle: "" }];
+        FilterState.parsers.selectedIds = [parser.id];
+        FilterState.parsers.allSelected = false;
+        FormController.open(true);
+      }
+      return;
     }
 
-    form.classList.add("active");
-    document.querySelectorAll(".filter-item").forEach((i) => i.classList.add("dimmed"));
-    btn.textContent = "Hide Filter Menu";
-
-    // Set form state
-    FilterState.form.isOpen = true;
-    FilterState.form.mode = "replace";
-    FilterState.form.entries = [
-      {
+    // Parser already has a replace filter - append this entry pre-filled
+    if (existingParserFilter) {
+      await FormController.startEdit(existingParserFilter, null, {
         artist: entry.a || "",
         title: entry.t || "",
         replaceArtist: "",
         replaceTitle: "",
-      },
-    ];
+      });
+      return;
+    }
 
-    // Set parser selection
+    FilterState.form.mode = "replace";
+    FilterState.form.entries = [{ artist: entry.a || "", title: entry.t || "", replaceArtist: "", replaceTitle: "" }];
     FilterState.parsers.selectedIds = [parser.id];
     FilterState.parsers.allSelected = false;
 
-    FormController.renderMode();
-    FormController.renderEntries();
-    ParserController.render();
+    FormController.open(true); // preseed=true - skips state reset
   },
 };
 
@@ -250,7 +250,7 @@ const HistoryScroll = {
           if (checkNearBottom()) {
             const elapsed = Date.now() - dragStartTime;
             if (elapsed >= POPUP_DELAY && !popupShown) {
-              showPopupMessage("Release to load the history!", "warning");
+              showPopupMessage("Release to load the history!", "warning", null, 0, "#historyFooter");
               popupShown = true;
             }
           } else {

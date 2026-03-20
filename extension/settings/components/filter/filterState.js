@@ -12,11 +12,10 @@ const FilterState = {
     replaceAction: "update", // 'update' | 'revert'
   },
 
-  // Parser selection
+  // Parser selection state - mutated by ParserController, read by _renderForm
   parsers: {
     allSelected: false,
     selectedIds: [], // Order matters for display
-    searchQuery: "",
   },
 
   // UI state

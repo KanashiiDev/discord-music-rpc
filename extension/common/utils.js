@@ -2197,8 +2197,8 @@ async function loadFavIcons(icons, concurrency = 3, delayMs = 150, slowAfter = 8
 // Popup Message
 let showPopupMessageTimeout = null;
 let currentMessageContainer = null;
-function showPopupMessage(text, type = "info", closeAfter = null, preventClick = false) {
-  const footer = document.querySelector("body > footer");
+function showPopupMessage(text, type = "info", closeAfter = null, preventClick = false, appendTo = "body > footer") {
+  const footer = document.querySelector(appendTo);
 
   if (currentMessageContainer && currentMessageContainer.parentNode) {
     currentMessageContainer.remove();

@@ -93,9 +93,10 @@ const FilterEvents = {
 // SONG FETCHER - Fetch current playing song
 const SongFetcher = {
   async fetch(buttonElement, buttonText) {
+    const originalText = buttonText || buttonElement.textContent;
     buttonElement.disabled = true;
-    const originalText = buttonElement.textContent || buttonText;
     buttonElement.textContent = "Fetching...";
+    await new Promise((r) => requestAnimationFrame(r));
 
     const maxAttempts = 4;
     let songData = null;
@@ -136,14 +137,15 @@ const QuickActions = {
   fillTimeout: null,
   blockTimeout: null,
 
-  async fillCurrent() {
-    const btn = document.querySelector(".btn-fill-current");
+  async fillCurrent(renderEntries, btn) {
+    if (!btn) btn = document.querySelector(".btn-fill-current");
     if (!btn) return;
 
     const originalText = btn.textContent;
     const isReplace = FilterState.form.mode === "replace";
     clearTimeout(this.fillTimeout);
 
+    // Force repaint
     const { songData, resetButton } = await SongFetcher.fetch(btn, originalText);
 
     if (!songData) {
@@ -155,40 +157,6 @@ const QuickActions = {
 
     const { title, artist, parserId } = songData;
 
-    // Check if should add new entry
-    const lastIndex = FilterState.form.entries.length - 1;
-    const lastEntry = FilterState.form.entries[lastIndex];
-    const isLastFilled = lastEntry.artist.trim() || lastEntry.title.trim();
-    const isSame = FilterUtils.normalize(lastEntry.artist) === FilterUtils.normalize(artist) && FilterUtils.normalize(lastEntry.title) === FilterUtils.normalize(title);
-
-    if (isLastFilled && !isSame) {
-      FormController.addEntry();
-      await new Promise((r) => setTimeout(r, 50));
-    }
-
-    // Fill entry
-    const newIndex = FilterState.form.entries.length - 1;
-    FilterState.form.entries[newIndex].artist = artist;
-    FilterState.form.entries[newIndex].title = title;
-
-    // Update DOM
-    const entryItems = document.querySelectorAll("#entriesList .entry-item");
-    const lastItem = entryItems[entryItems.length - 1];
-
-    if (lastItem) {
-      const titleSelector = isReplace ? 'input[placeholder="Original Title"]' : 'input[placeholder="Title"]';
-      const artistSelector = isReplace ? 'input[placeholder="Original Artist"]' : 'input[placeholder="Artist"]';
-
-      const titleInput = lastItem.querySelector(titleSelector);
-      const artistInput = lastItem.querySelector(artistSelector);
-
-      if (titleInput) titleInput.value = title;
-      if (artistInput) artistInput.value = artist;
-
-      titleInput?.dispatchEvent(new Event("input", { bubbles: true }));
-      artistInput?.dispatchEvent(new Event("input", { bubbles: true }));
-    }
-
     // Check duplicate
     const entry = { artist, title, replaceArtist: "", replaceTitle: "" };
     const duplicate = FilterUtils.findDuplicate(entry, isReplace);
@@ -198,6 +166,25 @@ const QuickActions = {
       btn.style.color = "var(--yellow-color)";
       this.fillTimeout = setTimeout(resetButton, 2000);
       return;
+    }
+
+    // Check if last entry is empty - reuse it, otherwise add new
+    const lastIndex = FilterState.form.entries.length - 1;
+    const lastEntry = FilterState.form.entries[lastIndex];
+    const isLastEmpty = !lastEntry.artist.trim() && !lastEntry.title.trim();
+
+    if (isLastEmpty) {
+      // Fill the existing empty slot
+      FilterState.form.entries[lastIndex].artist = artist;
+      FilterState.form.entries[lastIndex].title = title;
+    } else {
+      // All slots are filled - add a new one
+      FilterState.form.entries.push({ artist, title, replaceArtist: "", replaceTitle: "" });
+    }
+
+    // Re-render entries so inputs are visible immediately
+    if (typeof renderEntries === "function") {
+      renderEntries();
     }
 
     // Select parser

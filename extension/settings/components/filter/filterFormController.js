@@ -1,194 +1,187 @@
 // FORM CONTROLLER - Manages filter creation/editing form
 const FormController = {
-  // Toggle form visibility
   toggle() {
-    const isOpen = FilterState.form.isOpen;
-
-    if (isOpen) {
+    if (FilterState.form.isOpen && !FilterState.form.editingFilterId) {
       this.close();
     } else {
       this.open();
     }
   },
 
-  // Open form
-  async open() {
+  // Open "new filter" form - Pass "preseed" to skip state reset (caller has already set form/parser state).
+  open(preseed = false) {
     const form = document.getElementById("formContainer");
     const btn = document.getElementById("toggleFormBtn");
-    const addFilterContainer = document.querySelector(".filter-actions-header");
 
-    // Move form if needed
-    if (addFilterContainer?.parentNode && form.parentNode !== addFilterContainer.parentNode) {
-      addFilterContainer.parentNode.insertBefore(form, addFilterContainer.nextSibling);
-    }
-
-    form.classList.add("active");
-    btn.textContent = "Hide Filter Menu";
-
-    document.querySelectorAll(".filter-item").forEach((item) => {
-      item.classList.add("dimmed");
-    });
+    this.exitEdit(false);
 
     FilterState.form.isOpen = true;
-    this.reset();
+    FilterState.form.editingFilterId = null;
+    FilterState.form.replaceAction = "update";
 
-    await activateSimpleBar(["selectedParsersList", "availableParsersList"]);
+    if (!preseed) {
+      FilterState.form.mode = "filter";
+      FilterState.form.entries = [{ artist: "", title: "", replaceArtist: "", replaceTitle: "" }];
+      ParserController.reset();
+    }
+
+    this._renderForm(form, { isNew: true });
+
+    form.classList.add("active");
+    btn.textContent = "Cancel";
+    btn.classList.add("cancel-mode");
+
+    document.querySelectorAll(".filter-item").forEach((el) => el.classList.add("dimmed"));
   },
 
-  // Close form
+  // Close "new filter" form
   close() {
     const form = document.getElementById("formContainer");
     const btn = document.getElementById("toggleFormBtn");
-    const addFilterContainer = document.querySelector(".filter-actions-header");
 
     form.classList.remove("active");
     btn.textContent = "+ Add New Filter";
+    btn.classList.remove("cancel-mode");
 
-    document.querySelectorAll(".filter-item").forEach((item) => {
-      item.classList.remove("dimmed");
-    });
-
-    // Move form back
-    if (addFilterContainer?.parentNode && form.parentNode !== addFilterContainer.parentNode) {
-      addFilterContainer.parentNode.insertBefore(form, addFilterContainer.nextSibling);
-    }
+    this.exitEdit(false);
 
     FilterState.form.isOpen = false;
-    this.reset();
+    FilterState.form.editingFilterId = null;
   },
 
-  // Reset form to defaults
+  // Reset state
   reset() {
     FilterState.form.editingFilterId = null;
     FilterState.form.mode = "filter";
     FilterState.form.entries = [{ artist: "", title: "", replaceArtist: "", replaceTitle: "" }];
     FilterState.form.replaceAction = "update";
-
-    // Clear search
-    const searchInput = document.querySelector(".parser-search-input");
-    if (searchInput) searchInput.value = "";
-
     ParserController.reset();
-    this.renderMode();
-    this.renderEntries();
-    ParserController.render();
   },
 
-  // Start editing filter
-  async startEdit(filter, scrollToIndex = null) {
-    const form = document.getElementById("formContainer");
-    const btn = document.getElementById("toggleFormBtn");
-
-    // If already editing same filter, exit
+  // Start editing an existing filter inline inside its card
+  async startEdit(filter, scrollToIndex = null, appendEntry = null) {
     if (FilterState.form.editingFilterId === filter.id && FilterState.form.isOpen) {
       this.exitEdit();
       return;
     }
 
-    // Dim other filters
-    document.querySelectorAll(".filter-item").forEach((item) => {
-      item.classList.add("dimmed");
-    });
+    // Close new-filter form if open
+    if (FilterState.form.isOpen && !FilterState.form.editingFilterId) {
+      const form = document.getElementById("formContainer");
+      const btn = document.getElementById("toggleFormBtn");
+      if (form) form.classList.remove("active");
+      if (btn) {
+        btn.textContent = "+ Add New Filter";
+        btn.classList.remove("cancel-mode");
+      }
+    }
+    this.exitEdit(false);
+
+    // Dim all other cards
+    document.querySelectorAll(".filter-item").forEach((el) => el.classList.add("dimmed"));
 
     const filterItem = document.querySelector(`[data-filter-id="${filter.id}"]`);
-    if (filterItem) {
-      filterItem.classList.remove("dimmed");
+    if (!filterItem) return;
+
+    filterItem.classList.remove("dimmed");
+    filterItem.classList.add("editing");
+
+    // Swap edit icon with close icon
+    const editBtn = filterItem.querySelector(".btn-edit");
+    if (editBtn) {
+      editBtn.innerHTML = "";
+      editBtn.appendChild(createSVG(svg_paths.crossIconPaths));
+      editBtn.title = "Close";
     }
 
-    // Load filter data
+    // Load state
     FilterState.form.editingFilterId = filter.id;
-    FilterState.form.entries = JSON.parse(JSON.stringify(filter.entries)).map((entry) => ({
-      artist: entry.artist || "",
-      title: entry.title || "",
-      replaceArtist: entry.replaceArtist || "",
-      replaceTitle: entry.replaceTitle || "",
-    }));
     FilterState.form.mode = FilterUtils.isReplaceFilter(filter) ? "replace" : "filter";
-    FilterState.form.isOpen = true;
-
-    // Move form under filter
-    if (filterItem?.parentNode && form.parentNode !== filterItem.parentNode) {
-      filterItem.parentNode.insertBefore(form, filterItem.nextSibling);
-    }
-
-    form.classList.add("active");
-    btn.textContent = "Exit Edit Mode";
-
-    // Load parsers
+    FilterState.form.entries = JSON.parse(JSON.stringify(filter.entries)).map((e) => ({
+      artist: e.artist || "",
+      title: e.title || "",
+      replaceArtist: e.replaceArtist || "",
+      replaceTitle: e.replaceTitle || "",
+    }));
     ParserController.loadFromFilter(filter);
 
-    this.renderMode();
-    this.renderEntries();
-    ParserController.render();
+    // Append an extra pre-filled entry if requested
+    if (appendEntry) {
+      FilterState.form.entries.push({
+        artist: appendEntry.artist || "",
+        title: appendEntry.title || "",
+        replaceArtist: appendEntry.replaceArtist || "",
+        replaceTitle: appendEntry.replaceTitle || "",
+      });
+      scrollToIndex = FilterState.form.entries.length - 1;
+    }
+    FilterState.form.isOpen = true;
 
-    await activateSimpleBar(["selectedParsersList", "availableParsersList"]);
+    const editorSlot = filterItem.querySelector(".filter-inline-editor");
+    if (editorSlot) {
+      this._renderForm(editorSlot, { isNew: false });
+    }
 
-    // Scroll to entry
+    // Scroll to a specific entry row if requested
     if (scrollToIndex !== null && scrollToIndex >= 0) {
-      await new Promise((resolve) => setTimeout(resolve, 100));
-      const entryItems = document.querySelectorAll("#entriesList .entry-item");
-      if (entryItems[scrollToIndex]) {
-        entryItems[scrollToIndex].scrollIntoView({ behavior: "smooth", block: "center" });
-        entryItems[scrollToIndex].classList.add("highlight-entry");
-        setTimeout(() => {
-          entryItems[scrollToIndex].classList.remove("highlight-entry");
-        }, 2000);
+      await new Promise((r) => setTimeout(r, 50));
+      const rows = editorSlot?.querySelectorAll(".inline-entry-row");
+      const target = rows?.[scrollToIndex];
+      if (target) {
+        target.scrollIntoView({ behavior: "smooth", block: "center" });
+        target.classList.add("highlight-entry");
+        setTimeout(() => target.classList.remove("highlight-entry"), 2000);
       }
     }
   },
 
-  // Exit edit mode
-  exitEdit() {
-    const form = document.getElementById("formContainer");
-    const btn = document.getElementById("toggleFormBtn");
+  // Exit inline edit mode, restore card to collapsed state
+  exitEdit(resetState = true) {
+    document.querySelectorAll(".filter-item.editing").forEach((item) => {
+      item.classList.remove("editing");
 
-    document.querySelectorAll(".filter-item").forEach((item) => {
-      item.classList.remove("dimmed");
+      const editBtn = item.querySelector(".btn-edit");
+      if (editBtn) {
+        editBtn.innerHTML = "";
+        editBtn.appendChild(createSVG(svg_paths.penIconPaths));
+        editBtn.title = "Edit";
+      }
+
+      const slot = item.querySelector(".filter-inline-editor");
+      if (slot) {
+        FilterEvents.removeFrom(slot);
+        slot.innerHTML = "";
+      }
     });
 
-    form.classList.remove("active");
-    btn.textContent = "Add New Filter";
+    document.querySelectorAll(".filter-item.dimmed").forEach((el) => el.classList.remove("dimmed"));
 
-    document.querySelector(".container").appendChild(form);
-
-    FilterState.form.isOpen = false;
-    this.reset();
+    if (resetState) {
+      FilterState.form.isOpen = false;
+      FilterState.form.editingFilterId = null;
+    }
   },
 
   // Add new entry
   addEntry() {
-    FilterState.form.entries.push({
-      artist: "",
-      title: "",
-      replaceArtist: "",
-      replaceTitle: "",
-    });
-    this.renderEntries();
+    FilterState.form.entries.push({ artist: "", title: "", replaceArtist: "", replaceTitle: "" });
   },
 
   // Remove entry
   async removeEntry(index) {
     const entry = FilterState.form.entries[index];
-    const isReplace = FilterState.form.mode === "replace";
-    const hasReplaceValues = isReplace && (entry.replaceArtist.trim() || entry.replaceTitle.trim());
+    const isReplaceMode = FilterState.form.mode === "replace";
+    const hasReplace = isReplaceMode && (entry.replaceArtist.trim() || entry.replaceTitle.trim());
 
     // Ask about reverting if editing replace filter
-    if (hasReplaceValues && FilterState.form.editingFilterId) {
+    if (hasReplace && FilterState.form.editingFilterId) {
       const shouldRevert = confirm("Do you want to restore the original song data to the history?");
-
       if (shouldRevert) {
         const filter = FilterState.parserFilters.find((f) => f.id === FilterState.form.editingFilterId);
         if (filter) {
           await sendAction("filterHistoryReplace", {
             mode: "revert",
-            entries: [
-              {
-                artist: entry.artist || "",
-                title: entry.title || "",
-                replaceArtist: entry.replaceArtist || "",
-                replaceTitle: entry.replaceTitle || "",
-              },
-            ],
+            entries: [{ artist: entry.artist || "", title: entry.title || "", replaceArtist: entry.replaceArtist || "", replaceTitle: entry.replaceTitle || "" }],
             parsers: filter.parsers,
             parserList: FilterState.parserList,
           });
@@ -197,15 +190,12 @@ const FormController = {
     }
 
     FilterState.form.entries.splice(index, 1);
-    this.renderEntries();
   },
 
-  // Validate form
+  // Validate form data before saving
   validate() {
     const { entries, mode } = FilterState.form;
     const isReplace = mode === "replace";
-
-    // Check for valid entries
     const validEntries = entries.filter((e) => e.artist.trim() || e.title.trim());
 
     if (validEntries.length === 0) {
@@ -215,19 +205,14 @@ const FormController = {
 
     // Check replace mode has replacement values
     if (isReplace) {
-      const missingReplacements = validEntries.some((e) => (e.artist.trim() || e.title.trim()) && !e.replaceArtist.trim() && !e.replaceTitle.trim());
-
-      if (missingReplacements) {
+      const missing = validEntries.some((e) => (e.artist.trim() || e.title.trim()) && !e.replaceArtist.trim() && !e.replaceTitle.trim());
+      if (missing) {
         alert("Please provide replacement values for all entries in Replace mode");
         return null;
       }
     }
 
-    // Validate parser selection
-    if (!ParserController.validate()) {
-      return null;
-    }
-
+    if (!ParserController.validate()) return null;
     return validEntries;
   },
 
@@ -243,13 +228,10 @@ const FormController = {
     // Find existing filter with same parsers and mode
     const existingFilterIndex = FilterState.parserFilters.findIndex((f) => {
       if (editingFilterId && f.id === editingFilterId) return false;
-
-      // Check parsers match
       if (f.parsers.length !== selectedParsers.length) return false;
-      const parsersMatch = [...f.parsers].sort().every((val, idx) => val === [...selectedParsers].sort()[idx]);
-      if (!parsersMatch) return false;
 
-      // Check mode match
+      const parsersMatch = [...f.parsers].sort().every((v, i) => v === [...selectedParsers].sort()[i]);
+      if (!parsersMatch) return false;
       return FilterUtils.isReplaceFilter(f) === isReplace;
     });
 
@@ -257,16 +239,10 @@ const FormController = {
     let parsersToProcess = [];
 
     if (existingFilterIndex !== -1 && !editingFilterId) {
-      // Merge with existing filter
       const existingFilter = FilterState.parserFilters[existingFilterIndex];
-      const existingEntries = existingFilter.entries;
-
-      // Filter duplicates
-      const newUnique = validEntries.filter((entry) => {
-        return !existingEntries.some((existing) => {
-          return FilterUtils.createEntryKey(entry, isReplace) === FilterUtils.createEntryKey(existing, isReplace);
-        });
-      });
+      const newUnique = validEntries.filter(
+        (entry) => !existingFilter.entries.some((ex) => FilterUtils.createEntryKey(entry, isReplace) === FilterUtils.createEntryKey(ex, isReplace)),
+      );
 
       if (newUnique.length === 0) {
         alert("All entries already exist in this filter");
@@ -283,7 +259,6 @@ const FormController = {
     } else {
       // Create new or update existing filter
       const uniqueEntries = FilterUtils.removeDuplicates(validEntries, isReplace);
-
       const filterData = {
         entries: uniqueEntries.map((entry) => {
           const clean = { artist: entry.artist, title: entry.title };
@@ -297,23 +272,14 @@ const FormController = {
       };
 
       if (editingFilterId) {
-        const index = FilterState.parserFilters.findIndex((f) => f.id === editingFilterId);
-        if (index === -1) {
+        const idx = FilterState.parserFilters.findIndex((f) => f.id === editingFilterId);
+        if (idx === -1) {
           alert("Filter not found");
           return;
         }
-
-        FilterState.parserFilters[index] = {
-          ...FilterState.parserFilters[index],
-          ...filterData,
-          updatedAt: new Date().toISOString(),
-        };
+        FilterState.parserFilters[idx] = { ...FilterState.parserFilters[idx], ...filterData, updatedAt: new Date().toISOString() };
       } else {
-        FilterState.parserFilters.push({
-          id: FilterUtils.generateId(),
-          createdAt: new Date().toISOString(),
-          ...filterData,
-        });
+        FilterState.parserFilters.push({ id: FilterUtils.generateId(), createdAt: new Date().toISOString(), ...filterData });
       }
 
       if (isReplace) {
@@ -334,157 +300,323 @@ const FormController = {
       });
     }
 
-    // Move form back to default position
-    const form = document.getElementById("formContainer");
-    const addFilterContainer = document.querySelector(".filter-actions-header");
-    if (form && addFilterContainer?.parentNode && form.parentNode !== addFilterContainer.parentNode) {
-      addFilterContainer.parentNode.insertBefore(form, addFilterContainer.nextSibling);
-    }
-
     FilterTabsController.render();
     FilterListController.render();
+    this.exitEdit(false);
     this.close();
   },
 
-  // RENDER
-  renderMode() {
-    const container = document.getElementById("filterModeContainer");
-    if (!container) return;
-
+  /**
+   * Renders the complete form UI into `container`.
+   *
+   * @param {HTMLElement} container
+   * @param {{ isNew: boolean }} options
+   *   isNew = true  → new filter: show mode toggle header + fill-current button
+   *   isNew = false → edit filter: mode is fixed, no header, no fill button
+   */
+  _renderForm(container, { isNew }) {
+    FilterEvents.removeFrom(container);
     container.innerHTML = "";
 
-    // Hide mode selector in edit mode
-    if (FilterState.form.editingFilterId) {
-      container.style.display = "none";
-      return;
+    // HEADER - mode toggle (new filter only)
+    if (isNew) {
+      const header = document.createElement("div");
+      header.className = "new-filter-header";
+
+      const modeToggle = document.createElement("div");
+      modeToggle.className = "mode-options segmented-toggle";
+
+      const renderModeToggle = () => {
+        modeToggle.innerHTML = "";
+        [
+          { value: "filter", label: "Block" },
+          { value: "replace", label: "Replace" },
+        ].forEach((m) => {
+          const btn = document.createElement("button");
+          btn.className = `mode-option${FilterState.form.mode === m.value ? " active" : ""}`;
+          btn.textContent = m.label;
+          FilterEvents.add(btn, "click", () => {
+            FilterState.form.mode = m.value;
+            renderModeToggle();
+            renderEntries();
+          });
+          modeToggle.appendChild(btn);
+        });
+      };
+
+      // Expose so renderEntries can trigger first paint via closure
+      header._renderModeToggle = renderModeToggle;
+      header.append(modeToggle);
+      container.appendChild(header);
     }
 
-    container.style.display = "block";
+    // ENTRIES
+    const entriesSection = document.createElement("div");
+    entriesSection.className = "inline-entries-section";
 
-    const wrapper = document.createElement("div");
-    wrapper.className = "filter-mode-selector";
+    const entriesList = document.createElement("div");
+    entriesList.className = "inline-entries-list";
+    entriesSection.appendChild(entriesList);
 
-    const optionsContainer = document.createElement("div");
-    optionsContainer.className = "mode-options";
+    const renderEntries = () => {
+      const isReplace = FilterState.form.mode === "replace";
+      FilterEvents.removeFrom(entriesList);
+      entriesList.innerHTML = "";
 
-    const modes = [
-      { value: "filter", label: "Block" },
-      { value: "replace", label: "Replace" },
-    ];
+      FilterState.form.entries.forEach((entry, index) => {
+        const row = document.createElement("div");
+        row.className = `inline-entry-row${isReplace ? " replace-mode" : ""}`;
 
-    modes.forEach((mode) => {
-      const btn = document.createElement("button");
-      btn.className = `mode-option${FilterState.form.mode === mode.value ? " active" : ""}`;
-      btn.textContent = mode.label;
-      btn.dataset.mode = mode.value;
+        const num = document.createElement("span");
+        num.className = "entry-num";
+        num.textContent = index + 1;
 
-      FilterEvents.add(btn, "click", () => {
-        FilterState.form.mode = mode.value;
-        this.renderMode();
-        this.renderEntries();
+        // Original inputs
+        const originalGroup = document.createElement("div");
+        originalGroup.className = "inline-input-group";
+        originalGroup.append(
+          this._input(
+            isReplace ? "Original Artist" : "Artist",
+            entry.artist,
+            (e) => {
+              FilterState.form.entries[index].artist = e.target.value;
+            },
+            "input-original",
+          ),
+          this._input(
+            isReplace ? "Original Title" : "Title",
+            entry.title,
+            (e) => {
+              FilterState.form.entries[index].title = e.target.value;
+            },
+            "input-original",
+          ),
+        );
+        row.append(num, originalGroup);
+
+        // Replace inputs
+        if (isReplace) {
+          const arrow = document.createElement("span");
+          arrow.className = "entry-replace-arrow";
+          arrow.appendChild(createSVG(svg_paths.forwardIconPaths));
+          row.appendChild(arrow);
+
+          const replaceGroup = document.createElement("div");
+          replaceGroup.className = "inline-input-group";
+          replaceGroup.append(
+            this._input(
+              "New Artist",
+              entry.replaceArtist,
+              (e) => {
+                FilterState.form.entries[index].replaceArtist = e.target.value;
+              },
+              "input-replace",
+            ),
+            this._input(
+              "New Title",
+              entry.replaceTitle,
+              (e) => {
+                FilterState.form.entries[index].replaceTitle = e.target.value;
+              },
+              "input-replace",
+            ),
+          );
+          row.appendChild(replaceGroup);
+        }
+
+        // Remove button
+        if (FilterState.form.entries.length > 1) {
+          const removeBtn = document.createElement("button");
+          removeBtn.className = "btn-remove inline-remove";
+          removeBtn.appendChild(createSVG(svg_paths.crossIconPaths));
+          FilterEvents.add(removeBtn, "click", () => {
+            this.removeEntry(index).then(() => renderEntries());
+          });
+          row.appendChild(removeBtn);
+        }
+
+        entriesList.appendChild(row);
       });
+    };
 
-      optionsContainer.appendChild(btn);
+    const fillAddWrapper = document.createElement("div");
+    fillAddWrapper.className = "fill-add-wrapper";
+
+    const fillBtn = document.createElement("button");
+    fillBtn.className = "btn-fill-current";
+    fillBtn.textContent = "Fill with current song";
+    FilterEvents.add(fillBtn, "click", () => QuickActions.fillCurrent(renderEntries, fillBtn));
+    fillAddWrapper.appendChild(fillBtn);
+
+    const addBtn = document.createElement("button");
+    addBtn.className = "btn-add-entry inline-add-entry";
+    addBtn.textContent = "+ Add Entry";
+    FilterEvents.add(addBtn, "click", () => {
+      FilterState.form.entries.push({ artist: "", title: "", replaceArtist: "", replaceTitle: "" });
+      renderEntries();
     });
+    fillAddWrapper.appendChild(addBtn);
+    entriesSection.appendChild(fillAddWrapper);
+    container.appendChild(entriesSection);
 
-    wrapper.appendChild(optionsContainer);
-    container.appendChild(wrapper);
-  },
+    // Parser Chips
+    const parserSection = document.createElement("div");
+    parserSection.className = "inline-parser-section";
 
-  renderEntries() {
-    const container = document.getElementById("entriesList");
-    if (!container) return;
+    const parserLabel = document.createElement("div");
+    parserLabel.className = "inline-section-label";
+    parserLabel.textContent = "Websites";
 
-    // Clear old
-    container.querySelectorAll(".entry-item").forEach((el) => {
-      FilterEvents.removeFrom(el);
-    });
-    container.innerHTML = "";
+    // Select All Parsers
+    const allLabel = document.createElement("label");
+    allLabel.className = "switch-label parser-all-label";
 
-    const isReplace = FilterState.form.mode === "replace";
+    // text
+    const allText = document.createElement("span");
+    allText.className = "parser-all-text";
+    allText.textContent = "Select All";
 
-    FilterState.form.entries.forEach((entry, index) => {
-      const item = document.createElement("div");
-      item.className = `entry-item${isReplace ? " replace-mode" : ""}`;
+    // checkbox
+    const allCheckbox = document.createElement("input");
+    allCheckbox.spellcheck = false;
+    allCheckbox.autocomplete = "off";
+    allCheckbox.type = "checkbox";
+    allCheckbox.checked = FilterState.parsers.allSelected;
+    allCheckbox.className = "parser-all-checkbox";
 
-      // Original inputs
-      const originalGroup = document.createElement("div");
-      originalGroup.className = "input-group original-group";
+    // slider
+    const slider = document.createElement("span");
+    slider.className = "slider";
 
-      const artistInput = this.createInput(
-        isReplace ? "Original Artist" : "Artist",
-        entry.artist,
-        (e) => {
-          FilterState.form.entries[index].artist = e.target.value;
-        },
-        "input-original",
-      );
+    // append
+    allLabel.append(allText, allCheckbox, slider);
 
-      const titleInput = this.createInput(
-        isReplace ? "Original Title" : "Title",
-        entry.title,
-        (e) => {
-          FilterState.form.entries[index].title = e.target.value;
-        },
-        "input-original",
-      );
+    const parserHeader = document.createElement("div");
+    parserHeader.className = "inline-parser-header";
+    parserHeader.append(parserLabel, allLabel);
+    parserSection.appendChild(parserHeader);
 
-      originalGroup.append(artistInput, titleInput);
-      item.appendChild(originalGroup);
+    const renderParsers = () => {
+      const existing = parserSection.querySelector(".inline-parser-chips");
+      if (existing) existing.remove();
 
-      // Replace inputs
-      if (isReplace) {
-        item.appendChild(createSVG(svg_paths.forwardIconPaths));
+      const { allSelected, selectedIds } = FilterState.parsers;
+      allCheckbox.checked = allSelected;
 
-        const replaceGroup = document.createElement("div");
-        replaceGroup.className = "input-group replace-group";
+      const chips = document.createElement("div");
+      chips.className = "inline-parser-chips";
 
-        const replaceArtistInput = this.createInput(
-          "Replace with Artist",
-          entry.replaceArtist,
-          (e) => {
-            FilterState.form.entries[index].replaceArtist = e.target.value;
-          },
-          "input-replace",
+      if (allSelected) {
+        chips.appendChild(
+          this._chip("All Websites", "selected", () => {
+            ParserController.toggleAll(false);
+            renderParsers();
+          }),
         );
+      } else {
+        selectedIds.forEach((id) => {
+          const parser = FilterState.parserList.find((p) => p.id === id);
 
-        const replaceTitleInput = this.createInput(
-          "Replace with Title",
-          entry.replaceTitle,
-          (e) => {
-            FilterState.form.entries[index].replaceTitle = e.target.value;
-          },
-          "input-replace",
-        );
+          if (!parser) {
+            // Orphaned ID - site no longer exists in parserList
+            chips.appendChild(
+              this._chip("Unknown site", "orphaned", () => {
+                ParserController.toggle(id, false);
+                renderParsers();
+              }),
+            );
+            return;
+          }
 
-        replaceGroup.append(replaceArtistInput, replaceTitleInput);
-        item.appendChild(replaceGroup);
+          chips.appendChild(
+            this._chip(parser.title || parser.domain, "selected", () => {
+              ParserController.toggle(id, false);
+              renderParsers();
+            }),
+          );
+        });
+
+        FilterState.parserList
+          .filter((p) => !selectedIds.includes(p.id))
+          .forEach((parser) => {
+            const chip = document.createElement("span");
+            chip.className = "parser-chip available";
+            chip.textContent = parser.title || parser.domain;
+            FilterEvents.add(chip, "click", () => {
+              ParserController.toggle(parser.id, true);
+              renderParsers();
+            });
+            chips.appendChild(chip);
+          });
       }
 
-      // Remove button
-      if (FilterState.form.entries.length > 1) {
-        const removeBtn = document.createElement("button");
-        removeBtn.className = "btn-remove";
-        removeBtn.appendChild(createSVG(svg_paths.crossIconPaths));
+      parserSection.appendChild(chips);
+    };
 
-        FilterEvents.add(removeBtn, "click", () => this.removeEntry(index));
-
-        item.appendChild(removeBtn);
-      }
-
-      container.appendChild(item);
+    FilterEvents.add(allCheckbox, "change", (e) => {
+      ParserController.toggleAll(e.target.checked);
+      renderParsers();
     });
+
+    container.appendChild(parserSection);
+
+    // FOOTER
+    const footer = document.createElement("div");
+    footer.className = isNew ? "inline-editor-footer new-filter-footer" : "inline-editor-footer";
+
+    const cancelBtn = document.createElement("button");
+    cancelBtn.className = "btn-cancel inline-cancel";
+    cancelBtn.textContent = "Cancel";
+    FilterEvents.add(cancelBtn, "click", () => (isNew ? this.close() : this.exitEdit()));
+
+    const saveBtn = document.createElement("button");
+    saveBtn.className = "btn-save inline-save";
+    saveBtn.textContent = "Save";
+    FilterEvents.add(saveBtn, "click", () => this.save());
+
+    footer.append(saveBtn, cancelBtn);
+    container.appendChild(footer);
+
+    // INITIAL PAINT
+    if (isNew) {
+      const header = container.querySelector(".new-filter-header");
+      if (header?._renderModeToggle) header._renderModeToggle();
+    }
+    renderEntries();
+    renderParsers();
   },
 
-  createInput(placeholder, value, onInput, className = "") {
+  // HELPERS
+  _input(placeholder, value, onInput, className = "") {
     const input = document.createElement("input");
+    input.spellcheck = false;
+    input.autocomplete = "off";
     input.type = "text";
     input.placeholder = placeholder;
     input.value = value || "";
     if (className) input.className = className;
-
     FilterEvents.add(input, "input", onInput);
-
     return input;
+  },
+
+  _chip(label, type, onRemove) {
+    const chip = document.createElement("span");
+    chip.className = `parser-chip ${type}`;
+    chip.textContent = label;
+    const x = document.createElement("span");
+    x.className = "chip-remove";
+    x.textContent = "✕";
+    FilterEvents.add(x, "click", onRemove);
+    chip.appendChild(x);
+    return chip;
+  },
+
+  // Stubs - kept so filter.js initFilter() doesn't break if called
+  renderMode() {},
+  renderEntries() {},
+
+  // Legacy alias
+  createInput(placeholder, value, onInput, className = "") {
+    return this._input(placeholder, value, onInput, className);
   },
 };
