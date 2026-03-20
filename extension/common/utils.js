@@ -290,12 +290,12 @@ async function applyBackgroundSettings(save = true) {
     document.body.style.removeProperty("--backgroundImage");
     document.body.style.removeProperty("--backgroundPositionX");
     document.body.style.removeProperty("--filter");
-    return;
+  } else {
+    document.body.style.setProperty("--backgroundImage", `url(${bgSettings.image})`);
+    document.body.style.setProperty("--backgroundPositionX", `${bgSettings.positionX}%`);
+    document.body.style.setProperty("--filter", `blur(${bgSettings.blur}px) brightness(${bgSettings.brightness}%) saturate(${bgSettings.saturation}%)`);
   }
 
-  document.body.style.setProperty("--backgroundImage", `url(${bgSettings.image})`);
-  document.body.style.setProperty("--backgroundPositionX", `${bgSettings.positionX}%`);
-  document.body.style.setProperty("--filter", `blur(${bgSettings.blur}px) brightness(${bgSettings.brightness}%) saturate(${bgSettings.saturation}%)`);
   if (save) saveStyleAttrs();
 }
 

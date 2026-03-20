@@ -10,6 +10,7 @@ async function buildBackground(container) {
 
   async function saveBgSettings() {
     await browser.storage.local.set({ backgroundSettings: bgSettings });
+    applyBackgroundSettings();
   }
 
   const bgUrlWrapper = document.createElement("div");
@@ -58,7 +59,6 @@ async function buildBackground(container) {
   } = createSliderSection("Blur", 0, 40, 1, bgSettings.blur, "px", async (v) => {
     bgSettings.blur = v;
     await saveBgSettings();
-    applyBackgroundSettings();
   });
 
   const {
@@ -68,7 +68,6 @@ async function buildBackground(container) {
   } = createSliderSection("Brightness", 0, 200, 1, bgSettings.brightness, "%", async (v) => {
     bgSettings.brightness = v;
     await saveBgSettings();
-    applyBackgroundSettings();
   });
 
   const {
@@ -78,13 +77,11 @@ async function buildBackground(container) {
   } = createSliderSection("Saturation", 0, 200, 1, bgSettings.saturation, "%", async (v) => {
     bgSettings.saturation = v;
     await saveBgSettings();
-    applyBackgroundSettings();
   });
 
   const { wrap: posXWrap } = createSliderSection("Position", 0, 100, 1, bgSettings.positionX ?? 50, "%", async (v) => {
     bgSettings.positionX = v;
     await saveBgSettings();
-    applyBackgroundSettings();
   });
 
   bgExpandableSection.append(blurWrap, brightnessWrap, saturationWrap, posXWrap);
@@ -115,8 +112,6 @@ async function buildBackground(container) {
     brightnessDisplay.textContent = "100%";
     saturationSlider.value = 100;
     saturationDisplay.textContent = "100%";
-
-    applyBackgroundSettings();
   });
 
   btnExpand.addEventListener("click", (e) => {
