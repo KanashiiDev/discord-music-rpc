@@ -1,4 +1,4 @@
-let historyPanel, clearBtn, cancelCleanBtn, filterBtn, filterMenu, filterMenuContent;
+let historyPanel, clearBtn, cancelCleanBtn, filterBtn, historyFilterResetBtn, filterMenu, filterMenuContent;
 
 function initHistoryHandlers() {
   historyPanel = document.getElementById("historyPanel");
@@ -10,6 +10,22 @@ function initHistoryHandlers() {
 
   clearBtn.addEventListener("click", handleClearButtonClick);
   cancelCleanBtn.addEventListener("click", exitCleaningMode);
+
+  historyFilterResetBtn = document.getElementById("historyFilterResetBtn");
+  if (historyFilterResetBtn) {
+    historyFilterResetBtn.appendChild(createSVG(svg_paths.closeIconPaths ?? svg_paths.crossIconPaths));
+    historyFilterResetBtn.addEventListener("click", async () => {
+      historyState.selectedSources.clear();
+      document.getElementById("historySearchBox").value = "";
+      historyFilterResetBtn?.classList.remove("filter-active");
+      historyState.activeScrollCleanup?.();
+      historyState.activeScrollCleanup = null;
+      await renderHistory({ reset: true, query: "" });
+      await destroyOtherSimpleBars();
+      await activateSimpleBar(["historyPanel", "historyFilterMenuContent"]);
+      await activateHistoryScroll();
+    });
+  }
 }
 
 function attachCheckboxListeners() {
@@ -132,6 +148,7 @@ const handleClearButtonClick = async () => {
   historyState.selectedSources.clear();
   historyState.filteredHistory = [];
   document.querySelector("#historySearchBox").value = "";
+  historyFilterResetBtn?.classList.remove("filter-active");
   await sendAction("saveHistory", { data: historyState.fullHistory });
 
   historyPanel._cleanupCheckboxListener?.();
@@ -141,6 +158,14 @@ const handleClearButtonClick = async () => {
   exitCleaningMode();
 };
 
+function buildHistorySourceCache() {
+  if (!filterBtn.classList.contains("history-filter")) {
+    filterBtn.className = "history-filter";
+    filterBtn.appendChild(createSVG(svg_paths.filterIconPaths));
+  }
+  historyState.sourceMenuBuilt = false;
+}
+
 function renderSourceFilterMenu() {
   const { selectedSources } = historyState;
   filterMenuContent.innerHTML = "";
@@ -149,11 +174,6 @@ function renderSourceFilterMenu() {
     const diff = (selectedSources.has(a) ? 0 : 1) - (selectedSources.has(b) ? 0 : 1);
     return diff !== 0 ? diff : a.localeCompare(b);
   });
-
-  if (!document.querySelector(".history-filter")) {
-    filterBtn.className = "history-filter";
-    filterBtn.appendChild(createSVG(svg_paths.filterIconPaths));
-  }
 
   if (filterMenuContent._sourceChangeListener) {
     filterMenuContent.removeEventListener("change", filterMenuContent._sourceChangeListener);
@@ -166,8 +186,9 @@ function renderSourceFilterMenu() {
     historyState.activeScrollCleanup?.();
     historyState.activeScrollCleanup = null;
 
+    historyFilterResetBtn?.classList.toggle("filter-active", selectedSources.size > 0);
+
     await renderHistory({ reset: true, query: document.getElementById("historySearchBox").value });
-    await destroyOtherSimpleBars();
     await activateSimpleBar(["historyPanel", "historyFilterMenuContent"]);
     await activateHistoryScroll();
   };
@@ -187,12 +208,28 @@ function renderSourceFilterMenu() {
     label.append(cb, " ", span);
     fragment.appendChild(label);
   });
+  if (!fragment.childNodes.length) {
+    fragment.appendChild(Object.assign(document.createElement("i"), { textContent: "No sources available." }));
+  }
   filterMenuContent.appendChild(fragment);
+
+  historyState.sourceMenuBuilt = true;
 }
 
 const handleFilterButtonClick = async (e) => {
   e.stopPropagation();
+
+  // Only rebuild DOM when stale
+  if (!filterMenu.classList.contains("open") && !historyState.sourceMenuBuilt) {
+    renderSourceFilterMenu();
+  }
+
   filterMenu.classList.toggle("open");
   filterMenu.style.height = filterMenu.classList.contains("open") ? `${Math.min(filterMenuContent.scrollHeight, 160)}px` : "0";
+
+  // Sync reset button visibility on every toggle
+  historyFilterResetBtn?.classList.toggle("filter-active", historyState.selectedSources.size > 0);
+
+  await destroyOtherSimpleBars("historyPanel");
   await activateSimpleBar("historyFilterMenuContent");
 };

@@ -1063,6 +1063,7 @@ input[type="range"]::-moz-range-thumb {
   visibility: hidden;
 }
 
+#historyFilterResetBtn.filter-active,
 #parserTagFilterResetBtn.filter-active,
 #historyToggle,
 #historyStatsToggle,
@@ -1194,6 +1195,7 @@ body[data-theme="dark"] #githubLink img {
   background: var(--foreground-color-600);
 }
 
+#historyFilterResetBtn.filter-active,
 #parserTagFilterResetBtn.filter-active,
 .parser-filter,
 .history-filter {
@@ -1204,6 +1206,7 @@ body[data-theme="dark"] #githubLink img {
   z-index: 6;
 }
 
+#historyFilterResetBtn.filter-active,
 #parserTagFilterResetBtn.filter-active {
   display: block !important;
   right: 32px;
@@ -1402,6 +1405,12 @@ body[data-theme="dark"] #githubLink img {
 
 #historyPanel h3:first-of-type {
   margin-top: 0 !important;
+}
+
+#parserTagFilterMenuContent i,
+#historyFilterMenuContent i {
+  padding: 2px 0;
+  display: block;
 }
 
 #parserTagFilterMenuContent .simplebar-scrollbar:before,

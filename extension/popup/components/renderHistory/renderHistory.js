@@ -10,6 +10,7 @@ const historyState = {
   scrollListenerRef: null,
   activeScrollCleanup: null,
   selectedSources: new Set(),
+  sourceMenuBuilt: false,
 };
 
 async function renderHistory({ reset = true, query = "" } = {}) {
@@ -43,7 +44,7 @@ async function renderHistory({ reset = true, query = "" } = {}) {
     historyState.fullHistory = res.data;
   }
 
-  renderSourceFilterMenu();
+  buildHistorySourceCache();
   target.querySelector(".spinner")?.remove();
 
   const searchQuery = query.trim();
@@ -95,6 +96,4 @@ async function renderHistory({ reset = true, query = "" } = {}) {
   target.appendChild(fragment);
 
   if (historyState.cleaningMode) attachCheckboxListeners();
-
-  await activateSimpleBar("historyPanel");
 }

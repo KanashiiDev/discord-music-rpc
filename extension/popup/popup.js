@@ -127,6 +127,7 @@ const sectionManager = {
       case "main":
         historyState.isFiltering = false;
         historyState.selectedSources.clear();
+        historyState.sourceMenuBuilt = false;
         parserFilterState.selectedCategories.clear();
         parserFilterState.selectedTags.clear();
         parserTagFilterResetBtn?.classList.remove("filter-active");
@@ -138,6 +139,7 @@ const sectionManager = {
         break;
 
       case "history":
+        historyFilterResetBtn?.classList.remove("filter-active");
         await renderHistory();
         await activateSimpleBar("historyPanel");
         await destroyOtherSimpleBars("historyPanel");
