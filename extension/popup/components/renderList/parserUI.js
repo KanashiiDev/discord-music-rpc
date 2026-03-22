@@ -52,6 +52,67 @@ async function refreshScrollbar(scrollBar) {
   document.body.classList.toggle("scrollbar-visible", scrollBar?.style.visibility !== "hidden");
 }
 
+const getScrollState = (simpleBar) => {
+  const scrollEl = simpleBar.getScrollElement();
+  const contentEl = simpleBar.getContentElement();
+
+  if (!scrollEl || !contentEl) return "invalid";
+
+  const contentHeight = contentEl.scrollHeight;
+  const containerHeight = scrollEl.clientHeight;
+
+  if (contentHeight === 0) return "empty";
+  if (contentHeight <= containerHeight + 1) return "partial";
+
+  return "overflow";
+};
+
+const scrollToParser = async ({ wrapper, simpleBar }) => {
+  if (!wrapper || !simpleBar) return;
+
+  const scrollEl = simpleBar.getScrollElement();
+  const contentEl = simpleBar.getContentElement();
+  if (!scrollEl || !contentEl || !scrollEl.offsetParent) return;
+
+  const state = getScrollState(simpleBar);
+
+  switch (state) {
+    case "empty": {
+      return;
+    }
+
+    case "partial": {
+      const shouldAddSpacer = (contentEl?.querySelectorAll(".parser-entry")?.length || 0) > 1;
+      if (shouldAddSpacer) {
+        let spacer = contentEl.querySelector(".sb-scroll-spacer");
+        if (!spacer) {
+          spacer = document.createElement("div");
+          spacer.className = "sb-scroll-spacer";
+          contentEl.appendChild(spacer);
+        }
+
+        const deficit = scrollEl.clientHeight - contentEl.scrollHeight;
+        const extra = deficit + 80;
+
+        if (extra > 0) {
+          spacer.style.height = `${extra}px`;
+          spacer.offsetHeight;
+          simpleBar.recalculate();
+          await new Promise(requestAnimationFrame);
+          await calcHeightAndScroll(wrapper, scrollEl, true);
+        }
+      }
+
+      break;
+    }
+
+    case "overflow": {
+      await calcHeightAndScroll(wrapper, scrollEl, true);
+      break;
+    }
+  }
+};
+
 // Calculate the padding bottom and scroll
 async function calcHeightAndScroll(wrapper, scrollEl, scroll) {
   if (!wrapper || !scrollEl) return;

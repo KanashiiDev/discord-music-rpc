@@ -34,7 +34,7 @@ const openParserOptions = async ({ container, wrapper, optionsContainer, siteLis
   // Calculate required height and scroll to parser entry
   await delay(adaptiveTimeout);
   await rAF();
-  await calcHeightAndScroll(wrapper, scrollEl, true);
+  await scrollToParser({ wrapper, simpleBar });
 
   // Open parser options
   optionsContainer.classList.add("open");
@@ -104,6 +104,20 @@ const closeParserOptions = async (optionsContainer) => {
 
   // Remove fading from other parser entries
   document.querySelectorAll(".parser-entry").forEach((el) => el.classList.remove("fading"));
+
+  // Remove spacer
+  const spacer = document.querySelector(".sb-scroll-spacer");
+
+  if (spacer) {
+    if (spacer.offsetHeight > 0) {
+      spacer.style.transition = "height var(--transition-reduced) ease";
+      spacer.style.height = "0px";
+      await waitForTransitionEnd(spacer, "height");
+      spacer.remove();
+    } else {
+      spacer.remove();
+    }
+  }
 
   // Unlock the scrollbar and remove smooth class from it
   scrollEl.classList.remove("locked");
