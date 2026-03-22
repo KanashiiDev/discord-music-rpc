@@ -82,6 +82,7 @@ body.fg-blur[data-section="main"] #searchBox,
 body.fg-blur[data-section="main"] #mainFooterButtons a,
 body.fg-blur[data-section="main"] .parser-span,
 body.fg-blur[data-section="main"] .parser-options.open,
+body.fg-blur[data-section="main"] #parserTagFilterMenu,
 body.fg-blur[data-section="stats"] .history-entry,
 body.fg-blur[data-section="stats"] .history-stats-artist-entry,
 body.fg-blur[data-section="stats"] #dropdownToggle,
@@ -110,6 +111,7 @@ body.fg-blur[data-section="settings"] .settings-option .ts-dropdown {
 #historyFooter,
 .history-controls,
 #statsFilters,
+#parserTagFilterMenuContent,
 #historyFilterMenuContent {
   -webkit-transition: opacity var(--transition-normal) ease-in-out;
   transition: opacity var(--transition-normal) ease-in-out;
@@ -129,7 +131,7 @@ body[data-section="main"] #dropdownToggle {
 }
 
 body[data-section="main"] #siteList,
-body[data-section="main"] #searchBox,
+body[data-section="main"] .search-controls,
 body[data-section="main"] #mainFooterButtons {
   display: block !important;
   opacity: 1;
@@ -145,6 +147,7 @@ body[data-section="main"] #mainFooterButtons {
   display: flex !important;
 }
 
+body[data-section="history"] .search-controls,
 body[data-section="history"] #settingsPanel,
 body[data-section="history"] #siteList,
 body[data-section="history"] #searchBox,
@@ -176,6 +179,8 @@ body[data-section="history"] #clearHistoryBtn {
   display: -ms-flexbox !important;
   display: flex !important;
 }
+
+body[data-section="stats"] .search-controls,
 body[data-section="stats"] #settingsPanel,
 body[data-section="stats"] #historyPanel,
 body[data-section="stats"] .history-controls,
@@ -199,6 +204,7 @@ body[data-section="stats"] #statsFilters {
 }
 
 html.setup-dialog-open #settingsToggle,
+body[data-section="settings"] .search-controls,
 body[data-section="settings"] #settingsToggle,
 body[data-section="settings"] #historyStatsToggle,
 body[data-section="settings"] #siteList,
@@ -319,6 +325,7 @@ body,
 #historyPanel,
 #siteList,
 #historyStatsPanel,
+#parserTagFilterMenuContent,
 #historyFilterMenuContent,
 #gradientColorList {
   scrollbar-width: none;
@@ -328,6 +335,7 @@ body,
 #historyPanel::-webkit-scrollbar,
 #siteList::-webkit-scrollbar,
 #historyStatsPanel::-webkit-scrollbar,
+#parserTagFilterMenuContent::-webkit-scrollbar,
 #historyFilterMenuContent::-webkit-scrollbar,
 #gradientColorList::-webkit-scrollbar {
   display: none;
@@ -485,6 +493,7 @@ body.fg-blur.parser-options-open #siteList .simplebar-offset {
 #openSelector,
 #openManager,
 .parser-span,
+.parser-filter-menu-content label,
 .history-filter-menu-content label {
   -webkit-user-select: none;
   -moz-user-select: none;
@@ -496,7 +505,6 @@ footer {
   margin-top: 16px;
   text-align: center;
   font-size: var(--font-md);
-  color: var(--foreground-color-600);
   display: -webkit-box;
   display: -ms-flexbox;
   display: flex;
@@ -519,20 +527,34 @@ footer {
   position: relative;
   z-index: 5;
   width: calc(100% - 24px);
-  max-height: 20px;
-  margin-bottom: 12px;
   font-size: var(--font-lg);
   background: var(--foreground-color-200);
   color: var(--text-color-primary);
   -webkit-box-shadow: var(--shadow-color) 0px 0px 3px;
   box-shadow: var(--shadow-color) 0px 0px 3px;
-  opacity: 1;
   padding: 8px 10px;
   border-width: 1px;
   border-style: solid;
   border-color: transparent;
   border-radius: var(--radius-default);
   overflow: hidden;
+  -webkit-transition:
+    border-color var(--transition-reduced) ease,
+    background-color var(--transition-reduced) ease,
+    max-height var(--transition-reduced) ease,
+    padding var(--transition-reduced) ease,
+    margin var(--transition-reduced) ease;
+  transition:
+    border-color var(--transition-reduced) ease,
+    background-color var(--transition-reduced) ease,
+    max-height var(--transition-reduced) ease,
+    padding var(--transition-reduced) ease,
+    margin var(--transition-reduced) ease;
+}
+
+.search-controls {
+  max-height: 40px;
+  margin-bottom: 12px;
   transition:
     transform var(--transition-reduced) ease,
     opacity var(--transition-reduced) ease,
@@ -544,6 +566,7 @@ footer {
     margin var(--transition-reduced) ease;
 }
 
+#searchBox,
 #historySearchBox {
   width: calc(100% - 44px);
   padding-right: 30px;
@@ -1040,8 +1063,10 @@ input[type="range"]::-moz-range-thumb {
   visibility: hidden;
 }
 
+#parserTagFilterResetBtn.filter-active,
 #historyToggle,
 #historyStatsToggle,
+.parser-filter,
 .history-filter {
   position: absolute;
   right: 10px;
@@ -1169,6 +1194,8 @@ body[data-theme="dark"] #githubLink img {
   background: var(--foreground-color-600);
 }
 
+#parserTagFilterResetBtn.filter-active,
+.parser-filter,
 .history-filter {
   position: absolute;
   right: 12px;
@@ -1177,6 +1204,12 @@ body[data-theme="dark"] #githubLink img {
   z-index: 6;
 }
 
+#parserTagFilterResetBtn.filter-active {
+  display: block !important;
+  right: 32px;
+}
+
+.parser-filter-menu,
 .history-filter-menu {
   position: absolute;
   padding: 0 6px;
@@ -1205,17 +1238,28 @@ body[data-theme="dark"] #githubLink img {
   opacity: 0;
 }
 
+.parser-filter-menu.open,
 .history-filter-menu.open {
   padding: 2px 6px 4px;
   max-height: 160px;
   opacity: 1;
 }
 
+.parser-filter-menu-content,
 .history-filter-menu-content {
   max-height: 160px;
   overflow: auto;
 }
 
+.parser-filter-menu-content .filter-section-header {
+  padding: 5px;
+  margin: 5px 0;
+  background: var(--foreground-color-400);
+  border-radius: var(--radius-sm);
+  font-weight: 500;
+}
+
+.parser-filter-menu-content label,
 .history-filter-menu-content label {
   display: block;
   font-size: 13px;
@@ -1226,18 +1270,22 @@ body[data-theme="dark"] #githubLink img {
   transition: background var(--transition-normal) ease;
 }
 
+.parser-filter-menu-content label:hover,
 .history-filter-menu-content label:hover {
   background: var(--foreground-color-400);
 }
 
+.parser-filter-menu-content label:first-child,
 .history-filter-menu-content label:first-child {
   margin-top: 2px;
 }
 
+.parser-filter-menu-content label:last-child,
 .history-filter-menu-content label:last-child {
   margin-bottom: 0;
 }
 
+.parser-filter-menu-content label > input,
 .history-filter-menu-content label > input {
   width: 22px;
   height: 22px;
@@ -1259,6 +1307,7 @@ body[data-theme="dark"] #githubLink img {
   cursor: pointer;
 }
 
+.parser-filter-menu-content label > input::before,
 .history-filter-menu-content label > input::before {
   content: "";
   color: transparent;
@@ -1273,10 +1322,12 @@ body[data-theme="dark"] #githubLink img {
   box-shadow: inset 0 0 0 1px var(--border-color);
 }
 
+.parser-filter-menu-content label > input:checked,
 .history-filter-menu-content label > input:checked {
   background: var(--accent-color);
 }
 
+.parser-filter-menu-content label > input:checked::before,
 .history-filter-menu-content label > input:checked::before {
   -webkit-box-shadow: none;
   box-shadow: none;
@@ -1288,6 +1339,7 @@ body[data-theme="dark"] #githubLink img {
 .history-entry:hover .song-link,
 #historyToggle:hover,
 #historyStatsToggle:hover,
+.parser-filter:hover,
 .history-filter:hover,
 .redirect-user-parser:hover,
 .gear-button:hover {
@@ -1352,6 +1404,7 @@ body[data-theme="dark"] #githubLink img {
   margin-top: 0 !important;
 }
 
+#parserTagFilterMenuContent .simplebar-scrollbar:before,
 #historyFilterMenuContent .simplebar-scrollbar:before {
   background: var(--foreground-color-500);
 }
@@ -1785,7 +1838,7 @@ body.cleaning-mode .selected .history-trash {
   height: 17px;
 }
 
-.parser-options-open #searchBox,
+.parser-options-open .search-controls,
 .parser-options-open #mainFooterButtons {
   opacity: 0 !important;
   -webkit-transform: translateY(-25px) scale(0.9);
@@ -1795,7 +1848,7 @@ body.cleaning-mode .selected .history-trash {
   pointer-events: none;
 }
 
-.parser-options-open #searchBox {
+.parser-options-open .search-controls {
   padding-bottom: 0;
   margin-bottom: 0;
 }

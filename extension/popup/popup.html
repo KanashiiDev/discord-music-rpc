@@ -26,10 +26,17 @@
           <div id="historyFilterMenuContent" class="history-filter-menu-content"></div>
         </div>
       </div>
+      <div class="search-controls" style="display: none; position: relative">
+        <input type="text" id="searchBox" placeholder="Search site..." />
+        <span id="parserTagFilterResetBtn" title="Reset Filter" style="display: none"></span>
+        <span id="parserTagFilterBtn" title="Filter by Category / Tag"></span>
+        <div id="parserTagFilterMenu" class="parser-filter-menu">
+          <div id="parserTagFilterMenuContent" class="parser-filter-menu-content"></div>
+        </div>
+      </div>
     </div>
     <div class="content">
       <div id="historyPanel" data-lazy-container></div>
-      <input type="text" id="searchBox" placeholder="Search site..." />
       <div class="filter-select-wrapper">
         <div id="statsFilters" class="custom-dropdown-container">
           <select id="dropdownToggle">

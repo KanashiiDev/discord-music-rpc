@@ -1349,7 +1349,7 @@ async function showInitialTutorial() {
   const nextBtn = document.getElementById("tooltipNextBtn");
   const skipBtn = document.getElementById("tooltipSkipBtn");
   const siteList = document.getElementById("siteList");
-  const allEntries = document.querySelectorAll(".header-container, .parser-entry, #searchBox, #openSelector, #openManager, .simplebar-track.simplebar-vertical");
+  const allEntries = document.querySelectorAll(".header-container, .parser-entry, .search-controls, #openSelector, #openManager, .simplebar-track.simplebar-vertical");
 
   // Initial settings
   let currentStep = 0;

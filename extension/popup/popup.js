@@ -127,8 +127,12 @@ const sectionManager = {
       case "main":
         historyState.isFiltering = false;
         historyState.selectedSources.clear();
+        parserFilterState.selectedCategories.clear();
+        parserFilterState.selectedTags.clear();
+        parserTagFilterResetBtn?.classList.remove("filter-active");
         exitCleaningMode();
         await renderList();
+        await buildParserTagCache();
         await activateSimpleBar("siteList");
         await destroyOtherSimpleBars("siteList");
         break;
@@ -172,10 +176,10 @@ const popupModule = {
     // Search Box
     const searchBox = document.getElementById("searchBox");
     this.listeners.searchBoxInput = debounce(async () => {
-      const query = searchBox.value.toLowerCase();
+      const query = searchBox.value;
       const list = await getFreshParserList();
-      const filtered = list.filter(({ title }) => title && title.toLowerCase().includes(query));
-      await renderList(filtered, 1);
+      const filtered = applyParserTagFilter(list, query);
+      await renderList(filtered.length < list.length || query.trim() ? filtered : undefined, 1);
       await activateSimpleBar("siteList");
     }, 300);
 
@@ -193,6 +197,9 @@ const popupModule = {
         reset: true,
         query: historySearchBox.value,
       });
+
+      const hasText = historySearchBox.value.trim() !== "";
+      historyFilterResetBtn?.classList.toggle("filter-active", hasText);
 
       await activateSimpleBar("historyPanel");
       await activateHistoryScroll();
@@ -266,6 +273,13 @@ const popupModule = {
           closeParserOptions(openedPaserOptions);
           parserState.isParserOpen = false;
         }
+
+        // Close Parser Tag Filter Menu
+        const ptfMenu = document.getElementById("parserTagFilterMenu");
+        if (ptfMenu?.classList.contains("open") && !ptfMenu.contains(e.target)) {
+          ptfMenu.classList.remove("open");
+          ptfMenu.style.height = "0";
+        }
       }
 
       // History
@@ -337,6 +351,7 @@ domLoadedListener = async () => {
     // Initial render
     const renderStatus = await renderList();
     await activateSimpleBar("siteList");
+    await buildParserTagCache();
 
     // Initial Tutorial
     if (renderStatus) {
@@ -348,6 +363,9 @@ domLoadedListener = async () => {
 
     // Initialize History Handlers
     initHistoryHandlers();
+
+    // Initialize Parser Tag Filter
+    initParserTagFilter();
 
     // Initialize popup module
     popupModule.init();

@@ -12,7 +12,7 @@ async function renderList(filteredList = null, isSearch = null) {
   parserState.currentRenderCleanup = null;
   parserState.isParserOpen = false;
   container.replaceChildren();
-  document.querySelector("#searchBox")?.classList.remove("fading");
+  document.querySelector(".search-controls")?.classList.remove("fading");
 
   const contWrapper = document.querySelector("#siteList .simplebar-content-wrapper");
   if (contWrapper) contWrapper.style.paddingBottom = "";
