@@ -9,6 +9,7 @@ export const HistoryRenderer = {
   isFetching: false,
   _isRendering: false,
   _sourceFilterInitialized: false,
+  _tsInstance: null,
 
   async render({ reset = true, query = "" } = {}) {
     const scrollEl = simpleBars.history.getScrollElement();
@@ -135,55 +136,69 @@ export const HistoryRenderer = {
     const filterSelect = document.getElementById("historyFilter");
     if (!filterSelect) return;
 
-    if (filterSelect.options.length <= 1) {
-      const sources = [...new Set(HistoryState.fullData.map((e) => e.source))].filter(Boolean).sort();
-
-      sources.forEach((source) => {
-        const option = document.createElement("option");
-        option.value = source;
-        option.textContent = source;
-        filterSelect.appendChild(option);
-      });
+    if (this._tsInstance) {
+      this._tsInstance.destroy();
+      this._tsInstance = null;
+      this._sourceFilterInitialized = false;
     }
 
-    if (!this._sourceFilterInitialized) {
-      const handleChange = async (e) => {
-        if (e.target.value !== "all") {
-          HistoryState.selectedSources = new Set([e.target.value]);
+    while (filterSelect.options.length > 1) {
+      filterSelect.remove(1);
+    }
+
+    const sources = [...new Set(HistoryState.fullData.map((e) => e.source))].filter(Boolean).sort();
+    sources.forEach((source) => {
+      const option = document.createElement("option");
+      option.value = source;
+      option.textContent = source;
+      filterSelect.appendChild(option);
+    });
+
+    if (this._sourceFilterInitialized) return;
+
+    this._tsInstance = new TomSelect(filterSelect, {
+      controlInput: null,
+      sortField: false,
+      onDropdownOpen: (dropdown) => {
+        const list = dropdown.querySelector(".ts-dropdown-content");
+        if (!list) return;
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+              if (simpleBars.historyFilter) {
+                simpleBars.historyFilter.unMount();
+                simpleBars.historyFilter = null;
+              }
+              simpleBars.historyFilter = new SimpleBar(list);
+            });
+          });
+        });
+      },
+      onDropdownClose: () => {
+        if (simpleBars.historyFilter) {
+          simpleBars.historyFilter.unMount();
+          simpleBars.historyFilter = null;
+        }
+      },
+      onChange: async (value) => {
+        if (value !== "all") {
+          HistoryState.selectedSources = new Set([value]);
         } else {
           HistoryState.selectedSources.clear();
         }
-
         await this.render({ reset: true });
         const scrollEl = simpleBars.history.getScrollElement();
         if (scrollEl) scrollEl.scrollTo({ top: 0, behavior: "smooth" });
-      };
+      },
+    });
 
-      const canvas = document.createElement("canvas");
-      const context = canvas.getContext("2d");
-
-      const resize = () => {
-        const style = window.getComputedStyle(filterSelect);
-        context.font = `${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
-        const text = filterSelect.options[filterSelect.selectedIndex]?.text || "";
-        const textWidth = context.measureText(text).width;
-        const arrowWidth = 30;
-        filterSelect.style.width = `${textWidth + arrowWidth}px`;
-      };
-
-      filterSelect.addEventListener("change", handleChange);
-      filterSelect.addEventListener("change", resize);
-      resize();
-
-      this._sourceFilterInitialized = true;
-    }
+    this._sourceFilterInitialized = true;
   },
 
   destroy() {
-    const filterSelect = document.getElementById("historyFilter");
-    if (filterSelect) {
-      const newSelect = filterSelect.cloneNode(true);
-      filterSelect.parentNode.replaceChild(newSelect, filterSelect);
+    if (this._tsInstance) {
+      this._tsInstance.destroy();
+      this._tsInstance = null;
     }
     this._sourceFilterInitialized = false;
     this.isFetching = false;

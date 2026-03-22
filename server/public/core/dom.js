@@ -50,4 +50,5 @@ export const simpleBars = {
   lastActivity: new SimpleBar(document.getElementById("lastActivityWrapper")),
   logs: new SimpleBar(document.getElementById("logsWrapper")),
   history: new SimpleBar(document.getElementById("historyWrapper")),
+  historyFilter: null,
 };

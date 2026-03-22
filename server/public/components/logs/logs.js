@@ -8,13 +8,19 @@ export const LogState = {
   maxLoad: 40,
   previousHash: "",
   isFiltering: false,
+  _tsInstance: null,
 };
 
 export async function initializeLogs() {
   try {
     await LogRenderer.render({ reset: true });
-    dom.errorFilter.addEventListener("change", () => {
-      LogRenderer.render({ reset: true });
+
+    LogState._tsInstance = new TomSelect(dom.errorFilter, {
+      controlInput: null,
+      sortField: false,
+      onChange: () => {
+        LogRenderer.render({ reset: true });
+      },
     });
   } catch (error) {
     console.error("Failed to initialize logs:", error);

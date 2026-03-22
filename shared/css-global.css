@@ -183,6 +183,147 @@ svg:not(.flatpickr-calendar svg):not(.IroHandle) {
   display: none;
 }
 
+/* Tom Select */
+.ts-wrapper {
+  width: 100%;
+  box-sizing: border-box;
+  margin-bottom: 0;
+  font-size: inherit;
+}
+
+.filter-select-wrapper .ts-wrapper,
+.parser-option .ts-wrapper,
+.settings-option .ts-wrapper {
+  width: auto;
+  max-width: 160px;
+  position: relative;
+  flex-direction: column;
+}
+
+.filter-select-wrapper .ts-wrapper {
+  max-width: unset;
+}
+
+.filter-select-wrapper .ts-control {
+  padding: 8px 10px;
+}
+
+.filter-select-wrapper .ts-dropdown,
+.parser-option .ts-dropdown,
+.setting-options .ts-dropdown {
+  position: relative !important;
+  top: 100%;
+  left: auto;
+  right: 0;
+  width: auto;
+  min-width: 100%;
+  z-index: 100;
+}
+
+h2.collapsible.history .ts-wrapper.dropdown-active {
+  min-width: 230px;
+}
+
+.ts-control {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  box-sizing: border-box;
+  background: var(--foreground-color-200);
+  border: 0;
+  border-radius: var(--radius-sm);
+  color: var(--text-color-primary);
+  padding: 6px;
+  min-height: unset;
+  font-size: inherit;
+  box-shadow: var(--shadow-color) 0px 1px 3px;
+  cursor: pointer;
+  outline: none !important;
+}
+
+.settings-option .ts-control,
+.parser-option .ts-control {
+  padding: 2px 20px 2px 5px;
+  background: var(--foreground-color-400);
+}
+
+.ts-control .item {
+  color: var(--text-color-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ts-wrapper.single {
+  position: relative;
+  font-size: 13px;
+}
+
+.collapsible.history .ts-wrapper.single,
+.collapsible.logs .ts-wrapper.single {
+  font-weight: 400;
+}
+
+.ts-wrapper.single .ts-control::after {
+  border-color: var(--text-color-primary) transparent transparent transparent !important;
+}
+
+.ts-wrapper.single.dropdown-active .ts-control::after {
+  border-color: transparent transparent var(--text-color-primary) transparent !important;
+}
+
+.ts-wrapper.focus .ts-control,
+.ts-wrapper.is-open .ts-control {
+  outline: 0;
+  box-shadow: var(--shadow-color) 0px 1px 3px;
+  border-radius: var(--radius-sm);
+}
+
+.dropdown-active .ts-control,
+.ts-wrapper.is-open .ts-control {
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0 !important;
+}
+
+/* Dropdown */
+.ts-dropdown {
+  background: var(--foreground-color-300);
+  border: 0;
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-color) 0px 1px 3px;
+  width: 100%;
+  box-sizing: border-box;
+  margin-top: 0;
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+  border-bottom-left-radius: var(--radius-sm);
+  border-bottom-right-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.collapsible.history .ts-dropdown {
+  padding: 4px 4px 4px 0;
+}
+
+.ts-dropdown-content {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+/* Dropdown item */
+.ts-dropdown .option {
+  color: var(--text-color-primary);
+  background: var(--foreground-color-300);
+  padding: 4px 8px;
+  font-size: inherit;
+  cursor: pointer;
+}
+
+.ts-dropdown .option:hover,
+.ts-dropdown .option.active {
+  background: var(--foreground-color-400);
+  color: var(--text-color-primary);
+}
+
 @-webkit-keyframes loadingBar {
   0% {
     -webkit-transform: scaleX(0);
