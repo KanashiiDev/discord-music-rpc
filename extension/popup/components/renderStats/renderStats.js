@@ -9,8 +9,6 @@ const statsModule = {
     if (this.initialized) return;
     this.initialized = true;
 
-    document.getElementById("dropdownToggle")?.addEventListener("click", handleDropdownToggleClick);
-    document.getElementById("dropdownMenu")?.addEventListener("click", handleDropdownMenuClick);
     document.getElementById("applyCustomRange")?.addEventListener("click", handleApplyCustomRange);
     document.getElementById("clearCustomRange")?.addEventListener("click", handleClearCustomRange);
 

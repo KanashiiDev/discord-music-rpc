@@ -54,6 +54,7 @@ async function renderOption(key, data, container, settingKey, addListener) {
   let input = null;
 
   if (data.type === "select") {
+    optionSpan.classList.add("tom-select-input");
     input = document.createElement("select");
     input.dataset.optionKey = key;
     input.dataset.settingKey = settingKey;
@@ -68,14 +69,31 @@ async function renderOption(key, data, container, settingKey, addListener) {
       input.appendChild(optEl);
     }
 
-    addListener(input, "change", async (e) => {
-      const { optionKey: optKey, settingKey: setKey } = e.target.dataset;
-      const selectedValue = e.target.value;
-      const { parserSettings = {} } = await browser.storage.local.get("parserSettings");
-      const opts = parserSettings[setKey] ?? {};
-      const arr = Array.isArray(opts[optKey]?.value) ? opts[optKey].value : [];
-      opts[optKey].value = arr.map((o) => ({ ...o, selected: o.value === selectedValue }));
-      await browser.storage.local.set({ parserSettings: { ...parserSettings, [setKey]: opts } });
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        const ts = new TomSelect(input, {
+          controlInput: null,
+          sortField: false,
+          onDropdownOpen: (dropdown) => {
+            const list = dropdown.querySelector(".ts-dropdown-content");
+            if (!list) return;
+            requestAnimationFrame(async () => {
+              await destroySimplebar(list);
+              await activateSimpleBar(list);
+            });
+          },
+        });
+      });
+
+      input.addEventListener("change", async () => {
+        const { optionKey: optKey, settingKey: setKey } = input.dataset;
+        const selectedValue = input.value;
+        const { parserSettings = {} } = await browser.storage.local.get("parserSettings");
+        const opts = parserSettings[setKey] ?? {};
+        const arr = Array.isArray(opts[optKey]?.value) ? opts[optKey].value : [];
+        opts[optKey].value = arr.map((o) => ({ ...o, selected: o.value === selectedValue }));
+        await browser.storage.local.set({ parserSettings: { ...parserSettings, [setKey]: opts } });
+      });
     });
   } else if (data.type === "checkbox") {
     const switchLabel = Object.assign(document.createElement("label"), { className: "switch-label" });

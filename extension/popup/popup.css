@@ -86,17 +86,21 @@ body.fg-blur[data-section="stats"] .history-entry,
 body.fg-blur[data-section="stats"] .history-stats-artist-entry,
 body.fg-blur[data-section="stats"] #dropdownToggle,
 body.fg-blur[data-section="stats"] #statsFilters,
+body.fg-blur[data-section="stats"] .filter-select-wrapper .ts-dropdown,
 body.fg-blur[data-section="stats"] .date-range-picker,
 body.fg-blur[data-section="history"] #historySearchBox,
 body.fg-blur[data-section="history"] #historyFilterMenu,
 body.fg-blur[data-section="history"] .history-entry,
 body.fg-blur[data-section="history"] .history-stats-artist-entry,
 body.fg-blur[data-section="history"] #clearHistoryBtn,
+body.fg-blur[data-section="history"] #cancelCleanBtn,
 body.fg-blur[data-section="settings"] input,
 body.fg-blur[data-section="settings"] a,
 body.fg-blur[data-section="settings"] .button,
 body.fg-blur[data-section="settings"] select,
-body.fg-blur[data-section="settings"] .expandable-section {
+body.fg-blur[data-section="settings"] .expandable-section,
+body.fg-blur[data-section="settings"] .settings-option .ts-control,
+body.fg-blur[data-section="settings"] .settings-option .ts-dropdown {
   backdrop-filter: blur(var(--backdrop-blur-amount));
 }
 
@@ -115,6 +119,7 @@ body[data-section="main"] #settingsPanel,
 body[data-section="main"] #historyPanel,
 body[data-section="main"] #historyFooter,
 body[data-section="main"] #historyStatsPanel,
+body[data-section="main"] .filter-select-wrapper,
 body[data-section="main"] #statsFilters,
 body[data-section="main"] .history-controls,
 body[data-section="main"] #clearHistoryBtn,
@@ -145,6 +150,7 @@ body[data-section="history"] #siteList,
 body[data-section="history"] #searchBox,
 body[data-section="history"] #mainFooterButtons,
 body[data-section="history"] #historyStatsPanel,
+body[data-section="history"] .filter-select-wrapper,
 body[data-section="history"] #statsFilters,
 body[data-section="history"] #dropdownToggle,
 body[data-section="history"] #historyStatsToggle {
@@ -183,20 +189,13 @@ body[data-section="stats"] #mainFooterButtons {
 }
 
 body[data-section="stats"] #historyStatsPanel,
-body[data-section="stats"] #statsFilters,
-body[data-section="stats"] #dropdownToggle {
+body[data-section="stats"] #statsFilters {
   display: block !important;
   opacity: 1;
 }
 
 body[data-section="stats"] #statsFilters {
   display: block !important;
-}
-
-body[data-section="stats"] #dropdownToggle {
-  display: -webkit-box !important;
-  display: -ms-flexbox !important;
-  display: flex !important;
 }
 
 html.setup-dialog-open #settingsToggle,
@@ -208,6 +207,7 @@ body[data-section="settings"] #mainFooterButtons,
 body[data-section="settings"] #historyPanel,
 body[data-section="settings"] #historyFooter,
 body[data-section="settings"] #historyStatsPanel,
+body[data-section="settings"] .filter-select-wrapper,
 body[data-section="settings"] #statsFilters,
 body[data-section="settings"] .history-controls,
 body[data-section="settings"] #clearHistoryBtn,
@@ -333,7 +333,7 @@ body,
   display: none;
 }
 
-body:not(.fg-blur).scrollbar-visible.parser-options-open #siteList .simplebar-offset {
+body:not(.fg-blur).scrollbar-visible.parser-options-open #siteList > div.simplebar-wrapper > div.simplebar-mask > .simplebar-offset {
   clip-path: inset(0 18px 0 6px round 10px) !important;
 }
 
@@ -481,8 +481,6 @@ body.fg-blur.parser-options-open #siteList .simplebar-offset {
 
 #githubLink,
 #dropdownToggle,
-#dropdownMenu,
-#dropdownMenu li,
 .switch-label,
 #openSelector,
 #openManager,
@@ -969,6 +967,12 @@ input[type="range"]::-moz-range-thumb {
   box-shadow: var(--shadow-color) 0px 1px 3px;
 }
 
+.parser-option.tom-select-input {
+  -webkit-box-align: start;
+  -ms-flex-align: start;
+  align-items: flex-start;
+}
+
 .parser-option .parser-custom-cover {
   margin-top: 4px;
   padding: 2px 6px;
@@ -1077,7 +1081,7 @@ body[data-theme="dark"] #githubLink img {
 }
 
 .date-range-picker {
-  margin-top: 5px;
+  margin-top: 6px;
   width: calc(100% - 22px);
   border: 1px solid var(--border-color);
   padding: 10px;
@@ -1313,15 +1317,9 @@ body[data-theme="dark"] #githubLink img {
     margin-bottom var(--transition-reduced) ease,
     max-height var(--transition-reduced) ease !important;
   position: relative;
-  margin-top: 5px;
+  margin-top: 6px;
   margin-bottom: 0;
   top: 0;
-}
-
-#historyStatsPanel.custom {
-  top: 110px;
-  max-height: 336px;
-  margin-bottom: 130px;
 }
 
 #dropdownToggle {
@@ -1342,6 +1340,12 @@ body[data-theme="dark"] #githubLink img {
   -webkit-box-sizing: border-box;
   box-sizing: border-box;
   display: none;
+}
+
+.filter-select-wrapper {
+  position: relative;
+  display: block;
+  height: 35px;
 }
 
 #historyPanel h3:first-of-type {
@@ -1738,40 +1742,6 @@ body.cleaning-mode .selected .history-trash {
   transition:
     transform var(--transition-reduced) ease,
     -webkit-transform var(--transition-reduced) ease;
-}
-
-.dropdown-menu {
-  position: relative;
-  left: 0;
-  margin: 0;
-  padding: 0;
-  background: var(--foreground-color-200);
-  max-height: 0;
-  width: auto;
-  overflow: hidden;
-  -webkit-transition: max-height var(--transition-reduced) ease;
-  transition: max-height var(--transition-reduced) ease;
-  z-index: 10;
-  border-radius: 0 0 4px 4px;
-  border: 1px solid var(--border-color);
-  border-top: 0;
-  border-bottom: 0;
-}
-
-.dropdown-menu.open {
-  max-height: 325px;
-  border-bottom: 1px solid var(--border-color);
-}
-
-.dropdown-menu li {
-  list-style: none;
-  padding: 8px 12px;
-  cursor: pointer;
-}
-
-.dropdown-menu li:hover {
-  background: var(--foreground-color-400);
-  color: var(--text-color-primary);
 }
 
 #tutorialTooltip {

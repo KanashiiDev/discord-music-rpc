@@ -100,9 +100,21 @@ function createSelectRow(labelText, wrapClass, options, currentValue, onChange) 
     select.appendChild(opt);
   }
 
-  select.addEventListener("input", onChange);
-
   wrap.appendChild(label);
   wrap.appendChild(select);
+
+  if (select.tomselect) {
+    select.tomselect.destroy();
+  }
+
+  const ts = new TomSelect(select, {
+    controlInput: null,
+    sortField: false,
+
+    onChange(value) {
+      onChange({ target: { value } });
+    },
+  });
+
   return wrap;
 }

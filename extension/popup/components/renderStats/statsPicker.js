@@ -54,7 +54,6 @@ const handleApplyCustomRange = async () => {
 };
 
 const handleClearCustomRange = async () => {
-  const historyPanel = document.getElementById("historyStatsPanel");
   const datePicker = document.querySelector(".date-range-picker");
 
   for (const key of [...statsModule._topStatsCache.keys()]) {
@@ -66,7 +65,6 @@ const handleClearCustomRange = async () => {
   }
 
   clearFlatpickr();
-  historyPanel.classList.remove("custom");
   statsModule.currentCustomStart = null;
   statsModule.currentCustomEnd = null;
   datePicker.style.display = "none";

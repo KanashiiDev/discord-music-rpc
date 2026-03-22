@@ -3,9 +3,10 @@
   <head>
     <meta charset="UTF-8" />
     <title>Discord Music RPC</title>
-    <link rel="stylesheet" href="popup.css" />
     <link rel="stylesheet" href="../libs/flatpickr.css" />
     <link rel="stylesheet" href="../libs/simplebar.css" />
+    <link rel="stylesheet" href="../libs/tom-select.css" />
+    <link rel="stylesheet" href="popup.css" />
   </head>
 
   <body data-section="main">
@@ -30,40 +31,32 @@
       <div id="historyPanel" data-lazy-container></div>
       <input type="text" id="searchBox" placeholder="Search site..." />
       <div class="filter-select-wrapper">
-        <div id="dropdownToggle" class="dropdown-toggle">
-          Today
-          <span class="arrow">▼</span>
-        </div>
         <div id="statsFilters" class="custom-dropdown-container">
-          <ul id="dropdownMenu" class="dropdown-menu">
-            <li data-range="day">Today</li>
-            <li data-range="yesterday">Yesterday</li>
-            <li data-range="week">This Week</li>
-            <li data-range="month">This Month</li>
-            <li data-range="lastMonth">Last Month</li>
-            <li data-range="3months">Last 3 Months</li>
-            <li data-range="6months">Last 6 Months</li>
-            <li data-range="year">This Year</li>
-            <li data-range="all">All Time</li>
-            <li data-range="custom">Custom Range</li>
-          </ul>
-          <div class="date-range-picker" style="display: none">
-            <div class="container">
-              <div class="picker-inputs">
-                <div>
-                  <label class="picker-label">Start Date</label>
-                  <input type="text" id="customStartDate" class="picker-input flatpickr-input" readonly />
-                </div>
-                <div>
-                  <label class="picker-label">End Date</label>
-                  <input type="text" id="customEndDate" class="picker-input flatpickr-input" readonly />
-                </div>
-              </div>
-              <div class="picker-buttons">
-                <button id="applyCustomRange" class="picker-apply">Apply</button>
-                <button id="clearCustomRange" class="picker-clear">Close</button>
-              </div>
+          <select id="dropdownToggle">
+            <option value="day">Today</option>
+            <option value="week">This Week</option>
+            <option value="month">This Month</option>
+            <option value="year">This Year</option>
+            <option value="all">All Time</option>
+            <option value="custom">Custom</option>
+          </select>
+        </div>
+      </div>
+      <div class="date-range-picker" style="display: none">
+        <div class="container">
+          <div class="picker-inputs">
+            <div>
+              <label class="picker-label">Start Date</label>
+              <input type="text" id="customStartDate" class="picker-input flatpickr-input" readonly />
             </div>
+            <div>
+              <label class="picker-label">End Date</label>
+              <input type="text" id="customEndDate" class="picker-input flatpickr-input" readonly />
+            </div>
+          </div>
+          <div class="picker-buttons">
+            <button id="applyCustomRange" class="picker-apply">Apply</button>
+            <button id="clearCustomRange" class="picker-clear">Close</button>
           </div>
         </div>
       </div>
@@ -112,6 +105,7 @@
     <script src="../libs/flatpickr.js"></script>
     <script src="../libs/tinycolor.js"></script>
     <script src="../libs/iro@5.js"></script>
+    <script src="../libs/tom-select.js"></script>
     <script src="popup.js"></script>
   </body>
 </html>

@@ -57,20 +57,21 @@ const sectionManager = {
     settingsToggleBtn.addEventListener("click", this.listeners.settingsToggle);
   },
 
+  _transitioning: false,
+
   async switchTo(sectionName) {
     if (this.currentSection === sectionName) return;
-
-    const prevSection = this.currentSection;
-    this.currentSection = sectionName;
-
-    // Add data-section to the body (for CSS)
-    document.body.dataset.section = sectionName;
-
-    // Update title
-    this.updateHeader(sectionName);
-
-    // Operations specific to the Section
-    await this.handleSectionTransition(sectionName, prevSection);
+    if (this._transitioning) return;
+    this._transitioning = true;
+    try {
+      const prevSection = this.currentSection;
+      this.currentSection = sectionName;
+      document.body.dataset.section = sectionName;
+      this.updateHeader(sectionName);
+      await this.handleSectionTransition(sectionName, prevSection);
+    } finally {
+      this._transitioning = false;
+    }
   },
 
   updateHeader(sectionName) {
@@ -109,19 +110,16 @@ const sectionManager = {
 
     // Clear Sections
     const historyPanel = document.getElementById("historyStatsPanel");
-    const dropdownToggle = document.getElementById("dropdownToggle");
-    const dropdownMenu = document.getElementById("dropdownMenu");
     const datePicker = document.querySelector(".date-range-picker");
     const filterMenu = document.getElementById("historyFilterMenu");
     filterMenu.classList.remove("open");
     filterMenu.style.height = "0";
     historyPanel.classList.remove("custom");
     historyPanel.style.minHeight = "";
-    dropdownMenu.classList.remove("open");
     datePicker.style.display = "none";
-    dropdownToggle.classList.remove("open");
-    dropdownToggle.querySelector(".arrow").style.transform = "rotate(0deg)";
-    dropdownToggle.childNodes[0].textContent = "Today";
+    if (prevSection === "stats" || newSection === "stats") {
+      resetStatsDropdown();
+    }
     document.body.classList.remove("parser-options-open");
 
     // Section-specific Operations
@@ -142,13 +140,15 @@ const sectionManager = {
         activateHistoryScroll();
         break;
 
-      case "stats":
+      case "stats": {
+        initStatsDropdown();
         statsModule.init();
-        res = await sendAction("loadHistory");
+        const res = await sendAction("loadHistory");
         historyState.fullHistory = res.data;
         await renderTopStats(historyState.fullHistory, "day");
         await activateSimpleBar("historyStatsPanel");
         break;
+      }
 
       case "settings":
         exitCleaningMode();
@@ -274,20 +274,6 @@ const popupModule = {
         if (filterMenu.classList.contains("open") && !filterMenu.contains(e.target)) {
           filterMenu.classList.remove("open");
           filterMenu.style.height = "0";
-        }
-      }
-
-      // Stats
-      if (sectionManager.currentSection === "stats") {
-        // Close Stats Filter Menu
-        const historyPanel = document.getElementById("historyStatsPanel");
-        const dropdownToggle = document.getElementById("dropdownToggle");
-        const dropdownMenu = document.getElementById("dropdownMenu");
-        if (dropdownMenu.classList.contains("open") && !dropdownMenu.contains(e.target) && !dropdownToggle.contains(e.target)) {
-          dropdownMenu.classList.remove("open");
-          dropdownToggle.classList.remove("open");
-          historyPanel.style.minHeight = "";
-          dropdownToggle.querySelector(".arrow").style.transform = "rotate(0deg)";
         }
       }
 

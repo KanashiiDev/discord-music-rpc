@@ -15,7 +15,7 @@ async function toggleArtistStats(artistName, artistId, range, customStart, custo
     artistEntry.style.maxHeight = `${artistEntry.scrollHeight}px`;
     requestAnimationFrame(async () => {
       artistEntry.style.maxHeight = `${artistNameDiv?.offsetHeight ?? 0}px`;
-      await delay(300);
+      await waitForTransitionEnd(artistEntry, "max-height");
       artistEntry.classList.remove("active");
       content.replaceChildren();
       await activateSimpleBar("historyStatsPanel");
@@ -60,12 +60,17 @@ async function toggleArtistStats(artistName, artistId, range, customStart, custo
 const handleArtistEntryClick = async (ev) => {
   const artistEntry = ev.target.closest(".history-stats-artist-entry");
   if (!artistEntry || ev.target.closest(".stats")) return;
-
-  await toggleArtistStats(
-    artistEntry.dataset.artist,
-    artistEntry.dataset.artistId,
-    artistEntry.dataset.range,
-    artistEntry.dataset.customStart ? parseInt(artistEntry.dataset.customStart, 10) : null,
-    artistEntry.dataset.customEnd ? parseInt(artistEntry.dataset.customEnd, 10) : null,
-  );
+  if (artistEntry._toggling) return;
+  artistEntry._toggling = true;
+  try {
+    await toggleArtistStats(
+      artistEntry.dataset.artist,
+      artistEntry.dataset.artistId,
+      artistEntry.dataset.range,
+      artistEntry.dataset.customStart ? parseInt(artistEntry.dataset.customStart, 10) : null,
+      artistEntry.dataset.customEnd ? parseInt(artistEntry.dataset.customEnd, 10) : null,
+    );
+  } finally {
+    artistEntry._toggling = false;
+  }
 };
