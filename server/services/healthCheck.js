@@ -12,6 +12,30 @@ function startHealthCheckTimer(historyFilePath) {
   state.healthCheckInterval = setInterval(() => _tick(historyFilePath), STUCK_TIMEOUT);
 }
 
+// It verifies whether Discord is really live.
+const _timeoutSymbol = Symbol("timeout");
+
+async function pingRpcConnection(timeoutMs = 4000) {
+  const client = state.rpcClient;
+  if (!client || client.destroyed || !client.user) return false;
+
+  let timer = null;
+  try {
+    await Promise.race([
+      client.request("GET_VOICE_SETTINGS"),
+      new Promise((_, reject) => {
+        timer = setTimeout(() => reject(_timeoutSymbol), timeoutMs);
+      }),
+    ]);
+    return true;
+  } catch (err) {
+    if (err === _timeoutSymbol) return false;
+    return true;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 async function _tick(historyFilePath) {
   if (state.isShuttingDown) return;
 
@@ -21,17 +45,13 @@ async function _tick(historyFilePath) {
     // Auto-clear stale activity
     if (state.currentActivity !== null && state.lastUpdateAt && now - state.lastUpdateAt > AUTO_CLEAR_TIMEOUT) {
       const staleSeconds = Math.floor((now - state.lastUpdateAt) / 1000);
-      console.log(`[HEALTH] No update for ${staleSeconds}s — auto-clearing activity...`);
+      console.log(`[HEALTH] No update for ${staleSeconds}s - auto-clearing activity...`);
 
       const cleared = await clearRpcActivity({ maxRetries: 2, timeoutMs: 5000 });
 
       if (!cleared) {
         console.log("[HEALTH] Force-reconnecting after failed auto-clear...");
-        state.isRpcConnected = false;
-        const old = state.rpcClient;
-        state.rpcClient = null;
-        await destroyClient(old);
-        await connectRPC();
+        await _forceReconnect();
       } else {
         console.log("[HEALTH] Activity auto-cleared successfully");
       }
@@ -43,7 +63,7 @@ async function _tick(historyFilePath) {
     // Client timeout
     if (state.lastActiveClient?.timestamp && now - state.lastActiveClient.timestamp > CLIENT_TIMEOUT) {
       const inactiveSeconds = Math.floor((now - state.lastActiveClient.timestamp) / 1000);
-      console.log(`[HEALTH] Client inactive for ${inactiveSeconds}s — clearing...`);
+      console.log(`[HEALTH] Client inactive for ${inactiveSeconds}s - clearing...`);
 
       const cleared = await clearRpcActivity({ maxRetries: 1, timeoutMs: 5000 });
       if (!cleared) {
@@ -60,30 +80,56 @@ async function _tick(historyFilePath) {
     if (!state.rpcClient || state.rpcClient.destroyed || !state.rpcClient.user) {
       if (!state.isConnecting && !state.isShuttingDown) {
         state.isRpcConnected = false;
+        notifyRpcStatus(false);
         await connectRPC();
       }
       return;
     }
 
     // Connection state drift
-    const shouldBeConnected = Boolean(state.rpcClient && !state.rpcClient.destroyed && state.rpcClient.user);
+    const clientLooksAlive = Boolean(state.rpcClient && !state.rpcClient.destroyed && state.rpcClient.user);
 
-    if (state.isRpcConnected !== shouldBeConnected) {
-      console.log("[HEALTH] Connection state mismatch — correcting...");
-      state.isRpcConnected = shouldBeConnected;
-      notifyRpcStatus(shouldBeConnected);
+    if (state.isRpcConnected && !clientLooksAlive) {
+      console.log("[HEALTH] Connection state mismatch - correcting...");
+      state.isRpcConnected = false;
+      notifyRpcStatus(false);
+      await connectRPC();
+      return;
+    }
 
-      if (!shouldBeConnected && !state.isConnecting) {
-        await connectRPC();
+    // Connection ping
+    if (state.isRpcConnected && clientLooksAlive && !state.isConnecting) {
+      const alive = await pingRpcConnection(4000);
+
+      if (!alive) {
+        console.warn("[HEALTH] Ping failed - IPC connection is dead");
+        console.log("[HEALTH] Force-reconnecting...");
+        state.isRpcConnected = false;
+        notifyRpcStatus(false);
+        await _forceReconnect();
       }
     }
   } catch (err) {
     console.error("[HEALTH] Unexpected error:", err.message);
     if (!state.isConnecting && !state.isShuttingDown) {
       state.isRpcConnected = false;
+      notifyRpcStatus(false);
       await connectRPC();
     }
   }
+}
+
+// Cleans the current client and reconnects.
+async function _forceReconnect() {
+  if (state.isShuttingDown) return;
+
+  const old = state.rpcClient;
+  state.rpcClient = null;
+  state.isRpcConnected = false;
+  state.isConnecting = false;
+
+  await destroyClient(old);
+  await connectRPC();
 }
 
 module.exports = { startHealthCheckTimer };

@@ -11,10 +11,29 @@ function isRpcReady(client) {
 async function destroyClient(client) {
   if (!client) return;
   try {
+    client.removeAllListeners();
     await client.destroy();
   } catch (err) {
     console.warn("[RPC] Error destroying client:", err.message);
   }
+}
+
+// Schedules a single reconnect attempt, debounced to avoid duplicate calls.
+function scheduleReconnect(delayMs = 2000) {
+  if (state.reconnectScheduled || state.isConnecting || state.isShuttingDown) return;
+  state.reconnectScheduled = true;
+
+  setTimeout(async () => {
+    state.reconnectScheduled = false;
+    if (state.isConnecting || state.isShuttingDown) return;
+
+    const old = state.rpcClient;
+    state.rpcClient = null;
+    state.isRpcConnected = false;
+    state.isConnecting = false;
+    await destroyClient(old);
+    await connectRPC();
+  }, delayMs);
 }
 
 // Event Setup
@@ -24,40 +43,54 @@ function setupClientEvents(client) {
   client.once("ready", () => {
     state.isRpcConnected = true;
     state.isConnecting = false;
+    state.reconnectScheduled = false;
     state.hasLoggedRpcFailure = false;
     notifyRpcStatus(true);
   });
 
-  client.on("disconnected", async () => {
-    console.log("[RPC] Disconnected event triggered");
+  client.on("disconnected", () => {
+    if (client !== state.rpcClient) return;
+
     state.isRpcConnected = false;
     state.isConnecting = false;
     notifyRpcStatus(false);
 
     if (state.isShuttingDown) return;
-
-    console.warn("[RPC] Attempting reconnect in 2 seconds...");
-    const old = state.rpcClient;
-    state.rpcClient = null;
-    await destroyClient(old);
-    await new Promise((r) => setTimeout(r, 2000));
-    await connectRPC();
+    console.warn("[RPC] Attempting reconnect...");
+    scheduleReconnect(2000);
   });
 
   client.on("error", (err) => {
+    if (client !== state.rpcClient) return;
+
     console.error("[RPC] Client error:", err.message);
-    if (err.message?.includes("ENOENT") || err.message?.includes("socket")) {
-      console.error("[RPC] IPC socket error — Discord may not be running");
+
+    const isSocketError =
+      err.message?.includes("ENOENT") ||
+      err.message?.includes("ECONNRESET") ||
+      err.message?.includes("EPIPE") ||
+      err.message?.includes("socket") ||
+      err.message?.includes("ECONNREFUSED");
+
+    if (isSocketError) {
+      console.error("[RPC] IPC socket error - Discord may have closed or restarted");
+      state.isRpcConnected = false;
+      notifyRpcStatus(false);
+
+      if (!state.isShuttingDown) {
+        scheduleReconnect(3000);
+      }
     }
   });
 }
 
-// Returns the existing live client or creates a fresh one.
-function createClient() {
-  if (state.rpcClient && !state.rpcClient.destroyed) return state.rpcClient;
-
-  console.log("[RPC] Creating new client...");
-  state.rpcClient?.removeAllListeners();
+// It creates a new client.
+async function createClient() {
+  if (state.rpcClient) {
+    const old = state.rpcClient;
+    state.rpcClient = null;
+    await destroyClient(old);
+  }
 
   state.rpcClient = new Client({
     clientId: CLIENT_ID,
@@ -67,7 +100,6 @@ function createClient() {
   });
 
   setupClientEvents(state.rpcClient);
-  console.log("[RPC] Client ready");
   return state.rpcClient;
 }
 
@@ -96,12 +128,12 @@ async function _connect() {
   while (!state.isRpcConnected && !state.isShuttingDown) {
     attempt++;
     try {
-      const client = createClient();
-      client.removeAllListeners("connected");
+      const client = await createClient();
+
+      if (attempt === 1) console.log("[RPC] Connecting to Discord...");
 
       await Promise.race([client.login(), new Promise((_, reject) => setTimeout(() => reject(new Error("Login timed out")), RETRY_DELAY))]);
-
-      if (attempt === 1) console.log("[RPC] Connecting...");
+      await new Promise((r) => setTimeout(r, 200));
 
       state.hasLoggedRpcFailure = false;
       state.isConnecting = false;
@@ -111,12 +143,21 @@ async function _connect() {
       state.isRpcConnected = false;
       state.isConnecting = false;
 
+      // Clear the client on a failed attempt
+      if (state.rpcClient) {
+        const dead = state.rpcClient;
+        state.rpcClient = null;
+        dead.removeAllListeners();
+        await destroyClient(dead);
+      }
+
       if (!state.hasLoggedRpcFailure) {
         console.error(`[RPC] Connection failed: ${err.message}`);
 
-        if (err.message?.includes("ENOENT")) console.error("[RPC] Discord IPC socket not found. Is Discord running?");
+        if (err.message?.includes("ENOENT")) console.error("[RPC] Discord IPC socket not found - is Discord running?");
         else if (err.message?.includes("EACCES")) console.error("[RPC] Permission denied accessing IPC socket");
-        else if (err.message?.includes("ECONNREFUSED")) console.error("[RPC] Discord refused connection. Try restarting Discord.");
+        else if (err.message?.includes("ECONNREFUSED")) console.error("[RPC] Discord refused connection - try restarting Discord");
+        else if (err.message?.includes("timed out")) console.error("[RPC] Login timed out - Discord may be busy");
 
         console.log("[RPC] Waiting for connection...");
         state.hasLoggedRpcFailure = true;

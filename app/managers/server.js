@@ -54,8 +54,6 @@ async function startServer() {
       p?.removeAllListeners("error");
       p?.removeAllListeners("exit");
       p?.removeAllListeners("disconnect");
-      p?.stdout?.removeAllListeners("data");
-      p?.stderr?.removeAllListeners("data");
     };
 
     const handleSuccess = () => {
@@ -142,14 +140,15 @@ async function startServer() {
         restartServer().catch((err) => log.error("Server-requested restart failed:", err));
       } else if (msg === "RESET_CONFIG") {
         ConfigManager.resetConfig();
-      } else if (msg === "shutdown-complete") {
-        log.info("Server confirmed shutdown completion");
       }
     });
 
-    state.serverProcess.stdout.on("data", (data) => {
-      if (!data) return;
-      const output = data.toString().trim();
+    const readline = require("readline");
+
+    const rlOut = readline.createInterface({ input: state.serverProcess.stdout, crlfDelay: Infinity });
+    rlOut.on("line", (line) => {
+      if (!line.trim()) return;
+      const output = line.trim();
       log.info("SERVER:", output);
       if (output.includes("EADDRINUSE")) {
         log.error(`Port ${config.PORT} is already in use!`);
@@ -160,9 +159,10 @@ async function startServer() {
       logToFile({ message: output, stack: null }, "info");
     });
 
-    state.serverProcess.stderr.on("data", (data) => {
-      if (!data) return;
-      const error = data.toString().trim();
+    const rlErr = readline.createInterface({ input: state.serverProcess.stderr, crlfDelay: Infinity });
+    rlErr.on("line", (line) => {
+      if (!line.trim()) return;
+      const error = line.trim();
       log.error("SERVER ERROR:", error);
       logToFile(error, "error");
       if (error.includes("FATAL") || error.includes("Cannot find module")) {
@@ -228,15 +228,12 @@ async function stopServer() {
       state.isStopping = false;
       updateTrayMenu();
       const t = setTimeout(() => {
-        log.info("Server stop completed");
+        log.info("Server stopped");
         resolve();
       }, 1000);
       timeoutIds.add(t);
     };
 
-    proc.once("message", (msg) => {
-      if (msg === "shutdown-complete" || msg?.type === "shutdown-complete") log.info("Server confirmed shutdown complete");
-    });
     proc.once("exit", (code, signal) => {
       log.info(`Server process exited (code=${code}, signal=${signal}).`);
       safeResolve();
@@ -244,7 +241,6 @@ async function stopServer() {
 
     try {
       if (!proc.killed) {
-        log.info("Sending shutdown message to server...");
         proc.send("shutdown");
       }
     } catch (err) {
@@ -253,7 +249,7 @@ async function stopServer() {
 
     const gracefulTimeout = setTimeout(() => {
       if (resolved) return;
-      log.warn("Graceful shutdown timeout — checking if process still exists...");
+      log.warn("Graceful shutdown timeout - checking if process still exists...");
       try {
         if (proc?.killed === false && proc.pid === state.serverPid) {
           try {
