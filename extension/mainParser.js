@@ -156,9 +156,31 @@ async function useSetting(id, key, label, type = "text", defaultValue = "", newV
     }
 
     // Default value check (update only if the value has not changed)
-    if (type !== "select" && current.value === undefined && current.defaultValue !== defaultValue) {
-      current.defaultValue = defaultValue;
-      shouldSave = true;
+    if (type === "select" && Array.isArray(defaultValue)) {
+      const oldOptions = Array.isArray(current.value) ? current.value : [];
+      const newOptions = defaultValue;
+
+      const isDifferent =
+        oldOptions.length !== newOptions.length || oldOptions.some((opt, i) => opt.value !== newOptions[i]?.value || opt.label !== newOptions[i]?.label);
+
+      if (isDifferent) {
+        const selectedValue = oldOptions.find((o) => o.selected)?.value;
+        const hasMatch = newOptions.some((opt) => opt.value === selectedValue);
+
+        current.value = newOptions.map((opt, i) => ({
+          ...opt,
+          selected: hasMatch ? opt.value === selectedValue : (opt.selected ?? i === 0),
+        }));
+
+        shouldSave = true;
+      }
+    }
+
+    if (type !== "select") {
+      if (current.value === undefined && defaultValue !== undefined) {
+        current.value = defaultValue;
+        shouldSave = true;
+      }
     }
   }
 
