@@ -1,9 +1,25 @@
 let statsTomSelect = null;
 
+const statsOptions = [
+  { value: "day", label: "Today" },
+  { value: "yesterday", label: "Yesterday" },
+  { value: "week", label: "This Week" },
+  { value: "month", label: "This Month" },
+  { value: "year", label: "This Year" },
+  { value: "all", label: "All Time" },
+  { value: "custom", label: "Custom" },
+];
+
 function initStatsDropdown() {
-  const select = document.getElementById("dropdownToggle");
   const historyPanel = document.getElementById("historyStatsPanel");
   const datePicker = document.querySelector(".date-range-picker");
+  const select = document.getElementById("dropdownToggle");
+  select.replaceChildren();
+
+  statsOptions.forEach(({ value, label }) => {
+    const option = new Option(label, value);
+    select.add(option);
+  });
 
   if (statsTomSelect) {
     statsTomSelect.destroy();
