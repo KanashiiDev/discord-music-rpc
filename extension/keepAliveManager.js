@@ -98,18 +98,39 @@ class KeepAliveManager {
     try {
       this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
 
-      const oscillator = this.audioContext.createOscillator();
-      const gainNode = this.audioContext.createGain();
+      const setupNodes = () => {
+        if (this.oscillators.length > 0) return;
 
-      oscillator.frequency.value = 1;
+        const oscillator = this.audioContext.createOscillator();
+        const gainNode = this.audioContext.createGain();
 
-      gainNode.gain.value = 0.000001;
+        oscillator.frequency.value = 1;
+        gainNode.gain.value = 0.000001;
 
-      oscillator.connect(gainNode);
-      gainNode.connect(this.audioContext.destination);
+        oscillator.connect(gainNode);
+        gainNode.connect(this.audioContext.destination);
 
-      oscillator.start();
-      this.oscillators.push(oscillator);
+        oscillator.start();
+        this.oscillators.push(oscillator);
+      };
+
+      const resume = async () => {
+        if (this.audioContext.state === "suspended") {
+          await this.audioContext.resume();
+        }
+        setupNodes();
+      };
+
+      if (this.audioContext.state === "running") {
+        setupNodes();
+      }
+
+      const events = ["click", "keydown", "pointerdown", "touchstart"];
+      const onGesture = () => {
+        resume().catch((e) => this.log("AudioContext resume error:", e));
+        events.forEach((evt) => document.removeEventListener(evt, onGesture, true));
+      };
+      events.forEach((evt) => document.addEventListener(evt, onGesture, { capture: true, once: false }));
     } catch (e) {
       this.log("AudioContext error:", e);
     }
