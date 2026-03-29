@@ -6,9 +6,11 @@ registerParser({
   category: "radio",
   tags: ["anime", "japan", "community"],
   fn: function () {
-    const title = getText(".player-song-title");
-    const artist = getText("span.player-song-artist a");
-    const image = getImage(".albumContainer img");
+    let title = getText(".glass span.text-text-primary");
+    const artist = getText(".glass span.text-text-secondary > span");
+    const image = getImage("img[alt='Album art']") || "https://listen.moe/images/logo.png";
+    const titleExtra = getText(".glass span.text-text-primary > .inline");
+    if (titleExtra) title = title.replace(titleExtra, "");
 
     return {
       title,
@@ -16,7 +18,7 @@ registerParser({
       image,
       source: "LISTEN.moe",
       songUrl: "https://listen.moe/",
-      isPlaying: document.querySelector(".playerContainer .shadow > svg > g > path")?.getAttribute("d")?.startsWith("M9.5"),
+      isPlaying: document.querySelector(".glass svg rect")?.getAttribute("x") === "6",
     };
   },
 });
