@@ -757,6 +757,11 @@ const handleIsHostnameMatch = async (sender) => {
 const setupListeners = () => {
   browser.runtime.onMessage.addListener(async (req, sender) => {
     try {
+      if (req.type === "FETCH_IFRAME_DATA" || req.type === "IFRAME_DATA") {
+        if (sender.tab?.id != null) {
+          browser.tabs.sendMessage(sender.tab.id, req).catch(() => {});
+        }
+      }
       if (req.type === "ACCESS_WINDOW") {
         try {
           const { path, callFunction, args } = req.payload;

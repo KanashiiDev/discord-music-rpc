@@ -406,218 +406,299 @@ To add them:
 <details>
 <summary><strong>Option 3: Build Method (Developers)</strong></summary>
 
-You can manually register a parser with JavaScript using the `registerParser()` function.
-Create a new file in the `extension/parsers/` directory, named `<yourSite>.js`. Use this template:
+This method lets you write a JavaScript parser directly into the extension's source code. It's the most powerful approach and gives you access to advanced helper functions not available in the other options.
+
+---
+
+### Step 1 — Create Your Parser File
+
+Inside the project folder, navigate to `extension/parsers/` and create a new file named after the site you're adding (e.g., `myMusicSite.js`).
+
+---
+
+### Step 2 — Register the Parser
+
+Your file must call `registerParser()` with a configuration object. Here's a clean, minimal template to get started:
 
 ```js
 registerParser({
-  domain: "example.com", // Website domain (string | string[])
-  title: "Example", // Display title
-  homepage: "https://example.com/homepage", // The page the user will be redirected to when they click on the parser image in the pop-up window (optional)
-  urlPatterns: [/.*/], // Only run on specific paths (Regex)
-  authors: [""], // Contributors names for the code to be displayed in the parser's settings (optional)
-  authorsLinks: [""], // Contributors links (optional)
-  description: "", // Short description of the parser (optional)
-  category: "radio", // Category of the parser (radio, platform, aggregator)
-  tags: ["anime", "japan"], // Tags to describe the parser's content type (rock, japan, community, retro)
+  // --- Required ---
+  domain: "example.com", // The website's domain. Can also be an array: ["example.com", "www.example.com"]
+  title: "Example", // Display name shown in the extension UI
+  category: "platform", // One of: "radio", "platform", "aggregator"
 
-  fn: async function ({ accessWindow, useSetting }) {
-    /* --- USE CUSTOM SETTINGS ---
-      To use custom settings in your parser (checkbox, text, or select), include useSetting in the parser function parameters: async function ({ useSetting })
-      Example useSetting Types:
-        const checkboxExample = await useSetting("checkboxVariable", "checkboxLabel", "checkbox", true);
-        const textExample = await useSetting("textVariable", "textLabel", "text", "Default text");
-        const selectExample = await useSetting("selectVariable", "selectLabel", "select", [{ value: "example1", label: "Example Value", selected: true },{ value: "example2", label: "Example Value 2" }]);
+  // --- Optional ---
+  homepage: "https://example.com", // Link opened when the user clicks your parser's icon
+  description: "My parser for Example Music.", // Short description of the parser
+  authors: ["yourName"], // Contributors names for the code to be displayed in the parser's settings
+  authorsLinks: ["https://github.com/yourName"], // Contributors links
+  tags: ["rock", "community"], // Descriptive tags for the parser's content type
+  urlPatterns: [/.*/], // Regex patterns — limits the parser to specific URL paths. [/.*/] means "run on all pages of this domain".
 
-    /* --- ACCESS WINDOW ---
-      Safely access window properties and call functions from main world. Returns the property value, function return value, or null if inaccessible/error
-      Examples:
-      // Get property
-        const prop = await accessWindow('prop');
-        const config = await accessWindow('ap.config.settings');
-  
-      // Call function (detects and calls automatically)
-        const audio = await accessWindow('player.getCurrentAudio');
-        const progress = await accessWindow('player.getCurrentProgress');
-  
-      // Call function with arguments
-        const result = await accessWindow('ap.setVolume', { args: [50] });
-        const data = await accessWindow('api.fetch', { args: ['songs', { limit: 10 }] });
-  
-      // Parallel calls
-        const [audio, config, playlist] = await Promise.all([
-          accessWindow('player.getCurrentAudio'),
-          accessWindow('player.config'),
-          accessWindow('player.getPlaylist')
-        ]);
-    */
-
-    // You can define and use helper functions here if needed
+  // --- Main function ---
+  // This runs periodically to extract the currently playing song's data.
+  // Use the built-in helper functions (getText, getImage) to grab info from the page.
+  fn: async function ({ accessWindow, useSetting, iframeData }) {
     return {
-      title: getText(".now-playing-title"), // Song title (required)
-      artist: getText(".now-playing-artist"), // Artist name (required)
-      image: getImage("img.album_art"), // Album image (optional)
-      timePassed: getText(".time-display-played"), // Played time (optional)
-      duration: getText(".time-display-total"), // Total duration (optional)
-      source: "Example", // Source label (optional)
-      songUrl: "example.com", // Link to song/station (optional)
-      mode: "listen", // Activity Type ("listen" or "watch") (optional)
-      isPlaying: Boolean(document.querySelector("#pauseSongButton")), // Any truthy value indicating active playback; used for cast support (optional)
+      title: getText(".now-playing-title"), // Required — song title
+      artist: getText(".now-playing-artist"), // Required — artist name
+      image: getImage("img.album_art"), // Album art URL
+      timePassed: getText(".time-display-played"), // Current playback time (e.g. "1:23")
+      duration: getText(".time-display-total"), // Total song duration  (e.g. "3:45")
+      source: "Example", // Source label
+      songUrl: "https://example.com/song", // Direct link to the song or station
+      mode: "listen", // "listen" or "watch"
+      isPlaying: Boolean(document.querySelector("#pauseSongButton")), // Any truthy value indicating active playback; used for cast support
       buttons: [
-        // Buttons (max 2) (optional)
-        {
-          link: "Example Button Link",
-          text: "Example Button Text",
-        },
+        // Up to 2 clickable buttons on the Discord status
+        { text: "Listen Along", link: "https://example.com/song" },
       ],
     };
   },
 });
 ```
 
-#### Available Helper Functions
+---
 
-These helper functions are available **only in the build method** (Option 3):
+### Step 3 — Use Advanced Features (Optional)
+
+<details>
+<summary><strong>Custom Settings (useSetting)</strong></summary>
+
+You can expose configurable options (toggles, text inputs, dropdowns) that appear in the extension popup for your parser.
+
+```js
+fn: async function ({ useSetting }) {
+  // Checkbox toggle
+  const showArtist = await useSetting("showArtist", "Show Artist Name", "checkbox", true);
+
+  // Text input
+  const customLabel = await useSetting("customLabel", "Custom Source Label", "text", "My Station");
+
+  // Dropdown select
+  const quality = await useSetting("quality", "Stream Quality", "select", [
+    { value: "high",   label: "High",   selected: true },
+    { value: "medium", label: "Medium" },
+  ]);
+
+  return {
+    source: showArtist ? customLabel : "",
+    // ...
+  };
+},
+```
+
+Each call to `useSetting(variableName, label, type, defaultValue)` creates a setting that the user can change from the popup.
+
+</details>
+
+<details>
+<summary><strong>Accessing JavaScript Variables on the Page (accessWindow)</strong></summary>
+
+Some sites store playback data in JavaScript variables (e.g., `window.player.currentTrack`) rather than in the HTML. Use `accessWindow` to safely read these.
+
+```js
+fn: async function ({ accessWindow }) {
+  // Read a property from the page's window object
+  const track = await accessWindow("player.getCurrentAudio");
+  const config = await accessWindow("ap.config.settings");
+
+  // Call a function that takes arguments
+  const data = await accessWindow("api.fetch", { args: ["songs", { limit: 10 }] });
+
+  // Fetch multiple values in parallel
+  const [audio, playlist] = await Promise.all([
+    accessWindow("player.getCurrentAudio"),
+    accessWindow("player.getPlaylist"),
+  ]);
+
+  return {
+    title:  audio?.title  ?? "",
+    artist: audio?.artist ?? "",
+  };
+},
+```
+
+> `accessWindow` returns `null` if the property doesn't exist or throws an error — always handle this gracefully.
+
+</details>
+
+<details>
+<summary><strong>Reading Data from Iframes (iframeFn)</strong></summary>
+
+If the music player is embedded inside an `<iframe>` (a separate page within the page), you need `iframeFn` to extract data from it.
+
+**How it works:**
+
+- `iframeFn` runs **inside** the iframe and returns data.
+- `fn` receives that data via the `iframeData` parameter.
+
+```js
+registerParser({
+  domain: "example.com",
+  title: "Example",
+  category: "platform",
+
+  // Optional: only accept data from iframes on this domain
+  iframeOrigins: ["player.example.com"],
+
+  fn: async function ({ iframeData }) {
+    if (!iframeData) return {}; // iframe hasn't loaded yet
+
+    return {
+      title: iframeData.title,
+      isPlaying: iframeData.isPlaying,
+      timePassed: String(iframeData.currentTime),
+      duration: String(iframeData.duration),
+    };
+  },
+
+  // This function runs inside the iframe
+  iframeFn: function () {
+    const video = document.querySelector("video");
+    return {
+      title: document.querySelector(".track-title")?.textContent ?? "",
+      isPlaying: !video?.paused,
+      currentTime: video?.currentTime,
+      duration: video?.duration,
+    };
+  },
+});
+```
+
+**Tip:** If the iframe contains a `<video>` element, you can use the built-in shorthand:
+
+```js
+iframeFn: function () {
+  return getVideoInfo();
+  // Returns: { duration, currentTime, paused, playing }
+},
+```
+
+> `iframeData.lastValidValues` holds the last non-null values for each field — useful as a fallback when data is temporarily unavailable.
+
+</details>
+
+---
+
+### Available Helper Functions
+
+These functions are available inside `fn` to make extracting data easier.
 
 <details>
 <summary><strong>getText(selector, options?)</strong></summary>
-
-Extracts text content or attributes from an element with optional transformation.
-
+ 
+Reads the text content (or an attribute) of a DOM element matching the given CSS selector.
+ 
 **Parameters:**
-
-- `selector` (string): CSS selector
-- `options` (object, optional):
-  - `attr` (string): Attribute name to extract (e.g., "href", "title")
-  - `transform` (function): Transform function to apply to the result
-  - `root` (Element|Document): Search root (default: `document`)
-
-**Returns:** `string` - Processed text or empty string if not found
-
-**Examples:**
-
+ 
+| Parameter | Type | Description |
+|---|---|---|
+| `selector` | `string` | CSS selector (e.g., `".now-playing-title"`) |
+| `options.attr` | `string` | Read an attribute instead of text (e.g., `"href"`, `"title"`) |
+| `options.transform` | `function` | A function to modify the result before returning it |
+| `options.root` | `Element` | Search within a specific element instead of the whole page |
+ 
+**Returns:** `string` — the extracted text, or `""` if nothing was found.
+ 
 ```js
-// Get text content
-getText(".title");
-// → "Music Title"
-
-// Get attribute
-getText(".link", { attr: "href" });
-// → "https://example.com"
-
-// Transform result
-getText(".song", {
+// Basic usage — reads the text inside .now-playing-title
+getText(".now-playing-title");
+// → "Bohemian Rhapsody"
+ 
+// Read an attribute instead of text content
+getText(".song-link", { attr: "href" });
+// → "https://example.com/song/123"
+ 
+// Transform the result (e.g., remove a leading slash)
+getText(".song-link", {
   attr: "href",
-  transform: (v) => v.slice(1),
+  transform: (v) => v.replace(/^\//, ""),
 });
-// → "/song" becomes "song"
-
-// Custom root element
-getText(".subtitle", { root: document.querySelector(".container") });
+// → "song/123"
+ 
+// Search inside a specific container
+getText(".subtitle", { root: document.querySelector(".player-widget") });
 ```
-
-**Edge Cases:**
-
-- Returns `""` if element not found
-- Returns `""` if attribute doesn't exist
-- Returns `""` if transform function throws error
-- Automatically trims whitespace
-
----
-
+ 
+> Returns `""` if the element is not found, the attribute doesn't exist, or the transform function throws an error. Whitespace is trimmed automatically.
+ 
 </details>
-
+ 
 <details>
 <summary><strong>getImage(selector, root?)</strong></summary>
-
-Extracts image URL from various sources (img src, background-image, child img).
-
+ 
+Extracts an image URL from a DOM element. Works with `<img>` tags, CSS `background-image`, or a child `<img>` inside the matched element.
+ 
 **Parameters:**
-
-- `selector` (string): CSS selector
-- `root` (Element|Document, optional): Search root (default: `document`)
-
-**Returns:** `string|null` - Image URL or `null` if not found
-
-**Examples:**
-
+ 
+| Parameter | Type | Description |
+|---|---|---|
+| `selector` | `string` | CSS selector |
+| `root` | `Element` _(optional)_ | Search within a specific element instead of the whole page |
+ 
+**Returns:** `string \| null` — the image URL, or `null` if not found.
+ 
 ```js
-// From <img> tag
-getImage(".cover img");
-// → "https://example.com/cover.jpg"
-
-// From background-image
-getImage(".hero");
-// → "https://example.com/bg.jpg"
-
-// From child img
-getImage(".card");
-// → Finds first <img> inside .card
+getImage(".album-cover img");    // → "https://example.com/cover.jpg"
+getImage(".hero-banner");        // → reads background-image CSS property
+getImage(".track-card");         // → finds the first <img> inside .track-card
 ```
-
-**Priority Order:**
-
-1. Direct `<img>` element's `src`
-2. Element's CSS `background-image`
-3. First `<img>` child's `src`
-
----
-
+ 
+**Search priority:** direct `<img>` src → CSS `background-image` → first child `<img>` src.
+ 
 </details>
-
+ 
 <details>
 <summary><strong>getTextAll(selector, options?)</strong></summary>
-
-Same as `getText` but returns array of ALL matching elements.
-
-**Examples:**
-
+ 
+Same as `getText`, but returns an array of results for **all** matching elements.
+ 
+**Parameters:**
+ 
+| Parameter | Type | Description |
+|---|---|---|
+| `selector` | `string` | CSS selector (e.g., `".track-list .title"`) |
+| `options.attr` | `string` | Read an attribute instead of text (e.g., `"href"`, `"title"`) |
+| `options.transform` | `function` | A function to modify each result before returning it |
+| `options.root` | `Element` | Search within a specific element instead of the whole page |
+ 
+**Returns:** `string[]` — empty strings are automatically filtered out.
+ 
 ```js
-// Get all music titles
-getTextAll(".music .title");
+getTextAll(".track-list .title");
 // → ["Song 1", "Song 2", "Song 3"]
-
-// Get all links with transformation
-getTextAll(".nav a", {
-  attr: "href",
-  transform: (v) => new URL(v).pathname,
-});
+ 
+getTextAll(".nav a", { attr: "href", transform: (v) => new URL(v).pathname });
 // → ["/home", "/about", "/contact"]
 ```
-
-**Returns:** `string[]` - Array of processed strings (empty strings filtered out)
-
----
-
+ 
 </details>
-
+ 
 <details>
 <summary><strong>getImageAll(selector, root?)</strong></summary>
-
-Gets image URLs from ALL matching elements.
-
-**Examples:**
-
+ 
+Same as `getImage`, but returns an array of image URLs for **all** matching elements.
+ 
 ```js
-getImageAll(".gallery img");
-// → ["img1.jpg", "img2.jpg", "img3.jpg"]
+getImageAll(".playlist-item img");
+// → ["cover1.jpg", "cover2.jpg", "cover3.jpg"]
 ```
-
-**Returns:** `string[]` - Array of image URLs (nulls filtered out)
+ 
+**Returns:** `string[]` — `null` values are automatically filtered out.
+ 
+</details>
 
 ---
 
-</details>
+### Tips
 
-#### Tips
-
-- Always provide `title`, `artist`, and `image` when available.
-- Use `-1` as the artist value to intentionally hide the artist name and display only the source information.
-- Use `urlPatterns` to limit the parser to specific pages.
-- If time info is available, include `timePassed`, `duration` to calculate `position`, `progress`, and timestamps.
-- Use `getText` and `getImage` to keep your code clean and reliable.
-- Use your browser's developer tools (right-click > Inspect) to find the correct selectors.
-- Buttons will not be visible to you on Discord. This is a limitation of Discord itself. To test them, open Discord in a web browser using a different account.
+- Always return at least `title` and `artist` — these are required for the Discord status to display.
+- Set `artist` to `-1` to intentionally hide the artist and show only the `source` label instead.
+- Use `urlPatterns` to prevent your parser from running on pages where it isn't needed (e.g., exclude the homepage and only run on `/player`).
+- Include `timePassed` and `duration` whenever available — they enable the progress bar and timestamps in Discord.
+- Use your browser's **DevTools** (F12 → Elements tab) to inspect the page and find the right CSS selectors.
+- Discord desktop does **not** show your parser's buttons. To test them, open Discord in a browser on a separate account.
 
 </details>
 

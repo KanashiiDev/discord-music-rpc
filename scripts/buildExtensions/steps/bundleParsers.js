@@ -29,6 +29,8 @@ function extractParserInfo(code, ast, fallbackId, seenDomains) {
   let title = null;
   let urlPatternsRaw = null;
   let hasFn = false;
+  let iframeFnRaw = null;
+  let iframeOrigins = null;
   const settings = [];
   let foundRegisterCall = false;
 
@@ -141,6 +143,33 @@ function extractParserInfo(code, ast, fallbackId, seenDomains) {
               hasFn = true;
               break;
             }
+
+            case "iframeFn": {
+              const fnNode = prop.value;
+              const validTypes = ["ArrowFunctionExpression", "FunctionExpression"];
+              if (!validTypes.includes(fnNode.type)) {
+                console.warn(`[ParserBundler] iframeFn must be a function: ${fallbackId}`);
+                break;
+              }
+              iframeFnRaw = code.slice(fnNode.start, fnNode.end).trim();
+              break;
+            }
+
+            case "iframeOrigins": {
+              const node = prop.value;
+              let origins = [];
+              if (node.type === "Literal" && typeof node.value === "string") {
+                origins = [node.value];
+              } else if (node.type === "ArrayExpression") {
+                for (const el of node.elements) {
+                  if (el?.type === "Literal" && typeof el.value === "string") {
+                    origins.push(el.value);
+                  }
+                }
+              }
+              if (origins.length) iframeOrigins = origins;
+              break;
+            }
           }
         }
         return;
@@ -187,6 +216,8 @@ function extractParserInfo(code, ast, fallbackId, seenDomains) {
     title,
     urlPatternsRaw,
     settings,
+    iframeFnRaw,
+    iframeOrigins,
   };
 }
 
@@ -243,6 +274,7 @@ function bundleParsers(extensionDir, distDir) {
   }
 
   const allParserSettings = Object.create(null);
+  const allIframeParsers = [];
   const seenDomains = new Set();
   const failedParsers = [];
   const codeParts = [];
@@ -262,13 +294,20 @@ function bundleParsers(extensionDir, distDir) {
         continue;
       }
 
-      const { parserId, urlPatternsRaw, settings } = info;
+      const { parserId, urlPatternsRaw, settings, iframeFnRaw, iframeOrigins } = info;
       const primaryDomain = parserId[0];
       allParserSettings[primaryDomain] = {
         domains: parserId,
         urlPatterns: urlPatternsRaw,
         settings,
       };
+
+      // If there is iframeFn, save it
+      if (iframeFnRaw) {
+        const origins = iframeOrigins || null;
+        allIframeParsers.push({ origins, parserId, iframeFnRaw });
+      }
+
       codeParts.push(`// ${file} \n${code.trim()}`);
     } catch (err) {
       const message = `⚠️  Parser failed: ${file} → ${err.message}`;
@@ -280,6 +319,27 @@ function bundleParsers(extensionDir, distDir) {
 
   const combinedCode = codeParts.join("\n\n");
   const output = serializeSettings(allParserSettings);
+
+  // Generate compiledIframeParsers.js
+  if (allIframeParsers.length > 0) {
+    const iframeOutputPath = path.join(distDir, "compiledIframeParsers.js");
+    const iframeTempPath = `${iframeOutputPath}.tmp`;
+
+    let iframeOut = "window.iframeParsers = {\n";
+    for (const { origins, parserId, iframeFnRaw } of allIframeParsers) {
+      for (const parser of parserId) {
+        iframeOut += `  "${parser}": {\n    match: "${origins || ""}",\n    fn: ${iframeFnRaw} },\n`;
+      }
+    }
+    iframeOut += "};\n";
+
+    try {
+      fs.writeFileSync(iframeTempPath, iframeOut, "utf8");
+      fs.renameSync(iframeTempPath, iframeOutputPath);
+    } catch (err) {
+      console.error("⚠️  Failed to write iframe bundle:", err.message);
+    }
+  }
 
   try {
     fs.ensureDirSync(distDir);

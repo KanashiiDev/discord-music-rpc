@@ -3,6 +3,7 @@
 window.parsers = {};
 window.parserMeta = [];
 window.latestUserScriptData = window.latestUserScriptData || {};
+window.iframeDataCache = {};
 const rpcState = new window.RPCStateManager();
 const processedScripts = new Set();
 const settingsCache = {};
@@ -288,6 +289,8 @@ window.registerParser = async function ({
   tags = [],
   mode = "listen",
   fn,
+  iframeFn,
+  iframeOrigins,
   userAdd = false,
   userScript = false,
   initOnly = false,
@@ -345,11 +348,19 @@ window.registerParser = async function ({
       category,
       tags,
       mode,
+      iframeFn,
+      iframeOrigins,
       parse: async () => {
+        if (iframeFn) {
+          await fetchIframeData(primaryDomain);
+        }
+
         if (initOnly) return null;
+
         const rawData = await fn({
           useSetting: boundUseSetting,
           accessWindow,
+          iframeData: window.iframeDataCache[primaryDomain] ?? null,
         });
         if (!rawData) return null;
 
@@ -556,6 +567,7 @@ window.registerParser = async function ({
 
         return {
           ...rest,
+          mode: rest.mode,
           source: rest.artist === rest.source ? title : rest.source,
           timePassed: currentPosition,
           position: currentPosition,
@@ -1041,6 +1053,67 @@ async function cleanupOrphanSettingsAndEnables() {
   } catch (e) {
     logError("cleanupOrphanSettingsAndEnables error:", e);
   }
+}
+
+function fetchIframeData(key, maxDelayMs = 10000) {
+  return new Promise((resolve) => {
+    let resolved = false;
+
+    const cleanup = (value) => {
+      if (resolved) return;
+      resolved = true;
+      clearTimeout(timeoutId);
+      browser.runtime.onMessage.removeListener(listener);
+      resolve(value);
+    };
+
+    const timeoutId = setTimeout(() => {
+      delete window.iframeDataCache?.[key];
+      cleanup(undefined);
+    }, maxDelayMs);
+
+    const listener = (msg) => {
+      if (msg?.type !== "IFRAME_DATA" || msg.key !== key) return;
+      if (msg.data == null) return;
+
+      const cache = (window.iframeDataCache ??= {});
+      const prev = cache[key];
+
+      let lastValidValues = { ...prev?.lastValidValues };
+      if (prev?.href !== msg.href) {
+        lastValidValues = {};
+      }
+
+      for (const [k, v] of Object.entries(msg.data)) {
+        if (v != null && v !== "" && (typeof v !== "number" || isFinite(v))) {
+          lastValidValues[k] = v;
+        }
+      }
+
+      const entry = {
+        ...msg.data,
+        lastValidValues,
+        lastValidUpdate: Date.now(),
+        origin: msg.origin,
+        href: msg.href,
+        ...(msg.data.duration != null && isFinite(msg.data.duration)
+          ? { duration: msg.data.duration }
+          : lastValidValues.duration != null
+            ? { duration: lastValidValues.duration }
+            : {}),
+        ...(msg.data.paused != null
+          ? {
+              playing: msg.data.paused === false && (msg.data.currentTime ?? 0) > 0,
+            }
+          : {}),
+      };
+      cache[key] = entry;
+      cleanup(entry);
+    };
+
+    browser.runtime.onMessage.addListener(listener);
+    browser.runtime.sendMessage({ type: "FETCH_IFRAME_DATA", key }).catch(() => {});
+  });
 }
 
 // Global unhandled promise rejection handler

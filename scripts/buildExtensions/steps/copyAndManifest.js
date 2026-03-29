@@ -15,6 +15,7 @@ const DEFAULT_JS_FILES = [
   "main.js",
 ];
 
+const IFRAME_JS_FILES = ["libs/browser-polyfill.js", "compiledIframeParsers.js", "iframeParser.js"];
 const EXCLUDED_DIRS = ["manifests", "parsers", "matches", path.join("libs", "codemirror", "addons")];
 
 function copyExtensionFiles(extensionDir, distDir) {
@@ -39,6 +40,15 @@ function buildManifest(extensionDir, target, pkgVersion) {
     matches: ["<all_urls>"],
     js: DEFAULT_JS_FILES,
   }));
+
+  // iframe content script
+  manifest.content_scripts.push({
+    matches: ["<all_urls>"],
+    js: IFRAME_JS_FILES,
+    all_frames: true,
+    match_about_blank: true,
+    run_at: "document_idle",
+  });
 
   return manifest;
 }
