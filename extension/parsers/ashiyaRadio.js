@@ -5,7 +5,8 @@ registerParser({
   description: "Japanese online radio station featuring jazz and international music.",
   category: "radio",
   tags: ["jazz", "japan"],
-  fn: async function getSongInfo() {
+  iframeOrigins: ["embed.radio.co"],
+  fn: async function ({ iframeData }) {
     async function getStatus() {
       try {
         const res = await fetch("https://public.radio.co/stations/sc8d895604/status");
@@ -28,6 +29,13 @@ registerParser({
       image: coverElem,
       source: "Ashiya Radio",
       songUrl: "https://www.ashiya.radio/",
+      isPlaying: Boolean(iframeData?.playing),
+    };
+  },
+  iframeFn: function () {
+    const btn = document.querySelector(".radioco-player #playButton.play-button.icon.icon-playerstop");
+    return {
+      playing: Boolean(btn),
     };
   },
 });

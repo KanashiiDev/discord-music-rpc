@@ -5,7 +5,8 @@ registerParser({
   description: "Online dance music radio station streaming current hits and '00s/'90s throwbacks 24/7.",
   category: "radio",
   tags: [],
-  fn: async function getSongInfo() {
+  iframeOrigins: ["embed.radio.co"],
+  fn: async function ({ iframeData }) {
     async function getStatus() {
       try {
         const res = await fetch("https://public.radio.co/stations/s3dccdde7b/status");
@@ -28,6 +29,14 @@ registerParser({
       image: coverElem,
       source: "Dance Radio",
       songUrl: "https://danceradio.show/",
+      isPlaying: Boolean(iframeData?.playing),
+    };
+  },
+
+  iframeFn: function () {
+    const btn = document.querySelector(".radioco-player #playButton.play-button.icon.icon-playerstop");
+    return {
+      playing: Boolean(btn),
     };
   },
 });
