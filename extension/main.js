@@ -157,7 +157,7 @@ async function mainLoop() {
     const timeSinceLastUpdate = Date.now() - (state.lastUpdateTime || Date.now());
 
     // Validate song data
-    const isFirstUpdate = !rpcState.lastActivity;
+    const isFirstUpdate = !rpcState.lastActivity && state.lastUpdateStatus !== "skipped";
     const isChanged = rpcState.isSongChanged(song);
     const isRadioOrStream = !song.duration || song.duration <= 0;
 
@@ -182,9 +182,19 @@ async function mainLoop() {
     if (state.isConnected) {
       // State Log
       const lastSeekSeconds = state.lastSeekDetected ? Math.floor((Date.now() - state.lastSeekDetected) / 1000) : "Never";
-      const statusLabel = isRadioOrStream ? "🔴 RADIO" : "🎵 SONG";
-      const positionText = isRadioOrStream ? "RADIO" : `Pos: ${song.position.toFixed(1)} / ${song.duration}`;
-      const positionColor = isRadioOrStream ? "#e91e63" : "#6db9f8";
+      let statusLabel = "🎵 SONG";
+      let statusMode = 0;
+      if (song?.mode === "watch" && isRadioOrStream) {
+        statusLabel = "🔴 STREAM";
+        statusMode = 1;
+      } else if (song?.mode === "watch") {
+        statusLabel = "📺 VIDEO";
+      } else if (isRadioOrStream) {
+        statusLabel = "📻 RADIO";
+        statusMode = 1;
+      }
+      const positionText = statusMode ? statusLabel : `Pos: ${song.position.toFixed(1)} / ${song.duration}`;
+      const positionColor = statusMode ? "#e91e63" : "#6db9f8";
 
       // Log Colors
       const colors = {
@@ -338,17 +348,23 @@ async function mainLoop() {
       }
     }
 
+    rpcState.keepActivity(song);
+
     // Audible Check
     let audibleCheck = null;
     try {
       audibleCheck = await browser.runtime.sendMessage({ type: "IS_TAB_AUDIBLE" });
     } catch (_) {}
 
-    if (!audibleCheck?.audible && updateReason !== "First Update") {
-      if (song.isPlaying !== true) {
-        shouldUpdate = false;
-        updateReason = "Tab not audible";
+    const isPlaying = !!song.isPlaying;
+    const isAudible = !!audibleCheck?.audible;
+
+    if (!isAudible && !isPlaying) {
+      if (rpcState.lastActivity?.lastUpdated) {
+        await handleNoSong();
       }
+      state.lastUpdateStatus = "skipped";
+      return;
     }
 
     if (!shouldUpdate) {
@@ -473,22 +489,24 @@ async function isHostnameMatch() {
 }
 
 // Handle scenario when no song is playing
-async function handleNoSong() {
-  if (!rpcState.lastActivity) {
-    logInfo("handleNoSong: no last activity to clear");
-    return;
-  }
+let clearingRpc = false;
 
-  logInfo(`%c⏹️  No song playing - clearing RPC...`, "color:#ff9800; font-weight:bold;");
+async function handleNoSong() {
+  if (clearingRpc) return;
+  clearingRpc = true;
 
   try {
+    logInfo(`%c⏹️  No song is currently playing - clearing RPC...`, "color:#ff9800; font-weight:bold;");
     await browser.runtime.sendMessage({ type: "CLEAR_RPC" });
+    rpcState.reset();
+    window._lastParsedSong = null;
     logInfo("handleNoSong: RPC cleared successfully");
   } catch (e) {
     logError("handleNoSong: failed to clear RPC:", e);
+    rpcState.reset();
+  } finally {
+    clearingRpc = false;
   }
-
-  rpcState.reset();
 }
 
 // Safely get song info with error handling and caching

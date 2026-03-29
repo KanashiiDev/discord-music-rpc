@@ -382,7 +382,7 @@ const updateActiveTabMap = async (state, tabs) => {
     state.activeTabMap.set(mainTab.id, {
       lastUpdated: Date.now(),
       lastKey: "",
-      isAudioPlaying: mainTab.audible ?? false,
+      isAudioPlaying: !!mainTab.audible,
       parserId: matchedData?.matched[0]?.id ?? null,
     });
 
@@ -444,7 +444,7 @@ const updateRpc = async (data, tabId) => {
     const payload = {
       data: {
         ...data,
-        status: data.isPlaying ?? base?.isAudioPlaying ?? false,
+        status: !!(base?.isAudioPlaying || data.isPlaying),
         settings: parserSettings,
         settingsDefault: defaultParserSettings,
       },

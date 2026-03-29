@@ -56,7 +56,7 @@ function buildActivity(data, now) {
   // Large image
   if (activitySettings.customCover && activitySettings.customCoverUrl) {
     activity.largeImageKey = String(activitySettings.customCoverUrl);
-  } else if (activitySettings.showCover && dataImage && !/\.webp(\?.*)?$/i.test(dataImage)) {
+  } else if (activitySettings.showCover && dataImage) {
     activity.largeImageKey = dataImage;
   } else if (activitySettings.customPlaceholder && activitySettings.customPlaceholderUrl) {
     activity.largeImageKey = String(activitySettings.customPlaceholderUrl);

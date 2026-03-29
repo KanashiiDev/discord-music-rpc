@@ -49,10 +49,15 @@ window.RPCStateManager = class {
     return drift >= threshold;
   }
 
+  keepActivity(song) {
+    if (!this.lastActivity) {
+      this.lastActivity = { ...song, lastUpdated: null };
+    }
+  }
+
   isSongChanged(newSong) {
     const prev = this.lastActivity;
     if (!prev) {
-      this.lastActivity = { ...newSong, lastUpdated: Date.now() };
       return false;
     }
 
