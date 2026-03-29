@@ -19,7 +19,7 @@ async function destroyClient(client) {
 }
 
 // Schedules a single reconnect attempt, debounced to avoid duplicate calls.
-function scheduleReconnect(delayMs = 2000) {
+function scheduleReconnect(delayMs = 3000) {
   if (state.reconnectScheduled || state.isConnecting || state.isShuttingDown) return;
   state.reconnectScheduled = true;
 
@@ -57,7 +57,7 @@ function setupClientEvents(client) {
 
     if (state.isShuttingDown) return;
     console.warn("[RPC] Attempting reconnect...");
-    scheduleReconnect(2000);
+    scheduleReconnect(3000);
   });
 
   client.on("error", (err) => {
@@ -141,7 +141,6 @@ async function _connect() {
       return true;
     } catch (err) {
       state.isRpcConnected = false;
-      state.isConnecting = false;
 
       // Clear the client on a failed attempt
       if (state.rpcClient) {
@@ -170,7 +169,8 @@ async function _connect() {
   if (!state.isRpcConnected && !state.isShuttingDown) {
     console.error("[RPC] Could not connect.");
   }
+  state.isConnecting = false;
   return false;
 }
 
-module.exports = { isRpcReady, createClient, connectRPC, destroyClient };
+module.exports = { isRpcReady, createClient, connectRPC, scheduleReconnect, destroyClient };

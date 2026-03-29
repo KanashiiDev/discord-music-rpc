@@ -14,26 +14,43 @@ function startHealthCheckTimer(historyFilePath) {
 
 // It verifies whether Discord is really live.
 const _timeoutSymbol = Symbol("timeout");
+let _pingPromise = null;
 
 async function pingRpcConnection(timeoutMs = 4000) {
-  const client = state.rpcClient;
-  if (!client || client.destroyed || !client.user) return false;
+  if (_pingPromise) return _pingPromise;
 
-  let timer = null;
-  try {
-    await Promise.race([
-      client.request("GET_VOICE_SETTINGS"),
-      new Promise((_, reject) => {
-        timer = setTimeout(() => reject(_timeoutSymbol), timeoutMs);
-      }),
-    ]);
-    return true;
-  } catch (err) {
-    if (err === _timeoutSymbol) return false;
-    return true;
-  } finally {
-    clearTimeout(timer);
-  }
+  _pingPromise = (async () => {
+    const client = state.rpcClient;
+    if (!client || client.destroyed || !client.user) return false;
+
+    let timer = null;
+    const userId = client.user.id;
+    const request = client.request("GET_USER", { id: userId });
+
+    try {
+      await Promise.race([
+        request,
+        new Promise((_, reject) => {
+          timer = setTimeout(() => reject(_timeoutSymbol), timeoutMs);
+        }),
+      ]);
+
+      return true;
+    } catch (err) {
+      if (err === _timeoutSymbol) return false;
+
+      const code = err?.code ?? err?.data?.code;
+      if (typeof code === "number") return true;
+
+      return false;
+    } finally {
+      clearTimeout(timer);
+      request.catch(() => {});
+      _pingPromise = null;
+    }
+  })();
+
+  return _pingPromise;
 }
 
 async function _tick(historyFilePath) {
@@ -122,12 +139,11 @@ async function _tick(historyFilePath) {
 // Cleans the current client and reconnects.
 async function _forceReconnect() {
   if (state.isShuttingDown) return;
-
+  state.reconnectScheduled = false;
   const old = state.rpcClient;
   state.rpcClient = null;
   state.isRpcConnected = false;
   state.isConnecting = false;
-
   await destroyClient(old);
   await connectRPC();
 }

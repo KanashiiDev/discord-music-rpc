@@ -2,7 +2,7 @@ const { addHistoryEntry, saveListeningTime, isSameActivityIgnore } = require("..
 const { truncate, isValidUrl } = require("../../shared/utils.js");
 
 const { state, HISTORY_SAVE_TIMEOUT } = require("./state.js");
-const { isRpcReady, connectRPC } = require("./client.js");
+const { isRpcReady, scheduleReconnect } = require("./client.js");
 
 // Builds a Discord RPC activity object from the raw request payload.
 function buildActivity(data, now) {
@@ -144,6 +144,7 @@ async function setRpcActivity(activity) {
 
   if (!isRpcReady(client)) {
     console.error("[ACTIVITY] RPC client not ready");
+    scheduleReconnect(3000);
     return false;
   }
 
@@ -154,14 +155,7 @@ async function setRpcActivity(activity) {
   } catch (err) {
     console.error("[ACTIVITY] setActivity failed:", err.message);
     state.isRpcConnected = false;
-
-    if (!state.reconnectScheduled && !state.isConnecting && !state.isShuttingDown) {
-      state.reconnectScheduled = true;
-      setTimeout(async () => {
-        state.reconnectScheduled = false;
-        if (!state.isConnecting && !state.isShuttingDown) await connectRPC();
-      }, 2000);
-    }
+    scheduleReconnect(3000);
     return false;
   }
 }
