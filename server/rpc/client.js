@@ -1,6 +1,6 @@
 const { Client } = require("@xhayper/discord-rpc");
 const { notifyRpcStatus } = require("../utils.js");
-const { state, CLIENT_ID, RETRY_DELAY } = require("./state.js");
+const { state, reconnectState, CLIENT_ID, RETRY_DELAY } = require("./state.js");
 
 // Returns true only when the RPC client is fully operational.
 function isRpcReady(client) {
@@ -10,30 +10,68 @@ function isRpcReady(client) {
 // Destroys a client instance gracefully, ignoring any errors.
 async function destroyClient(client) {
   if (!client) return;
+
   try {
     client.removeAllListeners();
-    await client.destroy();
+    await Promise.race([client.destroy(), new Promise((_, reject) => setTimeout(() => reject(new Error("Destroy timeout")), 5000))]);
   } catch (err) {
     console.warn("[RPC] Error destroying client:", err.message);
   }
+
+  if (state.rpcClient === client) {
+    state.rpcClient = null;
+  }
 }
 
-// Schedules a single reconnect attempt, debounced to avoid duplicate calls.
-function scheduleReconnect(delayMs = 3000) {
-  if (state.reconnectScheduled || state.isConnecting || state.isShuttingDown) return;
-  state.reconnectScheduled = true;
+async function executeReconnect() {
+  if (state.isShuttingDown) return false;
+  if (!reconnectState.canReconnect()) return false;
 
-  setTimeout(async () => {
-    state.reconnectScheduled = false;
-    if (state.isConnecting || state.isShuttingDown) return;
+  reconnectState.begin();
 
-    const old = state.rpcClient;
+  try {
+    console.log(`[RPC] Executing reconnect: ${reconnectState.reason || "unknown reason"}`);
+
+    const oldClient = state.rpcClient;
     state.rpcClient = null;
     state.isRpcConnected = false;
     state.isConnecting = false;
-    await destroyClient(old);
+    await destroyClient(oldClient);
     await connectRPC();
+    console.log("[RPC] Reconnect completed successfully");
+    return true;
+  } catch (err) {
+    console.error("[RPC] Reconnect failed:", err.message);
+    return false;
+  } finally {
+    reconnectState.complete();
+    reconnectState.end();
+  }
+}
+
+// Schedule reconnect with debounce
+function scheduleReconnect(delayMs = 3000, reason = "unknown") {
+  if (state.isShuttingDown) return;
+
+  if (reconnectState.scheduled || reconnectState.isReconnecting) {
+    return;
+  }
+
+  if (reconnectState.lastReconnectAt && Date.now() - reconnectState.lastReconnectAt < reconnectState.minReconnectInterval) {
+    console.log(`[RPC] Reconnect throttled - last reconnect was ${Math.floor((Date.now() - reconnectState.lastReconnectAt) / 1000)}s ago`);
+    return;
+  }
+
+  if (!reconnectState.start(reason)) return;
+
+  reconnectState.timer = setTimeout(async () => {
+    await executeReconnect();
   }, delayMs);
+}
+
+// Cancel any pending reconnect
+function cancelReconnect() {
+  reconnectState.cancel();
 }
 
 // Event Setup
@@ -43,7 +81,7 @@ function setupClientEvents(client) {
   client.once("ready", () => {
     state.isRpcConnected = true;
     state.isConnecting = false;
-    state.reconnectScheduled = false;
+    reconnectState.cancel();
     state.hasLoggedRpcFailure = false;
     notifyRpcStatus(true);
   });
@@ -56,8 +94,8 @@ function setupClientEvents(client) {
     notifyRpcStatus(false);
 
     if (state.isShuttingDown) return;
-    console.warn("[RPC] Attempting reconnect...");
-    scheduleReconnect(3000);
+    console.warn("[RPC] Disconnected - scheduling reconnect...");
+    scheduleReconnect(3000, "disconnected");
   });
 
   client.on("error", (err) => {
@@ -78,7 +116,7 @@ function setupClientEvents(client) {
       notifyRpcStatus(false);
 
       if (!state.isShuttingDown) {
-        scheduleReconnect(3000);
+        scheduleReconnect(3000, "socket error");
       }
     }
   });
@@ -116,6 +154,7 @@ async function connectRPC() {
     return await state.connectPromise;
   } finally {
     state.connectPromise = null;
+    state.isConnecting = false;
   }
 }
 
@@ -136,7 +175,6 @@ async function _connect() {
       await new Promise((r) => setTimeout(r, 200));
 
       state.hasLoggedRpcFailure = false;
-      state.isConnecting = false;
       console.log("[RPC] Connected successfully");
       return true;
     } catch (err) {
@@ -166,11 +204,15 @@ async function _connect() {
     }
   }
 
-  if (!state.isRpcConnected && !state.isShuttingDown) {
-    console.error("[RPC] Could not connect.");
-  }
-  state.isConnecting = false;
   return false;
 }
 
-module.exports = { isRpcReady, createClient, connectRPC, scheduleReconnect, destroyClient };
+module.exports = {
+  isRpcReady,
+  createClient,
+  connectRPC,
+  scheduleReconnect,
+  cancelReconnect,
+  destroyClient,
+  executeReconnect,
+};

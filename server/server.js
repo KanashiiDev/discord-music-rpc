@@ -7,9 +7,9 @@ const IS_ELECTRON = detectElectronMode();
 process.env.ELECTRON_MODE = IS_ELECTRON ? "true" : "false";
 
 const { state } = require("./rpc/state.js");
-const { connectRPC, destroyClient } = require("./rpc/client.js");
+const { connectRPC, destroyClient, cancelReconnect } = require("./rpc/client.js");
 const { resetActivityState } = require("./rpc/activity.js");
-const { startHealthCheckTimer } = require("./services/healthCheck.js");
+const { startHealthCheckTimer, stopHealthCheckTimer } = require("./services/healthCheck.js");
 const { sendReady } = require("./services/electron.js");
 const { createRpcRouter } = require("./routes/rpc.js");
 const { createHistoryRouter } = require("./routes/history.js");
@@ -63,6 +63,8 @@ app.get("/health", (_req, res) =>
   res.json({
     status: "ok",
     rpcConnected: state.isRpcConnected,
+    reconnectScheduled: state.reconnectState?.scheduled || false,
+    isConnecting: state.isConnecting,
     lastActiveClient: state.lastActiveClient
       ? {
           clientId: state.lastActiveClient.clientId,
@@ -90,18 +92,21 @@ async function shutdown() {
 
   state.shutdownPromise = (async () => {
     console.log("[SERVER] Shutdown initiated...");
+
     try {
+      cancelReconnect();
+      stopHealthCheckTimer();
       resetActivityState(historyFilePath);
 
-      if (state.healthCheckInterval) {
-        clearInterval(state.healthCheckInterval);
-        state.healthCheckInterval = null;
-        console.log("[SERVER] Health check cleared");
-      }
-
+      // Clean up RPC client
       if (state.rpcClient) {
         console.log("[SERVER] Clearing RPC activity...");
-        await state.rpcClient.user?.clearActivity().catch(() => {});
+        try {
+          await state.rpcClient.user?.clearActivity();
+        } catch (_) {
+          // Ignore during shutdown
+        }
+
         console.log("[SERVER] Destroying RPC client...");
         await destroyClient(state.rpcClient);
         state.rpcClient = null;
@@ -123,6 +128,7 @@ async function shutdown() {
             resolve();
           };
 
+          // Try graceful close
           state.serverInstance.close((err) => {
             if (err && err.code !== "ERR_SERVER_NOT_RUNNING") {
               console.warn("HTTP close error:", err.message);
@@ -130,8 +136,9 @@ async function shutdown() {
             safeResolve();
           });
 
+          // Timeout protection - prevents hanging on keep-alive connections
           setTimeout(() => {
-            console.warn("HTTP close timeout");
+            console.warn("HTTP close timeout, forcing exit");
             safeResolve();
           }, 5000);
         });
@@ -185,7 +192,7 @@ if (IS_ELECTRON) {
   });
 }
 
-// Start
+// Start Server
 state.serverInstance = app.listen(PORT, () => {
   console.log(`[SERVER] Running on http://localhost:${PORT}`);
   sendReady();
