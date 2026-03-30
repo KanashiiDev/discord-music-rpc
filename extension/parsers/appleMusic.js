@@ -5,13 +5,13 @@ registerParser({
   description: "Subscription-based music streaming service with on-demand playback, curated playlists, and Apple ecosystem integration.",
   category: "platform",
   tags: [],
-  fn: function getSongInfo() {
-    // Element selectors
+  fn: function () {
     const lcd = document.querySelector("amp-lcd")?.shadowRoot;
     const titleElem = lcd?.querySelector(".lcd-meta-line__string-container")?.innerText ?? "";
     const artistElem = lcd?.querySelector(".lcd-meta__secondary .lcd-meta-line__text-content")?.innerText.split("—")[0].trim();
     const imageElem = lcd?.querySelector(".lcd__artwork-img")?.src;
     const times = lcd?.querySelectorAll(".lcd-progress__time");
+    const playing = document.querySelector("amp-lcd .playback-play__play")?.ariaHidden === "true";
 
     return {
       title: titleElem,
@@ -19,9 +19,9 @@ registerParser({
       image: imageElem,
       source: "Apple Music",
       songUrl: "https://www.music.apple.com/",
-      timePassed: times?.[0],
-      duration: times?.[1],
-      isPlaying: Boolean(lcd.querySelector(".playback-play__play")?.aria - hidden === "true"),
+      timePassed: times?.[0]?.textContent?.trim() ?? "0",
+      duration: times?.[1]?.textContent?.trim() ?? "0",
+      isPlaying: playing,
     };
   },
 });
