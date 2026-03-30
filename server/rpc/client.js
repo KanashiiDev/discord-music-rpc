@@ -4,7 +4,7 @@ const { state, reconnectState, CLIENT_ID, RETRY_DELAY } = require("./state.js");
 
 // Returns true only when the RPC client is fully operational.
 function isRpcReady(client) {
-  return Boolean(state.isRpcConnected && client && !client.destroyed && client.user && typeof client.user.setActivity === "function");
+  return !!(state.isRpcConnected && client?.user && !client.destroyed);
 }
 
 // Destroys a client instance gracefully, ignoring any errors.
@@ -36,6 +36,7 @@ async function executeReconnect() {
     state.rpcClient = null;
     state.isRpcConnected = false;
     state.isConnecting = false;
+    state.connectPromise = null;
     await destroyClient(oldClient);
     await connectRPC();
     console.log("[RPC] Reconnect completed successfully");
@@ -53,18 +54,27 @@ async function executeReconnect() {
 function scheduleReconnect(delayMs = 3000, reason = "unknown") {
   if (state.isShuttingDown) return;
 
-  if (reconnectState.scheduled || reconnectState.isReconnecting) {
+  if (reconnectState.isReconnecting) {
+    console.log(`[RPC] Reconnect already in progress, skipping schedule for: ${reason}`);
+    return;
+  }
+
+  if (reconnectState.scheduled) {
+    console.log(`[RPC] Reconnect already scheduled, skipping: ${reason}`);
     return;
   }
 
   if (reconnectState.lastReconnectAt && Date.now() - reconnectState.lastReconnectAt < reconnectState.minReconnectInterval) {
-    console.log(`[RPC] Reconnect throttled - last reconnect was ${Math.floor((Date.now() - reconnectState.lastReconnectAt) / 1000)}s ago`);
+    const secondsAgo = Math.floor((Date.now() - reconnectState.lastReconnectAt) / 1000);
+    console.log(`[RPC] Reconnect throttled (last was ${secondsAgo}s ago) for: ${reason}`);
     return;
   }
 
   if (!reconnectState.start(reason)) return;
 
   reconnectState.timer = setTimeout(async () => {
+    reconnectState.scheduled = false;
+    reconnectState.timer = null;
     await executeReconnect();
   }, delayMs);
 }
@@ -164,7 +174,7 @@ async function _connect() {
 
   let attempt = 0;
 
-  while (!state.isRpcConnected && !state.isShuttingDown) {
+  while (!state.isRpcConnected && !state.isShuttingDown && state.isConnecting) {
     attempt++;
     try {
       const client = await createClient();
@@ -200,7 +210,10 @@ async function _connect() {
         state.hasLoggedRpcFailure = true;
       }
 
-      await new Promise((r) => setTimeout(r, RETRY_DELAY));
+      // Only wait if we're still the active connect loop
+      if (state.isConnecting && !state.isShuttingDown) {
+        await new Promise((r) => setTimeout(r, RETRY_DELAY));
+      }
     }
   }
 

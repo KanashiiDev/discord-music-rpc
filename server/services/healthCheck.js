@@ -43,6 +43,12 @@ async function _tick(historyFilePath) {
       }
 
       resetActivityState(historyFilePath);
+
+      // If client is also dead, schedule reconnect instead of just returning
+      if (!clientLooksAlive() && !state.isConnecting && !reconnectState.scheduled && !reconnectState.isReconnecting) {
+        console.log("[HEALTH] Client dead after auto-clear - scheduling reconnect...");
+        scheduleReconnect(1000, "health check: dead after auto-clear");
+      }
       return;
     }
 
@@ -58,6 +64,12 @@ async function _tick(historyFilePath) {
       }
 
       resetActivityState(historyFilePath);
+
+      // If client is also dead, schedule reconnect
+      if (!clientLooksAlive() && !state.isConnecting && !reconnectState.scheduled && !reconnectState.isReconnecting) {
+        console.log("[HEALTH] Client dead after timeout clear - scheduling reconnect...");
+        scheduleReconnect(1000, "health check: dead after client timeout");
+      }
       return;
     }
 

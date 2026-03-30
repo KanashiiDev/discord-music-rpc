@@ -144,7 +144,7 @@ async function setRpcActivity(activity) {
 
   if (!isRpcReady(client)) {
     console.error("[ACTIVITY] RPC client not ready");
-    scheduleReconnect(3000);
+    scheduleReconnect(3000, "rpc not ready");
     return false;
   }
 
@@ -155,7 +155,7 @@ async function setRpcActivity(activity) {
   } catch (err) {
     console.error("[ACTIVITY] setActivity failed:", err.message);
     state.isRpcConnected = false;
-    scheduleReconnect(3000);
+    scheduleReconnect(3000, "setActivity failed");
     return false;
   }
 }
