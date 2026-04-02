@@ -33,8 +33,7 @@ function initParserTagFilter() {
       parserFilterState.selectedTags.clear();
       document.getElementById("searchBox").value = "";
       parserTagFilterResetBtn?.classList.remove("filter-active");
-      const list = await getFreshParserList();
-      await renderList(list);
+      filterList();
       await destroyOtherSimpleBars("siteList");
       await activateSimpleBar("siteList");
     });
@@ -48,7 +47,8 @@ async function buildParserTagCache() {
   _parserTagCache.allCategories.clear();
   _parserTagCache.allTags.clear();
 
-  const list = await getFreshParserList();
+  const raw = await getFreshParserList();
+  const list = filterVisibleParsers(raw);
   for (const entry of list) {
     const cats = entry.category
       ? [entry.category]
@@ -91,7 +91,8 @@ function renderParserTagFilterMenu() {
     const query = document.getElementById("searchBox")?.value ?? "";
     const list = await getFreshParserList();
     const filtered = applyParserTagFilter(list, query);
-    await renderList(filtered.length < list.length || query.trim() ? filtered : undefined);
+    const hasFilter = selectedCategories.size > 0 || selectedTags.size > 0 || query.trim();
+    filterList(hasFilter ? new Set(filtered.map((e) => e.id)) : null);
 
     await activateSimpleBar(["siteList", "parserTagFilterMenuContent"]);
   };
@@ -140,6 +141,7 @@ function renderParserTagFilterMenu() {
 
 /**
  * Filters a parser list by selected categories/tags + optional text query.
+ * Hidden parsers are always excluded regardless of any filter state.
  */
 function applyParserTagFilter(list, query = "") {
   const { selectedCategories, selectedTags } = parserFilterState;
@@ -149,11 +151,13 @@ function applyParserTagFilter(list, query = "") {
   const hasActive = hasTagFilter || hasTextFilter;
   parserTagFilterResetBtn?.classList.toggle("filter-active", hasActive);
 
-  if (!hasTagFilter && !hasTextFilter) return list;
+  // Always strip hidden parsers before any further filtering
+  const visibleList = filterVisibleParsers(list);
+  if (!hasTagFilter && !hasTextFilter) return visibleList;
 
   const lq = query.trim().toLowerCase();
 
-  return list.filter((entry) => {
+  return visibleList.filter((entry) => {
     const matchesText = !hasTextFilter || (entry.title && entry.title.toLowerCase().includes(lq));
 
     const entryCategories = entry.category

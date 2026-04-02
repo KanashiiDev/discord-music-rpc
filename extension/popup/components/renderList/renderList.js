@@ -4,6 +4,8 @@ const parserState = {
   currentRenderCleanup: null,
 };
 
+const _renderedEntries = new Map();
+
 async function renderList(filteredList = null, isSearch = null) {
   const container = document.getElementById("siteListContainer");
   container.style = "";
@@ -11,6 +13,7 @@ async function renderList(filteredList = null, isSearch = null) {
   parserState.currentRenderCleanup?.();
   parserState.currentRenderCleanup = null;
   parserState.isParserOpen = false;
+  _renderedEntries.clear();
   container.replaceChildren();
   document.querySelector(".search-controls")?.classList.remove("fading");
 
@@ -25,7 +28,10 @@ async function renderList(filteredList = null, isSearch = null) {
   const tabHostname = normalizeHost(tabUrl.hostname);
   const tabPath = tabUrl.pathname;
 
-  const list = filteredList ?? (await getFreshParserList());
+  await loadHiddenParsers();
+
+  const rawList = filteredList ?? (await getFreshParserList());
+  const list = filterVisibleParsers(rawList);
 
   if (!list?.length) {
     spinner.remove();
@@ -55,6 +61,7 @@ async function renderList(filteredList = null, isSearch = null) {
     });
 
     if (settingsDirty) anySettingsDirty = true;
+    _renderedEntries.set(entry.id, wrapper);
     fragment.appendChild(wrapper);
   }
 
@@ -68,4 +75,22 @@ async function renderList(filteredList = null, isSearch = null) {
   parserState.currentRenderCleanup = removeAll;
   spinner.remove();
   return true;
+}
+
+function filterList(visibleIds = null) {
+  const container = document.getElementById("siteListContainer");
+  container.querySelector(".setup-list-message")?.remove();
+
+  let visibleCount = 0;
+
+  for (const [id, wrapper] of _renderedEntries) {
+    const show = visibleIds === null || visibleIds.has(id);
+
+    wrapper.style.display = show ? "" : "none";
+    if (show) visibleCount++;
+  }
+
+  if (visibleCount === 0) {
+    createEmptyState(container, 1);
+  }
 }

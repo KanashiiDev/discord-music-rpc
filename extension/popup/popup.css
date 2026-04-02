@@ -137,6 +137,7 @@ body[data-section="main"] #mainFooterButtons {
   opacity: 1;
 }
 
+body[data-section="main"] #manageParsersBtn,
 body[data-section="main"] #historyStatsToggle {
   display: block !important;
 }
@@ -327,7 +328,8 @@ body,
 #historyStatsPanel,
 #parserTagFilterMenuContent,
 #historyFilterMenuContent,
-#gradientColorList {
+#gradientColorList,
+.pvs-list {
   scrollbar-width: none;
   -ms-overflow-style: none;
 }
@@ -337,7 +339,8 @@ body,
 #historyStatsPanel::-webkit-scrollbar,
 #parserTagFilterMenuContent::-webkit-scrollbar,
 #historyFilterMenuContent::-webkit-scrollbar,
-#gradientColorList::-webkit-scrollbar {
+#gradientColorList::-webkit-scrollbar,
+.pvs-list::-webkit-scrollbar {
   display: none;
 }
 
@@ -482,8 +485,7 @@ body.fg-blur.parser-options-open #siteList .simplebar-offset {
 }
 
 .button,
-.settings-btn,
-#settingsToggle {
+.settings-btn {
   cursor: pointer;
 }
 
@@ -492,6 +494,7 @@ body.fg-blur.parser-options-open #siteList .simplebar-offset {
 .switch-label,
 #openSelector,
 #openManager,
+.pvs-name,
 .parser-span,
 .parser-filter-menu-content label,
 .history-filter-menu-content label {
@@ -1093,6 +1096,9 @@ body[data-theme="dark"] #githubLink img {
   filter: invert(1);
 }
 
+#manageParsersBtn,
+#openFiltersBtn,
+#openDashboardBtn,
 #githubLink,
 #settingsToggle {
   opacity: 0.7;
@@ -1100,6 +1106,7 @@ body[data-theme="dark"] #githubLink img {
   transition: opacity var(--transition-normal) ease;
   height: 16px;
   width: 16px;
+  cursor: pointer;
 }
 
 #historyStatsToggle {
@@ -1337,6 +1344,9 @@ body[data-theme="dark"] #githubLink img {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E %3Cpath d='M15.88 8.29L10 14.17l-1.88-1.88a.996.996 0 1 0-1.41 1.41l2.59 2.59c.39.39 1.02.39 1.41 0L17.3 9.7a.996.996 0 0 0 0-1.41c-.39-.39-1.03-.39-1.42 0z' fill='%23fff'/%3E %3C/svg%3E");
 }
 
+#manageParsersBtn:hover,
+#openFiltersBtn:hover,
+#openDashboardBtn:hover,
 #githubLink:hover,
 #settingsToggle:hover,
 .history-entry:hover .song-link,
@@ -1497,6 +1507,10 @@ body[data-theme="dark"] #githubLink img {
 
 .history-entry.selected {
   background: var(--history-entry-delete-color);
+}
+
+.history-entry .history-image-container.spinner {
+  margin: 0;
 }
 
 .history-entry img {
@@ -2134,6 +2148,243 @@ span.gradient-color-btn.button {
 .flatpickr-calendar.animate {
   -webkit-animation-duration: var(--transition-reduced) !important;
   animation-duration: var(--transition-reduced) !important;
+}
+
+#manageParsersBtn {
+  display: none;
+  position: relative;
+}
+
+#manageParsersBtn.has-new::after {
+  content: "";
+  position: absolute;
+  top: -3px;
+  right: -5px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--red-color);
+  -webkit-box-shadow: 0 0 0 2px var(--shadow-color);
+  box-shadow: 0 0 0 2px var(--shadow-color);
+  pointer-events: none;
+}
+
+.pvs-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  padding: 55px 15px 45px;
+  background: rgba(0, 0, 0, 0.6);
+  display: -webkit-box;
+  display: -ms-flexbox;
+  display: flex;
+  -webkit-box-align: center;
+  -ms-flex-align: center;
+  align-items: center;
+  -webkit-box-pack: center;
+  -ms-flex-pack: center;
+  justify-content: center;
+}
+
+.pvs-dialog {
+  background: var(--foreground-color-200);
+  border-radius: 12px;
+  padding: 20px 18px 18px;
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  min-height: 250px;
+  -webkit-box-sizing: border-box;
+  box-sizing: border-box;
+  display: -webkit-box;
+  display: -ms-flexbox;
+  display: flex;
+  -webkit-box-orient: vertical;
+  -webkit-box-direction: normal;
+  -ms-flex-direction: column;
+  flex-direction: column;
+  gap: 10px;
+  -webkit-box-shadow: 0 8px 32px var(--shadow-color);
+  box-shadow: 0 8px 32px var(--shadow-color);
+  color: var(--text-color-primary);
+}
+
+.pvs-title {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text-color-primary);
+}
+
+.pvs-subtitle {
+  margin: 0;
+  font-size: 0.78rem;
+  opacity: 0.7;
+  line-height: 1.4;
+}
+
+.pvs-search {
+  width: 100%;
+  -webkit-box-sizing: border-box;
+  box-sizing: border-box;
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border-color);
+  background: var(--foreground-color-400);
+  color: var(--text-color-primary);
+  font-size: 0.82rem;
+  outline: none;
+}
+
+.pvs-search:focus {
+  border-color: var(--accent-color);
+}
+
+.pvs-bulk-row {
+  display: -webkit-box;
+  display: -ms-flexbox;
+  display: flex;
+  gap: 8px;
+}
+
+.pvs-bulk-btn {
+  -webkit-box-flex: 1;
+  -ms-flex: 1;
+  flex: 1;
+  padding: 5px 0;
+  border-radius: 6px;
+  border: 1px solid var(--border-color);
+  background: var(--foreground-color-300);
+  color: var(--text-color-secondary);
+  font-size: 0.78rem;
+  cursor: pointer;
+  -webkit-transition: background var(--transition-reduced-fast) ease;
+  transition: background var(--transition-reduced-fast) ease;
+}
+.pvs-bulk-btn:hover {
+  background: var(--foreground-color-400);
+}
+
+.pvs-list {
+  -webkit-box-flex: 1;
+  -ms-flex: 1;
+  flex: 1;
+  overflow-y: auto;
+  display: -webkit-box;
+  display: -ms-flexbox;
+  display: flex;
+  -webkit-box-orient: vertical;
+  -webkit-box-direction: normal;
+  -ms-flex-direction: column;
+  flex-direction: column;
+  -ms-flex-wrap: nowrap;
+  flex-wrap: nowrap;
+  gap: 2px;
+  padding-right: 2px;
+}
+
+.pvs-row {
+  display: -webkit-box;
+  display: -ms-flexbox;
+  display: flex;
+  -webkit-box-align: center;
+  -ms-flex-align: center;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  width: calc(100% - 12px);
+  padding: 6px;
+  border-radius: 6px;
+  cursor: pointer;
+  -webkit-transition: background var(--transition-reduced-fast) ease;
+  transition: background var(--transition-reduced-fast) ease;
+  font-size: 0.84rem;
+}
+
+.pvs-row:hover {
+  background: var(--foreground-color-300);
+}
+
+.pvs-row.active::before {
+  content: "✓";
+}
+
+.pvs-row-new {
+  border: 1px solid var(--red-color);
+}
+
+.pvs-row input[type="checkbox"] {
+  display: none;
+}
+
+.pvs-row.active {
+  background: var(--foreground-color-400);
+}
+
+.pvs-row.active:hover {
+  background: var(--foreground-color-500);
+}
+
+.pvs-icon {
+  border-radius: 3px;
+  -ms-flex-negative: 0;
+  flex-shrink: 0;
+  -o-object-fit: contain;
+  object-fit: contain;
+}
+
+.pvs-icon,
+.pvs-icon-container {
+  height: 16px;
+  width: 16px;
+}
+
+.pvs-icon-container.spinner {
+  height: 10px;
+  width: 10px;
+  margin: 0;
+}
+
+.pvs-name {
+  -webkit-box-flex: 1;
+  -ms-flex: 1;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pvs-new-badge {
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--text-color-primary);
+  background: var(--red-color);
+  border-radius: 4px;
+  padding: 1px 5px;
+  -ms-flex-negative: 0;
+  flex-shrink: 0;
+  line-height: 1.4;
+}
+
+.pvs-confirm-btn {
+  border: none;
+  background: var(--accent-color);
+  color: var(--text-color-primary);
+  font-weight: 600;
+  width: 100%;
+}
+
+.pvs-confirm-btn:hover {
+  background: var(--accent-color-bright);
+}
+
+.pvs-footer {
+  position: relative;
+  width: calc(100% + 10px);
+  -webkit-box-sizing: border-box;
+  box-sizing: border-box;
+  margin-bottom: -10px;
 }
 
 /*CSS-GLOBAL*/

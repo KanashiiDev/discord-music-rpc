@@ -167,7 +167,7 @@ svg:not(.flatpickr-calendar svg):not(.IroHandle) {
   background: var(--warning-color);
 }
 
-.popup-message.alert {
+.popup-message.error {
   background: var(--alert-color);
 }
 

@@ -132,8 +132,7 @@ const sectionManager = {
         parserFilterState.selectedTags.clear();
         parserTagFilterResetBtn?.classList.remove("filter-active");
         exitCleaningMode();
-        await renderList();
-        await buildParserTagCache();
+        filterList();
         await activateSimpleBar("siteList");
         await destroyOtherSimpleBars("siteList");
         break;
@@ -181,9 +180,10 @@ const popupModule = {
       const query = searchBox.value;
       const list = await getFreshParserList();
       const filtered = applyParserTagFilter(list, query);
-      await renderList(filtered.length < list.length || query.trim() ? filtered : undefined, 1);
+      const hasFilter = query.trim() !== "" || parserFilterState.selectedCategories.size > 0 || parserFilterState.selectedTags.size > 0;
+      filterList(hasFilter ? new Set(filtered.map((e) => e.id)) : null);
       await activateSimpleBar("siteList");
-    }, 300);
+    }, 250);
 
     searchBox.addEventListener("input", this.listeners.searchBoxInput);
 
@@ -205,7 +205,7 @@ const popupModule = {
 
       await activateSimpleBar("historyPanel");
       await activateHistoryScroll();
-    }, 300);
+    }, 250);
 
     historySearchInput.addEventListener("input", this.listeners.historySearchInput);
 
@@ -257,7 +257,7 @@ const popupModule = {
 
         window.close();
       } catch (_) {
-        showPopupMessage("This page is not supported", "alert", 2000);
+        showPopupMessage("This page is not supported", "error", 2000);
         enableButton();
       }
     };
@@ -350,6 +350,48 @@ domLoadedListener = async () => {
     // Start the Section Manager
     sectionManager.init();
 
+    // Initialize Filter and Dashboard Buttons
+    const btnFilter = document.querySelector("#openFiltersBtn");
+    const btnDashboard = document.querySelector("#openDashboardBtn");
+    btnFilter.onclick = () => openSettingsPage("filter");
+    btnDashboard.onclick = () => openDashboardPage();
+    document.querySelector("#openFiltersBtn").appendChild(createSVG(svg_paths.filtersIconPaths));
+    document.querySelector("#openDashboardBtn").appendChild(createSVG(svg_paths.dashboardIconPaths));
+
+    // Load hidden parsers into memory before any render
+    await loadHiddenParsers();
+    document.querySelector("#manageParsersBtn").appendChild(createSVG(svg_paths.manageParsersIconPaths));
+
+    // Fetch the full parser list once for snapshot + setup
+    const freshList = await getFreshParserList();
+
+    // Parser Visibility Setup - only if parserList exists in storage and not done yet
+    const [{ parserVisibilitySetupDone }, { parserList }] = await Promise.all([
+      browser.storage.local.get("parserVisibilitySetupDone"),
+      browser.storage.local.get("parserList"),
+    ]);
+
+    if (!parserVisibilitySetupDone && parserList?.length) {
+      await openVisibilityDialog(freshList ?? [], true);
+      await browser.storage.local.set({ parserVisibilitySetupDone: true });
+      // Seed the snapshot right after the initial setup
+      await browser.storage.local.set({
+        parserKnownIds: (freshList ?? []).map((e) => e.id),
+        parserNewIds: [],
+      });
+    } else {
+      // On every subsequent open: diff the list for new parsers
+      if (freshList?.length) {
+        await syncParserSnapshot(freshList);
+      }
+    }
+
+    // Apply new-parser dot if needed
+    const newIds = await getNewParserIds();
+    if (newIds.length > 0) {
+      document.getElementById("manageParsersBtn")?.classList.add("has-new");
+    }
+
     // Initial render
     const renderStatus = await renderList();
     await activateSimpleBar("siteList");
@@ -368,6 +410,19 @@ domLoadedListener = async () => {
 
     // Initialize Parser Tag Filter
     initParserTagFilter();
+
+    // Wire up "Manage Parsers" footer button
+    const manageParsersBtn = document.getElementById("manageParsersBtn");
+    if (manageParsersBtn) {
+      manageParsersBtn.addEventListener("click", async () => {
+        const list = await getFreshParserList();
+        const newParserIds = await getNewParserIds();
+        const newSet = new Set(newParserIds);
+        // Annotate entries that are new
+        const annotated = (list ?? []).map((e) => ({ ...e, _isNew: newSet.has(e.id) }));
+        await openVisibilityDialog(annotated, false);
+      });
+    }
 
     // Initialize popup module
     popupModule.init();

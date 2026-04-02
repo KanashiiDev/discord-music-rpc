@@ -939,6 +939,9 @@ const svg_paths = {
     "M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25z",
     "M20.71 7.04a1.003 1.003 0 0 0 0-1.42l-2.34-2.34a1.003 1.003 0 0 0-1.42 0l-1.83 1.83 3.75 3.75 1.84-1.82z",
   ],
+  manageParsersIconPaths: ["M4 5h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2z", "M12 9v6", "M9 12h6"],
+  filtersIconPaths: ["M2 2h20l-7 8v8l-6 4v-12z"],
+  dashboardIconPaths: ["M2 2h20v20H2z", "M6 11l4-3 4 3 4-4", "M6 15h12v2H6z"],
 };
 
 // Get Fresh Parser List
@@ -1333,12 +1336,24 @@ async function showInitialTutorial() {
       selector: ".parser-entry .switch-label",
     },
     {
-      text: 'You can add custom music site by clicking "Add Music Site" button.',
+      text: 'You can add a custom music site by clicking the "Add Music Site" button.',
       selector: "#openSelector",
     },
     {
-      text: 'You can manage your scripts by clicking "Open Script Manager" button.',
+      text: 'You can manage your scripts by clicking the "Open Script Manager" button.',
       selector: "#openManager",
+    },
+    {
+      text: 'You can manage music sites by clicking the "Manage Websites" button.',
+      selector: "#manageParsersBtn",
+    },
+    {
+      text: 'You can block or edit title/artist by clicking the "Open Filters" button.',
+      selector: "#openFiltersBtn",
+    },
+    {
+      text: 'You can access the server dashboard by clicking the "Open Dashboard" button.',
+      selector: "#openDashboardBtn",
     },
   ];
 
