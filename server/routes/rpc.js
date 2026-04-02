@@ -2,7 +2,7 @@ const { Router } = require("express");
 const { getCurrentTime } = require("../../shared/utils.js");
 const { state, CLIENT_TIMEOUT, MAX_CLEAR_RETRIES } = require("../rpc/state.js");
 const { isSameActivity } = require("../utils.js");
-const { connectRPC } = require("../rpc/client.js");
+const { connectRPC, scheduleReconnect } = require("../rpc/client.js");
 const { buildActivity, setRpcActivity, clearRpcActivity, resetActivityState, handleHistoryUpdate } = require("../rpc/activity.js");
 
 function createRpcRouter(historyFilePath) {
@@ -91,6 +91,8 @@ function createRpcRouter(historyFilePath) {
   });
 
   //  POST /clear-rpc
+  let clearRpcInProgress = false;
+
   router.post("/clear-rpc", async (req, res) => {
     try {
       if (!req.body || typeof req.body !== "object") {
@@ -101,46 +103,44 @@ function createRpcRouter(historyFilePath) {
         return res.status(400).json({ error: "clientId is required and must be a string" });
       }
 
-      const hadActivity = state.currentActivity !== null;
-      resetActivityState(historyFilePath); // flush listening time first
-
-      let clearSuccess = false;
-
-      if (await connectRPC()) {
-        if (hadActivity || state.rpcClient?.user) {
-          clearSuccess = await clearRpcActivity({ maxRetries: MAX_CLEAR_RETRIES, timeoutMs: 5000 });
-
-          if (!clearSuccess) {
-            console.error("[CLEAR-RPC] All retries failed — force-reconnecting...");
-            state.isRpcConnected = false;
-            const old = state.rpcClient;
-            state.rpcClient = null;
-            await require("../rpc/client.js").destroyClient(old);
-            await connectRPC();
-
-            if (state.rpcClient?.user?.clearActivity) {
-              try {
-                await state.rpcClient.user.clearActivity();
-                clearSuccess = true;
-                console.log("[CLEAR-RPC] Cleared after reconnect");
-              } catch (finalErr) {
-                console.error("[CLEAR-RPC] Final attempt failed:", finalErr.message);
-              }
-            }
-          }
-        } else {
-          clearSuccess = true;
-        }
+      if (clearRpcInProgress) {
+        const cached = state.lastClearRpcResult ?? { success: true, cleared: true, reconnected: false };
+        return res.json({ ...cached, deduplicated: true });
       }
 
-      state.currentActivity = null;
-      state.lastActiveClient = null;
-      state.lastUpdateAt = null;
-      state.listeningStartTime = null;
+      clearRpcInProgress = true;
 
-      const response = { success: true, cleared: clearSuccess, reconnected: !clearSuccess };
-      state.lastClearRpcResult = response;
-      return res.json(response);
+      try {
+        const hadActivity = state.currentActivity !== null;
+        resetActivityState(historyFilePath);
+
+        let clearSuccess = false;
+
+        if (await connectRPC()) {
+          if (hadActivity || state.rpcClient?.user) {
+            clearSuccess = await clearRpcActivity({ maxRetries: MAX_CLEAR_RETRIES, timeoutMs: 5000 });
+
+            if (!clearSuccess) {
+              console.error("[CLEAR-RPC] All retries failed — scheduling reconnect...");
+              state.isRpcConnected = false;
+              scheduleReconnect(1000, "clear-rpc: all retries failed");
+            }
+          } else {
+            clearSuccess = true;
+          }
+        }
+
+        state.currentActivity = null;
+        state.lastActiveClient = null;
+        state.lastUpdateAt = null;
+        state.listeningStartTime = null;
+
+        const response = { success: true, cleared: clearSuccess, reconnected: !clearSuccess };
+        state.lastClearRpcResult = response;
+        return res.json(response);
+      } finally {
+        clearRpcInProgress = false;
+      }
     } catch (err) {
       console.error("[CLEAR-RPC] Error:", err);
       const errorResp = { error: "Internal server error", details: err.message };
