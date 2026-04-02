@@ -64,6 +64,11 @@ function buildActivity(data, now) {
     activity.largeImageKey = "key-default";
   }
 
+  // Ensure largeImageKey does not exceed Discord's 300-character limit.
+  if (activity.largeImageKey.length > 300) {
+    activity.largeImageKey = "key-default";
+  }
+
   // Large image text
   if (!artistIsIntentionallyEmpty && activitySettings.showSource && activitySettings.showArtist && dataTitle !== dataArtist && dataTitle !== dataSource) {
     activity.largeImageText = dataSource;
