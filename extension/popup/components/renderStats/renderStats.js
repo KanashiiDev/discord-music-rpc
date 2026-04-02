@@ -2,8 +2,6 @@ const statsModule = {
   currentCustomStart: null,
   currentCustomEnd: null,
   initialized: false,
-  _topStatsCache: new Map(),
-  _topStatsCacheOrder: [],
 
   init() {
     if (this.initialized) return;

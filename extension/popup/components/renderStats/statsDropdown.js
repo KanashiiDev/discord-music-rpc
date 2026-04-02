@@ -50,13 +50,6 @@ function initStatsDropdown() {
       return;
     }
 
-    const cacheKey = `${range}-null-null`;
-    if (restoreFromCache(cacheKey)) {
-      clearFlatpickr();
-      await activateSimpleBar("historyStatsPanel");
-      return;
-    }
-
     const container = document.getElementById("statsEntries");
     container.replaceChildren();
     const spinner = document.createElement("div");
@@ -64,7 +57,6 @@ function initStatsDropdown() {
     container.appendChild(spinner);
 
     await renderTopStats(historyState.fullHistory, range);
-    saveToCache(cacheKey, container);
     spinner.remove();
 
     clearFlatpickr();
