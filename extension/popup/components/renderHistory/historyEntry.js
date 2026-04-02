@@ -10,20 +10,19 @@ function createHistoryEntry(entry, historyIndex, type, filteredHistory = []) {
   checkbox.dataset.index = historyIndex;
 
   // Image
+  const imgContainer = document.createElement("div");
+  imgContainer.className = "history-image-container spinner";
+
   const img = Object.assign(document.createElement("img"), {
     width: 46,
     height: 46,
-    className: "history-image lazyload",
+    className: "history-image",
     alt: "",
+    loading: "lazy",
+    decoding: "async",
   });
-  img.dataset.src = entry.i || browser.runtime.getURL("icons/48x48.png");
-  img.addEventListener(
-    "error",
-    () => {
-      img.src = browser.runtime.getURL("icons/48x48.png");
-    },
-    { once: true },
-  );
+
+  imgContainer.appendChild(img);
 
   // Info
   const info = document.createElement("div");
@@ -72,6 +71,7 @@ function createHistoryEntry(entry, historyIndex, type, filteredHistory = []) {
   if (entry.u) link.href = entry.u;
   link.appendChild(createSVG(svg_paths.redirectIconPaths));
 
-  div.append(checkbox, img, info, link);
+  div.append(checkbox, imgContainer, info, link);
+  loadImage({ target: img, src: entry.i });
   return div;
 }

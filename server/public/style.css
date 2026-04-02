@@ -312,6 +312,20 @@ footer a:hover {
   background: var(--foreground-color-300);
 }
 
+.song img {
+  opacity: 0;
+}
+
+.song img.lazyloaded {
+  opacity: 1;
+}
+
+.song .history-image-container.spinner {
+  height: 75px;
+  width: 75px;
+  margin: 15px 13px;
+}
+
 img[src*="assets/icon-dark.png"] {
   padding: 10px;
 }

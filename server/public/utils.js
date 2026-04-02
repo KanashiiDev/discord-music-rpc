@@ -244,3 +244,27 @@ export function handleCollapsible(header, AppState, simpleBars) {
     }
   }, 355);
 }
+
+export function loadImage({ target, src, fallback = "assets/icon-dark.png" } = {}) {
+  if (!target) return;
+  if ((target && !src) || typeof src !== "string") target.src = fallback;
+
+  const finish = () => {
+    target.classList.add("lazyloaded");
+    target.closest(".spinner")?.classList.remove("spinner");
+    target.removeEventListener("load", onLoad);
+    target.removeEventListener("error", onError);
+  };
+
+  const onLoad = () => finish();
+
+  const onError = () => {
+    target.src = fallback;
+    finish();
+  };
+
+  target.addEventListener("load", onLoad, { once: true });
+  target.addEventListener("error", onError, { once: true });
+
+  target.src = src;
+}

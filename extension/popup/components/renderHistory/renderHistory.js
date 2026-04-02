@@ -37,7 +37,7 @@ async function renderHistory({ reset = true, query = "" } = {}) {
     historyState.lastRenderedHeader = null;
     historyState.currentOffset = 0;
 
-    const spinner = Object.assign(document.createElement("div"), { className: "spinner" });
+    const spinner = Object.assign(document.createElement("div"), { className: "history-spinner spinner" });
     target.appendChild(spinner);
 
     const res = await sendAction("loadHistory");
@@ -45,7 +45,7 @@ async function renderHistory({ reset = true, query = "" } = {}) {
   }
 
   buildHistorySourceCache();
-  target.querySelector(".spinner")?.remove();
+  target.querySelector(".history-spinner.spinner")?.remove();
 
   const searchQuery = query.trim();
   const hasFilter = searchQuery || selectedSources.size > 0;

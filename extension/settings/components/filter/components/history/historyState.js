@@ -99,16 +99,10 @@ const HistoryUtils = {
     const img = document.createElement("img");
     img.width = 46;
     img.height = 46;
-    img.className = "history-image lazyload";
-    img.dataset.src = entry.i || browser.runtime.getURL("icons/48x48.png");
+    img.className = "history-image";
+    img.loading = "lazy";
+    img.decoding = "async";
     img.alt = "";
-    img.addEventListener(
-      "error",
-      () => {
-        img.src = browser.runtime.getURL("icons/48x48.png");
-      },
-      { once: true },
-    );
 
     // Info
     const info = document.createElement("div");
@@ -161,7 +155,7 @@ const HistoryUtils = {
 
     actionsContainer.append(blockBtn, replaceBtn);
     div.append(img, info, actionsContainer);
-
+    loadImage({ target: img, src: entry.i });
     return div;
   },
   createEntryKey(entry) {

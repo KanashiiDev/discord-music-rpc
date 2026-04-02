@@ -877,7 +877,7 @@ function createSVG(paths, options = {}) {
   const key = paths.join("");
   if (svgCache.has(key)) return svgCache.get(key).cloneNode(true);
 
-  const { width = 16, height = 16, stroke = "var(--icon-color)", strokeWidth = 2, fill = "none", viewBox = "0 0 24 24" } = options;
+  const { width = 16, height = 16, stroke = "var(--icon-color)", strokeWidth = 2, fill = "none", viewBox = "-1 -1 25.5 25.5" } = options;
   const cacheKey = `${paths.join("|")}|${width}|${height}|${stroke}|${strokeWidth}|${fill}|${viewBox}`;
 
   if (svgCache.has(cacheKey)) {
@@ -2328,4 +2328,28 @@ async function factoryReset(tab, fromSettings = false) {
   } catch (err) {
     logError("Reset to Defaults error:", err);
   }
+}
+
+function loadImage({ target, src, fallback = browser.runtime.getURL("icons/48x48.png") } = {}) {
+  if (!target) return;
+  if ((target && !src) || typeof src !== "string") target.src = fallback;
+
+  const finish = () => {
+    target.classList.add("lazyloaded");
+    target.closest(".spinner")?.classList.remove("spinner");
+    target.removeEventListener("load", onLoad);
+    target.removeEventListener("error", onError);
+  };
+
+  const onLoad = () => finish();
+
+  const onError = () => {
+    target.src = fallback;
+    finish();
+  };
+
+  target.addEventListener("load", onLoad, { once: true });
+  target.addEventListener("error", onError, { once: true });
+
+  target.src = src;
 }

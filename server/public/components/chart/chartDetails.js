@@ -1,7 +1,7 @@
 import { HC_RANGES, chartState } from "./chart.js";
 import { HistoryState } from "../history/history.js";
 import { ScrollManager } from "../../manager/scrollManager.js";
-import { createSVG, svg_paths, updateSimpleBarPadding, relativeTime, fullDateTime } from "../../utils.js";
+import { createSVG, svg_paths, updateSimpleBarPadding, relativeTime, fullDateTime, loadImage } from "../../utils.js";
 
 // Build a single DOM node
 function hc_buildSongNode(item) {
@@ -16,17 +16,20 @@ function hc_buildSongNode(item) {
     a.rel = "noopener noreferrer";
     a.title = "Go to the song";
 
+    const imgContainer = document.createElement("div");
+    imgContainer.className = "history-image-container spinner";
+
     const img = document.createElement("img");
-    img.className = "song-image lazyload";
+    img.className = "song-image";
     img.alt = item.title || "";
-    img.dataset.src = item.image || "assets/icon-dark.png";
-    img.src = "assets/icon-dark.png";
-    img.onerror = function () {
-      this.onerror = null;
-      this.src = "assets/icon-dark.png";
-    };
-    a.appendChild(img);
+    img.loading = "lazy";
+    img.decoding = "async";
+
+    imgContainer.appendChild(img);
+
+    a.appendChild(imgContainer);
     wrap.appendChild(a);
+    loadImage({ target: img, src: item.image });
   }
 
   // Info block

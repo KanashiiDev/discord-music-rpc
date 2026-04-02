@@ -1,4 +1,4 @@
-import { fullDateTime, relativeTime } from "../../utils.js";
+import { fullDateTime, relativeTime, loadImage } from "../../utils.js";
 
 export function createHistoryItem(entry) {
   const songDiv = document.createElement("div");
@@ -12,15 +12,16 @@ export function createHistoryItem(entry) {
     imageLink.title = "Go to the song";
   }
 
+  const imgContainer = document.createElement("div");
+  imgContainer.className = "history-image-container spinner";
+
   const img = document.createElement("img");
-  img.className = "song-image lazyload";
-  img.dataset.src = entry.image || "assets/icon-dark.png";
-  img.src = "assets/icon-dark.png";
+  img.className = "song-image";
   img.alt = entry.title;
-  img.onerror = function () {
-    this.onerror = null;
-    this.src = "assets/icon-dark.png";
-  };
+  img.loading = "lazy";
+  img.decoding = "async";
+
+  imgContainer.appendChild(img);
 
   const infoDiv = document.createElement("div");
   infoDiv.classList.add("song-info");
@@ -44,9 +45,10 @@ export function createHistoryItem(entry) {
   source.textContent = entry.source;
   source.classList.add("source");
 
-  imageLink.append(img);
+  imageLink.append(imgContainer);
   infoDiv.append(date, title, artist, source);
   songDiv.append(imageLink, infoDiv);
+  loadImage({ target: img, src: entry.image });
 
   return songDiv;
 }
