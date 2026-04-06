@@ -69,7 +69,7 @@ async function acknowledgeNewParsers() {
 async function syncParserSnapshot(currentList) {
   const { parserKnownIds = null, parserNewIds = [] } = await browser.storage.local.get(["parserKnownIds", "parserNewIds"]);
 
-  const currentIds = currentList.map((e) => e.id);
+  const currentIds = currentList.filter((e) => !e.userAdd && !e.userScript).map((e) => e.id);
 
   if (parserKnownIds === null) {
     // First snapshot — nothing is "new" yet
