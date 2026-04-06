@@ -867,7 +867,7 @@ window.addEventListener("message", async (event) => {
               duration: song.duration,
               buttons: song.buttons,
               mode: msg.data.mode,
-              isPlaying: Boolean(msg.data.isPlaying),
+              isPlaying: Boolean(song.isPlaying),
             };
           } catch (err) {
             logError("User script parser error:", err);
