@@ -499,11 +499,13 @@ async function handleNoSong() {
     logInfo(`%c⏹️  No song is currently playing - clearing RPC...`, "color:#ff9800; font-weight:bold;");
     await browser.runtime.sendMessage({ type: "CLEAR_RPC" });
     rpcState.reset();
+    keepAliveManager.destroy();
     window._lastParsedSong = null;
     logInfo("handleNoSong: RPC cleared successfully");
   } catch (e) {
     logError("handleNoSong: failed to clear RPC:", e);
     rpcState.reset();
+    keepAliveManager.destroy();
   } finally {
     clearingRpc = false;
   }
