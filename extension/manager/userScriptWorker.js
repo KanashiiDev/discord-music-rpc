@@ -258,7 +258,12 @@ class UserScriptManager {
       const isMV3 = manifest.manifest_version === 3;
       const patterns = Array.isArray(script.urlPatterns) ? script.urlPatterns : [script.urlPatterns];
       const domains = (Array.isArray(script.domain) ? script.domain : [script.domain]).filter(Boolean);
-      const matches = domains.flatMap((d) => patterns.map((p) => PatternValidator.toChromeMatch(d, p))).filter((m) => m !== "*://*/*");
+      const matches = domains
+        .flatMap((d) => {
+          const domainVariants = [`*.${d}`, `www.${d}`];
+          return domainVariants.flatMap((variant) => patterns.map((p) => PatternValidator.toChromeMatch(variant, p)));
+        })
+        .filter((m) => m !== "*://*/*");
       const { parserEnabledState = {} } = await browser.storage.local.get("parserEnabledState");
       const isEnabled = parserEnabledState[`enable_${script.id}`] !== false;
 
