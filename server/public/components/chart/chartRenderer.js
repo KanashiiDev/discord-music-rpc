@@ -3,6 +3,11 @@ import { hc_prepareData } from "./chartData.js";
 import { hc_showDetails, hc_hideDetails } from "./chartDetails.js";
 import { DataStore } from "../../core/dataStore.js";
 import { createSVG, getCSS, svg_paths } from "../../utils.js";
+import { syncSummary, toggleSummary, hideSummary as hideSummaryPanel, isSummaryVisible } from "./summary/summary.js";
+import { renderChartContainer } from "./chartDom.js";
+
+// DataStore subscription reference
+let historyUnsubscribe = null;
 
 // Update Navigation Label
 function _updateNavLabel() {
@@ -34,6 +39,7 @@ function drawHistoryChart(mode, range) {
   if (!canvas) return;
 
   _updateNavLabel();
+  if (isSummaryVisible()) return;
 
   const chartData = hc_prepareData(mode, range);
   const isEmpty = !chartData.data.length || chartData.data.every((v) => v === 0);
@@ -181,6 +187,7 @@ function switchHistoryChartRange(range) {
   document.querySelectorAll(".chart-range-btn").forEach((btn) => btn.classList.toggle("active", btn.dataset.range === range));
   hc_hideDetails();
   drawHistoryChart(chartState.mode, range);
+  syncSummary();
 }
 
 // Period Navigation
@@ -190,6 +197,7 @@ function navigatePeriod(direction) {
   chartState.offset = newOffset;
   hc_hideDetails();
   drawHistoryChart(chartState.mode, chartState.range);
+  syncSummary();
 }
 
 function _initNavigation() {
@@ -216,11 +224,41 @@ function redrawChart() {
   }
 }
 
-// DataStore subscription reference
-let historyUnsubscribe = null;
+function _updateModeButtonsState() {
+  const modeButtons = document.querySelectorAll(".chart-mode-btn");
+  const isSummary = isSummaryVisible();
+
+  modeButtons.forEach((btn) => {
+    if (isSummary) {
+      btn.classList.add("summary-active");
+    } else {
+      btn.classList.remove("summary-active");
+    }
+  });
+}
+
+function _handleSummaryToggle(btn) {
+  btn.classList.toggle("active");
+  toggleSummary();
+  _updateModeButtonsState();
+}
+
+function _handleModeSwitch(btn) {
+  if (isSummaryVisible()) {
+    hideSummaryPanel();
+    const summaryToggle = document.getElementById("chartSummaryToggle");
+    if (summaryToggle) {
+      summaryToggle.classList.remove("active");
+    }
+    _updateModeButtonsState();
+  }
+  switchHistoryChartMode(btn.dataset.mode);
+}
 
 // Main entry point – call once when the history panel opens
 export async function updateHistoryChart() {
+  if (!document.querySelector(".chart-container")) renderChartContainer();
+
   const canvas = document.getElementById("listeningWaveform");
   const loadingEl = document.getElementById("historyChartLoading");
   if (!canvas || !loadingEl) return;
@@ -236,8 +274,18 @@ export async function updateHistoryChart() {
   if (modeToggle && !modeToggle.__hcBound) {
     modeToggle.__hcBound = true;
     modeToggle.addEventListener("click", (e) => {
+      // Summary toggle button
+      const summaryBtn = e.target.closest("#chartSummaryToggle, [data-mode='summary']");
+      if (summaryBtn) {
+        _handleSummaryToggle(summaryBtn);
+        return;
+      }
+
+      // Normal mode buttons
       const btn = e.target.closest(".chart-mode-btn");
-      if (btn?.dataset.mode) switchHistoryChartMode(btn.dataset.mode);
+      if (btn?.dataset.mode) {
+        _handleModeSwitch(btn);
+      }
     });
   }
 
@@ -257,6 +305,9 @@ export async function updateHistoryChart() {
   // Restore persisted active states
   document.querySelectorAll(".chart-mode-btn").forEach((btn) => btn.classList.toggle("active", btn.dataset.mode === chartState.mode));
   document.querySelectorAll(".chart-range-btn").forEach((btn) => btn.classList.toggle("active", btn.dataset.range === chartState.range));
+
+  // Initialize state on mode buttons
+  _updateModeButtonsState();
 
   // Get history data from DataStore
   const historyData = DataStore.get("history");

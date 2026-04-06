@@ -126,40 +126,7 @@
         </div>
 
         <!-- Stats -->
-        <section id="chartContainer">
-          <h2 id="chartHeader">Stats</h2>
-          <div class="chart-container">
-            <div class="chart-controls">
-              <div id="chartRangeToggle" class="btn-group" role="group" aria-label="Select time range">
-                <button class="chart-range-btn" data-range="week" type="button">Week</button>
-                <button class="chart-range-btn active" data-range="month" type="button">Month</button>
-                <button class="chart-range-btn" data-range="year" type="button">Year</button>
-              </div>
-              <div class="chart-period-nav">
-                <button id="chartPeriodPrev" class="chart-period-nav-btn"></button>
-                <span id="chartPeriodLabel" class="chart-period-nav-label"></span>
-                <button id="chartPeriodNext" class="chart-period-nav-btn"></button>
-              </div>
-              <div id="chartModeToggle" class="btn-group" role="group" aria-label="Select chart metric">
-                <button class="chart-mode-btn active" data-mode="minutes" type="button">&#9201; Time</button>
-                <button class="chart-mode-btn" data-mode="songs" type="button">&#9835; Songs</button>
-              </div>
-            </div>
-
-            <div class="chart-canvas-wrap">
-              <div id="historyChartLoading" aria-live="polite">Loading stats...</div>
-              <canvas id="listeningWaveform" role="img" aria-label="Listening statistics chart"></canvas>
-            </div>
-
-            <div id="chartDetails" class="chart-details hidden">
-              <div class="chart-details-header">
-                <span id="chartDetailsTitle" class="chart-details-date"></span>
-                <span id="chartDetailsTotal" class="chart-details-total"></span>
-              </div>
-              <div id="chartDetailsPlatforms" class="chart-details-platforms"></div>
-            </div>
-          </div>
-        </section>
+        <section id="chartContainer"></section>
 
         <!-- Logs -->
         <section id="LogsContainer">
@@ -190,6 +157,7 @@
     <script src="libs/chart.js"></script>
     <script src="libs/tinycolor.js"></script>
     <script src="libs/tom-select.js"></script>
+    <script src="libs/html2canvas-pro.js"></script>
 
     <!-- Main -->
     <script type="module" src="index.js"></script>

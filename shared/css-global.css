@@ -47,6 +47,11 @@
   overflow: hidden !important;
 }
 
+.disable-motion *:not(.spinner) {
+  transition: none !important;
+  animation: none !important;
+}
+
 /* custom background */
 #bg-layer {
   position: fixed;

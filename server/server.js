@@ -85,6 +85,31 @@ app.get("/status", (_req, res) =>
   }),
 );
 
+app.get("/proxy", async (req, res) => {
+  try {
+    const targetUrl = req.query.url;
+
+    if (!targetUrl) {
+      return res.status(400).send("Missing url");
+    }
+
+    const response = await fetch(targetUrl);
+
+    if (!response.ok) {
+      return res.status(response.status).send("Failed to fetch resource");
+    }
+
+    res.set("Content-Type", response.headers.get("content-type") || "application/octet-stream");
+    res.set("Access-Control-Allow-Origin", "*");
+
+    const buffer = await response.arrayBuffer();
+    res.send(Buffer.from(buffer));
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("Proxy error");
+  }
+});
+
 // Shutdown
 async function shutdown() {
   if (state.isShuttingDown) return state.shutdownPromise;
