@@ -3,6 +3,9 @@ class KeepAliveManager {
     this.initialized = false;
     this.intervals = [];
     this.oscillators = [];
+    this.visibilityOverride = null;
+    this.originalVisibility = {};
+    this.visibilityHandlers = {};
     this.wakeLock = null;
     this.audioContext = null;
     this.videoElement = null;
@@ -30,6 +33,7 @@ class KeepAliveManager {
     if (this.initialized) return;
     this.initialized = true;
 
+    this.initVisibilityOverride();
     this.initWebRTC();
     this.initAudioContext();
     this.initCanvasVideo();
@@ -39,6 +43,51 @@ class KeepAliveManager {
     this.createIndexedDBActivity();
 
     this.log("Keep alive initialized");
+  }
+
+  initVisibilityOverride() {
+    if (this.visibilityOverride) return;
+    this.visibilityOverride = true;
+
+    try {
+      this.originalVisibility.hidden = Object.getOwnPropertyDescriptor(document, "hidden");
+      this.originalVisibility.visibilityState = Object.getOwnPropertyDescriptor(document, "visibilityState");
+
+      Object.defineProperty(document, "hidden", {
+        configurable: true,
+        get: () => false,
+      });
+
+      Object.defineProperty(document, "visibilityState", {
+        configurable: true,
+        get: () => "visible",
+      });
+
+      this.visibilityHandlers.onBlur = () => {};
+      this.visibilityHandlers.onVisibilityChange = () => {
+        if (document.hidden) {
+          Object.defineProperty(document, "hidden", {
+            configurable: true,
+            get: () => false,
+          });
+        }
+      };
+
+      window.addEventListener("blur", this.visibilityHandlers.onBlur, true);
+      document.addEventListener("visibilitychange", this.visibilityHandlers.onVisibilityChange, true);
+
+      const forceVisible = () => {
+        if (!document.body) return;
+        document.documentElement.classList.remove("hidden");
+        document.body.classList.remove("hidden");
+      };
+
+      forceVisible();
+      const interval = setInterval(forceVisible, 2000);
+      this.intervals.push(interval);
+    } catch (e) {
+      this.log("Visibility bypass error:", e);
+    }
   }
 
   async initWebRTC() {
@@ -224,9 +273,7 @@ class KeepAliveManager {
         this.wakeLock.addEventListener("release", () => {
           this.wakeLock = null;
         });
-      } catch (e) {
-        this.log("Wake Lock error:", e.message);
-      }
+      } catch (_) {}
     };
 
     await acquire();
@@ -365,6 +412,30 @@ class KeepAliveManager {
     if (this.broadcastChannel) {
       this.broadcastChannel.close();
       this.broadcastChannel = null;
+    }
+
+    if (this.visibilityOverride) {
+      try {
+        if (this.originalVisibility.hidden) {
+          Object.defineProperty(document, "hidden", this.originalVisibility.hidden);
+        }
+
+        if (this.originalVisibility.visibilityState) {
+          Object.defineProperty(document, "visibilityState", this.originalVisibility.visibilityState);
+        }
+
+        if (this.visibilityHandlers.onBlur) {
+          window.removeEventListener("blur", this.visibilityHandlers.onBlur, true);
+        }
+
+        if (this.visibilityHandlers.onVisibilityChange) {
+          document.removeEventListener("visibilitychange", this.visibilityHandlers.onVisibilityChange, true);
+        }
+      } catch (_) {}
+
+      this.originalVisibility = {};
+      this.visibilityHandlers = {};
+      this.visibilityOverride = null;
     }
 
     this.initialized = false;
