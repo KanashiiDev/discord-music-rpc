@@ -2,22 +2,19 @@ const { state, reconnectState, AUTO_CLEAR_TIMEOUT, CLIENT_TIMEOUT, STUCK_TIMEOUT
 const { scheduleReconnect } = require("../rpc/client.js");
 const { clearRpcActivity, resetActivityState } = require("../rpc/activity.js");
 
-// Client health check
-const clientLooksAlive = () => {
-  const client = state.rpcClient;
-  return !!(client && !client.destroyed && state.isRpcConnected);
-};
-
-// Health-check timer
-function startHealthCheckTimer(historyFilePath) {
-  if (state.healthCheckInterval) {
-    clearInterval(state.healthCheckInterval);
-  }
-
-  state.healthCheckInterval = setInterval(() => _tick(historyFilePath), STUCK_TIMEOUT);
+function clientLooksAlive() {
+  return !!(state.rpcClient && !state.rpcClient.destroyed && state.isRpcConnected);
 }
 
-// Stop health-check timer
+function isReconnecting() {
+  return state.isConnecting || reconnectState.isReconnecting || reconnectState.scheduled;
+}
+
+function startHealthCheckTimer(historyFilePath) {
+  stopHealthCheckTimer();
+  state.healthCheckInterval = setInterval(() => tick(historyFilePath), STUCK_TIMEOUT);
+}
+
 function stopHealthCheckTimer() {
   if (state.healthCheckInterval) {
     clearInterval(state.healthCheckInterval);
@@ -25,69 +22,50 @@ function stopHealthCheckTimer() {
   }
 }
 
-async function _tick(historyFilePath) {
-  if (state.isShuttingDown) return;
+async function safeClear() {
+  try {
+    return await Promise.race([clearRpcActivity({ maxRetries: 1, timeoutMs: 4000 }), new Promise((resolve) => setTimeout(() => resolve(false), 4500))]);
+  } catch {
+    return false;
+  }
+}
+
+// Trigger a reconnect if the client appears dead and nothing is already in progress
+function maybeReconnect(reason) {
+  if (!clientLooksAlive() && !state.isConnecting && !reconnectState.isReconnecting) {
+    scheduleReconnect(2000, reason);
+  }
+}
+
+async function tick(historyFilePath) {
+  if (state.isShuttingDown || isReconnecting()) return;
 
   try {
     const now = Date.now();
 
     // Auto-clear stale activity
     if (state.currentActivity !== null && state.lastUpdateAt && now - state.lastUpdateAt > AUTO_CLEAR_TIMEOUT) {
-      const staleSeconds = Math.floor((now - state.lastUpdateAt) / 1000);
-      console.log(`[HEALTH] No update for ${staleSeconds}s - auto-clearing activity...`);
-
-      const cleared = await clearRpcActivity({ maxRetries: 2, timeoutMs: 5000 });
-
-      if (!cleared && clientLooksAlive()) {
-        console.warn(`[HEALTH] Auto-clear failed after ${staleSeconds}s, client may be stuck. RPC connected: ${state.isRpcConnected}`);
-      }
-
+      await safeClear();
       resetActivityState(historyFilePath);
-
-      // If client is also dead, schedule reconnect instead of just returning
-      if (!clientLooksAlive() && !state.isConnecting && !reconnectState.scheduled && !reconnectState.isReconnecting) {
-        console.log("[HEALTH] Client dead after auto-clear - scheduling reconnect...");
-        scheduleReconnect(1000, "health check: dead after auto-clear");
-      }
+      maybeReconnect("health: dead after stale clear");
       return;
     }
 
-    // Client timeout
+    // Client ownership timeout
     if (state.lastActiveClient?.timestamp && now - state.lastActiveClient.timestamp > CLIENT_TIMEOUT) {
-      const inactiveSeconds = Math.floor((now - state.lastActiveClient.timestamp) / 1000);
-      console.log(`[HEALTH] Client inactive for ${inactiveSeconds}s - clearing...`);
-
-      const cleared = await clearRpcActivity({ maxRetries: 1, timeoutMs: 5000 });
-
-      if (!cleared && clientLooksAlive()) {
-        console.warn(`[HEALTH] Client timeout clear failed after ${inactiveSeconds}s inactivity`);
-      }
-
+      await safeClear();
       resetActivityState(historyFilePath);
-
-      // If client is also dead, schedule reconnect
-      if (!clientLooksAlive() && !state.isConnecting && !reconnectState.scheduled && !reconnectState.isReconnecting) {
-        console.log("[HEALTH] Client dead after timeout clear - scheduling reconnect...");
-        scheduleReconnect(1000, "health check: dead after client timeout");
-      }
+      maybeReconnect("health: dead after timeout");
       return;
     }
 
-    // RPC client health check - only schedule if client is truly dead
-    const isClientDead = !clientLooksAlive();
-    const canScheduleReconnect = !state.isConnecting && !reconnectState.scheduled && !reconnectState.isReconnecting;
-
-    if (isClientDead && canScheduleReconnect) {
-      console.log("[HEALTH] RPC client not ready - scheduling reconnect...");
-      scheduleReconnect(1000, "health check: client not alive");
+    // Client simply gone
+    if (!clientLooksAlive() && !state.isConnecting && !reconnectState.isReconnecting && !reconnectState.scheduled) {
+      scheduleReconnect(2000, "health: client dead");
     }
   } catch (err) {
-    console.error("[HEALTH] Unexpected error:", err.message);
-
-    if (!state.isConnecting && !reconnectState.scheduled && !reconnectState.isReconnecting) {
-      console.log("[HEALTH] Scheduling reconnect due to unexpected error");
-      scheduleReconnect(3000, "health check error");
-    }
+    console.error("[HEALTH] error:", err.message);
+    if (!isReconnecting() && !state.isConnecting) scheduleReconnect(3000, "health: exception");
   }
 }
 

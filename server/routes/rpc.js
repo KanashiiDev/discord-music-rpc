@@ -8,7 +8,7 @@ const { buildActivity, setRpcActivity, clearRpcActivity, resetActivityState, han
 function createRpcRouter(historyFilePath) {
   const router = Router();
 
-  //  POST /update-rpc
+  // POST /update-rpc
   router.post("/update-rpc", async (req, res) => {
     const now = Date.now();
 
@@ -24,20 +24,25 @@ function createRpcRouter(historyFilePath) {
       }
 
       state.lastUpdateRequest = data;
+      const incomingId = String(clientId ?? "unknown");
 
-      //  Client ownership check
-      if (state.lastActiveClient && state.lastActiveClient.clientId !== String(clientId ?? "unknown") && now - (state.lastActiveClient.timestamp ?? 0) < CLIENT_TIMEOUT) {
-        return res.json({ success: true, message: "Another Client is Active" });
+      // Client ownership check
+      if (state.lastActiveClient) {
+        const ownerElapsed = now - (state.lastActiveClient.timestamp ?? 0);
+        if (ownerElapsed < CLIENT_TIMEOUT && state.lastActiveClient.clientId !== incomingId) {
+          // Another client is active and hasn't timed out yet
+          return res.json({ success: true, message: "Another Client is Active" });
+        }
       }
 
-      state.lastActiveClient = { clientId: String(clientId ?? "unknown"), timestamp: now };
+      // This client becomes the owner (new, same, or prior owner timed out)
+      state.lastActiveClient = { clientId: incomingId, timestamp: now };
 
-      //  Ensure RPC is connected
       if (!(await connectRPC())) {
         return res.status(500).json({ error: "RPC connection failed" });
       }
 
-      //  Clear activity
+      // No status -> clear activity
       if (!data.status) {
         try {
           await clearRpcActivity({ maxRetries: 1, timeoutMs: 5000 });
@@ -49,40 +54,34 @@ function createRpcRouter(historyFilePath) {
         return res.json({ success: true, action: "cleared" });
       }
 
-      //  Build & set activity
       const { activity, activitySettings } = buildActivity(data, now);
 
-      // Sync showSmallIcon to server settings so health-check and other modules can read it without re-parsing activitySettings.
       state.serverSettings.showSmallIcon = Boolean(activitySettings.showFavIcon);
       state.isHistorySaveEnabled = activitySettings.saveHistory ?? true;
 
-      // Log on change if enabled
       if (state.serverSettings.logSongUpdate && !isSameActivity(activity, state.currentActivity)) {
-        console.log(`[RPC] Updated: ${activity.details} — ${getCurrentTime()}`);
+        console.log(`[RPC] Updated: ${activity.details} - ${getCurrentTime()}`);
       }
 
-      // History (only for music, not "watch" mode)
-      if (activity.type !== 3) {
-        handleHistoryUpdate(activity, historyFilePath);
-      }
+      // History only for music (not "watch" / type 3)
+      if (activity.type !== 3) handleHistoryUpdate(activity, historyFilePath);
 
       // Deduplicate identical consecutive activities
       const isSame = isSameActivity(activity, state.currentActivity);
-
       if (!isSame) {
         const ok = await setRpcActivity(activity);
         if (!ok) return res.status(503).json({ error: "RPC client not ready" });
       }
 
       state.lastUpdateAt = now;
-      return res.json({ success: true, action: "updated" });
+      return res.json({ success: true, action: isSame ? "unchanged" : "updated" });
     } catch (err) {
       console.error("[UPDATE-RPC] Error:", err);
       return res.status(500).json({ error: "Internal server error", details: err.message });
     }
   });
 
-  //  GET /update-rpc
+  // GET /update-rpc
   router.get("/update-rpc", (_req, res) => {
     if (!state.lastUpdateRequest) {
       return res.json({ message: "No update-rpc request has been made yet." });
@@ -90,9 +89,7 @@ function createRpcRouter(historyFilePath) {
     res.json({ ...state.lastUpdateRequest });
   });
 
-  //  POST /clear-rpc
-  let clearRpcInProgress = false;
-
+  // POST /clear-rpc
   router.post("/clear-rpc", async (req, res) => {
     try {
       if (!req.body || typeof req.body !== "object") {
@@ -103,27 +100,26 @@ function createRpcRouter(historyFilePath) {
         return res.status(400).json({ error: "clientId is required and must be a string" });
       }
 
-      if (clearRpcInProgress) {
-        const cached = state.lastClearRpcResult ?? { success: true, cleared: true, reconnected: false };
-        return res.json({ ...cached, deduplicated: true });
+      if (state.clearRpcInProgress) {
+        return res.json({ success: false, inProgress: true, message: "Clear operation already in progress" });
       }
 
-      clearRpcInProgress = true;
+      state.clearRpcInProgress = true;
 
       try {
         const hadActivity = state.currentActivity !== null;
         resetActivityState(historyFilePath);
 
         let clearSuccess = false;
+        const connected = await connectRPC();
 
-        if (await connectRPC()) {
+        if (connected) {
           if (hadActivity || state.rpcClient?.user) {
             clearSuccess = await clearRpcActivity({ maxRetries: MAX_CLEAR_RETRIES, timeoutMs: 5000 });
-
             if (!clearSuccess) {
-              console.error("[CLEAR-RPC] All retries failed — scheduling reconnect...");
+              console.error("[CLEAR-RPC] Clear failed - marking as disconnected");
               state.isRpcConnected = false;
-              scheduleReconnect(1000, "clear-rpc: all retries failed");
+              if (!state.isConnecting) scheduleReconnect(2000, "clear-rpc: clear failed");
             }
           } else {
             clearSuccess = true;
@@ -139,17 +135,16 @@ function createRpcRouter(historyFilePath) {
         state.lastClearRpcResult = response;
         return res.json(response);
       } finally {
-        clearRpcInProgress = false;
+        state.clearRpcInProgress = false;
       }
     } catch (err) {
       console.error("[CLEAR-RPC] Error:", err);
-      const errorResp = { error: "Internal server error", details: err.message };
-      state.lastClearRpcResult = errorResp;
-      return res.status(500).json(errorResp);
+      state.clearRpcInProgress = false;
+      return res.status(500).json({ error: "Internal server error", details: err.message });
     }
   });
 
-  //  GET /clear-rpc
+  // GET /clear-rpc
   router.get("/clear-rpc", (_req, res) => {
     if (!state.lastClearRpcResult) {
       return res.json({ message: "No clear-rpc request has been made yet." });
@@ -157,7 +152,7 @@ function createRpcRouter(historyFilePath) {
     res.json(state.lastClearRpcResult);
   });
 
-  //  GET /activity
+  // GET /activity
   router.get("/activity", (_req, res) => {
     res.json({
       activity: state.currentActivity,

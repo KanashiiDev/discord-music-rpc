@@ -23,14 +23,13 @@ const reconnectState = {
     }
     this.scheduled = false;
     this.isReconnecting = false;
+    this.reason = null;
   },
 
   // Check if reconnection can be done
   canReconnect() {
-    const now = Date.now();
     if (this.isReconnecting || this.scheduled) return false;
-    if (this.lastReconnectAt && now - this.lastReconnectAt < this.minReconnectInterval) return false;
-    return true;
+    return !this.lastReconnectAt || Date.now() - this.lastReconnectAt >= this.minReconnectInterval;
   },
 
   // Restart reconnecting
@@ -72,19 +71,21 @@ const state = {
   connectPromise: null,
   isShuttingDown: false,
   shutdownPromise: null,
+  clearRpcInProgress: false,
+  connectionEpoch: 0,
+  hasConnectedOnce: false,
   currentActivity: null,
   lastActiveClient: null,
-  isHistorySaveEnabled: true,
-  lastSavedHistoryEntry: null,
   lastUpdateAt: null,
   healthCheckInterval: null,
+  isHistorySaveEnabled: true,
+  lastSavedHistoryEntry: null,
+  historySaveLock: false,
+  historyTimeout: null,
+  listeningStartTime: null,
   serverInstance: null,
-  hasLoggedRpcFailure: false,
   lastUpdateRequest: null,
   lastClearRpcResult: null,
-  historySaveLock: false,
-  listeningStartTime: null,
-  historyTimeout: null,
   serverSettings: {
     showSmallIcon: false,
     logSongUpdate: false,
