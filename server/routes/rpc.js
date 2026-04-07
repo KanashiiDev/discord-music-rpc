@@ -51,6 +51,9 @@ function createRpcRouter(historyFilePath) {
           state.isRpcConnected = false;
         }
         resetActivityState(historyFilePath);
+        state.lastUpdateAt = now;
+        state.lastActivitySeenAt = now;
+
         return res.json({ success: true, action: "cleared" });
       }
 
@@ -74,6 +77,7 @@ function createRpcRouter(historyFilePath) {
       }
 
       state.lastUpdateAt = now;
+      state.lastActivitySeenAt = now;
       return res.json({ success: true, action: isSame ? "unchanged" : "updated" });
     } catch (err) {
       console.error("[UPDATE-RPC] Error:", err);
@@ -129,6 +133,7 @@ function createRpcRouter(historyFilePath) {
         state.currentActivity = null;
         state.lastActiveClient = null;
         state.lastUpdateAt = null;
+        state.lastActivitySeenAt = null;
         state.listeningStartTime = null;
 
         const response = { success: true, cleared: clearSuccess, reconnected: !clearSuccess };

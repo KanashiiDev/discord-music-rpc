@@ -1,10 +1,11 @@
 const CLIENT_ID = "1366752683628957767";
 const RETRY_DELAY = 10000;
 const CLIENT_TIMEOUT = 30000;
-const AUTO_CLEAR_TIMEOUT = 24000;
-const STUCK_TIMEOUT = 12000;
+const AUTO_CLEAR_TIMEOUT = 28000;
+const RECONNECT_GRACE_MS = 20000;
+const STUCK_TIMEOUT = 18000;
 const MAX_CLEAR_RETRIES = 3;
-const HISTORY_SAVE_TIMEOUT = 27000;
+const HISTORY_SAVE_TIMEOUT = 28000;
 
 // State for reconnect management
 const reconnectState = {
@@ -12,7 +13,7 @@ const reconnectState = {
   scheduled: false,
   timer: null,
   lastReconnectAt: 0,
-  minReconnectInterval: 5000,
+  minReconnectInterval: 7000,
   reason: null,
 
   // Cancel the timer
@@ -77,6 +78,7 @@ const state = {
   currentActivity: null,
   lastActiveClient: null,
   lastUpdateAt: null,
+  lastActivitySeenAt: null,
   healthCheckInterval: null,
   isHistorySaveEnabled: true,
   lastSavedHistoryEntry: null,
@@ -102,4 +104,5 @@ module.exports = {
   STUCK_TIMEOUT,
   MAX_CLEAR_RETRIES,
   HISTORY_SAVE_TIMEOUT,
+  RECONNECT_GRACE_MS,
 };

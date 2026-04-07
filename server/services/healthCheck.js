@@ -1,9 +1,13 @@
-const { state, reconnectState, AUTO_CLEAR_TIMEOUT, CLIENT_TIMEOUT, STUCK_TIMEOUT } = require("../rpc/state.js");
+const { state, reconnectState, AUTO_CLEAR_TIMEOUT, CLIENT_TIMEOUT, STUCK_TIMEOUT, RECONNECT_GRACE_MS } = require("../rpc/state.js");
 const { scheduleReconnect } = require("../rpc/client.js");
 const { clearRpcActivity, resetActivityState } = require("../rpc/activity.js");
 
+let deadSince = null;
+
 function clientLooksAlive() {
-  return !!(state.rpcClient && !state.rpcClient.destroyed && state.isRpcConnected);
+  const alive = !!(state.rpcClient && !state.rpcClient.destroyed && state.isRpcConnected);
+  if (alive) deadSince = null;
+  return alive;
 }
 
 function isReconnecting() {
@@ -32,7 +36,17 @@ async function safeClear() {
 
 // Trigger a reconnect if the client appears dead and nothing is already in progress
 function maybeReconnect(reason) {
-  if (!clientLooksAlive() && !state.isConnecting && !reconnectState.isReconnecting) {
+  if (clientLooksAlive()) return;
+  if (state.isConnecting || reconnectState.isReconnecting || reconnectState.scheduled) return;
+
+  const now = Date.now();
+  if (!deadSince) {
+    deadSince = now;
+    return;
+  }
+
+  if (now - deadSince >= RECONNECT_GRACE_MS) {
+    deadSince = null;
     scheduleReconnect(2000, reason);
   }
 }
@@ -44,7 +58,7 @@ async function tick(historyFilePath) {
     const now = Date.now();
 
     // Auto-clear stale activity
-    if (state.currentActivity !== null && state.lastUpdateAt && now - state.lastUpdateAt > AUTO_CLEAR_TIMEOUT) {
+    if (state.currentActivity !== null && state.lastActivitySeenAt && now - state.lastActivitySeenAt > AUTO_CLEAR_TIMEOUT) {
       await safeClear();
       resetActivityState(historyFilePath);
       maybeReconnect("health: dead after stale clear");
@@ -55,13 +69,15 @@ async function tick(historyFilePath) {
     if (state.lastActiveClient?.timestamp && now - state.lastActiveClient.timestamp > CLIENT_TIMEOUT) {
       await safeClear();
       resetActivityState(historyFilePath);
-      maybeReconnect("health: dead after timeout");
+      if (!clientLooksAlive()) {
+        maybeReconnect("health: dead after timeout");
+      }
       return;
     }
 
-    // Client simply gone
+    // Client gone: check with the grace period
     if (!clientLooksAlive() && !state.isConnecting && !reconnectState.isReconnecting && !reconnectState.scheduled) {
-      scheduleReconnect(2000, "health: client dead");
+      maybeReconnect("health: client dead");
     }
   } catch (err) {
     console.error("[HEALTH] error:", err.message);

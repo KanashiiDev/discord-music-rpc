@@ -156,6 +156,7 @@ async function setRpcActivity(activity) {
   try {
     await client.user.setActivity(activity);
     state.currentActivity = activity;
+    state.lastActivitySeenAt = Date.now();
     return true;
   } catch (err) {
     console.error("[ACTIVITY] setActivity failed:", err.message);
@@ -186,8 +187,9 @@ function resetActivityState(historyFilePath) {
   if (historyFilePath) flushListeningTime(historyFilePath);
   cancelHistoryTimer();
   state.currentActivity = null;
-  state.lastActiveClient = null;
   state.lastUpdateAt = null;
+  state.lastActivitySeenAt = null;
+  state.lastActiveClient = null;
   state.listeningStartTime = null;
 }
 
