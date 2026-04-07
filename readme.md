@@ -200,7 +200,106 @@ Modern browsers use methods such as freezing background tabs and restricting Jav
    Always keep these sites active
    ```
 
-3. Add your music site
+3. Add your music site.
+
+---
+
+#### Disable Background Throttling & Window Occlusion
+
+Chrome sometimes slows down background tabs. If your site is not updating properly, you can apply advanced settings:
+
+#### Windows
+
+You can run a pre-made Registry file and restart Chrome.
+[**[Click here to download Registry file]**](scripts\chrome-occlusion-disable.reg)
+
+This file sets the following registry keys:
+
+```reg
+[HKEY_LOCAL_MACHINE\Software\Policies\Google\Chrome]
+"IntensiveWakeUpThrottlingEnabled"=dword:0
+"WindowOcclusionEnabled"=dword:0
+
+[HKEY_CURRENT_USER\Software\Policies\Google\Chrome]
+"IntensiveWakeUpThrottlingEnabled"=dword:0
+"WindowOcclusionEnabled"=dword:0
+```
+
+What this does:
+Stops Chrome from slowing down background tabs. Prevents "window occlusion" from pausing tabs when they're hidden.
+
+---
+
+#### Linux
+
+> **Note:** If you are using **Chromium** instead of Google Chrome, replace the path with:
+> `/etc/chromium/policies/managed/`
+
+1. Open the terminal (Ctrl+Alt+T on most distributions).
+2. Create the managed policies folder if it doesn't exist:
+
+```bash
+sudo mkdir -p /etc/opt/chrome/policies/managed/
+```
+
+3. Create the policy file:
+
+```bash
+sudo nano /etc/opt/chrome/policies/managed/background_throttle.json
+```
+
+4. Paste this content into the file:
+
+```json
+{
+  "IntensiveWakeUpThrottlingEnabled": false,
+  "WindowOcclusionEnabled": false
+}
+```
+
+5. Save the file (`Ctrl+O` in nano) and exit (`Ctrl+X`).
+6. Restart Chrome.
+
+---
+
+#### macOS
+
+1. Open **Terminal** (`Applications → Utilities → Terminal`)
+
+2. Create the managed policies folder if it doesn't exist:
+
+```bash
+sudo mkdir -p "/Library/Managed Preferences/"
+```
+
+3. Create the policy file:
+
+```bash
+sudo nano "/Library/Managed Preferences/com.google.Chrome.plist"
+```
+
+4. Paste this content into the file:
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+"http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>IntensiveWakeUpThrottlingEnabled</key>
+    <false/>
+    <key>WindowOcclusionEnabled</key>
+    <false/>
+</dict>
+</plist>
+```
+
+5. Save the file (`Ctrl+O` in nano) and exit (`Ctrl+X`).
+
+6. Restart Chrome.
+
+> **Note:** If policies are not applying, try placing the file in the user-specific folder instead:
+> `/Library/Managed Preferences/<your_username>/com.google.Chrome.plist`
 
 ---
 
@@ -218,11 +317,22 @@ Modern browsers use methods such as freezing background tabs and restricting Jav
    ```
 
 2. Click **Accept the Risk**
-3. Search and set these to `false`:
+
+3. Search and set the following values to **false**:
 
    ```
    dom.suspend_inactive.enabled
-   browser.tabs.freezeOnMinimize
+   widget.windows.window_occlusion_tracking.enabled
+   widget.windows.window_occlusion_tracking_display_state.enabled
+   widget.windows.window_occlusion_tracking_session_lock.enabled
+   ```
+
+4. Search and set the following values to **0**:
+
+   ```
+   dom.min_background_timeout_value
+   dom.timeout.background_throttling_max_budget
+   dom.min_background_timeout_value_without_budget_throttling
    ```
 
 ---
@@ -236,6 +346,7 @@ Modern browsers use methods such as freezing background tabs and restricting Jav
    ```
 
 2. Scroll to **Performance**
+
 3. Uncheck:
 
    ```
