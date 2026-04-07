@@ -34,9 +34,10 @@ export function relativeTime(dateValue) {
 
   const weeks = Math.floor(days / 7);
   if (weeks === 1) return "1 week ago";
-  if (weeks < 4) return weeks + " weeks ago";
+  if (weeks < 5) return weeks + " weeks ago";
 
   const months = Math.floor(days / 30.4);
+  if (months < 1) return weeks + " weeks ago";
   if (months < 12) return months + ` month${months === 1 ? "" : "s"} ago`;
 
   const years = Math.floor(months / 12);
