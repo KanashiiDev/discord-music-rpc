@@ -1489,74 +1489,17 @@ function getPlainText(text) {
   const trimmed = text.trim();
   if (!trimmed) return null;
 
-  const htmlTags = new Set([
-    "html",
-    "head",
-    "body",
-    "div",
-    "span",
-    "p",
-    "a",
-    "ul",
-    "ol",
-    "li",
-    "table",
-    "tr",
-    "td",
-    "th",
-    "thead",
-    "tbody",
-    "tfoot",
-    "section",
-    "article",
-    "nav",
-    "header",
-    "footer",
-    "main",
-    "aside",
-    "form",
-    "input",
-    "textarea",
-    "button",
-    "select",
-    "option",
-    "label",
-    "img",
-    "canvas",
-    "svg",
-    "video",
-    "audio",
-    "source",
-    "iframe",
-    "script",
-    "style",
-    "link",
-    "meta",
-    "h1",
-    "h2",
-    "h3",
-    "h4",
-    "h5",
-    "h6",
-    "pre",
-    "code",
-    "blockquote",
-    "figure",
-    "figcaption",
-    "strong",
-    "em",
-    "b",
-    "i",
-    "u",
-    "small",
-    "sub",
-    "sup",
-    "hr",
-    "br",
-  ]);
-  if (/^[.#[]/.test(trimmed)) return null;
-  if (!trimmed.includes(" ") && htmlTags.has(trimmed.toLowerCase())) return null;
-  if (/[\s>+~.#:[\]]/.test(trimmed)) return null;
+  if (/^[.#]/.test(trimmed)) return null;
+
+  const firstWord = trimmed.split(/[\s.#\[>+~:"'`]/)[0].toLowerCase();
+  if (!firstWord) return null;
+
+  try {
+    const el = document.createElement(firstWord);
+    const isKnownTag = el.constructor !== HTMLUnknownElement && el.constructor !== HTMLElement;
+    if (isKnownTag) return null;
+  } catch {}
+
   return trimmed;
 }
 
