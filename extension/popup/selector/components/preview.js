@@ -385,26 +385,16 @@ function updatePreview(shadow, editMode) {
       const prevDurationSec = getSeconds(durEl.getAttribute("duration-prev") || texts.duration);
 
       // Use remaining format if it decreases backward or starts with '-,–,—'.
-      const isRemaining = (/^[-–—]/.test(texts.duration.trim()) && currentDurationSec > prevDurationSec) || currentDurationSec < prevDurationSec;
-
+      const isNegativeFormat = /^[-–—]/.test(texts.duration.trim());
+      const isRemaining = isNegativeFormat || currentDurationSec < prevDurationSec;
       let totalSec;
 
       if (isRemaining) {
-        const durationInSeconds = getSeconds(timeEl.textContent) + currentDurationSec;
-        if (currentDurationSec > 0) {
-          const ratio = durationInSeconds / currentDurationSec;
-          if (ratio > 1.5 || ratio < 0.5) {
-            totalSec = formatTime(currentDurationSec);
-          } else {
-            totalSec = formatTime(durationInSeconds);
-          }
-        } else {
-          if (durationInSeconds > currentDurationSec * 1.5) {
-            totalSec = formatTime(currentDurationSec);
-          } else {
-            totalSec = formatTime(durationInSeconds);
-          }
-        }
+        const elapsed = getSeconds(timeEl.textContent);
+        const remaining = Math.abs(currentDurationSec);
+        totalSec = elapsed + remaining;
+      } else {
+        totalSec = currentDurationSec;
       }
 
       durEl.textContent = formatTime(totalSec);
