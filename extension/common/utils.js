@@ -832,8 +832,16 @@ const parseUrlPattern = (pattern) => {
   if (pattern instanceof RegExp) return pattern;
   if (typeof pattern === "string") {
     const match = pattern.match(/^\/(.+)\/([gimsuy]*)$/);
+    if (match) {
+      try {
+        return new RegExp(match[1], match[2] || undefined);
+      } catch (e) {
+        logWarn("Invalid regex:", pattern, e);
+        return /.^/;
+      }
+    }
     try {
-      return new RegExp(match?.[1] ?? pattern, match?.[2] ?? "");
+      return new RegExp(pattern);
     } catch (e) {
       logWarn("Invalid regex:", pattern, e);
     }
