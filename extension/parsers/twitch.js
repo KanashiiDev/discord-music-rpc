@@ -12,7 +12,8 @@ registerParser({
     const video = document.querySelector("video");
     const currentTime = Number.isFinite(video?.currentTime) && video.currentTime > 0 ? video.currentTime : 0;
     const duration = Number.isFinite(video?.duration) && video.duration > 0 ? video.duration : 0;
-    const playing = !video?.paused && currentTime > 0;
+    const isPlayingButton = Boolean(document.querySelector("[data-a-player-state='playing']"));
+    const playing = (!video?.paused && currentTime > 0) || isPlayingButton;
 
     return {
       title: titleElem,

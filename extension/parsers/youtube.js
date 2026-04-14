@@ -3,8 +3,8 @@ registerParser({
   title: "YouTube",
   urlPatterns: [/.*/],
   description: "Video-sharing platform hosting music, live streams, and other content.",
-  category: "platform",
-  tags: ["video"],
+  category: ["video", "platform"],
+  tags: [],
   fn: async function () {
     if (location.pathname.includes("shorts")) return;
     const url = window.location.href;
