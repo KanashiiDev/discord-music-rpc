@@ -20,7 +20,7 @@ function truncate(str, maxLength = 128, { fallback = "Unknown", minLength = 2, m
     "Bonus\\s+Track|PATREON|teaser|trailer|promo|lyric\\s+video|lyrics?|music\\s+video|out\\s+now",
     "subbed|mixed\\s+by\\s+dj|karaoke|backing\\s+track|vocals\\s+only|live(\\s+performance)?",
     "now\\s+available|full\\s+song|full\\s+version|complete\\s+version|original\\s+version",
-    "official\\s+trailer|official\\s+teaser|[\\w\\s'’.\\-]+\\s+premiere",
+    "official\\s+trailer|official\\s+teaser|[\\w\\s''.\\-]+\\s+premiere",
   ];
 
   str = str.trim();
@@ -31,40 +31,47 @@ function truncate(str, maxLength = 128, { fallback = "Unknown", minLength = 2, m
 
   // Always remove
   const alwaysRemoveRegex = new RegExp(alwaysRemoveKeywords.join("|"), "gi");
-  strForRegex = strForRegex.replace(alwaysRemoveRegex, "");
+  const afterAlways = strForRegex.replace(alwaysRemoveRegex, "");
+
+  strForRegex = afterAlways;
 
   // Optional remove (only in brackets)
   const optionalRegexStr = optionalRemoveKeywords.join("|");
-  strForRegex = strForRegex.replace(/([\[\(（【])([^\]\)）】]+)([\]\)）】])/g, (match, open, content, close) => {
+  const afterOptional = strForRegex.replace(/([\[\(（【])([^\]\)）】]+)([\]\)）】])/g, (match, open, content, close) => {
     const cleanedContent = content
       .replace(new RegExp(`\\b(${optionalRegexStr})\\b`, "gi"), "")
       .replace(/\s{2,}/g, " ")
       .trim();
+    const result = cleanedContent ? `${open}${cleanedContent}${close}` : "";
 
-    return cleanedContent ? `${open}${cleanedContent}${close}` : "";
+    return result;
   });
+  strForRegex = afterOptional;
 
   // Remove the dash marks inside the parentheses
-  strForRegex = strForRegex.replace(/[\[\(（]\s*-\s*([^\]\)）]+)[\]\)）]/g, "[$1]");
-  strForRegex = strForRegex.replace(/[\[\(（]([^\]\)）]+?)\s*-\s*[\]\)）]/g, "[$1]");
+  const afterDash1 = strForRegex.replace(/[\[\(（]\s*-\s*([^\]\)）]+)[\]\)）]/g, "[$1]");
+  const afterDash2 = afterDash1.replace(/[\[\(（]([^\]\)）]+?)\s*-\s*[\]\)）]/g, "[$1]");
+  strForRegex = afterDash2;
 
   // Empty parentheses (run twice to catch newly emptied ones)
-  strForRegex = strForRegex.replace(/[\[\(（【]\s*[\]\)）】]/g, "");
-  strForRegex = strForRegex.replace(/[\[\(（【]\s*[\]\)）】]/g, "");
+  const afterEmptyParens1 = strForRegex.replace(/[\[\(（【]\s*[\]\)）】]/g, "");
+  const afterEmptyParens2 = afterEmptyParens1.replace(/[\[\(（【]\s*[\]\)）】]/g, "");
+  strForRegex = afterEmptyParens2;
 
   // Normalize whitespace
-  strForRegex = strForRegex.replace(/\s+/g, " ").trim();
+  const afterWhitespace = strForRegex.replace(/\s+/g, " ").trim();
+  strForRegex = afterWhitespace;
 
   // Remove problematic characters, control characters and broken surrogates
   try {
-    strForRegex = strForRegex.replace(/[\u0000-\u001F\u007F]/g, "");
-    strForRegex = strForRegex.replace(/[\u200B-\u200D\uFEFF\u180E]/g, "");
-    strForRegex = strForRegex.normalize("NFC");
-    strForRegex = strForRegex.replace(/[\uD800-\uDFFF](?![\uDC00-\uDFFF])/g, "").replace(/(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g, "");
-    strForRegex = strForRegex.replace(/[^\u0020-\u007E\u00A0-\uD7FF\uE000-\uFFFD]/g, "");
-  } catch (_) {
-    // Continue without removing problematic characters
-  }
+    const afterControl = strForRegex.replace(/[\u0000-\u001F\u007F]/g, "");
+    const afterZeroWidth = afterControl.replace(/[\u200B-\u200D\uFEFF\u180E]/g, "");
+    const afterNFC = afterZeroWidth.normalize("NFC");
+    const afterSurrogates = afterNFC.replace(/[\uD800-\uDFFF](?![\uDC00-\uDFFF])/g, "").replace(/(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g, "");
+    const afterNonPrint = afterSurrogates.replace(/[^\u0020-\u007E\u00A0-\uD7FF\uE000-\uFFFD]/g, "");
+
+    strForRegex = afterNonPrint;
+  } catch (_) {}
 
   // Max length
   let result = strForRegex;
@@ -98,29 +105,21 @@ function truncate(str, maxLength = 128, { fallback = "Unknown", minLength = 2, m
 function normalizeTitleAndArtist(title, artist, replaceArtist = true) {
   let dataTitle = title?.trim() || "";
   let dataArtist = artist?.trim() || "";
+  if (!dataTitle) return { title: dataTitle, artist: dataArtist };
 
   const calculateSimilarity = (str1, str2) => {
-    const s1 = str1.toLowerCase().replace(/[^\w\s]/g, "");
-    const s2 = str2.toLowerCase().replace(/[^\w\s]/g, "");
-
+    const normalize = (s) => s.toLowerCase().replace(/[^\w\s]/g, "");
+    const s1 = normalize(str1);
+    const s2 = normalize(str2);
     if (s1 === s2) return 1;
-
-    const longer = s1.length > s2.length ? s1 : s2;
-    const shorter = s1.length > s2.length ? s2 : s1;
-
-    if (longer.length === 0) return 1;
-
-    // Check if shorter is contained in longer
-    if (longer.includes(shorter)) {
-      return shorter.length / longer.length;
-    }
-
-    return 0;
+    if (!s1 || !s2) return 0;
+    const [longer, shorter] = s1.length >= s2.length ? [s1, s2] : [s2, s1];
+    return longer.includes(shorter) ? shorter.length / longer.length : 0;
   };
 
-  const parenIndex = dataTitle.search(/[(\[\(（【]/);
-  const titleBeforeParen = parenIndex !== -1 ? dataTitle.substring(0, parenIndex) : dataTitle;
-  const parenPart = parenIndex !== -1 ? dataTitle.substring(parenIndex) : "";
+  const parenIndex = dataTitle.search(/[\[\(（【]/);
+  const titleBeforeParen = parenIndex !== -1 ? dataTitle.slice(0, parenIndex) : dataTitle;
+  const parenPart = parenIndex !== -1 ? dataTitle.slice(parenIndex) : "";
   const dashMatch = titleBeforeParen.match(/^(.+?)\s[-–—]\s(.+)$/);
   if (dashMatch && replaceArtist) {
     const extractedArtist = dashMatch[1].trim();
@@ -134,16 +133,20 @@ function normalizeTitleAndArtist(title, artist, replaceArtist = true) {
       return { title: extractedArtist, artist: dataArtist };
     }
 
-    const extractedLower = extractedArtist.toLowerCase();
     const artistLower = dataArtist.toLowerCase();
+    const extractedLower = extractedArtist.toLowerCase();
 
-    if (!(dataArtist.length > extractedArtist.length && artistLower.includes(extractedLower) && dataArtist !== dataTitle)) {
+    const artistPattern = new RegExp(`(^|\\s|[-–—])${dataArtist.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s*[-–—]`, "i");
+    const artistAppearsInTitle = artistPattern.test(dataTitle);
+    const extractedMatchesCurrent = extractedLower === artistLower || extractedLower.includes(artistLower) || artistLower.includes(extractedLower);
+
+    if (artistAppearsInTitle || extractedMatchesCurrent) {
       dataArtist = extractedArtist;
       dataTitle = newTitle;
     }
   }
 
-  function cleanTitle(title, artist) {
+  const cleanTitle = (title, artist) => {
     if (!title || !artist) return title;
 
     const artistList = artist
@@ -154,11 +157,13 @@ function normalizeTitleAndArtist(title, artist, replaceArtist = true) {
     if (!artistList.length) return title;
 
     const escaped = artistList.map((a) => a.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|");
-    const prefixPattern = new RegExp(`^\\s*(?:${escaped})(?:\\s*[&+,xX×]\\s*(?:${escaped}))*\\s*[-–—:]\\s*`, "i");
-    return title.replace(prefixPattern, "").trim();
-  }
+    const prefixPattern = new RegExp(`^\\s*(?:(?:${escaped})(?:\\s*[&+,xX×]\\s*(?:${escaped}))*)\\s*[-–—:]\\s*`, "i");
+    const cleaned = title.replace(prefixPattern, "").trim();
+    return cleaned.length >= 2 ? cleaned : title;
+  };
 
-  return { title: cleanTitle(dataTitle, dataArtist), artist: dataArtist };
+  const finalTitle = cleanTitle(dataTitle, dataArtist);
+  return { title: finalTitle, artist: dataArtist };
 }
 
 function getCurrentTime() {

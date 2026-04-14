@@ -960,32 +960,41 @@ async function getFreshParserList() {
 
 // Helper to split time strings like "5:47 / 6:57".
 function extractTimeParts(input) {
-  if (typeof input === "string" && input.includes("/")) {
-    const [start, end] = input.split("/");
-    return [start.trim(), end.trim()];
-  }
-  return [null, null];
+  if (typeof input !== "string" || !input.includes("/")) return [null, null];
+  const parts = input.split("/");
+  if (parts.length !== 2) return [null, null];
+  const [start, end] = parts;
+  const s = start.trim();
+  const e = end.trim();
+  if (!s || !e) return [null, null];
+  return [s, e];
 }
 
 // Helper to convert mm:ss to seconds.
 function parseTime(timeInput) {
   if (typeof timeInput === "number" && isFinite(timeInput)) {
-    return Math.floor(timeInput);
+    return timeInput < 0 ? -Math.floor(-timeInput) : Math.floor(timeInput);
   }
-  if (typeof timeInput !== "string") return 0;
+
+  if (typeof timeInput !== "string") return null;
 
   let s = timeInput.trim();
-  if (s === "") return 0;
-
+  if (s === "") return null;
   // catch any short/long dash/minus character
   const neg = /^[-–—]/.test(s);
   s = s.replace(/^[-–—]+/, "");
 
   const parts = s.split(":").reverse();
+  let hasValid = false;
   const seconds = parts.reduce((acc, part, i) => {
+    if (acc === null) return null;
     const n = parseInt(part, 10);
-    return acc + (isNaN(n) ? 0 : n * Math.pow(60, i));
+    if (isNaN(n) || n < 0) return null;
+    hasValid = true;
+    return acc + n * Math.pow(60, i);
   }, 0);
+
+  if (seconds === null || !hasValid) return null;
 
   return neg ? -seconds : seconds;
 }
@@ -996,7 +1005,7 @@ function formatTime(seconds) {
     seconds = parseTime(seconds);
   }
 
-  if (!isFinite(seconds) || typeof seconds !== "number") return "00:00";
+  if (seconds === null || !isFinite(seconds) || typeof seconds !== "number") return "00:00";
 
   const neg = seconds < 0;
   seconds = Math.abs(Math.floor(seconds));
@@ -1017,7 +1026,7 @@ function formatTime(seconds) {
 
 // Helper to get timestamps
 function getTimestamps(currentPosition, totalDuration, options = { returnEnd: true }) {
-  if (isNaN(currentPosition) || isNaN(totalDuration) || totalDuration <= 0) {
+  if (currentPosition == null || totalDuration == null || isNaN(currentPosition) || isNaN(totalDuration) || totalDuration <= 0) {
     return {};
   }
 
@@ -1039,28 +1048,24 @@ function getTimestamps(currentPosition, totalDuration, options = { returnEnd: tr
 }
 
 // Parses playback time values and returns detailed playback information.
-function processPlaybackInfo(timePassed = "", durationElem = "", progress = 0, duration = 0) {
+function processPlaybackInfo(timePassed = "", durationElem = "") {
+  let currentPosition, totalDuration;
+
   if (typeof timePassed === "string" && typeof durationElem === "string") {
-    timePassed = timePassed.trim();
-    durationElem = durationElem.trim();
-    progress = parseTime(timePassed);
-    duration = parseTime(durationElem);
+    currentPosition = parseTime(timePassed.trim());
+    totalDuration = parseTime(durationElem.trim());
   } else {
-    progress = Number(timePassed) || 0;
-    duration = Number(durationElem) || 0;
+    currentPosition = Number(timePassed) || null;
+    totalDuration = Number(durationElem) || null;
   }
 
-  const currentPosition = Math.max(0, progress);
-  const totalDuration = Math.max(0, duration);
-  const timestamps = getTimestamps(currentPosition, totalDuration);
-  const currentProgress = totalDuration ? (currentPosition / totalDuration) * 100 : 0;
+  currentPosition = currentPosition == null || isNaN(currentPosition) ? null : Math.max(0, currentPosition);
+  totalDuration = totalDuration == null || isNaN(totalDuration) ? null : Math.max(0, totalDuration);
 
-  return {
-    currentPosition,
-    totalDuration,
-    currentProgress,
-    timestamps,
-  };
+  const timestamps = getTimestamps(currentPosition, totalDuration);
+  const currentProgress = currentPosition !== null && totalDuration !== null && totalDuration > 0 ? (currentPosition / totalDuration) * 100 : null;
+
+  return { currentPosition, totalDuration, currentProgress, timestamps };
 }
 
 /**

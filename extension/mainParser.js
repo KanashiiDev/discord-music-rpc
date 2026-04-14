@@ -351,10 +351,7 @@ window.registerParser = async function ({
       iframeFn,
       iframeOrigins,
       parse: async () => {
-        if (iframeFn) {
-          await fetchIframeData(primaryDomain);
-        }
-
+        if (iframeFn) await fetchIframeData(primaryDomain);
         if (initOnly) return null;
 
         const rawData = await fn({
@@ -364,31 +361,18 @@ window.registerParser = async function ({
         });
         if (!rawData) return null;
 
-        // eslint-disable-next-line prefer-const
-        let { timePassed = "", duration: durationElem = "", ...rest } = rawData;
+        // RAW EXTRACTION
+        let { timePassed = "", duration: durationElem = "" } = rawData;
+        const { position: rawPosition, ...rest } = rawData;
 
-        // Validates and normalizes raw time values; returns null if unusable
-        const safeFormat = (val) => {
-          if (typeof val === "number") return formatTime(Math.floor(val));
-          if (typeof val === "string") {
-            const trimmed = val.trim();
-            if (/^-?\d+:\d{2}(:\d{2})?$/.test(trimmed)) {
-              const parsed = parseTime(trimmed);
-              if (isFinite(parsed)) {
-                return trimmed;
-              }
-            }
-          }
-          return null;
-        };
+        if (!timePassed && typeof rawPosition === "number") timePassed = rawPosition;
+        if (!durationElem && typeof rest.duration === "number") durationElem = rest.duration;
 
-        // Extract time parts
         const [tp, dur] = extractTimeParts(timePassed);
         if (tp && dur) {
           timePassed = tp;
           durationElem = dur;
         } else {
-          // Extract from duration if timePassed failed
           const [tp2, dur2] = extractTimeParts(durationElem);
           if (tp2 && dur2) {
             timePassed = tp2;
@@ -396,184 +380,126 @@ window.registerParser = async function ({
           }
         }
 
-        // Original values from the parser
-        const rawSnapshot = {
-          reportedTime: parseTime(timePassed || "0:00"),
-          reportedDuration: parseTime(durationElem || "0:00"),
-        };
+        const rawTime = parseTime(timePassed);
+        const rawDuration = parseTime(durationElem);
 
-        let effectiveTimePassed = safeFormat(timePassed);
-        let effectiveDuration = safeFormat(durationElem);
+        const rawTimeValid = rawTime !== null && isFinite(rawTime);
+        const rawDurValid = rawDuration !== null && isFinite(rawDuration) && rawDuration > 0;
 
-        // Has only duration Mode
-        // Activated when timePassed is consistently missing but duration exists
-        if (!effectiveTimePassed && effectiveDuration) {
-          if (rpcState.hasOnlyDurationCount < 5) {
-            rpcState.hasOnlyDurationCount++;
-          }
-          // Enter Has only duration Mode if timePassed is missing but duration exists
-          if (!rpcState.hasOnlyDuration || (rpcState.isSongChanged(rest) && rpcState.hasOnlyDurationCount > 2)) {
-            rpcState.hasOnlyDuration = true;
-            rpcState.startDurationTimer();
-            rpcState.resetRemainingState();
-          }
+        // NORMALIZATION
+        const normalized = normalizeTitleAndArtist(rest.title ?? "", rest.artist ?? "");
 
-          // Use the timer as timePassed
-          effectiveTimePassed = rpcState.getDurationTimer();
+        const cleanTitle = truncate(normalized.title, 128, { fallback: "Unknown Song" });
+        const cleanArtist = truncate(normalized.artist, 128, { fallback: "Unknown Artist" });
 
-          // If reported duration suddenly decreases, assume it represents remaining time and reconstruct total duration using the internal timer
-          const currentTimerSec = rpcState.durationTimer;
-          const durSecRaw = rawSnapshot.reportedDuration;
+        // TRACK CHANGE
+        const lastAct = rpcState.lastActivity;
+        const sameTrack = lastAct && lastAct.title === cleanTitle && lastAct.artist === cleanArtist;
+        if (!sameTrack) rpcState.reset();
 
-          if (rpcState.lastReportedDuration !== null && durSecRaw < rpcState.lastReportedDuration - 0.5) {
-            const newTotalDuration = currentTimerSec + durSecRaw;
+        // NORMAL PATH (valid time and duration)
+        if (rawTimeValid && rawDurValid) {
+          rpcState.lastValidPosition = rawTime;
+          rpcState.lastValidDuration = rawDuration;
 
-            if (rpcState.calculatedTotalDuration === null) {
-              rpcState.calculatedTotalDuration = newTotalDuration;
-            } else {
-              rpcState.calculatedTotalDuration = Math.max(rpcState.calculatedTotalDuration, newTotalDuration);
-            }
-
-            effectiveDuration = formatTime(rpcState.calculatedTotalDuration);
-          } else if (rpcState.calculatedTotalDuration !== null) {
-            // If there is already a calculated total duration, use it
-            effectiveDuration = formatTime(rpcState.calculatedTotalDuration);
+          if (!rpcState.calculatedTotalDuration || rawDuration > rpcState.calculatedTotalDuration) {
+            rpcState.calculatedTotalDuration = rawDuration;
           }
 
-          rpcState.lastReportedDuration = durSecRaw;
-        } else {
-          // Exit duration-only mode and reset timing state
           if (rpcState.hasOnlyDuration) {
             rpcState.hasOnlyDuration = false;
+            rpcState.hasOnlyDurationCount = 0;
             rpcState.resetDurationTimer();
-            rpcState.lastReportedDuration = null;
           }
+
+          const pos = Math.max(0, Math.min(rawTime, rawDuration));
+          const progress = Math.min(100, (pos / rawDuration) * 100);
+
+          return {
+            ...rest,
+            title: cleanTitle,
+            artist: cleanArtist,
+            source: rest.artist === rest.source ? cleanTitle : rest.source,
+            timePassed: pos,
+            position: pos,
+            duration: rawDuration,
+            progress,
+            isPlaying: rest.isPlaying,
+            isRemainingMode: false,
+            hasOnlyDuration: false,
+          };
         }
 
-        // Parse Times
-        const tpSec = parseTime(effectiveTimePassed);
-        const durSecRaw = rawSnapshot.reportedDuration;
-        let durSec = durSecRaw;
+        // FALLBACK PATH (valid time or duration)
+        if (rawTimeValid) rpcState.lastValidPosition = rawTime;
+        if (rawDurValid) rpcState.lastValidDuration = rawDuration;
 
-        // Remaining Signal
-        const isRemainingSignal = durSec < 0;
-        let totalDurationSec = Math.abs(durSec);
+        rpcState.updateModes(rawTime, rawDuration);
 
-        if (isRemainingSignal) {
-          totalDurationSec = tpSec + Math.abs(durSec);
-          effectiveDuration = formatTime(totalDurationSec);
-          durSec = totalDurationSec;
+        // Position Resolution
+        let finalPos;
+        if (!rawTimeValid) {
+          finalPos = rpcState.hasOnlyDuration ? rpcState.getDurationTimer() : (rpcState.lastValidPosition ?? 0);
+        } else {
+          finalPos = rawTime;
         }
 
-        // Check if the track has changed
-        const lastAct = rpcState.lastActivity;
-        const sameTrack = lastAct && lastAct.title === rest.title && lastAct.artist === rest.artist;
+        // Duration Resolution
+        let finalDur = rawDurValid ? rawDuration : (rpcState.lastValidDuration ?? rpcState.calculatedTotalDuration ?? 0);
 
-        if (!sameTrack || (sameTrack && tpSec === 0 && rpcState.lastReportedTime > 5)) {
-          rpcState.resetRemainingState();
-          rpcState.hasOnlyDurationCount = 0;
-        }
+        // Remaining Mode - rawDuration negative (remaining time)
+        if (rpcState.isRemainingMode && typeof rawDuration === "number" && rawDuration < 0) {
+          const remaining = Math.abs(rawDuration);
 
-        // Remaining Mode
-        if (
-          sameTrack &&
-          !rpcState.hasOnlyDuration &&
-          tpSec > 0 &&
-          effectiveTimePassed &&
-          effectiveDuration &&
-          rpcState.lastReportedTime !== null &&
-          rpcState.lastReportedDuration !== null
-        ) {
-          const timeDiff = tpSec - rpcState.lastReportedTime;
-          const rawDurationDiff = Math.abs(durSecRaw - rpcState.lastReportedDuration);
-
-          // Frozen detection
-          if (timeDiff === 0 && rawDurationDiff === 0) {
-            rpcState.frozenCount = (rpcState.frozenCount || 0) + 1;
+          if (rawTimeValid) {
+            finalPos = rawTime;
+            finalDur = rawTime + remaining;
+            rpcState.calculatedTotalDuration = finalDur;
           } else {
-            rpcState.frozenCount = 0;
-          }
-
-          if (rpcState.frozenCount < 2) {
-            // Remaining pattern: raw duration stable, time decreasing or within jitter tolerance
-            const rawDurationStable = rawDurationDiff < 2;
-            const timeDecreasingOrStable = timeDiff <= 0;
-
-            // Normal pattern: raw duration stable, time increases within expected sampling interval
-            const timeIncreasing = timeDiff >= 2 && timeDiff <= 6;
-
-            // Require fewer samples to enter a mode, more to switch between modes
-            const requiredCountForEntering = 3;
-            const requiredCountForSwitching = 4;
-
-            if (rawDurationStable && timeDecreasingOrStable && !isRemainingSignal) {
-              rpcState.consecutiveRemaining++;
-              rpcState.consecutiveNormal = 0;
-              const threshold = rpcState.isRemainingMode ? requiredCountForSwitching : requiredCountForEntering;
-
-              if (rpcState.consecutiveRemaining >= threshold) {
-                if (!rpcState.isRemainingMode) {
-                  logInfo("Entering remaining mode - time decreasing pattern detected");
-                }
-                rpcState.isRemainingMode = true;
-              }
-            } else if (rawDurationStable && timeIncreasing) {
-              rpcState.consecutiveNormal++;
-              rpcState.consecutiveRemaining = 0;
-
-              const threshold = !rpcState.isRemainingMode ? requiredCountForSwitching : requiredCountForEntering;
-
-              if (rpcState.consecutiveNormal >= threshold) {
-                if (rpcState.isRemainingMode) {
-                  logInfo("Exiting remaining mode - normal playback detected");
-                }
-                rpcState.isRemainingMode = false;
-              }
-            } else {
-              // Uncertain pattern: gradually decay counters to avoid abrupt mode changes
-              if (rpcState.consecutiveRemaining > 0) rpcState.consecutiveRemaining--;
-              if (rpcState.consecutiveNormal > 0) rpcState.consecutiveNormal--;
-            }
+            rpcState.calculatedTotalDuration ??= (rpcState.lastValidPosition ?? rpcState.getDurationTimer()) + remaining;
+            finalDur = rpcState.calculatedTotalDuration;
+            finalPos = Math.max(0, finalDur - remaining);
           }
         }
 
-        // Save state
-        // Persist last known valid playback state for mode detection and recovery
-        if (effectiveTimePassed && effectiveDuration && !rpcState.hasOnlyDuration) {
-          rpcState.lastReportedTime = rawSnapshot.reportedTime;
-          rpcState.lastReportedDuration = rawSnapshot.reportedDuration;
-          rpcState.lastEffectiveDuration = durSec;
+        // Duration Lock - prevent the total time from decreasing
+        if (rawDurValid && (!rpcState.calculatedTotalDuration || rawDuration > rpcState.calculatedTotalDuration)) {
+          rpcState.calculatedTotalDuration = rawDuration;
         }
 
-        // Remaining Mode Active
-        // Convert remaining time into a normal playback duration
-        if (rpcState.isRemainingMode && !isRemainingSignal && effectiveTimePassed && effectiveDuration) {
-          const calculatedDuration = tpSec + durSecRaw;
-          const lastEffectiveDuration = lastAct?.duration ? parseTime(lastAct.duration) : null;
-
-          if (lastEffectiveDuration && lastEffectiveDuration > 0) {
-            const ratio = calculatedDuration / lastEffectiveDuration;
-            if (ratio > 0.7 && ratio < 1.3) {
-              effectiveDuration = formatTime(calculatedDuration);
-            } else {
-              effectiveDuration = formatTime(lastEffectiveDuration);
-            }
-          } else {
-            effectiveDuration = formatTime(calculatedDuration);
-          }
+        if (rpcState.calculatedTotalDuration && finalDur < rpcState.calculatedTotalDuration) {
+          finalDur = rpcState.calculatedTotalDuration;
         }
 
-        const { currentPosition, totalDuration, currentProgress, timestamps } = processPlaybackInfo(effectiveTimePassed, effectiveDuration);
+        // Timer Override - only when there is no real position
+        if (rpcState.hasOnlyDuration && !rawTimeValid) {
+          finalPos = Math.min(Math.max(0, rpcState.getDurationTimer()), finalDur || Infinity);
+        }
+
+        // Lock the duration for Remaining mode
+        if (rpcState.isRemainingMode && rpcState.calculatedTotalDuration) {
+          finalDur = rpcState.calculatedTotalDuration;
+        }
+
+        // Final Clamp
+        if (finalPos != null && finalDur > 0) {
+          finalPos = Math.max(0, Math.min(finalPos, finalDur));
+        }
+
+        const progress = finalDur > 0 && finalPos != null ? Math.min(100, (finalPos / finalDur) * 100) : 0;
 
         return {
           ...rest,
-          mode: rest.mode,
-          source: rest.artist === rest.source ? title : rest.source,
-          timePassed: currentPosition,
-          position: currentPosition,
-          duration: totalDuration,
-          progress: currentProgress,
-          ...timestamps,
+          title: cleanTitle,
+          artist: cleanArtist,
+          source: rest.artist === rest.source ? cleanTitle : rest.source,
+          timePassed: finalPos ?? 0,
+          position: finalPos ?? 0,
+          duration: finalDur ?? 0,
+          progress,
+          isPlaying: rest.isPlaying,
+          isRemainingMode: rpcState.isRemainingMode,
+          hasOnlyDuration: rpcState.hasOnlyDuration,
         };
       },
       userAdd,
@@ -661,6 +587,7 @@ async function scheduleParserListSave() {
 }
 
 // Get current song info based on website and parser list
+window.getSongInfoLastSong = null;
 window.getSongInfo = async function () {
   try {
     const hostname = location.hostname.replace(/^www\./, "").toLowerCase();
@@ -694,18 +621,27 @@ window.getSongInfo = async function () {
               dataArtist = truncate(dataArtist, 128, { fallback: "Unknown Artist" });
               dataSource = truncate(dataSource, 32, { fallback: "Unknown Source" });
 
+              const currentData = { title: dataTitle, artist: dataArtist, source: dataSource };
+              const isChanged =
+                !window.getSongInfoLastSong ||
+                window.getSongInfoLastSong.title !== currentData.title ||
+                window.getSongInfoLastSong.artist !== currentData.artist ||
+                window.getSongInfoLastSong.source !== currentData.source;
+
               // Apply parser filters and replacements
               const filterResult = await applyParserFilters(parser.id, dataArtist, dataTitle);
               if (filterResult.shouldBlock) {
-                logInfo(`Song blocked: ${dataArtist} - ${dataTitle} (Parser: ${parser.id} | Filter: ${filterResult.filterId})`);
-                return null;
+                if (isChanged) logInfo(`Song blocked: ${dataArtist} - ${dataTitle} (Parser: ${parser.id} | Filter: ${filterResult.filterId})`);
+                window.getSongInfoLastSong = currentData;
+                return "blocked";
               }
 
               // Apply replacements if any
               if (filterResult.replaced) {
                 dataArtist = filterResult.artist;
                 dataTitle = filterResult.title;
-                logInfo(`Song replaced: ${dataArtist} - ${dataTitle} (Parser: ${parser.id} | Filter: ${filterResult.filterId})`);
+                if (isChanged) logInfo(`Song replaced: ${dataArtist} - ${dataTitle} (Parser: ${parser.id} | Filter: ${filterResult.filterId})`);
+                window.getSongInfoLastSong = currentData;
               }
 
               song.title = dataTitle;
