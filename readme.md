@@ -545,6 +545,7 @@ registerParser({
   authorsLinks: ["https://github.com/yourName"], // Contributors links
   tags: ["rock", "community"], // Descriptive tags for the parser's content type
   urlPatterns: [/.*/], // Regex patterns — limits the parser to specific URL paths. [/.*/] means "run on all pages of this domain".
+  mode: "listen", // "listen" or "watch"
 
   // --- Main function ---
   // This runs periodically to extract the currently playing song's data.
@@ -558,7 +559,6 @@ registerParser({
       duration: getText(".time-display-total"), // Total song duration  (e.g. "3:45")
       source: "Example", // Source label
       songUrl: "https://example.com/song", // Direct link to the song or station
-      mode: "listen", // "listen" or "watch"
       isPlaying: Boolean(document.querySelector("#pauseSongButton")), // Any truthy value indicating active playback; used for cast support
       buttons: [
         // Up to 2 clickable buttons on the Discord status

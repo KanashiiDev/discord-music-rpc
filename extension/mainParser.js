@@ -453,6 +453,7 @@ window.registerParser = async function ({
 
           return {
             ...rest,
+            mode,
             title: cleanTitle,
             artist: cleanArtist,
             source: rest.artist === rest.source ? cleanTitle : rest.source,
@@ -526,6 +527,7 @@ window.registerParser = async function ({
 
         return {
           ...rest,
+          mode,
           title: cleanTitle,
           artist: cleanArtist,
           source: rest.artist === rest.source ? cleanTitle : rest.source,

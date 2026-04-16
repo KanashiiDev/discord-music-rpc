@@ -5,6 +5,7 @@ registerParser({
   description: "Video-sharing platform hosting music, live streams, and other content.",
   category: ["video", "platform"],
   tags: [],
+  mode: "watch",
   fn: async function () {
     if (location.pathname.includes("shorts")) return;
     const url = window.location.href;
@@ -32,7 +33,6 @@ registerParser({
       image,
       source: "YouTube",
       songUrl: url,
-      mode: "watch",
       isPlaying: isWatching || isWatchingBtn,
       timePassed,
       duration,

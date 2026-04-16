@@ -5,6 +5,7 @@ registerParser({
   description: "Twitch is an interactive livestreaming service for content spanning gaming, entertainment, sports, music, and more.",
   category: "platform",
   tags: ["streaming"],
+  mode: "watch",
   fn: function () {
     const titleElem = getText("#live-channel-stream-information [data-a-target='stream-title']");
     const artistElem = getText("#live-channel-stream-information h1.tw-title");
@@ -24,7 +25,6 @@ registerParser({
       timePassed: currentTime,
       duration: duration,
       isPlaying: playing,
-      mode: "watch",
     };
   },
 });

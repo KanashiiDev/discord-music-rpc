@@ -5,6 +5,7 @@ registerParser({
   description: "AniCrush is where you can watch anime for free without ads, immersing yourself in the universe of your favorite shows uninterrupted.",
   category: "video",
   tags: ["anime"],
+  mode: "watch",
   fn: function ({ iframeData }) {
     const titleElem = getText(".dropdown > a > div > span");
     const artistElem = getText(".about-anime .main .heading-md");
@@ -20,7 +21,6 @@ registerParser({
       timePassed: currentTime,
       duration: duration,
       isPlaying: playing,
-      mode: "watch",
     };
   },
   iframeFn: function () {

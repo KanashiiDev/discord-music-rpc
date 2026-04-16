@@ -5,6 +5,7 @@ registerParser({
   description: "AniWatch is a free site to watch anime and you can even download subbed or dubbed anime in ultra HD quality.",
   category: "video",
   tags: ["anime"],
+  mode: "watch",
   fn: function ({ iframeData }) {
     const titleElem = getText("strong:nth-child(1) > b:nth-child(1)");
     const artistElem = getText(".film-name");
@@ -20,7 +21,6 @@ registerParser({
       timePassed: currentTime,
       duration: duration,
       isPlaying: playing,
-      mode: "watch",
     };
   },
   iframeFn: function () {

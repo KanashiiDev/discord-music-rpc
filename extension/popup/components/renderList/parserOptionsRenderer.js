@@ -1,10 +1,26 @@
-async function renderOptions(container, parserOptions, settingKey, addListener) {
-  const defaultKeys = Object.keys(DEFAULT_PARSER_OPTIONS);
+async function renderOptions(mode, container, parserOptions, settingKey, addListener) {
+  const allDefaultKeys = Object.keys(DEFAULT_PARSER_OPTIONS);
+  const visibleDefaultKeys = allDefaultKeys.filter((k) => mode === "listen" || k !== "saveHistory");
 
   const sections = [
-    { title: i18n.t("common.settings"), keys: defaultKeys.filter((k) => !k.startsWith("custom")), prefix: "", collapsible: true },
-    { title: i18n.t("parserOptions.customSettings"), keys: defaultKeys.filter((k) => k.startsWith("custom")), prefix: "custom", collapsible: true },
-    { title: i18n.t("parserOptions.otherSettings"), keys: Object.keys(parserOptions).filter((k) => !defaultKeys.includes(k)), prefix: "user", collapsible: true },
+    {
+      title: i18n.t("common.settings"),
+      keys: visibleDefaultKeys.filter((k) => !k.startsWith("custom")),
+      prefix: "",
+      collapsible: true,
+    },
+    {
+      title: i18n.t("parserOptions.customSettings"),
+      keys: visibleDefaultKeys.filter((k) => k.startsWith("custom")),
+      prefix: "custom",
+      collapsible: true,
+    },
+    {
+      title: i18n.t("parserOptions.otherSettings"),
+      keys: Object.keys(parserOptions).filter((k) => !allDefaultKeys.includes(k)),
+      prefix: "user",
+      collapsible: true,
+    },
   ];
 
   for (const { title, keys, prefix, collapsible } of sections) {
@@ -31,7 +47,7 @@ async function renderOptions(container, parserOptions, settingKey, addListener) 
 
     for (const key of keys) {
       if (parserOptions[key] !== undefined) {
-        await renderOption(key, parserOptions[key], inner, settingKey, addListener);
+        await renderOption(key, mode, parserOptions[key], inner, settingKey, addListener);
       }
     }
 
@@ -47,7 +63,9 @@ async function renderOptions(container, parserOptions, settingKey, addListener) 
   }
 }
 
-async function renderOption(key, data, container, settingKey, addListener) {
+async function renderOption(key, mode, data, container, settingKey, addListener) {
+  if (mode !== "listen" && key === "saveHistory") return;
+
   const optionSpan = Object.assign(document.createElement("span"), { className: "parser-option" });
   const defaultMeta = DEFAULT_PARSER_OPTIONS[key];
 

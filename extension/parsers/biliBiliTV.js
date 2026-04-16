@@ -5,6 +5,7 @@ registerParser({
   description: "Southeast Asia's leading anime, comics, and games (ACG) community where people can create, watch and share engaging videos.",
   category: "video",
   tags: ["anime"],
+  mode: "watch",
   fn: function ({ iframeData }) {
     const titleElem = getText(".ep-item--active");
     const artistElem = getText("h1.bstar-meta__title > a");
@@ -20,7 +21,6 @@ registerParser({
       timePassed: currentTime,
       duration: duration,
       isPlaying: playing,
-      mode: "watch",
     };
   },
   iframeFn: function () {
