@@ -9,7 +9,7 @@ const HistoryActions = {
     const parserId = parser?.id;
 
     if (!parserId) {
-      showPopupMessage(`Parser not found for "${source}"`, "error", 3000, 0, "#historyFooter");
+      showPopupMessage(i18n.t("popupMessage.parserNotFound", { source }), "error", 3000, 0, "#historyFooter");
       return false;
     }
 
@@ -18,7 +18,7 @@ const HistoryActions = {
       const duplicate = FilterUtils.findDuplicate(checkEntry, false);
 
       if (duplicate.isDuplicate) {
-        showPopupMessage("This song is already in filters", "warning", 3000, 0, "#historyFooter");
+        showPopupMessage(i18n.t("popupMessage.alreadyInFilters"), "warning", 3000, 0, "#historyFooter");
         return false;
       }
 
@@ -62,7 +62,7 @@ const HistoryActions = {
     FilterTabsController.render();
     FilterListController.render();
 
-    showPopupMessage(`Song ${action}ed successfully!`, "success", 3000, 0, "#historyFooter");
+    showPopupMessage(i18n.t(`popupMessage.song.${action}.ActionSuccess`, { action }), "success", 3000, 0, "#historyFooter");
     this.syncBlockUI(entry, action);
     return true;
   },
@@ -75,7 +75,7 @@ const HistoryActions = {
       const btn = el.querySelector(".block-btn");
       if (!btn) return;
 
-      btn.textContent = isBlocked ? "Unblock" : "Block";
+      btn.textContent = isBlocked ? i18n.t("common.unblock") : i18n.t("common.block");
       btn.classList.toggle("unblock-mode", isBlocked);
     });
   },
@@ -89,7 +89,7 @@ const HistoryActions = {
   async handleReplace(entry) {
     const parser = HistoryUtils.findParserBySource(entry.s);
     if (!parser) {
-      showPopupMessage(`Parser not found for "${entry.s}"`, "error", 3000, 0, "#historyFooter");
+      showPopupMessage(i18n.t("popupMessage.parserNotFound", { source: entry.s }), "error", 3000, 0, "#historyFooter");
       return;
     }
 
@@ -250,7 +250,7 @@ const HistoryScroll = {
           if (checkNearBottom()) {
             const elapsed = Date.now() - dragStartTime;
             if (elapsed >= POPUP_DELAY && !popupShown) {
-              showPopupMessage("Release to load the history!", "warning", null, 0, "#historyFooter");
+              showPopupMessage(i18n.t("popupMessage.releaseToLoadHistory"), "warning", null, 0, "#historyFooter");
               popupShown = true;
             }
           } else {

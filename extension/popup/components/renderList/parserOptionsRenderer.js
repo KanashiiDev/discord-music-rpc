@@ -2,9 +2,9 @@ async function renderOptions(container, parserOptions, settingKey, addListener) 
   const defaultKeys = Object.keys(DEFAULT_PARSER_OPTIONS);
 
   const sections = [
-    { title: "Settings", keys: defaultKeys.filter((k) => !k.startsWith("custom")), prefix: "", collapsible: true },
-    { title: "Custom Settings", keys: defaultKeys.filter((k) => k.startsWith("custom")), prefix: "custom", collapsible: true },
-    { title: "Other Settings", keys: Object.keys(parserOptions).filter((k) => !defaultKeys.includes(k)), prefix: "user", collapsible: true },
+    { title: i18n.t("common.settings"), keys: defaultKeys.filter((k) => !k.startsWith("custom")), prefix: "", collapsible: true },
+    { title: i18n.t("parserOptions.customSettings"), keys: defaultKeys.filter((k) => k.startsWith("custom")), prefix: "custom", collapsible: true },
+    { title: i18n.t("parserOptions.otherSettings"), keys: Object.keys(parserOptions).filter((k) => !defaultKeys.includes(k)), prefix: "user", collapsible: true },
   ];
 
   for (const { title, keys, prefix, collapsible } of sections) {
@@ -49,7 +49,13 @@ async function renderOptions(container, parserOptions, settingKey, addListener) 
 
 async function renderOption(key, data, container, settingKey, addListener) {
   const optionSpan = Object.assign(document.createElement("span"), { className: "parser-option" });
-  const label = Object.assign(document.createElement("label"), { textContent: data.label ?? key });
+  const defaultMeta = DEFAULT_PARSER_OPTIONS[key];
+
+  const resolvedLabel = await resolveLabel(defaultMeta?.label ?? data.label ?? key);
+
+  const label = Object.assign(document.createElement("label"), {
+    textContent: resolvedLabel,
+  });
 
   let input = null;
 
@@ -63,7 +69,7 @@ async function renderOption(key, data, container, settingKey, addListener) {
     for (const opt of values) {
       const optEl = Object.assign(document.createElement("option"), {
         value: opt.value,
-        textContent: opt.label,
+        textContent: await resolveLabel(opt.label),
       });
       if (opt.selected) optEl.selected = true;
       input.appendChild(optEl);
@@ -74,13 +80,11 @@ async function renderOption(key, data, container, settingKey, addListener) {
         const ts = new TomSelect(input, {
           controlInput: null,
           sortField: false,
-          onDropdownOpen: (dropdown) => {
-            const list = dropdown.querySelector(".ts-dropdown-content");
-            if (!list) return;
-            requestAnimationFrame(async () => {
-              await destroySimplebar(list);
-              await activateSimpleBar(list);
-            });
+          plugins: {
+            auto_width: { isExtension: true, maxWidth: 125 },
+            simplebar: {
+              isExtension: true,
+            },
           },
         });
       });

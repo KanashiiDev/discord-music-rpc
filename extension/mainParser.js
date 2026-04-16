@@ -108,6 +108,23 @@ async function accessWindow(path, options = {}) {
   }
 }
 
+async function resolveLabel(label) {
+  if (!label || typeof label === "string") return label;
+  const browserLang = navigator.language.split("-")[0];
+  const { lang } = await browser.storage.local.get("lang");
+  const currentLang = lang || browserLang || "en";
+  return label[currentLang] ?? label["en"] ?? Object.values(label)[0] ?? "";
+}
+
+async function resolveSelectOptions(options) {
+  return Promise.all(
+    options.map(async (opt) => ({
+      ...opt,
+      label: await resolveLabel(opt.label),
+    })),
+  );
+}
+
 // useSettings
 /**
  * Manages custom settings for a custom user parser.
@@ -127,28 +144,47 @@ async function useSetting(id, key, label, type = "text", defaultValue = "", newV
 
   // Ensure cache loaded
   const opts = await loadSettingsForId(id);
+  const DEFAULT_OPTION_KEYS = new Set(Object.keys(DEFAULT_PARSER_OPTIONS));
+  const isDefaultOption = DEFAULT_OPTION_KEYS.has(key);
+
   let current = opts[key];
+
   let shouldSave = false;
+
+  if (isDefaultOption && current && typeof current === "object" && "label" in current) {
+    delete current.label;
+    shouldSave = true;
+  }
+
+  const resolvedLabel = await resolveLabel(label);
+  const resolvedDefaultValue = type === "select" && Array.isArray(defaultValue) ? await resolveSelectOptions(defaultValue) : defaultValue;
 
   // Initialize if not existing
   if (current === undefined) {
-    if (type === "select" && Array.isArray(defaultValue)) {
-      current = {
-        label,
-        type: "select",
-        value: defaultValue.map((opt, i) => ({
-          ...opt,
-          selected: opt.hasOwnProperty("selected") ? opt.selected : i === 0,
-        })),
-      };
+    if (type === "select" && Array.isArray(resolvedDefaultValue)) {
+      current = isDefaultOption
+        ? {
+            type: "select",
+            value: resolvedDefaultValue.map((opt, i) => ({
+              ...opt,
+              selected: opt.hasOwnProperty("selected") ? opt.selected : i === 0,
+            })),
+          }
+        : {
+            label: resolvedLabel,
+            type: "select",
+            value: resolvedDefaultValue.map((opt, i) => ({
+              ...opt,
+              selected: opt.hasOwnProperty("selected") ? opt.selected : i === 0,
+            })),
+          };
     } else {
-      current = { label, type, value: defaultValue };
+      current = isDefaultOption ? { type, value: resolvedDefaultValue } : { label: resolvedLabel, type, value: resolvedDefaultValue };
     }
     shouldSave = true;
   } else {
-    //  Check if label/type/defaultValue changed
-    if (current.label !== label) {
-      current.label = label;
+    if (!isDefaultOption && current.label !== resolvedLabel) {
+      current.label = resolvedLabel;
       shouldSave = true;
     }
     if (current.type !== type) {
@@ -157,9 +193,9 @@ async function useSetting(id, key, label, type = "text", defaultValue = "", newV
     }
 
     // Default value check (update only if the value has not changed)
-    if (type === "select" && Array.isArray(defaultValue)) {
+    if (type === "select" && Array.isArray(resolvedDefaultValue)) {
       const oldOptions = Array.isArray(current.value) ? current.value : [];
-      const newOptions = defaultValue;
+      const newOptions = resolvedDefaultValue;
 
       const isDifferent =
         oldOptions.length !== newOptions.length || oldOptions.some((opt, i) => opt.value !== newOptions[i]?.value || opt.label !== newOptions[i]?.label);
@@ -178,8 +214,8 @@ async function useSetting(id, key, label, type = "text", defaultValue = "", newV
     }
 
     if (type !== "select") {
-      if (current.value === undefined && defaultValue !== undefined) {
-        current.value = defaultValue;
+      if (current.value === undefined && resolvedDefaultValue !== undefined) {
+        current.value = resolvedDefaultValue;
         shouldSave = true;
       }
     }

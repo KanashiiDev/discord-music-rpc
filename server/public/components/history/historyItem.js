@@ -9,7 +9,7 @@ export function createHistoryItem(entry) {
     imageLink.href = entry.songUrl;
     imageLink.target = "_blank";
     imageLink.rel = "noopener noreferrer";
-    imageLink.title = "Go to the song";
+    imageLink.title = i18n.t("history.goToSong");
   }
 
   const imgContainer = document.createElement("div");
@@ -32,6 +32,7 @@ export function createHistoryItem(entry) {
   date.textContent = dateAgo;
   date.title = dateLong;
   date.classList.add("date");
+  date.dataset.timestamp = entry.date instanceof Date ? entry.date.getTime() : entry.date;
 
   const title = document.createElement("h2");
   title.textContent = entry.title;

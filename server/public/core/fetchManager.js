@@ -11,22 +11,22 @@ export const FetchManager = {
   config: {
     activity: {
       url: "/activity",
-      interval: 1000,
+      interval: 3000,
       storeKey: "activity",
     },
     status: {
       url: "/status",
-      interval: 3000,
+      interval: 4000,
       storeKey: "status",
     },
     logs: {
       url: "/logs",
-      interval: 3000,
+      interval: 5000,
       storeKey: "logs",
     },
     history: {
       url: "/history",
-      interval: 10000,
+      interval: 14000,
       storeKey: "history",
     },
   },

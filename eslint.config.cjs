@@ -223,7 +223,7 @@ module.exports = [
    * ============================================
    */
   {
-    files: ["extension/**/*.js", "shared/utils.js"],
+    files: ["extension/**/*.js", "shared/*.js"],
     ignores: ["extension/background.js"],
     languageOptions: {
       ecmaVersion: "latest",

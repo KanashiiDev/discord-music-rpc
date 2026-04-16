@@ -1,23 +1,29 @@
 // Default Parser Options
 const DEFAULT_PARSER_OPTIONS = {
-  showArtist: { label: "Show Artist", type: "checkbox", value: true },
-  showSource: { label: "Show Source", type: "checkbox", value: true },
-  showCover: { label: "Show Cover", type: "checkbox", value: true },
-  showTimeLeft: { label: "Show Time Left", type: "checkbox", value: true },
-  showButtons: { label: "Show Buttons", type: "checkbox", value: true },
-  showFavIcon: { label: "Show Small Site Icon", type: "checkbox", value: false },
-  saveHistory: { label: "Save History", type: "checkbox", value: true },
-  customCover: { label: "Custom Cover", type: "checkbox", value: false },
-  customCoverUrl: { label: "Custom Cover URL", type: "text", value: "" },
-  customButton1: { label: "Enable Custom Button 1", type: "checkbox", value: false },
-  customButton1Text: { label: "Button 1 Text", type: "text", value: "" },
-  customButton1Link: { label: "Button 1 Link", type: "text", value: "" },
-  customButton2: { label: "Enable Custom Button 2", type: "checkbox", value: false },
-  customButton2Text: { label: "Button 2 Text", type: "text", value: "" },
-  customButton2Link: { label: "Button 2 Link", type: "text", value: "" },
-  customPlaceholder: { label: "Custom Placeholder", type: "checkbox", value: false },
-  customPlaceholderUrl: { label: "Custom Placeholder URL", type: "text", value: "" },
+  showArtist: { type: "checkbox", value: true },
+  showSource: { type: "checkbox", value: true },
+  showCover: { type: "checkbox", value: true },
+  showTimeLeft: { type: "checkbox", value: true },
+  showButtons: { type: "checkbox", value: true },
+  showFavIcon: { type: "checkbox", value: false },
+  saveHistory: { type: "checkbox", value: true },
+  customCover: { type: "checkbox", value: false },
+  customCoverUrl: { type: "text", value: "" },
+  customButton1: { type: "checkbox", value: false },
+  customButton1Text: { type: "text", value: "" },
+  customButton1Link: { type: "text", value: "" },
+  customButton2: { type: "checkbox", value: false },
+  customButton2Text: { type: "text", value: "" },
+  customButton2Link: { type: "text", value: "" },
+  customPlaceholder: { type: "checkbox", value: false },
+  customPlaceholderUrl: { type: "text", value: "" },
 };
+
+function applyParserOptionLabels() {
+  for (const key of Object.keys(DEFAULT_PARSER_OPTIONS)) {
+    DEFAULT_PARSER_OPTIONS[key].label = i18n.t(`parserOptions.${key}`);
+  }
+}
 
 // Motion Preference
 const MotionPreference = {
@@ -177,28 +183,28 @@ function getColorSettings() {
   return [
     {
       key: "backgroundColor",
-      label: "Background Color",
+      i18n: "settings.color.backgroundColor",
       cssVar: "--background-color",
       default: getCSSThemeDefault("--background-color"),
       enableGradient: 1,
     },
     {
       key: "foregroundColor",
-      label: "Foreground Color",
+      i18n: "settings.color.foregroundColor",
       cssVar: "--foreground-color",
       default: getCSSThemeDefault("--foreground-color-100"),
       enableGradient: 1,
     },
     {
       key: "accentColor",
-      label: "Accent Color",
+      i18n: "settings.color.accentColor",
       cssVar: "--accent-color",
       default: getCSSThemeDefault("--accent-color"),
       enableGradient: 1,
     },
     {
       key: "scrollbarColor",
-      label: "Scrollbar Color",
+      i18n: "settings.color.scrollbarColor",
       cssVar: "--scrollbar-color",
       default: getCSSThemeDefault("--scrollbar-color"),
       enableGradient: 1,
@@ -206,32 +212,32 @@ function getColorSettings() {
     },
     {
       key: "borderColor",
-      label: "Border Color",
+      i18n: "settings.color.borderColor",
       cssVar: "--border-color",
       default: getCSSThemeDefault("--border-color"),
       bright: { value: "hover", amount: 12 },
     },
     {
       key: "shadowColor",
-      label: "Shadow Color",
+      i18n: "settings.color.shadowColor",
       cssVar: "--shadow-color",
       default: getCSSThemeDefault("--shadow-color"),
     },
     {
       key: "textColor",
-      label: "Text Color",
+      i18n: "settings.color.textColor",
       cssVar: "--text-color-primary",
       default: getCSSThemeDefault("--text-color-primary"),
     },
     {
       key: "accentButtonColor",
-      label: "Active Button Text Color",
+      i18n: "settings.color.accentButtonColor",
       cssVar: "--text-color-btn",
       default: getCSSThemeDefault("--text-color-btn"),
     },
     {
       key: "linkColor",
-      label: "Link Color",
+      i18n: "settings.color.linkColor",
       cssVar: "--link-color",
       default: getCSSThemeDefault("--link-color"),
       bright: { value: "bright", amount: 12 },
@@ -1245,11 +1251,11 @@ function showInitialSetupDialog() {
   content.className = "setup-dialog-content";
 
   const contentHeader = document.createElement("h2");
-  contentHeader.textContent = "Installation Required";
+  contentHeader.textContent = i18n.t("setup.companion.header");
   content.appendChild(contentHeader);
 
   const contentText = document.createElement("p");
-  contentText.textContent = "This extension requires a companion application to function properly. Please install the required application to continue.";
+  contentText.textContent = i18n.t("setup.companion.message");
   content.appendChild(contentText);
 
   const contentLinkContainer = document.createElement("div");
@@ -1298,12 +1304,12 @@ function showInitialSetupDialog() {
   contentLinkContainer.appendChild(createPlatformDropdown("MacOS", macOptions, manifestVersion));
 
   const contentNote = document.createElement("p");
-  contentNote.textContent = "The application is provided via the latest GitHub release.";
+  contentNote.textContent = i18n.t("setup.companion.provider");
   contentNote.classList.add("setup-note");
   content.appendChild(contentNote);
 
   const contentNote2 = document.createElement("p");
-  const noteText = document.createTextNode("Links not working?");
+  const noteText = document.createTextNode(i18n.t("setup.companion.provider.link"));
   const noteLink = document.createElement("a");
   noteLink.href = "https://github.com/KanashiiDev/discord-music-rpc/releases/latest";
   noteLink.target = "_blank";
@@ -1318,7 +1324,7 @@ function showInitialSetupDialog() {
 
   const confirmButton = document.createElement("button");
   confirmButton.id = "confirmSetup";
-  confirmButton.textContent = "I have installed the application";
+  confirmButton.textContent = i18n.t("setup.companion.installed");
   content.appendChild(confirmButton);
 
   dialog.appendChild(content);
@@ -1341,31 +1347,31 @@ async function showInitialTutorial() {
   // Steps in the tutorial
   const steps = [
     {
-      text: "You can open the settings by clicking on a music site.",
+      text: i18n.t("tutorial.step1"),
       selector: ".parser-entry",
     },
     {
-      text: "You can enable/disable the music site by clicking on its switch.",
+      text: i18n.t("tutorial.step2"),
       selector: ".parser-entry .switch-label",
     },
     {
-      text: 'You can add a custom music site by clicking the "Add Music Site" button.',
+      text: i18n.t("tutorial.step3"),
       selector: "#openSelector",
     },
     {
-      text: 'You can manage your scripts by clicking the "Open Script Manager" button.',
+      text: i18n.t("tutorial.step4"),
       selector: "#openManager",
     },
     {
-      text: 'You can manage music sites by clicking the "Manage Websites" button.',
+      text: i18n.t("tutorial.step5"),
       selector: "#manageParsersBtn",
     },
     {
-      text: 'You can block or edit title/artist by clicking the "Open Filters" button.',
+      text: i18n.t("tutorial.step6"),
       selector: "#openFiltersBtn",
     },
     {
-      text: 'You can access the server dashboard by clicking the "Open Dashboard" button.',
+      text: i18n.t("tutorial.step7"),
       selector: "#openDashboardBtn",
     },
   ];
@@ -1437,8 +1443,13 @@ async function showInitialTutorial() {
   function showStep(index) {
     const step = steps[index];
     const isLastStep = index + 1 >= steps.length;
+    const currentStep = `${index + 1}/${steps.length}`;
 
-    tooltipHeader.textContent = `Tutorial (${index + 1}/${steps.length})`;
+    tooltipHeader.textContent = i18n.t("tutorial.step", { step: currentStep });
+    nextBtn.classList.remove("finish");
+    nextBtn.textContent = i18n.t("button.next");
+    skipBtn.style.display = index === 0 ? "" : "none";
+
     tooltipText.textContent = step.text;
 
     const targetEl = document.querySelector(step.selector);
@@ -1448,7 +1459,7 @@ async function showInitialTutorial() {
     // The last step is to show the 'Finish' button
     if (isLastStep) {
       nextBtn.classList.add("finish");
-      nextBtn.textContent = "Finish";
+      nextBtn.textContent = i18n.t("tutorial.finish");
       skipBtn.remove();
     }
   }
@@ -2098,7 +2109,7 @@ async function openUserScriptManager(id) {
 
 // Load all favicons
 async function loadFavIcons(icons, concurrency = 3, delayMs = 150, slowAfter = 8) {
-  if (!icons || !icons.length) return;
+  if (!icons?.length) return;
 
   const queue = Array.from(icons);
   let loadedCount = 0;
@@ -2107,39 +2118,37 @@ async function loadFavIcons(icons, concurrency = 3, delayMs = 150, slowAfter = 8
     return new Promise((resolve) => {
       if (!domain) return resolve();
 
-      const primaryDomain = Array.isArray(domain) ? domain[0] : domain.split(",")[0].trim();
+      const primaryDomain = domain.split(",")[0].trim();
       const proxyUrl = `https://favicons.seadfeng.workers.dev/${primaryDomain}.ico`;
       const googleUrl = `https://www.google.com/s2/favicons?domain=${primaryDomain}&sz=32`;
       const fallback = browser.runtime.getURL("icons/48x48.png");
-      const classRemove = () => {
+
+      const finish = () => {
+        icon.onload = null;
+        icon.onerror = null;
         icon.classList.remove("hidden-visibility");
         icon.parentElement?.classList.remove("spinner");
-      };
-
-      icon.onload = () => {
-        classRemove();
-        icon.onload = icon.onerror = null;
         resolve();
       };
+
+      icon.onload = finish;
 
       icon.onerror = () => {
         if (icon.src === proxyUrl) {
           icon.src = googleUrl;
         } else {
-          icon.src = fallback;
-          classRemove();
-          icon.onload = icon.onerror = null;
-          resolve();
+          if (icon.src !== fallback) {
+            icon.onerror = finish;
+            icon.src = fallback;
+          } else {
+            finish();
+          }
         }
       };
 
       icon.src = proxyUrl;
-
-      // show immediately
       if (icon.complete && icon.naturalWidth !== 0) {
-        classRemove();
-        resolve();
-        return;
+        finish();
       }
     });
   }
@@ -2147,22 +2156,18 @@ async function loadFavIcons(icons, concurrency = 3, delayMs = 150, slowAfter = 8
   async function worker() {
     while (queue.length > 0) {
       const icon = queue.shift();
-      if (!icon) return;
+      if (icon == null) return;
 
       const domain = icon.dataset?.src;
       await loadSingleIcon(icon, domain);
-      loadedCount++;
 
-      // slow after
-      const slowdown = loadedCount > slowAfter ? delayMs * 2 : delayMs;
+      const slowdown = ++loadedCount > slowAfter ? delayMs * 2 : delayMs;
       await delay(slowdown + Math.random() * 60);
     }
   }
 
   const safeConcurrency = Math.min(concurrency, queue.length);
-  const workers = Array.from({ length: safeConcurrency }, worker);
-
-  await Promise.all(workers);
+  await Promise.all(Array.from({ length: safeConcurrency }, worker));
 }
 
 // Popup Message
@@ -2303,24 +2308,33 @@ async function factoryReset(tab, fromSettings = false) {
 
 function loadImage({ target, src, fallback = browser.runtime.getURL("icons/48x48.png") } = {}) {
   if (!target) return;
-  if ((target && !src) || typeof src !== "string") target.src = fallback;
 
-  const finish = () => {
+  const container = target.parentNode;
+
+  const applyLoadedState = () => {
     target.classList.add("lazyloaded");
-    target.closest(".spinner")?.classList.remove("spinner");
-    target.removeEventListener("load", onLoad);
-    target.removeEventListener("error", onError);
+    if (container && container.classList.contains("spinner")) {
+      container.classList.remove("spinner");
+    }
   };
 
-  const onLoad = () => finish();
+  const finalSrc = typeof src === "string" && src ? src : fallback;
 
-  const onError = () => {
-    target.src = fallback;
-    finish();
-  };
+  const idle = window.requestIdleCallback || ((cb) => setTimeout(cb, 16));
 
-  target.addEventListener("load", onLoad, { once: true });
-  target.addEventListener("error", onError, { once: true });
+  idle(() => {
+    const img = new Image();
 
-  target.src = src;
+    img.onload = () => {
+      target.src = finalSrc;
+      applyLoadedState();
+    };
+
+    img.onerror = () => {
+      target.src = fallback;
+      applyLoadedState();
+    };
+
+    img.src = finalSrc;
+  });
 }

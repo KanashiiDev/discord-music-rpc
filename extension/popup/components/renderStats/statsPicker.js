@@ -5,7 +5,7 @@ function clearFlatpickr() {
 }
 
 const handleApplyCustomRange = async () => {
-  if (!statsModule.currentCustomStart) return alert("Please select start date");
+  if (!statsModule.currentCustomStart) return alert(i18n.t("stats.alert.emptyDate"));
   statsModule.currentCustomEnd ??= Date.now();
 
   const container = document.getElementById("statsEntries");

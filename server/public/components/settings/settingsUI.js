@@ -1,4 +1,4 @@
-import { dom } from "../../core/dom.js";
+import { dom, simpleBars } from "../../core/dom.js";
 import { SettingsManager } from "./settingsManager.js";
 import { formatKeyName, displayValue, getDisplayMinMax, hasChanges } from "./settingsHelpers.js";
 import { startAutoUpdate, stopAutoUpdate } from "../../index.js";
@@ -53,10 +53,30 @@ const createTextInput = (key, value, def) => {
   return createElement("input", "", attributes);
 };
 
+const createSelect = (id, options = {}, defaultValue = null) => {
+  const select = createElement("select", "", { id });
+
+  Object.entries(options).forEach(([key, value]) => {
+    const option = createElement("option", "", {
+      value: key,
+      textContent: value.label,
+    });
+    select.appendChild(option);
+  });
+
+  if (defaultValue && options[defaultValue]) {
+    select.value = defaultValue;
+  }
+
+  return select;
+};
+
 export const createSettingOption = (key, def) => {
   const { type, note, display } = def;
   const wrapper = createElement("div", "settings-option");
   wrapper.setAttribute("data-key", key);
+
+  const wrapperLabel = createElement("div", "setting-label");
 
   const labelText = formatKeyName(key);
   const label = createElement("label", "", {
@@ -64,11 +84,11 @@ export const createSettingOption = (key, def) => {
     textContent: labelText,
     className: "title",
     title: note || "",
+    "data-i18n": `settings.${key.toLowerCase()}`,
   });
 
-  const noteElement = createElement("span", "option-note");
+  const noteElement = createElement("span", "option-note", { "data-i18n": `settings.${key.toLowerCase()}.note` });
   noteElement.textContent = `${note || ""}${display ? ` (${display})` : ""}`;
-  label.appendChild(noteElement);
 
   const inputWrapper = createElement("div", "input-wrapper");
   const input = type === "boolean" ? createBooleanInput(key, def.value, def) : createTextInput(key, def.value, def);
@@ -77,7 +97,9 @@ export const createSettingOption = (key, def) => {
 
   inputWrapper.appendChild(errorMsg);
   inputWrapper.appendChild(input);
-  wrapper.append(label, inputWrapper);
+
+  wrapperLabel.append(label, noteElement);
+  wrapper.append(wrapperLabel, inputWrapper);
   return wrapper;
 };
 
@@ -139,4 +161,49 @@ export const toggleSettings = (show) => {
     }
     dom.container.classList.remove("switch");
   }, 300);
+};
+
+export const initLanguageSelect = async (container) => {
+  if (!container) return;
+
+  try {
+    const response = await fetch("locales/languages.json");
+    const data = await response.json();
+
+    // Filter only those with "server": true
+    const serverLanguages = Object.fromEntries(Object.entries(data).filter(([key, lang]) => key && lang.server === true));
+
+    const savedLang = localStorage.getItem("lang") || Object.keys(serverLanguages)[0];
+
+    const wrapper = createElement("div", "settings-option");
+    const label = createElement("div", "setting-label", {
+      textContent: "Language",
+      "data-i18n": "settings.language",
+    });
+
+    // send the filtered data to the createSelect function
+    const select = createSelect("languageSelect", serverLanguages, savedLang);
+    select.classList.add("lang-select");
+
+    wrapper.append(label, select);
+    container.appendChild(wrapper);
+
+    new TomSelect(select, {
+      controlInput: null,
+      sortField: false,
+      plugins: {
+        auto_width: {},
+        simplebar: {
+          simpleBars,
+          key: "settingsLanguage",
+        },
+      },
+      onChange: async (value) => {
+        localStorage.setItem("lang", value);
+        window.location.reload();
+      },
+    });
+  } catch (err) {
+    console.error("Error loading languages.json:", err);
+  }
 };

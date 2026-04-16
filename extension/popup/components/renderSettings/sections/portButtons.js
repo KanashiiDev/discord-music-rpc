@@ -4,6 +4,7 @@ async function buildPortButtons(container) {
 
   const portLabel = document.createElement("label");
   portLabel.textContent = "Port";
+  portLabel.dataset.i18n = "settings.port";
   portLabel.setAttribute("for", "portInput");
 
   const portInput = document.createElement("input");
@@ -25,7 +26,7 @@ async function buildPortButtons(container) {
   const btnApply = document.createElement("span");
   btnApply.appendChild(createSVG(svg_paths.penIconPaths));
   btnApply.className = "port-apply-btn button";
-  btnApply.title = "Apply";
+  btnApply.title = i18n.t("settings.apply");
 
   btnApply.addEventListener("click", async () => {
     btnApply.classList.toggle("spinner");
@@ -47,6 +48,7 @@ async function buildPortButtons(container) {
   const portInfo = document.createElement("small");
   portInfo.className = "settings-option-info";
   portInfo.textContent = "You don't need to change the port separately in the application.";
+  portInfo.dataset.i18n = "settings.port_info";
 
   portWrapper.append(portLabel, portInput, btnApply);
   container.appendChild(portWrapper);
@@ -60,10 +62,10 @@ async function buildPortButtons(container) {
   const { debugMode: storedDebug } = await browser.storage.local.get("debugMode");
   let debugState = storedDebug ?? CONFIG.debugMode;
 
-  const btnRestart = createBtn("Restart Extension", "restart");
-  const btnDebug = createBtn(`${debugState ? "Disable" : "Activate"} Debug Mode`, "debugMode");
-  const btnFactory = createBtn("Factory Reset (Default Settings)", "factoryReset");
-  const btnBackup = createBtn("Backup / Restore", "backupSettings");
+  const btnRestart = createBtn(i18n.t("settings.restart"), "restart");
+  const btnDebug = createBtn(i18n.t(debugState ? "settings.debug.disable" : "settings.debug.enable"), "debugMode");
+  const btnFactory = createBtn(i18n.t("settings.factory"), "factoryReset");
+  const btnBackup = createBtn(i18n.t("settings.backup"), "backupSettings");
 
   if (debugState === 1) btnDebug.classList.add("active");
 
@@ -84,7 +86,7 @@ async function buildPortButtons(container) {
 
     const isActive = debugState === 1;
     btnDebug.classList.toggle("active", isActive);
-    btnDebug.textContent = isActive ? "Disable Debug Mode" : "Activate Debug Mode";
+    btnDebug.textContent = i18n.t(isActive ? "settings.debug.disable" : "settings.debug.enable");
   };
 
   let factoryTimer = null;
@@ -94,12 +96,12 @@ async function buildPortButtons(container) {
     const result = await factoryReset(activeTab, true);
 
     if (result?.needConfirm) {
-      btnFactory.textContent = "This will reset this extension. Confirm.";
+      btnFactory.textContent = i18n.t("settings.factory_confirm");
       btnFactory.classList.add("active");
 
       clearTimeout(factoryTimer);
       factoryTimer = setTimeout(() => {
-        btnFactory.textContent = "Factory Reset (Default Settings)";
+        btnFactory.textContent = i18n.t("settings.factory");
         btnFactory.classList.remove("active");
       }, 5000);
     }

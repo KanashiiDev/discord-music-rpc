@@ -97,7 +97,7 @@ async function mainLoop() {
 
   try {
     const song = await safeGetSongInfo();
-    window._lastParsedSong = song !== "blocked" || null;
+    window._lastParsedSong = song && song !== "blocked" ? song : null;
 
     if (!song || song === "blocked" || (!song.title && !song.artist)) {
       if (!song) logInfo("mainLoop: no song info");

@@ -610,7 +610,7 @@ input[type="number"] {
   gap: 4px;
 }
 
-.settings-option label {
+.settings-option .setting-label {
   -webkit-box-flex: 1;
   flex: 1 1 0%;
 }

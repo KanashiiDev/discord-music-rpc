@@ -17,13 +17,18 @@ function applySectionFromUrl() {
   });
 
   if (activeSection) {
-    document.querySelector(".header h3").textContent = `Discord Music RPC - ${activeSection.dataset.sectionHeader}`;
-    document.title = `Discord Music RPC - ${activeSection.dataset.sectionHeader}`;
-    document.querySelector(".header-desc").textContent = activeSection.dataset.sectionDesc;
+    const currentSection = activeSection?.getAttribute("data-section");
+    const currentSectionHeader = `settings.${currentSection}.title`;
+    const currentSectionDesc = `settings.${currentSection}.desc`;
+
+    document.querySelector(".header h3").textContent = i18n.t(currentSectionHeader);
+    document.title = i18n.t(currentSectionHeader);
+    document.querySelector(".header-desc").textContent = i18n.t(currentSectionDesc);
   }
 }
 
-window.addEventListener("load", async () => {
+function startSettings() {
+  applyTranslations();
   initMotionPreference();
   initApplyAttrs();
   initStorageListener();
@@ -31,4 +36,10 @@ window.addEventListener("load", async () => {
   initFilter();
   initHistoryModal();
   initBackupButtons();
+}
+
+window.addEventListener("load", async () => {
+  await i18n.load("extension");
+
+  startSettings();
 });

@@ -8,6 +8,12 @@ module.exports = function registerInlines(inlineUtilsFunctions) {
   // CONFIG
   inlineUtilsFunctions(["background.js", "common/utils.js", "mainParser.js"], "config.js", [], "start", true);
 
+  // Localization
+  inlineUtilsFunctions(["common/utils.js"], "../shared/i18n.js", [], [], "start");
+
+  // Tom Select Plugins
+  inlineUtilsFunctions(["popup/popup.js"], "../shared/tom-select-plugins.js", [], [], "end");
+
   // Truncate
   inlineUtilsFunctions(["common/utils.js", "popup/selector/selector.js", "background.js"], "../shared/utils.js", ["truncate", "normalizeTitleAndArtist"]);
 

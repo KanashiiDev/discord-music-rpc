@@ -38,9 +38,11 @@ console.log(`[SERVER] Port: ${PORT} | Electron: ${process.env.ELECTRON_MODE} | `
 const app = express();
 const publicPath = path.join(__dirname, "public");
 const sharedPath = path.join(__dirname, "..", "shared");
+const localesPath = path.join(__dirname, "..", "locales");
 
 app.use(express.static(publicPath));
 app.use("/shared", express.static(sharedPath));
+app.use("/locales", express.static(localesPath));
 app.use((_req, res, next) => {
   res.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
   res.set("Pragma", "no-cache");

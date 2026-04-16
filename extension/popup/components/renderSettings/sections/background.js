@@ -17,21 +17,21 @@ async function buildBackground(container) {
   bgUrlWrapper.className = "settings-option bg-url-wrapper";
 
   const bgUrlLabel = document.createElement("label");
-  bgUrlLabel.textContent = "Background Image";
+  bgUrlLabel.textContent = i18n.t("settings.backgroundImage");
 
   const bgUrlControl = document.createElement("div");
   bgUrlControl.className = "bg-url-control";
 
   const urlInput = document.createElement("input");
   urlInput.type = "text";
-  urlInput.placeholder = "image URL...";
+  urlInput.placeholder = i18n.t("settings.backgroundImage.url");
   urlInput.className = "bg-url-input settings-input";
   urlInput.value = bgSettings.image ?? "";
 
   const btnExpand = document.createElement("span");
   btnExpand.appendChild(createSVG(svg_paths.gearIconPaths));
   btnExpand.className = "bg-expand-btn button";
-  btnExpand.title = "Show/Hide Options";
+  btnExpand.title = i18n.t("settings.backgroundImage.toggle");
 
   bgUrlControl.appendChild(urlInput);
   bgUrlControl.appendChild(btnExpand);
@@ -42,7 +42,7 @@ async function buildBackground(container) {
   const btnDeleteBg = document.createElement("span");
   btnDeleteBg.appendChild(createSVG(svg_paths.crossIconPaths));
   btnDeleteBg.className = "bg-delete-btn button";
-  btnDeleteBg.title = "Remove Background";
+  btnDeleteBg.title = i18n.t("settings.backgroundImage.remove");
   btnDeleteBg.classList.toggle("disabled", !bgSettings.image);
 
   bgUrlWrapper.appendChild(btnDeleteBg);
@@ -56,7 +56,7 @@ async function buildBackground(container) {
     wrap: blurWrap,
     slider: blurSlider,
     display: blurDisplay,
-  } = createSliderSection("Blur", 0, 40, 1, bgSettings.blur, "px", async (v) => {
+  } = createSliderSection(i18n.t("settings.backgroundImage.blur"), 0, 40, 1, bgSettings.blur, "px", async (v) => {
     bgSettings.blur = v;
     await saveBgSettings();
   });
@@ -65,7 +65,7 @@ async function buildBackground(container) {
     wrap: brightnessWrap,
     slider: brightnessSlider,
     display: brightnessDisplay,
-  } = createSliderSection("Brightness", 0, 200, 1, bgSettings.brightness, "%", async (v) => {
+  } = createSliderSection(i18n.t("settings.backgroundImage.brightness"), 0, 200, 1, bgSettings.brightness, "%", async (v) => {
     bgSettings.brightness = v;
     await saveBgSettings();
   });
@@ -74,12 +74,12 @@ async function buildBackground(container) {
     wrap: saturationWrap,
     slider: saturationSlider,
     display: saturationDisplay,
-  } = createSliderSection("Saturation", 0, 200, 1, bgSettings.saturation, "%", async (v) => {
+  } = createSliderSection(i18n.t("settings.backgroundImage.saturation"), 0, 200, 1, bgSettings.saturation, "%", async (v) => {
     bgSettings.saturation = v;
     await saveBgSettings();
   });
 
-  const { wrap: posXWrap } = createSliderSection("Position", 0, 100, 1, bgSettings.positionX ?? 50, "%", async (v) => {
+  const { wrap: posXWrap } = createSliderSection(i18n.t("settings.backgroundImage.positionX"), 0, 100, 1, bgSettings.positionX ?? 50, "%", async (v) => {
     bgSettings.positionX = v;
     await saveBgSettings();
   });

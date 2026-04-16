@@ -9,6 +9,7 @@ import { initDashboard } from "./components/dashboard/dashboard.js";
 import { initMusicCard } from "./components/musicCard/musicCard.js";
 import { updateHistoryChart } from "./components/chart/chartRenderer.js";
 import { FetchManager } from "./core/fetchManager.js";
+import { initVisibilityRefresh } from "./utils.js";
 
 // EVENT DELEGATION
 function initEventListeners() {
@@ -41,12 +42,16 @@ export function stopAutoUpdate() {
 }
 
 window.onload = async () => {
+  await i18n.load("locales/server");
+  applyTranslations();
   initTheme();
   initEventListeners();
+  initVisibilityRefresh();
   initSettingsUI();
-  initDashboard();
+  await initDashboard();
   initMusicCard();
   await Promise.allSettled([initializeHistory().catch(console.error), initializeLogs().catch(console.error)]);
   await updateHistoryChart();
+  applyTranslations();
   startAutoUpdate();
 };

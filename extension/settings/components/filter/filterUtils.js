@@ -95,7 +95,7 @@ const SongFetcher = {
   async fetch(buttonElement, buttonText) {
     const originalText = buttonText || buttonElement.textContent;
     buttonElement.disabled = true;
-    buttonElement.textContent = "Fetching...";
+    buttonElement.textContent = i18n.t("filter.fetching");
     await new Promise((r) => requestAnimationFrame(r));
 
     const maxAttempts = 4;
@@ -149,7 +149,7 @@ const QuickActions = {
     const { songData, resetButton } = await SongFetcher.fetch(btn, originalText);
 
     if (!songData) {
-      btn.textContent = "No song found";
+      btn.textContent = i18n.t("filter.fetching.empty");
       btn.style.color = "var(--red-color)";
       this.fillTimeout = setTimeout(resetButton, 2000);
       return;
@@ -162,7 +162,7 @@ const QuickActions = {
     const duplicate = FilterUtils.findDuplicate(entry, isReplace);
 
     if (duplicate.isDuplicate) {
-      btn.textContent = "Already exists";
+      btn.textContent = i18n.t("filter.exists");
       btn.style.color = "var(--yellow-color)";
       this.fillTimeout = setTimeout(resetButton, 2000);
       return;
@@ -193,7 +193,7 @@ const QuickActions = {
     }
 
     // Success
-    btn.textContent = "Filled!";
+    btn.textContent = i18n.t("filter.fetching.complete");
     btn.style.color = "var(--green-color)";
     this.fillTimeout = setTimeout(resetButton, 1500);
   },
@@ -204,7 +204,7 @@ const QuickActions = {
 
     if (!songInfoBtn || !parentBtn) return;
 
-    const buttonText = "Block Current Song";
+    const buttonText = i18n.t("filter.blockCurrent");
     clearTimeout(this.blockTimeout);
 
     const { songData, resetButton } = await SongFetcher.fetch(songInfoBtn, buttonText);
@@ -215,7 +215,7 @@ const QuickActions = {
     };
 
     if (!songData) {
-      songInfoBtn.textContent = "No recent song found";
+      songInfoBtn.textContent = i18n.t("filter.blockCurrent.empty");
       this.blockTimeout = setTimeout(resetWithParent, 2000);
       return;
     }
@@ -227,13 +227,13 @@ const QuickActions = {
     const duplicate = FilterUtils.findDuplicate(entry, false);
 
     if (duplicate.isDuplicate) {
-      songInfoBtn.textContent = "Already Added";
+      songInfoBtn.textContent = i18n.t("filter.exists");
       this.blockTimeout = setTimeout(resetWithParent, 2000);
       return;
     }
 
     if (!parserId) {
-      songInfoBtn.textContent = "Pending...";
+      songInfoBtn.textContent = i18n.t("filter.pending");
       this.blockTimeout = setTimeout(resetWithParent, 2000);
       return;
     }
@@ -262,7 +262,7 @@ const QuickActions = {
     FilterListController.render();
 
     // Success
-    songInfoBtn.textContent = "Added!";
+    songInfoBtn.textContent = i18n.t("filter.blockCurrent.complete");
     songInfoBtn.style.color = "var(--green-color)";
     this.blockTimeout = setTimeout(resetWithParent, 1500);
   },

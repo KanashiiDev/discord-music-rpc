@@ -123,17 +123,17 @@ function renderParserTagFilterMenu() {
         value: `${prefix}:${item}`,
         checked: selectedSet.has(item),
       });
-      const span = Object.assign(document.createElement("span"), { textContent: item });
+      const span = Object.assign(document.createElement("span"), { textContent: prefix === "cat" ? i18n.t("parserFilters.category." + item) : item });
       label.append(cb, " ", span);
       fragment.appendChild(label);
     });
   };
 
-  appendSection("Categories", allCategories, "cat", selectedCategories);
-  appendSection("Tags", allTags, "tag", selectedTags);
+  appendSection(i18n.t("parserFilters.cat"), allCategories, "cat", selectedCategories);
+  appendSection(i18n.t("parserFilters.tag"), allTags, "tag", selectedTags);
 
   if (!fragment.childNodes.length) {
-    fragment.appendChild(Object.assign(document.createElement("i"), { textContent: "No tags available." }));
+    fragment.appendChild(Object.assign(document.createElement("i"), { textContent: i18n.t("parserFilters.empty") }));
   }
 
   parserTagFilterMenuContent.appendChild(fragment);

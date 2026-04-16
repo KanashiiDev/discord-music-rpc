@@ -129,7 +129,9 @@ export const ScrollManager = {
     const hint = document.createElement("div");
     hint.id = id;
     hint.className = "history-release-hint";
-    hint.textContent = `Release to load more ${label}`;
+    hint.textContent = i18n.t("history.release_hint");
+    hint.dataset.i18n = "history.release_hint";
+    hint.dataset.i18nParams = JSON.stringify([label]);
     container.appendChild(hint);
   },
 

@@ -22,9 +22,12 @@ export const LogRenderer = {
     const dateLong = fullDateTime(date);
     const dateAgo = relativeTime(date.getTime());
     time.textContent = `${dateAgo} (${dateLong})`;
+    time.dataset.timestamp = date.getTime();
+    time.dataset.timestampFormat = "log";
 
     const type = document.createElement("span");
     type.className = `type ${log.type}`;
+    type.dataset.i18n = `logs.${log.type}`;
     type.textContent = log.type;
 
     const message = document.createElement("div");
@@ -86,7 +89,7 @@ export const LogRenderer = {
       if (!this.isFetching && reset && data.length === 0) {
         const emptyDiv = document.createElement("div");
         emptyDiv.className = "no-logs";
-        emptyDiv.textContent = "No logs found for this filter.";
+        emptyDiv.textContent = i18n.t("logs.empty");
         targetContainer.replaceChildren(emptyDiv);
         return;
       }
@@ -116,6 +119,7 @@ export const LogRenderer = {
       updateSimpleBarPadding("logsWrapper");
     } finally {
       this._isRendering = false;
+      applyTranslations();
     }
   },
 

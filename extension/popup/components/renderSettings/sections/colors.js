@@ -8,7 +8,7 @@ async function buildColors(container) {
     wrap.className = "settings-option color-wrapper";
 
     const lbl = document.createElement("label");
-    lbl.textContent = item.label;
+    lbl.dataset.i18n = item.i18n;
 
     const control = document.createElement("div");
     control.className = "color-control";
@@ -71,18 +71,18 @@ async function buildColors(container) {
 
   // Label and Toggle
   const colorSectionLabel = document.createElement("label");
-  colorSectionLabel.textContent = "Color Settings";
+  colorSectionLabel.textContent = i18n.t("settings.color");
 
   const toggleSpan = document.createElement("span");
   toggleSpan.className = "color-expand-btn button";
-  toggleSpan.title = "Edit Colors";
+  toggleSpan.title = i18n.t("settings.color.edit");
   toggleSpan.appendChild(createSVG(svg_paths.gearIconPaths));
 
   // Delete Button
   const btnDeleteColors = document.createElement("span");
   btnDeleteColors.appendChild(createSVG(svg_paths.crossIconPaths));
   btnDeleteColors.className = "all-colors-delete-btn button";
-  btnDeleteColors.title = "Remove Custom Colors";
+  btnDeleteColors.title = i18n.t("settings.color.remove");
   btnDeleteColors.classList.toggle("disabled", Object.keys(colorConfig).length === 0);
 
   btnDeleteColors.addEventListener("click", async (e) => {

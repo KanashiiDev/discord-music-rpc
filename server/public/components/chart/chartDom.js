@@ -16,6 +16,7 @@ function buildRangeToggle() {
     btn.dataset.range = range;
     btn.type = "button";
     btn.textContent = label;
+    btn.dataset.i18n = `chart.range.${range}`;
     group.appendChild(btn);
   }
 
@@ -56,19 +57,22 @@ function buildModeToggle() {
   summaryBtn.className = "chart-mode-btn";
   summaryBtn.dataset.mode = "summary";
   summaryBtn.type = "button";
+  summaryBtn.dataset.i18n = "chart.tab.summary";
   summaryBtn.textContent = "Summary";
 
   const minutesBtn = document.createElement("button");
   minutesBtn.className = "chart-mode-btn active";
   minutesBtn.dataset.mode = "minutes";
   minutesBtn.type = "button";
-  minutesBtn.textContent = "\u23F1 Time";
+  minutesBtn.dataset.i18n = "chart.tab.time";
+  minutesBtn.textContent = "Time";
 
   const songsBtn = document.createElement("button");
   songsBtn.className = "chart-mode-btn";
   songsBtn.dataset.mode = "songs";
   songsBtn.type = "button";
-  songsBtn.textContent = "\u266B Songs";
+  songsBtn.dataset.i18n = "chart.tab.songs";
+  songsBtn.textContent = "Songs";
 
   group.appendChild(summaryBtn);
   group.appendChild(minutesBtn);
@@ -83,6 +87,7 @@ function buildCanvasWrap() {
 
   const loading = document.createElement("div");
   loading.id = "historyChartLoading";
+  loading.dataset.i18n = "chart.loading";
   loading.textContent = "Loading stats...";
 
   const canvas = document.createElement("canvas");
@@ -132,6 +137,7 @@ export function renderChartContainer() {
 
   const heading = document.createElement("h2");
   heading.id = "chartHeader";
+  heading.dataset.i18n = "chart.title";
   heading.textContent = "Stats";
 
   const controls = document.createElement("div");

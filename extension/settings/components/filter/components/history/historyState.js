@@ -132,7 +132,7 @@ const HistoryUtils = {
     blockBtn.className = "history-action-btn block-btn";
 
     const isBlocked = this.checkIfBlocked(entry);
-    blockBtn.textContent = isBlocked ? "Unblock" : "Block";
+    blockBtn.textContent = isBlocked ? i18n.t("common.unblock") : i18n.t("common.block");
     if (isBlocked) blockBtn.classList.add("unblock-mode");
 
     blockBtn.addEventListener("click", async (e) => {
@@ -145,7 +145,7 @@ const HistoryUtils = {
     replaceBtn.className = "history-action-btn replace-btn";
 
     const existingReplace = this.findExistingReplace(entry);
-    replaceBtn.textContent = existingReplace ? "Edit Replace" : "Replace";
+    replaceBtn.textContent = existingReplace ? i18n.t("common.editReplace") : i18n.t("common.replace");
     if (existingReplace) replaceBtn.classList.add("edit-mode");
 
     replaceBtn.addEventListener("click", async (e) => {

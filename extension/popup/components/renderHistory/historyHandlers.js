@@ -82,13 +82,13 @@ function attachCheckboxListeners() {
 function updateClearBtnText() {
   if (!historyState.cleaningMode) return;
   const selectedCount = document.querySelectorAll(".history-checkbox:checked").length;
-  clearBtn.textContent = selectedCount > 0 ? `Delete Selected (${selectedCount})` : "Delete All";
+  clearBtn.textContent = selectedCount > 0 ? i18n.t("history.deleteSelected", { count: selectedCount }) : i18n.t("history.clearAll");
 }
 
 function exitCleaningMode() {
   historyState.cleaningMode = false;
   document.body.classList.remove("cleaning-mode");
-  clearBtn.textContent = "Clear History";
+  clearBtn.textContent = i18n.t("history.clearHistory");
   cancelCleanBtn.style.display = "none";
   document.querySelectorAll(".history-checkbox").forEach((cb) => {
     cb.parentElement?.classList.remove("selected");
@@ -111,7 +111,7 @@ const handleClearButtonClick = async () => {
   }
 
   if (!historyState.fullHistory.length) {
-    alert("History is already empty.");
+    alert(i18n.t("history.warn.empty"));
     exitCleaningMode();
     return;
   }
@@ -123,21 +123,24 @@ const handleClearButtonClick = async () => {
   if (selectedIndexes.length === 0) {
     if (historyState.isFiltering) {
       const filteredSet = new Set(historyState.filteredHistory.map((e) => historyState.fullHistory.indexOf(e)));
-      if (!confirm(`Are you sure you want to delete ${filteredSet.size} entries from the current filtered list?`)) return;
-      showPopupMessage("Deleting please wait...", "warning", null, 1);
+      if (!confirm(i18n.t("history.confirm.delete", { count: filteredSet.size }))) return;
+      showPopupMessage(i18n.t("popupMessage.deleting"), "warning", null, 1);
       const deletedEntries = historyState.fullHistory.filter((_, i) => filteredSet.has(i));
       historyState.fullHistory = historyState.fullHistory.filter((_, i) => !filteredSet.has(i));
       await sendAction("syncDeleteToServer", { data: deletedEntries });
     } else {
-      if (!confirm(`Are you sure you want to delete all ${historyState.fullHistory.length} history entries?`)) return;
-      showPopupMessage("Deleting please wait...", "warning", null, 1);
+      if (!confirm(i18n.t("history.confirm.deleteAll", { count: historyState.fullHistory.length }))) return;
+      showPopupMessage(i18n.t("popupMessage.deleting"), "warning", null, 1);
       await sendAction("syncDeleteToServer", { data: historyState.fullHistory });
       historyState.fullHistory = [];
     }
   } else {
     const indexSet = new Set(selectedIndexes);
-    if (!confirm(`Are you sure you want to delete ${selectedIndexes.length} history ${selectedIndexes.length > 1 ? "entries" : "entry"}?`)) return;
-    showPopupMessage("Deleting please wait...", "warning", null, 1);
+    const count = selectedIndexes.length;
+    const key = count > 1 ? "popupMessage.deleteHistory.other" : "popupMessage.deleteHistory.one";
+    if (!confirm(i18n.t(key, { count }))) return;
+
+    showPopupMessage(i18n.t("popupMessage.deleting"), "warning", null, 1);
     const deletedEntries = historyState.fullHistory.filter((_, i) => indexSet.has(i));
     historyState.fullHistory = historyState.fullHistory.filter((_, i) => !indexSet.has(i));
     await sendAction("syncDeleteToServer", { data: deletedEntries });
@@ -209,7 +212,7 @@ function renderSourceFilterMenu() {
     fragment.appendChild(label);
   });
   if (!fragment.childNodes.length) {
-    fragment.appendChild(Object.assign(document.createElement("i"), { textContent: "No sources available." }));
+    fragment.appendChild(Object.assign(document.createElement("i"), { textContent: i18n.t("sourceFilter.notFound") }));
   }
   filterMenuContent.appendChild(fragment);
 

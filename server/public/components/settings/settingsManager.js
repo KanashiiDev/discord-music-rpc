@@ -1,5 +1,5 @@
 import { dom } from "../../core/dom.js";
-import { createSettingOption, showInfoMessage, updateChangeIndicator, clearError, showError } from "./settingsUI.js";
+import { createSettingOption, showInfoMessage, updateChangeIndicator, clearError, showError, initLanguageSelect } from "./settingsUI.js";
 import { validateValue, convertValue, updateSaveButton, hasChanges, waitForServer } from "./settingsHelpers.js";
 
 const domSettings = dom.settings;
@@ -37,11 +37,17 @@ export const SettingsManager = {
 
       dom.settings.form.replaceChildren();
 
+      initLanguageSelect(dom.settings.form);
+
+      await new Promise((res) => setTimeout(res, 50));
+
       Object.entries(serverSettings).forEach(([key, def]) => {
         if (!def.hidden) {
           dom.settings.form.appendChild(createSettingOption(key, def));
         }
       });
+
+      await new Promise((res) => setTimeout(res, 50));
 
       dom.settings.form.querySelectorAll("input").forEach((input) => {
         input.addEventListener("input", updateChangeIndicator);
@@ -54,6 +60,7 @@ export const SettingsManager = {
         }
       });
       updateChangeIndicator();
+      applyTranslations();
     } catch (error) {
       showInfoMessage("Failed to load settings", "error");
       console.error(error);
@@ -68,11 +75,11 @@ export const SettingsManager = {
     }
 
     if (!hasChanges()) {
-      showInfoMessage("No changes detected", "info");
+      showInfoMessage(i18n.t("settings.message.noChanges"), "info");
       return;
     }
 
-    updateSaveButton("Saving...", true);
+    updateSaveButton(i18n.t("settings.saving"), true);
 
     try {
       const saveRes = await fetch("/update-settings", {
@@ -83,8 +90,8 @@ export const SettingsManager = {
 
       const result = await saveRes.json();
       if (result.success) {
-        updateSaveButton("Saved!");
-        showInfoMessage("Settings saved successfully", "success");
+        updateSaveButton(i18n.t("settings.saved"));
+        showInfoMessage(i18n.t("settings.message.saved"), "success");
 
         const newPort = document.getElementById("PORT")?.value;
         const currentPort = window.location.port;
@@ -94,13 +101,13 @@ export const SettingsManager = {
         throw new Error(result.error || "Save failed");
       }
     } catch (error) {
-      updateSaveButton("Save", false);
+      updateSaveButton(i18n.t("settings.save"), false);
       showInfoMessage(error.message, "error");
     }
   },
 
   async reset() {
-    if (!confirm("All settings will be reset to default values and song history will be cleared. This action cannot be undone. Are you sure?")) {
+    if (!confirm(i18n.t("settings.message.reset"))) {
       return;
     }
 
@@ -108,25 +115,28 @@ export const SettingsManager = {
       const response = await fetch("/reset-settings", { method: "POST" });
       if (!response.ok) throw new Error("Settings could not be reset");
 
-      showInfoMessage("Settings have been reset", "success");
-      setTimeout(() => window.location.reload(), 2000);
+      showInfoMessage(i18n.t("settings.reset.complete"), "success");
+      setTimeout(() => window.location.reload(), 5000);
     } catch (error) {
       console.error("Reset Error:", error);
-      showInfoMessage("An error occurred while resetting the settings", "error");
+      showInfoMessage(i18n.t("settings.reset.fail"), "error");
     }
   },
 
   async handlePortChange(newPort, currentPort) {
     if (newPort && String(newPort) !== String(currentPort)) {
-      updateSaveButton("Connecting to new port...");
+      updateSaveButton(i18n.t("settings.newPort"));
+
       try {
         await waitForServer(newPort);
+        await new Promise((resolve) => setTimeout(resolve, 300));
         window.location.href = `http://${window.location.hostname}:${newPort}`;
       } catch (_) {
-        showInfoMessage("Redirect failed, please refresh manually", "error");
+        showInfoMessage(i18n.t("settings.redirect.fail"), "error");
       }
     } else {
-      setTimeout(() => window.location.reload(), 1000);
+      await new Promise((resolve) => setTimeout(resolve, 5000));
+      window.location.reload();
     }
   },
 };

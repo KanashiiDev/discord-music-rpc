@@ -1,13 +1,13 @@
 let statsTomSelect = null;
 
 const statsOptions = [
-  { value: "day", label: "Today" },
-  { value: "yesterday", label: "Yesterday" },
-  { value: "week", label: "This Week" },
-  { value: "month", label: "This Month" },
-  { value: "year", label: "This Year" },
-  { value: "all", label: "All Time" },
-  { value: "custom", label: "Custom" },
+  { value: "day", label: "Today", i18n: "stats.today" },
+  { value: "yesterday", label: "Yesterday", i18n: "stats.yesterday" },
+  { value: "week", label: "This Week", i18n: "stats.week" },
+  { value: "month", label: "This Month", i18n: "stats.month" },
+  { value: "year", label: "This Year", i18n: "stats.year" },
+  { value: "all", label: "All Time", i18n: "stats.all" },
+  { value: "custom", label: "Custom", i18n: "stats.custom" },
 ];
 
 function initStatsDropdown() {
@@ -16,10 +16,18 @@ function initStatsDropdown() {
   const select = document.getElementById("dropdownToggle");
   select.replaceChildren();
 
-  statsOptions.forEach(({ value, label }) => {
-    const option = new Option(label, value);
-    select.add(option);
+  statsOptions.forEach(({ value, label, i18n }) => {
+    const option = document.createElement("option");
+
+    option.value = value;
+    option.textContent = label;
+
+    option.dataset.i18n = i18n;
+
+    select.appendChild(option);
   });
+
+  applyTranslations();
 
   if (statsTomSelect) {
     statsTomSelect.destroy();

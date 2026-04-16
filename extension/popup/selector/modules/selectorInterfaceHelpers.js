@@ -1,99 +1,217 @@
-const FIELDS_CONFIG = {
+const i18nData = {
+  translations: {},
+  fallback: {},
+};
+
+function t(key, params) {
+  let str = i18nData.translations[key] ?? i18nData.fallback[key] ?? key;
+
+  if (params) {
+    if (Array.isArray(params)) {
+      str = str.replace(/\{(\d+)\}/g, (_, i) => params[i] ?? `{${i}}`);
+    } else {
+      str = str.replace(/\{(\w+)\}/g, (m, k) => params[k] ?? m);
+    }
+  }
+
+  return str;
+}
+
+function applyInjectedTranslations(root = document) {
+  // data-i18n
+  root.querySelectorAll("[data-i18n]").forEach((el) => {
+    const key = el.dataset.i18n;
+    const params = el.dataset.i18nParams ? JSON.parse(el.dataset.i18nParams) : null;
+
+    const text = t(key, params);
+    const attr = el.dataset.i18nAttr;
+
+    if (attr) {
+      el.setAttribute(attr, text);
+    } else if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) {
+      el.placeholder = text;
+    } else {
+      el.textContent = text;
+    }
+  });
+
+  // TEXT NODE
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null, false);
+
+  let node;
+  while ((node = walker.nextNode())) {
+    const raw = node.nodeValue.trim();
+    if (!raw) continue;
+
+    const translated = t(raw);
+    if (translated !== raw) {
+      node.nodeValue = translated;
+    }
+  }
+
+  // ATTRIBUTE
+  const attrTargets = root.querySelectorAll("[placeholder], [title]");
+
+  attrTargets.forEach((el) => {
+    // placeholder
+    if (el.hasAttribute("placeholder")) {
+      const raw = el.getAttribute("placeholder")?.trim();
+      if (raw) {
+        const translated = t(raw);
+        if (translated !== raw) {
+          el.setAttribute("placeholder", translated);
+        }
+      }
+    }
+
+    // title
+    if (el.hasAttribute("title")) {
+      const raw = el.getAttribute("title")?.trim();
+      if (raw) {
+        const translated = t(raw);
+        if (translated !== raw) {
+          el.setAttribute("title", translated);
+        }
+      }
+    }
+  });
+}
+
+let FIELDS_CONFIG = {
   name: {
-    label: "Site Name",
-    placeholder: (hostname) => `text (${hostname})`,
-    desc: "A name for this site to show in the website list",
+    label: "selector.editor.name.label",
+    placeholder: (hostname) => t("selector.editor.name.placeholder").replace("${hostname}", hostname),
+    desc: "selector.editor.name.desc",
     type: "text",
+    dynamicPlaceholder: true,
   },
   title: {
-    label: "Title",
-    placeholder: "selector (#class, .class)",
-    desc: "CSS selector for the title of the currently playing song (required)",
+    label: "selector.editor.title.label",
+    placeholder: "selector.editor.title.placeholder",
+    desc: "selector.editor.title.desc",
     type: "text",
     required: true,
   },
   artist: {
-    label: "Artist",
-    placeholder: "selector (#class, .class)",
-    desc: "CSS selector for the artist of the currently playing song (required)",
+    label: "selector.editor.artist.label",
+    placeholder: "selector.editor.artist.placeholder",
+    desc: "selector.editor.artist.desc",
     type: "text",
     required: true,
   },
   timePassed: {
-    label: "Time Elapsed",
-    placeholder: "selector (#class, .class)",
-    desc: "CSS selector for the elapsed time of the currently playing song",
+    label: "selector.editor.timePassed.label",
+    placeholder: "selector.editor.timePassed.placeholder",
+    desc: "selector.editor.timePassed.desc",
     type: "text",
   },
   duration: {
-    label: "Duration",
-    placeholder: "selector (#class, .class)",
-    desc: "CSS selector for the total duration of the currently playing song",
+    label: "selector.editor.duration.label",
+    placeholder: "selector.editor.duration.placeholder",
+    desc: "selector.editor.duration.desc",
     type: "text",
   },
   image: {
-    label: "Image",
-    placeholder: "selector or url",
-    desc: "CSS selector for the artwork of the currently playing song",
+    label: "selector.editor.image.label",
+    placeholder: "selector.editor.image.placeholder",
+    desc: "selector.editor.image.desc",
     type: "text",
   },
   link: {
-    label: "Link",
-    placeholder: "selector or url",
-    desc: "CSS selector for the URL of the currently playing song",
+    label: "selector.editor.link.label",
+    placeholder: "selector.editor.link.placeholder",
+    desc: "selector.editor.link.desc",
     type: "text",
   },
   source: {
-    label: "Source",
-    placeholder: "text or selector",
-    desc: "CSS selector for the source of the currently playing song",
+    label: "selector.editor.source.label",
+    placeholder: "selector.editor.source.placeholder",
+    desc: "selector.editor.source.desc",
     type: "text",
   },
   buttonText: {
-    label: "Button 1 Text",
-    placeholder: "text or selector",
-    desc: "The text to show on the first button",
+    label: "selector.editor.buttonText.label",
+    placeholder: "selector.editor.buttonText.placeholder",
+    desc: "selector.editor.buttonText.desc",
     type: "text",
     group: "buttons",
   },
   buttonLink: {
-    label: "Button 1 URL",
-    placeholder: "selector or url",
-    desc: "CSS selector for the URL of the first button",
+    label: "selector.editor.buttonLink.label",
+    placeholder: "selector.editor.buttonLink.placeholder",
+    desc: "selector.editor.buttonLink.desc",
     type: "text",
     group: "buttons",
   },
   buttonText2: {
-    label: "Button 2 Text",
-    placeholder: "text or selector",
-    desc: "The text to show on the second button",
+    label: "selector.editor.buttonText2.label",
+    placeholder: "selector.editor.buttonText2.placeholder",
+    desc: "selector.editor.buttonText2.desc",
     type: "text",
     group: "buttons",
   },
   buttonLink2: {
-    label: "Button 2 URL",
-    placeholder: "selector or url",
-    desc: "CSS selector for the URL of the second button",
+    label: "selector.editor.buttonLink2.label",
+    placeholder: "selector.editor.buttonLink2.placeholder",
+    desc: "selector.editor.buttonLink2.desc",
     type: "text",
     group: "buttons",
   },
   regex: {
-    label: "Regex",
-    placeholder: `playlist.*`,
-    desc: "A regex pattern to match URLs for this site",
+    label: "selector.editor.regex.label",
+    placeholder: "playlist.*",
+    desc: "selector.editor.regex.desc",
     type: "text",
   },
   mode: {
-    label: "Activity Mode",
+    label: "selector.editor.activityMode.label",
     type: "select",
-    desc: "Choose whether this site should show as 'Listening to' or 'Watching' in Discord",
+    desc: "selector.editor.activityMode.desc",
     options: [
-      { value: "listen", label: "Listening" },
-      { value: "watch", label: "Watching" },
+      { value: "listen", label: "selector.editor.activityMode.listen" },
+      { value: "watch", label: "selector.editor.activityMode.watch" },
     ],
     defaultValue: "listen",
   },
 };
+
+function resolveFieldsConfig(ctx = {}) {
+  const resolved = {};
+
+  for (const [key, field] of Object.entries(FIELDS_CONFIG)) {
+    const out = { ...field };
+
+    // label
+    if (field.label) out.label = t(field.label);
+
+    // desc
+    if (field.desc) out.desc = t(field.desc);
+
+    // placeholder
+    if (field.placeholder) {
+      let text = t(field.placeholder);
+
+      // dynamic placeholder
+      if (field.dynamicPlaceholder && ctx.hostname) {
+        text = text.replace("${hostname}", ctx.hostname);
+      }
+
+      out.placeholder = text;
+    }
+
+    // select options
+    if (field.options) {
+      out.options = field.options.map((opt) => ({
+        ...opt,
+        label: t(opt.label),
+      }));
+    }
+
+    resolved[key] = out;
+  }
+
+  FIELDS_CONFIG = resolved;
+}
 
 const ALL_FIELDS = Object.keys(FIELDS_CONFIG);
 
@@ -165,12 +283,12 @@ function createRootElement(theme, style = {}, bg = {}, blur = false) {
 function createTitleElements(root, editMode) {
   const heading = document.createElement("h3");
   heading.className = "userRpc-h3";
-  heading.textContent = "Discord Music RPC";
+  heading.textContent = t("header.title");
   root.appendChild(heading);
 
   const editTitle = document.createElement("h4");
   editTitle.className = "userRpc-h4";
-  editTitle.textContent = editMode ? "" : "Add New Music Site";
+  editTitle.textContent = editMode ? "" : t("selector.editor.addNew");
   root.appendChild(editTitle);
 }
 
@@ -216,7 +334,7 @@ function createFieldInputs(placeholderMap = getPlaceholderMap()) {
     const button = document.createElement("a");
     button.setAttribute("data-field", key);
     button.className = `userRpc-selectBtn ${config.type === "select" || config.hidden ? "hidden" : ""}`;
-    button.title = "Select with mouse click";
+    button.title = "selector.editor.selectWithClick";
     button.id = `${key}Button`;
     button.appendChild(createSVG(svg_paths.plusIconPaths));
     wrapper.append(label, input, button);
@@ -233,16 +351,16 @@ function createActionButtons(root, shadow) {
   const saveBtn = document.createElement("a");
   saveBtn.className = "userRpc-optionButtons";
   saveBtn.id = "saveSelectors";
-  saveBtn.textContent = "Save";
+  saveBtn.textContent = "common.save";
 
   const exitBtn = document.createElement("a");
   exitBtn.className = "userRpc-optionButtons";
   exitBtn.id = "closeSelectorUI";
-  exitBtn.textContent = "Exit";
+  exitBtn.textContent = "common.close";
 
   const addButtonsToggle = document.createElement("a");
   addButtonsToggle.className = "userRpc-optionButtons addButtonsToggle";
-  addButtonsToggle.textContent = "Add Buttons";
+  addButtonsToggle.textContent = "selector.editor.addButtons";
   addButtonsToggle.addEventListener("click", () => {
     shadow.querySelectorAll('[id*="buttonText"], [id*="buttonLink"]').forEach((el) => {
       if (el.tagName === "BR") {
@@ -419,7 +537,7 @@ function setupEventListeners(shadow) {
 
     if (hasError || missingRequired.length > 0) {
       const fragment = document.createDocumentFragment();
-      fragment.appendChild(document.createTextNode("Required fields are missing:"));
+      fragment.appendChild(document.createTextNode(t("selector.editor.warn.fieldsMissing")));
       fragment.appendChild(document.createElement("br"));
 
       const ul = document.createElement("ul");
@@ -436,7 +554,7 @@ function setupEventListeners(shadow) {
     }
 
     if (!selectors.title || !selectors.artist) {
-      showStatusMsg("Please fill in both the 'title' and 'artist' fields.", 1, 0, shadow);
+      showStatusMsg(t("selector.editor.warn.fillFields"), 1, 0, shadow);
       return;
     }
 
@@ -452,7 +570,7 @@ function setupEventListeners(shadow) {
 
     if (invalidFields.length > 0) {
       const fragment = document.createDocumentFragment();
-      fragment.appendChild(document.createTextNode("Invalid or not found selector(s):"));
+      fragment.appendChild(document.createTextNode(t("selector.editor.warn.invalidFields")));
       fragment.appendChild(document.createElement("br"));
 
       const ul = document.createElement("ul");
@@ -493,7 +611,7 @@ function setupEventListeners(shadow) {
 
     await browser.storage.local.set({ userParserSelectors: parserArray });
 
-    showStatusMsg("Saved! Please refresh the page.", 0, 0, shadow);
+    showStatusMsg(t("selector.editor.saved"), 0, 0, shadow);
   });
 
   // Close User Add RPC
@@ -589,7 +707,7 @@ function handleElementClick(e, field, shadowDoc, cleanup) {
   const isBlocked = isPointOnBlockedElement(e.clientX, e.clientY, shadowDoc);
 
   if (isBlocked || !el) {
-    showStatusMsg("This area cannot be selected. Please click a valid element.", 1, 1, shadowDoc);
+    showStatusMsg(t("selector.warn.forbiddenArea"), 1, 1, shadowDoc);
     return;
   }
 
@@ -601,26 +719,26 @@ function handleElementClick(e, field, shadowDoc, cleanup) {
   }
 
   if (!isValidElement(targetEl)) {
-    showStatusMsg("Selected element is not valid or visible.\n Please choose another element.", 1, 1, shadowDoc);
+    showStatusMsg(t("selecor.warn.notValid"), 1, 1, shadowDoc);
     return;
   }
 
   if (field === "image") {
     targetEl = findImageElement(el);
     if (!targetEl) {
-      showStatusMsg("No image element found. Please click on an image.", 1, 1, shadowDoc);
+      showStatusMsg(t("selector.warn.noImage"), 1, 1, shadowDoc);
       return;
     }
   } else if (field === "link") {
     targetEl = findLinkElement(el);
     if (!targetEl) {
-      showStatusMsg("No link element found. Please click on a link.", 1, 1, shadowDoc);
+      showStatusMsg(t("selector.warn.noLink"), 1, 1, shadowDoc);
       return;
     }
   } else {
     targetEl = findTextElement(el);
     if (!targetEl) {
-      showStatusMsg("No text element found. Please click on a text.", 1, 1, shadowDoc);
+      showStatusMsg(t("selector.warn.noText"), 1, 1, shadowDoc);
       return;
     }
   }
@@ -629,7 +747,7 @@ function handleElementClick(e, field, shadowDoc, cleanup) {
     const selectors = generateSelectorOptions(targetEl);
     showSelectorChooser(selectors, field, shadowDoc);
   } catch (error) {
-    showStatusMsg("Error generating selectors. Please try again.", 1, 1, shadowDoc);
+    showStatusMsg(t("selector.generateError"), 1, 1, shadowDoc);
   } finally {
     cleanup();
   }

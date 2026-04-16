@@ -46,6 +46,7 @@ async function toggleArtistStats(artistName, artistId, range, customStart, custo
     });
 
   content.replaceChildren(frag);
+  applyTranslations();
   artistEntry.classList.add("active");
 
   await activateSimpleBar(artistDiv.id);

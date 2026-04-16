@@ -6,7 +6,9 @@ class UserScriptUI {
     this.init();
   }
 
-  init() {
+  async init() {
+    await i18n.load("extension");
+    applyTranslations();
     this.bindEvents();
     this.refreshList();
     this.bindCodeEditor();
@@ -312,8 +314,9 @@ class UserScriptUI {
       status.className = "script-status";
       status.classList.toggle("status-active", !!script.registered);
       status.classList.toggle("status-inactive", !script.registered);
-      const inactiveStatus = !script.registered && !script.enabled ? "● Inactive" : !script.registered ? "● Unregistered" : null;
-      status.textContent = inactiveStatus || "✓ Active";
+      const inactiveStatus =
+        !script.registered && !script.enabled ? i18n.t("userscript.status.inactive") : !script.registered ? i18n.t("userscript.status.unregistered") : null;
+      status.textContent = inactiveStatus || i18n.t("userscript.status.active");
 
       header.append(title, status);
 
@@ -336,7 +339,7 @@ class UserScriptUI {
         script.authors && Array.isArray(script.authors) && script.authors.length > 0
           ? `${script.authors.length > 1 ? "Authors" : "Author"}: ${script.authors.join(", ")}`
           : "";
-      const updated = script.lastUpdated ? `Updated: ${new Date(script.lastUpdated).toLocaleDateString()}` : "";
+      const updated = script.lastUpdated ? `${new Date(script.lastUpdated).toLocaleDateString()}` : "";
       const meta = `${authors}\n${updated}`.trim();
       title.title = meta;
       info.append(header, details);
@@ -348,30 +351,30 @@ class UserScriptUI {
       const btnToggle = document.createElement("button");
       btnToggle.classList.add("btnToggle");
       btnToggle.classList.add(script.enabled ? "btn-disable" : "btn-enable");
-      btnToggle.title = script.enabled ? "Disable" : "Enable";
+      btnToggle.title = script.enabled ? i18n.t("common.disable") : i18n.t("common.enable");
       btnToggle.innerHTML = "";
       script.enabled ? btnToggle.appendChild(createSVG(svg_paths.pauseIconPaths)) : btnToggle.appendChild(createSVG(svg_paths.startIconPaths));
 
       const btnEdit = document.createElement("button");
       btnEdit.className = "btnEdit";
-      btnEdit.title = "Edit";
+      btnEdit.title = i18n.t("common.edit");
       btnEdit.setAttribute("data-id", script.id);
       btnEdit.appendChild(createSVG(svg_paths.penIconPaths));
 
       const btnExport = document.createElement("button");
       btnExport.className = "btnExport";
-      btnExport.title = "Export";
+      btnExport.title = i18n.t("userscript.listControls.export");
       btnExport.setAttribute("data-id", script.id);
       btnExport.appendChild(createSVG(svg_paths.exportIconPaths, { strokeWidth: 1.5 }));
 
       const btnRegister = document.createElement("button");
       btnRegister.className = "btnRegister";
-      btnRegister.title = script.registered ? "Unregister" : "Register";
-      btnRegister.textContent = script.registered ? "REG" : "UNREG";
+      btnRegister.title = script.registered ? i18n.t("userscript.unregister") : i18n.t("userscript.register");
+      btnRegister.textContent = script.registered ? i18n.t("userscript.register") : i18n.t("userscript.unregister");
 
       const btnDelete = document.createElement("button");
       btnDelete.className = "btnDelete";
-      btnDelete.title = "Delete";
+      btnDelete.title = i18n.t("common.delete");
       btnDelete.appendChild(createSVG(svg_paths.trashIconPaths));
 
       actions.append(btnToggle, btnEdit, btnExport, btnDelete);
@@ -437,7 +440,7 @@ class UserScriptUI {
       listContainer.prepend(editor);
     }
 
-    $("editorTitle").textContent = script ? `Edit Script [${script.title}]` : "New Script";
+    $("editorTitle").textContent = script ? `${i18n.t("userscript.editor.editScript")} [${script.title}]` : i18n.t("userscript.editor.newScript");
     $("inTitle").value = script?.title || "";
     $("inDesc").value = script?.description || "";
     $("inAuthors").value = script?.authors || "";
@@ -864,7 +867,7 @@ class UserScriptUI {
       modal.appendChild(content);
 
       const title = document.createElement("h2");
-      title.textContent = "Import Script";
+      title.textContent = i18n.t("userscript.import.title");
       content.appendChild(title);
 
       const contentWrapper = document.createElement("div");
@@ -877,24 +880,24 @@ class UserScriptUI {
 
       if (duplicates.length) {
         sections.push({
-          header: "Conflicting Scripts",
+          header: i18n.t("userscript.import.conflict"),
           list: duplicates,
           prefix: "dup",
           options: [
-            ["overwrite", "Overwrite"],
-            ["skip", "Skip"],
+            ["overwrite", i18n.t("userscript.import.conflict.overwrite")],
+            ["skip", i18n.t("button.skip")],
           ],
         });
       }
 
       if (newScripts.length) {
         sections.push({
-          header: "New Scripts",
+          header: i18n.t("userscript.import.new"),
           list: newScripts,
           prefix: "new",
           options: [
-            ["add", "Add"],
-            ["skip", "Skip"],
+            ["add", i18n.t("userscript.import.conflict.add")],
+            ["skip", i18n.t("button.skip")],
           ],
         });
       }
@@ -910,13 +913,13 @@ class UserScriptUI {
       });
 
       const duplicateButtons = this.createGroupButtons([
-        { text: "overwrite all conflicts", list: duplicates, prefix: "dup", value: "overwrite" },
-        { text: "skip all conflicts", list: duplicates, prefix: "dup", value: "skip" },
+        { text: i18n.t("userscript.import.conflict.overwrite.text"), list: duplicates, prefix: "dup", value: "overwrite" },
+        { text: i18n.t("userscript.import.conflict.skip.text"), list: duplicates, prefix: "dup", value: "skip" },
       ]);
 
       const newButtons = this.createGroupButtons([
-        { text: "add all new scripts", list: newScripts, prefix: "new", value: "add" },
-        { text: "skip all new scripts", list: newScripts, prefix: "new", value: "skip" },
+        { text: i18n.t("userscript.import.new.all"), list: newScripts, prefix: "new", value: "add" },
+        { text: i18n.t("userscript.import.new.skip"), list: newScripts, prefix: "new", value: "skip" },
       ]);
 
       if (duplicates.length) {
@@ -933,22 +936,22 @@ class UserScriptUI {
       content.appendChild(resultContainer);
 
       // Confirm & Close
-      const confirmBtn = this.createButton("Confirm Selections", async () => {
+      const confirmBtn = this.createButton(i18n.t("userscript.import.confirm"), async () => {
         if (importFinished) {
           importFinished = false;
-          confirmBtn.textContent = "Please wait..";
+          confirmBtn.textContent = i18n.t("common.wait");
           this.saveUserSelection(duplicates, "dup");
           this.saveUserSelection(newScripts, "new");
           const results = await this.processImport([...duplicates, ...newScripts], existing);
           this.showResults(resultContainer, results);
-          confirmBtn.textContent = "Confirm Selections";
+          confirmBtn.textContent = i18n.t("userscript.import.confirm");
           importFinished = true;
           contentWrapper.remove();
         }
       });
       confirmBtn.className = "confirm-button";
 
-      const closeBtn = this.createButton("Close", async () => {
+      const closeBtn = this.createButton(i18n.t("common.close"), async () => {
         if (importFinished) {
           modal.remove();
           resolve({ duplicates, newScripts });
@@ -997,7 +1000,7 @@ class UserScriptUI {
 
   showResults(container, results) {
     document.querySelectorAll(".section,.button-group:not(.footer-buttons),.confirm-button").forEach((el) => el.remove());
-    document.querySelector(".modal h2").textContent = "Results";
+    document.querySelector(".modal h2").textContent = i18n.t("common.results");
     const ul = document.createElement("ul");
     ul.id = "importResultList";
 
@@ -1005,7 +1008,7 @@ class UserScriptUI {
       const li = document.createElement("li");
       li.classList.add(r.status);
       const status = document.createElement("div");
-      status.textContent = `${r.status.toUpperCase()}`;
+      status.textContent = `${i18n.t("userscript.export.status." + r.status)}`;
       status.classList.add("status-text");
       const title = document.createElement("div");
       title.textContent = r.title || "(no title)";
@@ -1090,7 +1093,7 @@ class UserScriptUI {
     let scripts = resp?.list || [];
 
     if (!scripts.length) {
-      alert("No scripts to export");
+      alert(i18n.t("userscript.export.warn.noScripts"));
       return;
     }
 
@@ -1098,7 +1101,7 @@ class UserScriptUI {
     if (options.type === "single" && options.scriptId) {
       scripts = scripts.filter((s) => s.id === options.scriptId);
       if (!scripts.length) {
-        alert("Script not found");
+        alert(i18n.t("userscript.export.warn.notFound"));
         return;
       }
     }
@@ -1149,14 +1152,14 @@ class UserScriptUI {
     btnJson.className = "export-option";
     btnJson.dataset.format = "json";
     btnJson.textContent = "JSON";
-    btnJson.title = "Export as JSON";
+    btnJson.title = i18n.t("userscript.export.asJSON");
 
     // JS button
     const btnJs = document.createElement("button");
     btnJs.className = "export-option";
     btnJs.dataset.format = "js";
     btnJs.textContent = "JS";
-    btnJs.title = "Export as JavaScript (registerParser format)";
+    btnJs.title = i18n.t("userscript.export.asJS");
 
     // click events
     btnJson.addEventListener("click", async () => {
@@ -1203,54 +1206,55 @@ class UserScriptUI {
 
     // Title
     const title = document.createElement("h2");
-    title.textContent = "⚠️ User Scripts Permission Required! ⚠️";
+    title.textContent = `⚠️ ${i18n.t("userscript.apiWarn.title")} ⚠️`;
 
     // Intro
     const intro = document.createElement("p");
     intro.append(
-      document.createTextNode("This section relies on the "),
-      this.createBold("User Scripts API"),
-      document.createTextNode(" to inject and manage custom scripts."),
+      document.createTextNode(i18n.t("userscript.apiWarn.intro1")),
+      this.createBold(i18n.t("userscript.apiWarn.userScriptsApi")),
+      document.createTextNode(i18n.t("userscript.apiWarn.intro2")),
       document.createElement("br"),
-      document.createTextNode("However, your browser has not granted this permission yet."),
+      document.createTextNode(i18n.t("userscript.apiWarn.intro3")),
     );
 
     // Why section
     const whyTitle = document.createElement("h4");
-    whyTitle.textContent = "Why this matters";
+    whyTitle.textContent = i18n.t("userscript.apiWarn.whyTitle");
 
     const whyText = document.createElement("p");
-    whyText.textContent = "Without this permission, you cannot create your custom user scripts for music websites.";
+    whyText.textContent = i18n.t("userscript.apiWarn.whyText");
 
     // Fix section
     const fixTitle = document.createElement("h4");
-    fixTitle.textContent = "How to fix it";
+    fixTitle.textContent = i18n.t("userscript.apiWarn.fixTitle");
 
     const fixText = document.createElement("p");
 
     // Step 1
     fixText.append(
-      document.createTextNode("1. Open your browser's "),
-      this.createBold("Extension Management page: "),
+      document.createTextNode(i18n.t("userscript.apiWarn.fixStep1Open")),
+      this.createBold(i18n.t("userscript.apiWarn.fixStep1Page")),
       this.createCode(config.extensionPage),
-      document.createTextNode(" and locate this extension."),
+      document.createTextNode(i18n.t("userscript.apiWarn.fixStep1Locate")),
       document.createElement("br"),
     );
 
     if (config.showPermissionAndDataStep) {
-      fixText.append(document.createTextNode('Click "Permissions and data".'), document.createElement("br"));
+      fixText.append(document.createTextNode(i18n.t("userscript.apiWarn.fixStepPermissionClick")), document.createElement("br"));
     }
 
     // Step 2
     fixText.append(
-      document.createTextNode("2. Look for a permission setting related to "),
+      document.createTextNode(i18n.t("userscript.apiWarn.fixStep2Look")),
       this.createCode(config.permissionLabel),
-      document.createTextNode(" and enable it."),
+      document.createTextNode(i18n.t("userscript.apiWarn.fixStep2Enable")),
       document.createElement("br"),
     );
 
     // Step 3
-    fixText.append(document.createTextNode("3. After changing the permission, please refresh the page."));
+    fixText.append(document.createTextNode(i18n.t("userscript.apiWarn.fixStep3")));
+
     box.append(title, intro, document.createElement("br"), whyTitle, whyText, document.createElement("br"), fixTitle, fixText);
     wrapper.appendChild(box);
     return wrapper;
@@ -1272,12 +1276,12 @@ class UserScriptUI {
     const BROWSER_CONFIG = {
       chrome: {
         extensionPage: "chrome://extensions/",
-        permissionLabel: "Allow User Scripts",
+        permissionLabel: i18n.t("userscript.apiWarn.chromePermission"),
         showPermissionAndDataStep: false,
       },
       firefox: {
         extensionPage: "about:addons",
-        permissionLabel: "Allow unverified third-party scripts to access your data",
+        permissionLabel: i18n.t("userscript.apiWarn.firefoxPermission"),
         showPermissionAndDataStep: true,
       },
     };

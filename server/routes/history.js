@@ -69,7 +69,7 @@ function createHistoryRouter(historyFilePath, logFilePath) {
         }
       }
 
-      const TOLERANCE_MS = 60 * 1000;
+      const TOLERANCE_MS = 60 * 2000;
 
       const isMatchingEntry = (serverEntry, deleteEntry) => {
         if (serverEntry.title?.trim() !== deleteEntry.title?.trim()) return false;

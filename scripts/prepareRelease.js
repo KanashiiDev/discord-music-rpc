@@ -2,9 +2,11 @@ const fs = require("fs");
 const path = require("path");
 const archiver = require("archiver");
 const { version } = require("../package.json");
+const { checkMissingTranslations } = require("./checkMissingTranslations");
 const inputVersion = process.argv[2];
 const releaseVersion = inputVersion || version;
 const projectRoot = path.join(__dirname, "..");
+const LOCALES_DIR = path.join(projectRoot, "locales");
 const distDir = path.join(projectRoot, "dist");
 const extensionBuildsDir = path.join(projectRoot, "extensionBuilds");
 const releaseDir = path.join(projectRoot, "release");
@@ -142,6 +144,8 @@ function zipFile(sourcePath, zipName) {
     archive.finalize();
   });
 }
+
+checkMissingTranslations(LOCALES_DIR);
 
 (async () => {
   if (winUnpackedDir) await zipFile(winUnpackedDir, `Discord-Music-RPC-${releaseVersion}-x64.zip`);

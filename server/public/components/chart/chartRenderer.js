@@ -47,7 +47,7 @@ function drawHistoryChart(mode, range) {
   if (isEmpty) {
     if (loadingEl) {
       loadingEl.style.display = "flex";
-      loadingEl.textContent = "No data available for this period";
+      loadingEl.textContent = i18n.t("chart.summary.empty");
       loadingEl.classList.remove("error");
     }
     canvas.style.display = "none";
@@ -103,7 +103,7 @@ function drawHistoryChart(mode, range) {
       responsive: true,
       maintainAspectRatio: false,
       devicePixelRatio: window.devicePixelRatio ?? 1,
-
+      animation: { duration: 0 },
       layout: { padding: 8 },
 
       scales: {
@@ -123,7 +123,10 @@ function drawHistoryChart(mode, range) {
           ticks: {
             color: getCSS("--text-color-muted", "#555", "hexa"),
             stepSize,
-            callback: (v) => (isSongs ? v : `${v} min`),
+            callback: (v) => {
+              if (isSongs) return v;
+              return i18n.t("chart.minute_short", { value: v });
+            },
           },
           grid: { color: "rgba(255,255,255,0.05)" },
         },
@@ -141,7 +144,11 @@ function drawHistoryChart(mode, range) {
           callbacks: {
             label(ctx) {
               const v = ctx.parsed.y;
-              return isSongs ? ` ${v} song${v !== 1 ? "s" : ""}` : ` ${v} min listened`;
+              if (isSongs) {
+                const key = v === 1 ? "chart.songs" : "chart.songs_plural";
+                return " " + i18n.t(key, { count: v });
+              }
+              return " " + i18n.t("chart.minutes_listened", { count: v });
             },
           },
         },
@@ -167,8 +174,6 @@ function drawHistoryChart(mode, range) {
         chartState.lastClickedBarIndex = idx;
         hc_showDetails(idx, chartData, mode, range);
       },
-
-      animation: { duration: 400, easing: "easeOutQuart" },
     },
   });
 }
@@ -264,7 +269,7 @@ export async function updateHistoryChart() {
   if (!canvas || !loadingEl) return;
 
   loadingEl.style.display = "flex";
-  loadingEl.textContent = "Loading…";
+  loadingEl.textContent = i18n.t("chart.loading");
   loadingEl.classList.remove("error");
   canvas.style.display = "none";
   hc_hideDetails();
@@ -317,7 +322,7 @@ export async function updateHistoryChart() {
     drawHistoryChart(chartState.mode, chartState.range);
   } else {
     loadingEl.style.display = "flex";
-    loadingEl.textContent = "Waiting for data…";
+    loadingEl.textContent = i18n.t("chart.loading");
   }
 
   // Update the chart when the history data changes (subscribe only once)

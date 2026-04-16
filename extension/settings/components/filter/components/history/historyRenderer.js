@@ -11,7 +11,6 @@ const HistoryRenderer = {
 
       const spinner = document.createElement("div");
       spinner.className = "spinner";
-      spinner.textContent = "Loading...";
       target.appendChild(spinner);
 
       HistoryState.fullHistory = (await sendAction("loadHistory")).data;
@@ -39,7 +38,7 @@ const HistoryRenderer = {
 
     if (reset && !items.length) {
       const empty = document.createElement("i");
-      empty.textContent = filtering ? "No results." : "Empty.";
+      empty.textContent = filtering ? i18n.t("common.noResults") : i18n.t("common.empty");
       target.appendChild(empty);
       return;
     }
@@ -49,7 +48,7 @@ const HistoryRenderer = {
 
     for (const entry of items) {
       const time = new Date(entry.p);
-      const header = isSameDay(time, dateToday) ? "Today" : isSameDay(time, dateYesterday) ? "Yesterday" : dateFull(time);
+      const header = isSameDay(time, dateToday) ? i18n.t("stats.today") : isSameDay(time, dateYesterday) ? i18n.t("stats.yesterday") : dateFull(time);
 
       if (header !== lastHeader) {
         const h3 = document.createElement("h3");

@@ -1,0 +1,119 @@
+{
+  "app.title": "Discord Music RPC Sunucu Paneli",
+
+  "common.all": "Tümü",
+  "common.noResults": "Sonuç yok.",
+
+  "actions.toggle_view": "Görünümü Değiştir",
+  "actions.settings": "Ayarlar",
+  "actions.back": "Geri",
+
+  "rpc.status": "RPC Durumu",
+  "rpc.connected": "Bağlandı",
+  "rpc.disconnected": "Bağlı Değil",
+  "rpc.label": "Durum:",
+
+  "activity.current": "Mevcut Aktivite",
+  "activity.last": "Son Güncelleme",
+
+  "music.title": "Şu Anda Dinleniyor",
+  "music.empty": "Müzik Çalmıyor",
+  "music.empty.artist": "Sanatçı",
+  "music.empty.source": "Kaynak",
+
+  "history.title": "Son Dinlenen Şarkılar",
+  "history.filter": "Platforma göre filtrele",
+  "history.goToSong": "Şarkıya git",
+  "history.release_hint": "Daha fazla yüklemek için bırakın",
+
+  "logs.title": "Kayıtlar (Log)",
+  "logs.filter": "Log seviyesine göre filtrele",
+  "logs.error": "Hata",
+  "logs.info": "Bilgi",
+  "logs.empty": "Bu filtre için kayıt bulunamadı.",
+
+  "chart.title": "İstatistikler",
+  "chart.loading": "İstatistikler yükleniyor...",
+  "chart.songs": "{count} şarkı",
+  "chart.songs_plural": "{count} şarkı",
+  "chart.minutes_listened": "{count} dakika dinlendi",
+
+  "chart.tracks": "{count} parça · {minutes} dk",
+  "chart.total.duration": "Toplam {minutes} dakika",
+  "chart.minute_short": "{value} dk",
+
+  "chart.tab.songs": "Şarkılar",
+  "chart.tab.time": "Süre",
+  "chart.tab.summary": "Özet",
+
+  "chart.range.week": "Hafta",
+  "chart.range.month": "Ay",
+  "chart.range.year": "Yıl",
+
+  "chart.summary.topSongs": "En Çok Dinlenen Şarkılar",
+  "chart.summary.topArtists": "En Çok Dinlenen Sanatçılar",
+
+  "chart.summary.uniqueTrack": "{0} Benzersiz parça",
+  "chart.summary.uniqueTracks": "{0} Benzersiz parça",
+
+  "chart.summary.minutes_listened": "Dinlenen Dakika",
+  "chart.summary.tracks_played": "Çalınan Parça",
+
+  "chart.summary.empty": "Bu dönem için veri bulunamadı.",
+
+  "settings.title": "Ayarlar",
+  "settings.save": "Değişiklikleri Kaydet",
+  "settings.reset": "Varsayılanlara Sıfırla",
+
+  "settings.port": "Port",
+  "settings.port.note": "Sunucunun dinleme portu",
+
+  "settings.message.noChanges": "Herhangi bir değişiklik algılanmadı",
+  "settings.message.saved": "Ayarların uygulanması için sunucu yeniden başlatılıyor...",
+  "settings.message.reset": "Tüm ayarlar varsayılan değerlere sıfırlanacak ve şarkı geçmişi silinecektir. Bu işlem geri alınamaz. Emin misiniz?",
+  "settings.reset.complete": "Ayarlar sıfırlandı",
+  "settings.reset.fail": "Ayarları sıfırlarken bir hata oluştu",
+  "settings.newPort": "Yeni bağlantı noktasına bağlanılıyor...",
+  "settings.redirect.fail": "Yönlendirme başarısız, lütfen manuel olarak yenile",
+  "settings.saving": "Kaydediliyor...",
+  "settings.saved": "Kaydedildi!",
+
+  "settings.auto_update_check": "Otomatik Güncelleme Kontrolü",
+  "settings.auto_update_check.note": "Otomatik güncelleme kontrolünü etkinleştir",
+
+  "settings.update_check_interval": "Güncelleme Kontrol Aralığı",
+  "settings.update_check_interval.note": "Güncelleme kontrol aralığı (saat cinsinden)",
+
+  "settings.keep_history": "Geçmişi Koru",
+  "settings.keep_history.note": "Sunucu başlatıldığında müzik geçmişinin silinmesini önle.",
+
+  "settings.keep_logs": "Logları Koru",
+  "settings.keep_logs.note": "Sunucu başlatıldığında logların silinmesini önle.",
+
+  "settings.log_song_update": "Şarkı Değişimini Logla",
+  "settings.log_song_update.note": "Şarkı değişim olaylarını loglara kaydet.",
+
+  "settings.max_log_size": "Maksimum Log Boyutu",
+  "settings.max_log_size.note": "Log dosyasının maksimum boyutu (MB)",
+
+  "settings.language": "Dil",
+
+  "time.just_now": "az önce",
+
+  "time.minute_ago": "{0} dakika önce",
+  "time.minutes_ago": "{0} dakika önce",
+
+  "time.hour_ago": "{0} saat önce",
+  "time.hours_ago": "{0} saat önce",
+
+  "time.yesterday": "dün",
+  "time.days_ago": "{0} gün önce",
+
+  "time.week_ago": "{0} hafta önce",
+  "time.weeks_ago": "{0} hafta önce",
+
+  "time.months_ago": "{0} ay önce",
+  "time.years_ago": "{0} yıl önce",
+
+  "footer.text": "Discord Music RPC - KanashiiDev"
+}

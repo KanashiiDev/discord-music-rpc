@@ -31,7 +31,6 @@ export const HistoryRenderer = {
           this.isFetching = true;
           const spinner = document.createElement("div");
           spinner.className = "spinner";
-          spinner.textContent = "Loading...";
           targetContainer.appendChild(spinner);
 
           try {
@@ -74,7 +73,7 @@ export const HistoryRenderer = {
 
       if (!this.isFetching && reset && data.length === 0) {
         const empty = document.createElement("i");
-        empty.textContent = hasActiveFilters ? "No results found." : "History is empty.";
+        empty.textContent = i18n.t("common.noResults");
         empty.className = "empty-msg";
         targetContainer.appendChild(empty);
         return;
@@ -84,11 +83,17 @@ export const HistoryRenderer = {
       const items = data.slice(HistoryState.currentOffset, end);
       HistoryState.currentOffset = end;
 
-      if (items.length > 0) {
+      for (let i = 0; i < items.length; i += 4) {
+        const slice = items.slice(i, i + 4);
+
         const frag = document.createDocumentFragment();
-        items.forEach((entry) => frag.appendChild(createHistoryItem(entry)));
+        slice.forEach((entry) => {
+          frag.appendChild(createHistoryItem(entry));
+        });
+
         targetContainer.appendChild(frag);
-        simpleBars.history.recalculate();
+
+        await new Promise((r) => requestAnimationFrame(r));
       }
 
       if (HistoryState.currentOffset < data.length) {
@@ -159,26 +164,12 @@ export const HistoryRenderer = {
     this._tsInstance = new TomSelect(filterSelect, {
       controlInput: null,
       sortField: false,
-      onDropdownOpen: (dropdown) => {
-        const list = dropdown.querySelector(".ts-dropdown-content");
-        if (!list) return;
-        requestAnimationFrame(() => {
-          requestAnimationFrame(() => {
-            requestAnimationFrame(() => {
-              if (simpleBars.historyFilter) {
-                simpleBars.historyFilter.unMount();
-                simpleBars.historyFilter = null;
-              }
-              simpleBars.historyFilter = new SimpleBar(list);
-            });
-          });
-        });
-      },
-      onDropdownClose: () => {
-        if (simpleBars.historyFilter) {
-          simpleBars.historyFilter.unMount();
-          simpleBars.historyFilter = null;
-        }
+      plugins: {
+        auto_width: {},
+        simplebar: {
+          simpleBars,
+          key: "historyFilter",
+        },
       },
       onChange: async (value) => {
         if (value !== "all") {

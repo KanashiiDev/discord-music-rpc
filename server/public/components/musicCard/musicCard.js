@@ -23,16 +23,16 @@ const musicCardState = {
 
 function updateMusicCardUI() {
   const cardContainer = dom.musicCard.container;
-  if (!cardContainer || cardContainer.offsetParent === null) return;
+  if (!cardContainer || cardContainer.hidden || cardContainer.closest("[hidden]")) return;
 
   const activityData = DataStore.get("activity");
   const act = activityData?.activity;
 
   if (!act?.details) {
     if (musicCardState.lastKnownMusic.isPlaying !== false) {
-      dom.musicCard.trackTitle.textContent = "No Music Playing";
-      dom.musicCard.trackArtist.textContent = "Artist";
-      dom.musicCard.trackSource.textContent = "Source";
+      dom.musicCard.trackTitle.textContent = i18n.t("music.empty");
+      dom.musicCard.trackArtist.textContent = i18n.t("music.empty.artist");
+      dom.musicCard.trackSource.textContent = i18n.t("music.empty.source");
       dom.musicCard.coverImage.src = "assets/icon-dark.png";
       dom.musicCard.progressFill.style.width = "0%";
       dom.musicCard.timePassed.textContent = "0:00";
@@ -170,16 +170,23 @@ function updateMusicCardUI() {
 
 // UI update interval
 let uiUpdateInterval = null;
+let _unsubscribeActivity = null;
 
 // Start the music card
 export function initMusicCard() {
-  DataStore.subscribe("activity", () => {
+  if (_unsubscribeActivity) {
+    _unsubscribeActivity();
+    _unsubscribeActivity = null;
+  }
+
+  // Update static fields (title, artist, cover, etc.) when fetching
+  _unsubscribeActivity = DataStore.subscribe("activity", () => {
     updateMusicCardUI();
   });
 
   // Update the UI every 1 second
   if (uiUpdateInterval) clearInterval(uiUpdateInterval);
-  uiUpdateInterval = setInterval(updateMusicCardUI, 1000);
+  uiUpdateInterval = setInterval(updateMusicCardUI, 1050);
 }
 
 // Cleanup
@@ -187,5 +194,9 @@ export function destroyMusicCard() {
   if (uiUpdateInterval) {
     clearInterval(uiUpdateInterval);
     uiUpdateInterval = null;
+  }
+  if (_unsubscribeActivity) {
+    _unsubscribeActivity();
+    _unsubscribeActivity = null;
   }
 }

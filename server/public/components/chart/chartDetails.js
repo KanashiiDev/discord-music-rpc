@@ -14,7 +14,7 @@ function hc_buildSongNode(item) {
     a.href = item.songUrl;
     a.target = "_blank";
     a.rel = "noopener noreferrer";
-    a.title = "Go to the song";
+    a.title = i18n.t("history.goToSong");
 
     const imgContainer = document.createElement("div");
     imgContainer.className = "history-image-container spinner";
@@ -41,6 +41,7 @@ function hc_buildSongNode(item) {
   if (item.date) {
     dateP.title = fullDateTime(item.date);
     dateP.textContent = relativeTime(item.date);
+    dateP.dataset.timestamp = item.date instanceof Date ? item.date.getTime() : item.date;
   }
 
   const titleH = document.createElement("h2");
@@ -238,12 +239,23 @@ export function hc_showDetails(barIndex, chartData, mode, range) {
   }
 
   if (totalCount === 0) {
-    totalEl.textContent = "No records for this period.";
+    totalEl.textContent = i18n.t("chart.summary.empty");
     panel.classList.remove("hidden");
     return;
   }
 
-  totalEl.textContent = mode === "songs" ? `${totalCount} song${totalCount !== 1 ? "s" : ""}` : `${Math.round(totalMs / 60_000)} min total`;
+  const minutes = Math.round(totalMs / 60_000);
+
+  let text;
+
+  if (mode === "songs") {
+    const key = totalCount === 1 ? "chart.songs" : "chart.songs_plural";
+    text = i18n.t(key, { count: totalCount });
+  } else {
+    text = i18n.t("chart.total.duration", { minutes });
+  }
+
+  totalEl.textContent = text;
 
   const fragment = document.createDocumentFragment();
 
@@ -257,7 +269,21 @@ export function hc_showDetails(barIndex, chartData, mode, range) {
 
     const val = document.createElement("span");
     val.className = "chart-detail-value";
-    val.textContent = mode === "songs" ? `${stat.count} song${stat.count !== 1 ? "s" : ""}` : `${stat.count} tracks · ${Math.round(stat.ms / 60_000)} min`;
+    const minutes = Math.round(stat.ms / 60_000);
+
+    let text;
+
+    if (mode === "songs") {
+      const key = stat.count === 1 ? "chart.songs" : "chart.songs_plural";
+      text = i18n.t(key, { count: stat.count });
+    } else {
+      text = i18n.t("chart.tracks", {
+        count: stat.count,
+        minutes,
+      });
+    }
+
+    val.textContent = text;
 
     const chevron = document.createElement("span");
     chevron.className = "chart-detail-chevron";

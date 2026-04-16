@@ -104,7 +104,7 @@ async function activateHistoryScroll() {
         }
         if (checkNearBottom()) {
           if (Date.now() - dragStartTime >= POPUP_DELAY && !popupShown) {
-            showPopupMessage("Release to load the history!", "warning");
+            showPopupMessage(i18n.t("popupMessage.releaseToLoadHistory"), "warning");
             popupShown = true;
           }
         } else {

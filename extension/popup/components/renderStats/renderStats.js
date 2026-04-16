@@ -52,6 +52,8 @@ async function renderTopStats(history, range = "day", topN = 5, customStart = nu
   // Top Artists
   const artistHeader = document.createElement("h3");
   artistHeader.textContent = "Top Artists";
+  artistHeader.dataset.i18n = "stats.topArtists.title";
+
   container.appendChild(artistHeader);
 
   if (stats.topArtists.length) {
@@ -76,6 +78,8 @@ async function renderTopStats(history, range = "day", topN = 5, customStart = nu
       const total = document.createElement("span");
       total.className = "artist-total";
       total.title = "Total Plays";
+      total.dataset.i18n = "stats.totalPlays.title";
+      total.setAttribute("data-i18n-attr", "title");
       total.textContent = `▶ ${artist.count}`;
 
       header.append(name, total);
@@ -89,6 +93,7 @@ async function renderTopStats(history, range = "day", topN = 5, customStart = nu
     });
 
     container.appendChild(frag);
+    applyTranslations();
 
     // Set initial collapsed height
     container.querySelectorAll(".history-stats-artist-entry").forEach((entry) => {
@@ -98,6 +103,7 @@ async function renderTopStats(history, range = "day", topN = 5, customStart = nu
   } else {
     const iTag = document.createElement("i");
     iTag.textContent = "Empty.";
+    iTag.dataset.i18n = "stats.topArtists.empty";
     container.appendChild(iTag);
   }
 
@@ -108,6 +114,7 @@ async function renderTopStats(history, range = "day", topN = 5, customStart = nu
   // Top Tracks
   const trackHeader = document.createElement("h3");
   trackHeader.textContent = "Top Tracks";
+  trackHeader.dataset.i18n = "stats.topTracks";
   container.appendChild(trackHeader);
 
   if (stats.topSongs.length) {
@@ -125,6 +132,8 @@ async function renderTopStats(history, range = "day", topN = 5, customStart = nu
   } else {
     const iTag = document.createElement("i");
     iTag.textContent = "Empty.";
+    iTag.dataset.i18n = "stats.topTracks.empty";
     container.appendChild(iTag);
   }
+  applyTranslations();
 }

@@ -101,17 +101,18 @@ export const hasChanges = () => {
   });
 };
 
-export const waitForServer = async (port, maxAttempts = 10, delay = 500) => {
+export const waitForServer = async (port, maxAttempts = 20, delay = 1000) => {
+  await new Promise((resolve) => setTimeout(resolve, 1000));
+
   for (let i = 0; i < maxAttempts; i++) {
     try {
       const response = await fetch(`http://${window.location.hostname}:${port}/status`, {
         method: "GET",
         cache: "no-cache",
+        signal: AbortSignal.timeout(1000),
       });
       if (response.ok) return true;
-    } catch (_) {
-      // Server not ready yet
-    }
+    } catch (_) {}
     await new Promise((resolve) => setTimeout(resolve, delay));
   }
   throw new Error("Server did not respond");

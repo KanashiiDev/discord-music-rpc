@@ -51,7 +51,7 @@ const FilterStorage = {
       await browser.storage.local.set({ parserFilters: FilterState.parserFilters });
     } catch (error) {
       console.error("Failed to save filters:", error);
-      alert("Failed to save filters. Please try again.");
+      alert(i18n.t("filter.saveFailed"));
       throw error;
     }
   },

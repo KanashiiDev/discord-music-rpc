@@ -18,6 +18,7 @@ export function buildMinutesView(data) {
 
     const label = document.createElement("div");
     label.className = "summary-hero-label";
+    label.dataset.i18n = `chart.summary.${labelText.replace(/[^\w]/g, "_")}`;
     label.textContent = labelText;
 
     cell.appendChild(num);
@@ -39,6 +40,7 @@ export function buildRankedList(items, type) {
   if (!items.length) {
     const empty = document.createElement("div");
     empty.className = "summary-empty";
+    empty.dataset.i18n = `chart.summary.empty`;
     empty.textContent = "No data for this period.";
     wrap.appendChild(empty);
     return wrap;
@@ -75,6 +77,10 @@ export function buildRankedList(items, type) {
 
     const sub = document.createElement("div");
     sub.className = "summary-sub";
+    if ((isSongs && !item.artist) || !isSongs) {
+      sub.dataset.i18n = `${item.uniqueSongs !== 1 ? "chart.summary.uniqueTracks" : "chart.summary.uniqueTrack"}`;
+      sub.dataset.i18nParams = JSON.stringify([item.uniqueSongs]);
+    }
     sub.textContent = isSongs ? item.artist || "" : `${item.uniqueSongs} unique track${item.uniqueSongs !== 1 ? "s" : ""}`;
 
     info.appendChild(title);

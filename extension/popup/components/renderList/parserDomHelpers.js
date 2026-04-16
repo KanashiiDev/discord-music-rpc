@@ -4,16 +4,16 @@ function createEmptyState(container, isSearch) {
   });
 
   if (isSearch) {
-    el.textContent = "Not Found";
+    el.textContent = i18n.t("parserFilters.notFound");
   } else {
     el.append(
       Object.assign(document.createElement("p"), {
-        textContent: "Please open a supported website (YouTube, Soundcloud, Deezer etc.) to build the site list.",
+        textContent: i18n.t("setup.list.message"),
       }),
       Object.assign(document.createElement("a"), {
         className: "setup-link",
         href: "https://github.com/KanashiiDev/discord-music-rpc?tab=readme-ov-file#-supported-websites",
-        textContent: "Supported Websites",
+        textContent: i18n.t("setup.list.title"),
         target: "_blank",
         rel: "noopener noreferrer",
       }),
@@ -73,7 +73,7 @@ function createAuthorsSection(authors, authorsLinks) {
   const div = Object.assign(document.createElement("div"), { className: "parser-entry-authors" });
   div.appendChild(
     Object.assign(document.createElement("h4"), {
-      textContent: authors.length > 1 ? "Authors" : "Author",
+      textContent: authors.length > 1 ? i18n.t("parserOptions.author") : i18n.t("parserOptions.authors"),
     }),
   );
 
@@ -96,13 +96,20 @@ function createAuthorsSection(authors, authorsLinks) {
   return div;
 }
 
-function createDescriptionSection(description) {
-  if (!description?.trim()) return null;
+async function createDescriptionSection(description) {
+  if (!description) return null;
+
+  const resolvedText = await resolveLabel(description);
+
+  if (!resolvedText) return null;
 
   const div = Object.assign(document.createElement("div"), {
     className: "parser-entry-description",
   });
-  div.append(Object.assign(document.createElement("h4"), { textContent: "Description" }), Object.assign(document.createElement("p"), { textContent: description }));
+  div.append(
+    Object.assign(document.createElement("h4"), { textContent: i18n.t("parserOptions.desc") }),
+    Object.assign(document.createElement("p"), { textContent: resolvedText }),
+  );
   return div;
 }
 
@@ -192,4 +199,12 @@ function createEditScriptButton(id, addListener) {
   });
 
   return btn;
+}
+
+async function resolveLabel(label) {
+  if (!label || typeof label === "string") return label;
+  const browserLang = navigator.language.split("-")[0];
+  const { lang } = await browser.storage.local.get("lang");
+  const currentLang = lang || browserLang || "en";
+  return label[currentLang] ?? label["en"] ?? Object.values(label)[0] ?? "";
 }

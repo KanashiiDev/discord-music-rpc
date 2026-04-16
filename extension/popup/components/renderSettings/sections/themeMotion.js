@@ -4,12 +4,12 @@ async function buildThemeMotion(container) {
   let themeConfig = savedTheme ?? "dark";
 
   const themeOptions = [
-    { value: "dark", text: "Dark" },
-    { value: "light", text: "Light" },
+    { value: "dark", text: i18n.t("settings.theme.dark") },
+    { value: "light", text: i18n.t("settings.theme.light") },
   ];
 
   const themeWrap = createSelectRow(
-    "Theme",
+    i18n.t("settings.theme"),
     "theme-wrapper",
     themeOptions,
     themeConfig,
@@ -37,12 +37,12 @@ async function buildThemeMotion(container) {
   const motionConfig = motionStorage[motionKey] ?? "always";
 
   const motionOptions = [
-    { value: "system", text: "System" },
-    { value: "always", text: "Enable" },
-    { value: "never", text: "Disable" },
+    { value: "system", text: i18n.t("common.system") },
+    { value: "always", text: i18n.t("common.enable") },
+    { value: "never", text: i18n.t("common.disable") },
   ];
 
-  const motionWrap = createSelectRow("Animations", "motion-wrapper", motionOptions, motionConfig, async (e) => {
+  const motionWrap = createSelectRow(i18n.t("settings.animations"), "motion-wrapper", motionOptions, motionConfig, async (e) => {
     await setMotionPreference(e.target.value);
   });
 

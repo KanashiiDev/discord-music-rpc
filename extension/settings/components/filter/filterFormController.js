@@ -28,7 +28,7 @@ const FormController = {
     this._renderForm(form, { isNew: true });
 
     form.classList.add("active");
-    btn.textContent = "Cancel";
+    btn.textContent = i18n.t("common.cancel");
     btn.classList.add("cancel-mode");
 
     document.querySelectorAll(".filter-item").forEach((el) => el.classList.add("dimmed"));
@@ -40,7 +40,7 @@ const FormController = {
     const btn = document.getElementById("toggleFormBtn");
 
     form.classList.remove("active");
-    btn.textContent = "+ Add New Filter";
+    btn.textContent = i18n.t("filter.addNew");
     btn.classList.remove("cancel-mode");
 
     this.exitEdit(false);
@@ -71,7 +71,7 @@ const FormController = {
       const btn = document.getElementById("toggleFormBtn");
       if (form) form.classList.remove("active");
       if (btn) {
-        btn.textContent = "+ Add New Filter";
+        btn.textContent = i18n.t("filter.addNew");
         btn.classList.remove("cancel-mode");
       }
     }
@@ -91,7 +91,7 @@ const FormController = {
     if (editBtn) {
       editBtn.innerHTML = "";
       editBtn.appendChild(createSVG(svg_paths.crossIconPaths));
-      editBtn.title = "Close";
+      editBtn.title = i18n.t("common.close");
     }
 
     // Load state
@@ -144,7 +144,7 @@ const FormController = {
       if (editBtn) {
         editBtn.innerHTML = "";
         editBtn.appendChild(createSVG(svg_paths.penIconPaths));
-        editBtn.title = "Edit";
+        editBtn.title = i18n.t("common.edit");
       }
 
       const slot = item.querySelector(".filter-inline-editor");
@@ -175,7 +175,7 @@ const FormController = {
 
     // Ask about reverting if editing replace filter
     if (hasReplace && FilterState.form.editingFilterId) {
-      const shouldRevert = confirm("Do you want to restore the original song data to the history?");
+      const shouldRevert = confirm(i18n.t("filter.confirm.restore"));
       if (shouldRevert) {
         const filter = FilterState.parserFilters.find((f) => f.id === FilterState.form.editingFilterId);
         if (filter) {
@@ -199,7 +199,7 @@ const FormController = {
     const validEntries = entries.filter((e) => e.artist.trim() || e.title.trim());
 
     if (validEntries.length === 0) {
-      alert("Enter at least one Artist or Title");
+      alert(i18n.t("filter.warn.empty"));
       return null;
     }
 
@@ -207,7 +207,7 @@ const FormController = {
     if (isReplace) {
       const missing = validEntries.some((e) => (e.artist.trim() || e.title.trim()) && !e.replaceArtist.trim() && !e.replaceTitle.trim());
       if (missing) {
-        alert("Please provide replacement values for all entries in Replace mode");
+        alert(i18n.t("filter.warn.emptyReplace"));
         return null;
       }
     }
@@ -245,7 +245,7 @@ const FormController = {
       );
 
       if (newUnique.length === 0) {
-        alert("All entries already exist in this filter");
+        alert(i18n.t("filter.warn.exists"));
         return;
       }
 
@@ -274,7 +274,7 @@ const FormController = {
       if (editingFilterId) {
         const idx = FilterState.parserFilters.findIndex((f) => f.id === editingFilterId);
         if (idx === -1) {
-          alert("Filter not found");
+          alert(i18n.t("filter.notFound"));
           return;
         }
         FilterState.parserFilters[idx] = { ...FilterState.parserFilters[idx], ...filterData, updatedAt: new Date().toISOString() };
@@ -329,8 +329,8 @@ const FormController = {
       const renderModeToggle = () => {
         modeToggle.innerHTML = "";
         [
-          { value: "filter", label: "Block" },
-          { value: "replace", label: "Replace" },
+          { value: "filter", label: i18n.t("common.block") },
+          { value: "replace", label: i18n.t("common.replace") },
         ].forEach((m) => {
           const btn = document.createElement("button");
           btn.className = `mode-option${FilterState.form.mode === m.value ? " active" : ""}`;
@@ -376,7 +376,7 @@ const FormController = {
         originalGroup.className = "inline-input-group";
         originalGroup.append(
           this._input(
-            isReplace ? "Original Artist" : "Artist",
+            isReplace ? i18n.t("filter.artist.original") : i18n.t("filter.artist"),
             entry.artist,
             (e) => {
               FilterState.form.entries[index].artist = e.target.value;
@@ -384,7 +384,7 @@ const FormController = {
             "input-original",
           ),
           this._input(
-            isReplace ? "Original Title" : "Title",
+            isReplace ? i18n.t("filter.title.original") : i18n.t("filter.title"),
             entry.title,
             (e) => {
               FilterState.form.entries[index].title = e.target.value;
@@ -405,7 +405,7 @@ const FormController = {
           replaceGroup.className = "inline-input-group";
           replaceGroup.append(
             this._input(
-              "New Artist",
+              i18n.t("filter.artist.new"),
               entry.replaceArtist,
               (e) => {
                 FilterState.form.entries[index].replaceArtist = e.target.value;
@@ -413,7 +413,7 @@ const FormController = {
               "input-replace",
             ),
             this._input(
-              "New Title",
+              i18n.t("filter.title.original"),
               entry.replaceTitle,
               (e) => {
                 FilterState.form.entries[index].replaceTitle = e.target.value;
@@ -444,13 +444,13 @@ const FormController = {
 
     const fillBtn = document.createElement("button");
     fillBtn.className = "btn-fill-current";
-    fillBtn.textContent = "Fill with current song";
+    fillBtn.textContent = i18n.t("filter.fillWithCurrent");
     FilterEvents.add(fillBtn, "click", () => QuickActions.fillCurrent(renderEntries, fillBtn));
     fillAddWrapper.appendChild(fillBtn);
 
     const addBtn = document.createElement("button");
     addBtn.className = "btn-add-entry inline-add-entry";
-    addBtn.textContent = "+ Add Entry";
+    addBtn.textContent = i18n.t("filter.add");
     FilterEvents.add(addBtn, "click", () => {
       FilterState.form.entries.push({ artist: "", title: "", replaceArtist: "", replaceTitle: "" });
       renderEntries();
@@ -465,7 +465,7 @@ const FormController = {
 
     const parserLabel = document.createElement("div");
     parserLabel.className = "inline-section-label";
-    parserLabel.textContent = "Websites";
+    parserLabel.textContent = i18n.t("filter.websites");
 
     // Select All Parsers
     const allLabel = document.createElement("label");
@@ -474,7 +474,7 @@ const FormController = {
     // text
     const allText = document.createElement("span");
     allText.className = "parser-all-text";
-    allText.textContent = "Select All";
+    allText.textContent = i18n.t("common.selectAll");
 
     // checkbox
     const allCheckbox = document.createElement("input");
@@ -508,7 +508,7 @@ const FormController = {
 
       if (allSelected) {
         chips.appendChild(
-          this._chip("All Websites", "selected", () => {
+          this._chip(i18n.t("filter.websites.all"), "selected", () => {
             ParserController.toggleAll(false);
             renderParsers();
           }),
@@ -566,12 +566,12 @@ const FormController = {
 
     const cancelBtn = document.createElement("button");
     cancelBtn.className = "btn-cancel inline-cancel";
-    cancelBtn.textContent = "Cancel";
+    cancelBtn.textContent = i18n.t("common.cancel");
     FilterEvents.add(cancelBtn, "click", () => (isNew ? this.close() : this.exitEdit()));
 
     const saveBtn = document.createElement("button");
     saveBtn.className = "btn-save inline-save";
-    saveBtn.textContent = "Save";
+    saveBtn.textContent = i18n.t("common.save");
     FilterEvents.add(saveBtn, "click", () => this.save());
 
     footer.append(saveBtn, cancelBtn);

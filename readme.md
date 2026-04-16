@@ -540,7 +540,7 @@ registerParser({
 
   // --- Optional ---
   homepage: "https://example.com", // Link opened when the user clicks your parser's icon
-  description: "My parser for Example Music.", // Short description of the parser
+  description: "My parser for Example Music.", // Short description of the parser. Can also be multilingual: { en: "My parser" }
   authors: ["yourName"], // Contributors names for the code to be displayed in the parser's settings
   authorsLinks: ["https://github.com/yourName"], // Contributors links
   tags: ["rock", "community"], // Descriptive tags for the parser's content type
@@ -581,15 +581,15 @@ You can expose configurable options (toggles, text inputs, dropdowns) that appea
 ```js
 fn: async function ({ useSetting }) {
   // Checkbox toggle
-  const showArtist = await useSetting("showArtist", "Show Artist Name", "checkbox", true);
+  const showArtist = await useSetting("showArtist", { en: "Show Artist Name" }, "checkbox", true);
 
   // Text input
-  const customLabel = await useSetting("customLabel", "Custom Source Label", "text", "My Station");
+  const customLabel = await useSetting("customLabel", { en: "Custom Source Label" }, "text", "My Station");
 
   // Dropdown select
-  const quality = await useSetting("quality", "Stream Quality", "select", [
-    { value: "high",   label: "High",   selected: true },
-    { value: "medium", label: "Medium" },
+  const quality = await useSetting("quality", { en: "Stream Quality" }, "select", [
+    { value: "high", label: { en: "High" },   selected: true },
+    { value: "medium", label: { en: "Medium" } },
   ]);
 
   return {

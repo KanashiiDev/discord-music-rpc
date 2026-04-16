@@ -114,14 +114,14 @@ function openVisibilityDialog(list, isInitial = false) {
     dialog.appendChild(
       Object.assign(document.createElement("h2"), {
         className: "pvs-title",
-        textContent: "Choose Websites",
+        textContent: i18n.t("parserManager.title"),
       }),
     );
 
     dialog.appendChild(
       Object.assign(document.createElement("p"), {
         className: "pvs-subtitle",
-        textContent: "Select the websites you want to use. You can change this whenever you want.",
+        textContent: i18n.t("parserManager.desc"),
       }),
     );
 
@@ -129,7 +129,7 @@ function openVisibilityDialog(list, isInitial = false) {
     const searchInput = Object.assign(document.createElement("input"), {
       type: "text",
       className: "pvs-search",
-      placeholder: "Search websites\u2026",
+      placeholder: i18n.t("parserlist.search_site"),
     });
     dialog.appendChild(searchInput);
 
@@ -137,11 +137,11 @@ function openVisibilityDialog(list, isInitial = false) {
     const bulkRow = Object.assign(document.createElement("div"), { className: "pvs-bulk-row" });
     const selectAllBtn = Object.assign(document.createElement("button"), {
       className: "pvs-bulk-btn",
-      textContent: "Select All",
+      textContent: i18n.t("common.selectAll"),
     });
     const selectNoneBtn = Object.assign(document.createElement("button"), {
       className: "pvs-bulk-btn",
-      textContent: "Select None",
+      textContent: i18n.t("common.selectNone"),
     });
     bulkRow.append(selectAllBtn, selectNoneBtn);
     dialog.appendChild(bulkRow);
@@ -206,7 +206,7 @@ function openVisibilityDialog(list, isInitial = false) {
           row.appendChild(
             Object.assign(document.createElement("span"), {
               className: "pvs-new-badge",
-              textContent: "NEW",
+              textContent: i18n.t("common.new").toUpperCase(),
             }),
           );
         }
@@ -260,13 +260,13 @@ function openVisibilityDialog(list, isInitial = false) {
     // Confirm button
     const confirmBtn = Object.assign(document.createElement("button"), {
       className: "pvs-confirm-btn button",
-      textContent: isInitial ? "Continue" : "Save",
+      textContent: isInitial ? i18n.t("common.continue") : i18n.t("common.save"),
     });
     confirmBtn.addEventListener("click", async () => {
       const hiddenIds = list.map((e) => e.id).filter((id) => !visibleIds.has(id));
 
       if (visibleIds.size < 1) {
-        showPopupMessage("You must select at least one website.", "error", 2000, 0, ".pvs-footer");
+        showPopupMessage(i18n.t("parserManager.selectOne"), "error", 2000, 0, ".pvs-footer");
         return;
       }
 

@@ -7,6 +7,7 @@ async function renderSettings() {
   const container = document.createElement("div");
   container.id = "settingsContainer";
 
+  await initLanguageSelect(container);
   await buildThemeMotion(container);
   await buildBackground(container);
   await buildColors(container);

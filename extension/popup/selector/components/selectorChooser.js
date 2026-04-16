@@ -5,7 +5,7 @@ function showSelectorChooser(scoredOptions, field, shadowDoc) {
 
   const title = document.createElement("div");
   title.style.marginBottom = "6px";
-  title.textContent = scoredOptions.length ? "Choose the most stable selector:" : "";
+  title.textContent = scoredOptions.length ? t("selector.select.choose") : "";
   container.appendChild(title);
 
   const containerList = document.createElement("div");
@@ -26,7 +26,7 @@ function showSelectorChooser(scoredOptions, field, shadowDoc) {
 
       const scoreSpan = document.createElement("span");
       scoreSpan.className = `score ${score >= 80 ? "green" : score >= 50 ? "orange" : "red"}`;
-      scoreSpan.title = score >= 80 ? "Highly Reliable" : score >= 50 ? "Moderately Reliable" : "Unreliable";
+      scoreSpan.title = score >= 80 ? t("selector.select.reliable.high") : score >= 50 ? t("selector.select.reliable.moderately") : t("selector.select.unreliable");
       scoreSpan.textContent = `(${score})`;
 
       wrapper.appendChild(selSpan);
@@ -46,7 +46,7 @@ function showSelectorChooser(scoredOptions, field, shadowDoc) {
     const fallback = document.createElement("div");
     fallback.style.color = "#999";
     fallback.style.fontStyle = "italic";
-    fallback.textContent = "No selector suggestions found.";
+    fallback.textContent = t("selector.select.noSuggestions");
     containerList.appendChild(fallback);
   }
 
@@ -54,7 +54,7 @@ function showSelectorChooser(scoredOptions, field, shadowDoc) {
   const cancel = document.createElement("a");
   cancel.id = "userRpc-selectorChooser-cancel";
   cancel.className = "userRpc-optionButtons";
-  cancel.textContent = scoredOptions.length ? "Cancel" : "Exit";
+  cancel.textContent = scoredOptions.length ? t("common.cancel") : t("common.exit");
   cancel.onclick = () => container.remove();
 
   container.append(containerList, cancel);

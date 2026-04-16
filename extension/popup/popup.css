@@ -204,7 +204,7 @@ body[data-section="stats"] #statsFilters {
   display: block !important;
 }
 
-html.setup-dialog-open #settingsToggle,
+html.setup-dialog-open footer a:not(#githubLink),
 body[data-section="settings"] .search-controls,
 body[data-section="settings"] #settingsToggle,
 body[data-section="settings"] #historyStatsToggle,
@@ -470,6 +470,11 @@ body.fg-blur.parser-options-open #siteList .simplebar-offset {
 #clearHistoryBtn:hover,
 #cancelCleanBtn:hover {
   background: var(--foreground-color-300);
+}
+
+#clearHistoryBtn {
+  cursor: pointer;
+  width: 100%;
 }
 
 .settings-btn#debugMode.active {
@@ -1751,12 +1756,18 @@ body.cleaning-mode .selected .history-trash {
   margin-top: -10px;
 }
 
-.tutorial-button.next {
-  width: 75%;
+.tutorial-actions {
+  display: -webkit-box;
+  display: -ms-flexbox;
+  display: flex;
+  gap: 6px;
 }
 
-.tutorial-button.next.finish {
-  width: 100%;
+.tutorial-button.next.finish,
+.tutorial-button.next {
+  -webkit-box-flex: 1;
+  -ms-flex: 1;
+  flex: 1;
 }
 
 .tutorial-button.skip {

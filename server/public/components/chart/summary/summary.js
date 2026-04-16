@@ -58,6 +58,8 @@ function renderPanel(range) {
   const lHeader = document.createElement("div");
   lHeader.className = "summary-column-header";
   lHeader.textContent = "Top Songs";
+  lHeader.dataset.i18n = "chart.summary.topSongs";
+
   leftCol.append(lHeader, buildRankedList(data.topSongs, "songs"));
 
   const rightCol = document.createElement("div");
@@ -65,6 +67,7 @@ function renderPanel(range) {
   const rHeader = document.createElement("div");
   rHeader.className = "summary-column-header";
   rHeader.textContent = "Top Artists";
+  rHeader.dataset.i18n = "chart.summary.topArtists";
   rightCol.append(rHeader, buildRankedList(data.topArtists, "artists"));
 
   layout.append(leftCol, rightCol);
@@ -74,6 +77,7 @@ function renderPanel(range) {
   bottomCenter.appendChild(buildMinutesView(data));
 
   content.append(layout, bottomCenter);
+  applyTranslations();
 }
 
 // Panel creation

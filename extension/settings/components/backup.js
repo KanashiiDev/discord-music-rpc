@@ -26,7 +26,7 @@ function initBackupButtons() {
       a.download = `discord-music-rpc-backup-${dateString}.json`;
       a.click();
       URL.revokeObjectURL(url);
-      log("Export completed.");
+      log(i18n.t("backup.export.complete"));
     } catch (err) {
       log("Export failed: " + err.message);
     }
@@ -57,8 +57,6 @@ function initBackupButtons() {
         if (data.indexedDB?.HistoryDB) {
           await importIndexedDB("HistoryDB", data.indexedDB.HistoryDB);
         }
-
-        log("Import completed. Reloading...");
         browser.runtime.reload();
       } catch (err) {
         log("Import failed: " + (err.message || err));
@@ -74,13 +72,13 @@ function initBackupButtons() {
     const originalText = btn.textContent;
 
     try {
-      btn.textContent = "Syncing...";
+      btn.textContent = i18n.t("backup.sync");
       btn.disabled = true;
 
       const result = await sendAction("syncHistory");
 
       if (result.ok) {
-        btn.textContent = `Synced ${result.count} entries`;
+        btn.textContent = i18n.t("backup.synced", { count: result.count });
       } else {
         btn.textContent = `Failed: ${result.error}`;
       }

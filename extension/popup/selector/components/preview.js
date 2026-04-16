@@ -4,14 +4,14 @@ function createPreviewSection(root) {
   preview.className = "rpc-preview";
 
   const previewHeader = document.createElement("h3");
-  previewHeader.textContent = "Preview";
+  previewHeader.textContent = t("selector.preview.title");
 
   const card = document.createElement("div");
   card.className = "card";
 
   const header = document.createElement("div");
   header.className = "header";
-  header.textContent = "Listening to";
+  header.textContent = t("selector.preview.listenTo");
 
   const body = document.createElement("div");
   body.className = "body";
@@ -30,15 +30,15 @@ function createPreviewSection(root) {
 
   const titleEl = document.createElement("h2");
   titleEl.className = "title";
-  titleEl.textContent = "Title";
+  titleEl.textContent = t("selector.editor.title.label");
 
   const artist = document.createElement("div");
   artist.className = "artist";
-  artist.textContent = "Artist";
+  artist.textContent = t("selector.editor.artist.label");
 
   const source = document.createElement("div");
   source.className = "source";
-  source.textContent = "Source";
+  source.textContent = t("selector.editor.source.label");
 
   const progressContainer = document.createElement("div");
   progressContainer.className = "progress-container";
@@ -173,14 +173,14 @@ function updatePreview(shadow, editMode) {
   // Text Values
   let texts = {
     name: selectors.name || getCleanHostname() || "name",
-    title: elements.title?.textContent || getPlainText(selectors.title) || "title",
-    artist: elements.artist?.textContent || getPlainText(selectors.artist) || "artist",
-    source: elements.source?.textContent || getPlainText(selectors.source) || getCleanHostname() || "source",
+    title: elements.title?.textContent || getPlainText(selectors.title) || t("selector.editor.title.label") || "title",
+    artist: elements.artist?.textContent || getPlainText(selectors.artist) || t("selector.editor.artist.label") || "artist",
+    source: elements.source?.textContent || getPlainText(selectors.source) || t("selector.editor.source.label") || getCleanHostname() || "source",
     timePassed: elements.timePassed?.textContent,
     duration: elements.duration?.textContent || undefined,
     buttonText: elements.buttonText?.textContent || getPlainText(selectors.buttonText) || "Custom Action",
     buttonText2: elements.buttonText2?.textContent || getPlainText(selectors.buttonText2) || "Custom Action",
-    mode: selectors.mode === "watch" ? "Watching" : "Listening",
+    mode: selectors.mode === "watch" ? t("selector.preview.watchTo") : t("selector.preview.listenTo"),
   };
 
   // Trim texts
@@ -236,7 +236,7 @@ function updatePreview(shadow, editMode) {
   const setLink = () => {
     const el = details.querySelector(".link");
     const href = elements.link?.href || (isValidUrl(selectors.link) ? selectors.link : location.origin);
-    const linkText = `open on ${texts.source}`;
+    const linkText = t("selector.preview.open", { source: texts.source });
     if (el) {
       if (el.href !== href) el.href = href;
       if (el.textContent !== linkText) el.textContent = linkText;
@@ -419,7 +419,7 @@ function updatePreview(shadow, editMode) {
 
   setText(".title", texts.title, 128);
   setText(".artist", texts.artist, 128);
-  setText(".header", `${texts.mode} to ${texts.artist}`, 128);
+  setText(".header", `${texts.mode} ${texts.artist}`, 128);
   if (editMode) {
     const header = shadow.querySelector(".userRpc-h4");
     if (header && header.textContent !== texts.name) header.textContent = texts.name;

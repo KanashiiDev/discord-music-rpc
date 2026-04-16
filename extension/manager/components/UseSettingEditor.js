@@ -132,10 +132,10 @@ class UseSettingEditor {
       async (e) => {
         try {
           await navigator.clipboard.writeText(outputDiv.textContent);
-          e.target.textContent = "Copied!";
+          e.target.textContent = i18n.t("userscript.useSettingEditor.copied");
           setTimeout(() => (e.target.textContent = "Copy"), 1500);
         } catch (err) {
-          e.target.textContent = "Failed!";
+          e.target.textContent = i18n.t("userscript.export.status.error") + ": " + err;
         }
       },
       { id: "copyCodeBtn" },
@@ -159,7 +159,7 @@ class UseSettingEditor {
     this.container.innerHTML = "";
     if (!this.settings.length) {
       const p = document.createElement("p");
-      p.textContent = "No useSetting(...) calls found in the code.";
+      p.textContent = i18n.t("userscript.useSettingEditor.warn.noSettings");
       this.container.append(p);
       return;
     }
@@ -171,10 +171,10 @@ class UseSettingEditor {
       wrap.className = `useSetting-item ${s.type}`;
 
       const title = document.createElement("h4");
-      title.textContent = `${i + 1} — ${s.key} (${s.type})`;
+      title.textContent = `${i + 1} — ${s.key} (${i18n.t("userscript.useSettingEditor.type." + s.type)})`;
 
       // Label edit
-      const labelInput = this.createInput({ placeholder: "Label", value: s.label });
+      const labelInput = this.createInput({ placeholder: i18n.t("userscript.useSettingEditor.label"), value: s.label });
       labelInput.className = "edit-label";
 
       // Value editor depends on type
@@ -188,7 +188,7 @@ class UseSettingEditor {
       infoMessageIndicator.className = "info-message-indicator";
       let infoMessageTimeout = null;
 
-      const saveBtn = this.makeButton("Change", () => {
+      const saveBtn = this.makeButton(i18n.t("userscript.useSettingEditor.buttons.change"), () => {
         infoMessage.textContent = "";
         infoMessage.className = "info-message";
         infoMessage.style.animation = "none";
@@ -215,27 +215,27 @@ class UseSettingEditor {
           // Re-Check
           items = valueEditor.querySelectorAll(".select-item");
           if (items.length < 2) {
-            infoMessage.textContent = "You need to add at least 2 select options.";
+            infoMessage.textContent = i18n.t("userscript.useSettingEditor.warn.selectOptions");
             infoMessage.className = "info-message error";
             return;
           } else if (missingValue) {
-            infoMessage.textContent = "The value or label field of the Select options is empty.";
+            infoMessage.textContent = i18n.t("userscript.useSettingEditor.warn.emptyLabelorOptions");
             infoMessage.className = "info-message error";
             return;
           } else if (!checkedStatus) {
-            infoMessage.textContent = "You need to activate one option.";
+            infoMessage.textContent = i18n.t("userscript.useSettingEditor.warn.activateOption");
             infoMessage.className = "info-message error";
             return;
           }
         }
         if (labelInput.value.length < 3) {
-          infoMessage.textContent = "You need to enter at least 3 letters.";
+          infoMessage.textContent = i18n.t("userscript.useSettingEditor.warn.minLetter");
           infoMessage.className = "info-message error";
           return;
         }
 
         // Success Message
-        infoMessage.textContent = "Successfully changed! Please click to 'Save Script' to save new settings.";
+        infoMessage.textContent = i18n.t("userscript.useSettingEditor.success");
         infoMessage.className = "info-message success";
         infoMessage.appendChild(infoMessageIndicator);
         infoMessageIndicator.style.display = "none";
@@ -254,7 +254,10 @@ class UseSettingEditor {
       // Layout
       const contentWrap = document.createElement("div");
       contentWrap.className = "content";
-      contentWrap.append(this.createRow("Label", labelInput), this.createRow("Value", valueEditor));
+      contentWrap.append(
+        this.createRow(i18n.t("userscript.useSettingEditor.label"), labelInput),
+        this.createRow(i18n.t("userscript.useSettingEditor.value"), valueEditor),
+      );
       footer.append(infoMessage, saveBtn);
       wrap.append(title, contentWrap, footer);
       frag.append(wrap);
@@ -273,7 +276,7 @@ class UseSettingEditor {
     }
 
     // Default: text
-    const inp = this.createInput({ placeholder: "Text value", value: setting.defaultValue || "" });
+    const inp = this.createInput({ placeholder: i18n.t("userscript.useSettingEditor.textValue"), value: setting.defaultValue || "" });
     return inp;
   }
 
@@ -288,8 +291,8 @@ class UseSettingEditor {
       const line = document.createElement("div");
       line.className = "select-item";
 
-      const val = this.createInput({ placeholder: "Value", value: opt.value || "" });
-      const lab = this.createInput({ placeholder: "Label", value: opt.label || "" });
+      const val = this.createInput({ placeholder: i18n.t("userscript.useSettingEditor.value"), value: opt.value || "" });
+      const lab = this.createInput({ placeholder: i18n.t("userscript.useSettingEditor.label"), value: opt.label || "" });
 
       const switchLabel = this.createSwitch({ checked: !!opt.selected });
       const checkbox = switchLabel.querySelector("input[type='checkbox']");
@@ -339,7 +342,7 @@ class UseSettingEditor {
     }
 
     // Add button
-    const addBtn = this.makeButton("+ Add Option", () => {
+    const addBtn = this.makeButton(i18n.t("userscript.useSettingEditor.addOption"), () => {
       renderOption({ value: "", label: "", selected: false });
       updateRemoveButtons();
     });
@@ -451,14 +454,14 @@ class UseSettingEditor {
     const contentWrapper = document.createElement("div");
     contentWrapper.className = "build-content text";
 
-    const varInput = this.createInput({ id: "varName", placeholder: "mySetting" });
-    const labelInput = this.createInput({ id: "label", placeholder: "My Label" });
+    const varInput = this.createInput({ id: "varName", placeholder: i18n.t("userscript.useSettingEditor.placeholder.variableName") });
+    const labelInput = this.createInput({ id: "label", placeholder: i18n.t("userscript.useSettingEditor.placeholder.label") });
 
     const typeSelect = document.createElement("select");
     [SETTING_TYPES.TEXT, SETTING_TYPES.CHECKBOX, SETTING_TYPES.SELECT].forEach((t) => {
       const o = document.createElement("option");
       o.value = t;
-      o.textContent = t;
+      o.textContent = i18n.t("userscript.useSettingEditor.type." + t);
       typeSelect.append(o);
     });
 
@@ -468,7 +471,7 @@ class UseSettingEditor {
     const infoDiv = document.createElement("div");
     infoDiv.className = "info-message";
 
-    const generateBtn = this.makeButton("Create Setting", () => {
+    const generateBtn = this.makeButton(i18n.t("userscript.useSettingEditor.createSetting"), () => {
       infoDiv.style.animation = "none";
       infoDiv.offsetHeight;
       infoDiv.style.animation = null;
@@ -481,14 +484,14 @@ class UseSettingEditor {
 
       // Variable Name Check
       if (!this.isValidVariable(variable)) {
-        infoDiv.textContent = "Please enter a valid variable name.";
+        infoDiv.textContent = i18n.t("userscript.useSettingEditor.warn.validVariableName");
         infoDiv.className = "info-message error";
         return;
       }
 
       // Label Check
       if (!label) {
-        infoDiv.textContent = "Please enter a label.";
+        infoDiv.textContent = i18n.t("userscript.useSettingEditor.warn.emptyLabel");
         infoDiv.className = "info-message error";
         return;
       }
@@ -513,15 +516,15 @@ class UseSettingEditor {
         });
         options = defaultContainer.querySelectorAll(".select-option");
         if (options.length < 2) {
-          infoDiv.textContent = "You need to add at least 2 select options.";
+          infoDiv.textContent = i18n.t("userscript.useSettingEditor.warn.selectOptions");
           infoDiv.className = "info-message error";
           return;
         } else if (missingValue) {
-          infoDiv.textContent = "The value or label field of the Select options is empty.";
+          infoDiv.textContent = i18n.t("userscript.useSettingEditor.warn.emptyLabelorOptions");
           infoDiv.className = "info-message error";
           return;
         } else if (!checkedStatus) {
-          infoDiv.textContent = "You need to activate one option.";
+          infoDiv.textContent = i18n.t("userscript.useSettingEditor.warn.activateOption");
           infoDiv.className = "info-message error";
           return;
         }
@@ -566,11 +569,11 @@ class UseSettingEditor {
     const renderDefault = (type) => {
       defaultContainer.innerHTML = "";
       if (type === SETTING_TYPES.TEXT) {
-        const ti = this.createInput({ id: "defaultText", placeholder: "Default text" });
-        defaultContainer.append(this.createRow("Default Text", ti));
+        const ti = this.createInput({ id: "defaultText", placeholder: i18n.t("userscript.useSettingEditor.defaultText") });
+        defaultContainer.append(this.createRow(i18n.t("userscript.useSettingEditor.defaultText"), ti));
       } else if (type === SETTING_TYPES.CHECKBOX) {
         const sw = this.createSwitch({ checked: true });
-        defaultContainer.append(this.createRow("Enabled", sw));
+        defaultContainer.append(this.createRow(i18n.t("common.enabled"), sw));
       } else if (type === SETTING_TYPES.SELECT) {
         const updateRemoveButtons = () => {
           const btns = optContainer.querySelectorAll(".select-option button");
@@ -579,15 +582,15 @@ class UseSettingEditor {
         };
 
         const label = document.createElement("label");
-        label.textContent = "Select Options";
+        label.textContent = i18n.t("userscript.useSettingEditor.selectOptions");
         const optContainer = document.createElement("div");
         optContainer.className = "selectOptions";
 
         const addOption = (opt = { value: "", label: "", selected: false }) => {
           const wrap = document.createElement("div");
           wrap.className = "select-option";
-          const v = this.createInput({ placeholder: "value", value: opt.value });
-          const l = this.createInput({ placeholder: "label", value: opt.label });
+          const v = this.createInput({ placeholder: i18n.t("userscript.useSettingEditor.value"), value: opt.value });
+          const l = this.createInput({ placeholder: i18n.t("userscript.useSettingEditor.label"), value: opt.label });
           const s = this.createSwitch({ checked: !!opt.selected });
 
           s.querySelector("input").addEventListener("change", (e) => {
@@ -621,7 +624,7 @@ class UseSettingEditor {
         addOption({ value: "example1", label: "Example 1", selected: true });
         addOption({ value: "example2", label: "Example 2", selected: false });
 
-        const addBtn = this.makeButton("+ Add Option", () => addOption({}));
+        const addBtn = this.makeButton(i18n.t("userscript.useSettingEditor.addOption"), () => addOption({}));
         defaultContainer.append(label, optContainer, addBtn);
       }
     };
@@ -633,7 +636,12 @@ class UseSettingEditor {
     });
 
     renderDefault(typeSelect.value);
-    contentWrapper.append(this.createRow("Variable Name", varInput), this.createRow("Label", labelInput), this.createRow("Type", typeSelect), defaultContainer);
+    contentWrapper.append(
+      this.createRow(i18n.t("userscript.useSettingEditor.variableName"), varInput),
+      this.createRow(i18n.t("userscript.useSettingEditor.label"), labelInput),
+      this.createRow(i18n.t("userscript.useSettingEditor.type"), typeSelect),
+      defaultContainer,
+    );
     builderContainer.append(contentWrapper, generateBtn, infoDiv);
   }
 }

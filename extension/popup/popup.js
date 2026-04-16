@@ -71,6 +71,7 @@ const sectionManager = {
       await this.handleSectionTransition(sectionName, prevSection);
     } finally {
       this._transitioning = false;
+      applyTranslations();
     }
   },
 
@@ -80,10 +81,10 @@ const sectionManager = {
     const historyStatsToggleBtn = document.getElementById("historyStatsToggle");
 
     const titles = {
-      main: "Discord Music RPC",
-      history: "History",
-      stats: "Stats",
-      settings: "Settings",
+      main: i18n.t("header.title"),
+      history: i18n.t("header.history"),
+      stats: i18n.t("header.stats"),
+      settings: i18n.t("common.settings"),
     };
 
     mainHeader.textContent = titles[sectionName];
@@ -94,10 +95,10 @@ const sectionManager = {
     historyToggleBtn.innerHTML = "";
     if (sectionName === "main") {
       historyToggleBtn.appendChild(createSVG(svg_paths.historyIconPaths));
-      historyToggleBtn.title = "History";
+      historyToggleBtn.dataset.i18n = "header.history";
     } else {
       historyToggleBtn.appendChild(createSVG(svg_paths.backIconPaths));
-      historyToggleBtn.title = sectionName === "stats" ? "Back to History" : "Back";
+      historyToggleBtn.dataset.i18n = "header.back";
     }
   },
 
@@ -237,17 +238,22 @@ const popupModule = {
         }
         clearTimeout(buttonDisableTimeout);
 
-        const isEdit = button.textContent.includes("Edit");
+        const isEdit = button.getAttribute("editMode");
         const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
 
         if (tab.status !== "complete") {
-          showPopupMessage("Please wait for the page to finish loading", "warning", 2000);
+          showPopupMessage(i18n.t("popupMessage.waitForLoad"), "warning", 2000);
           enableButton();
           return;
         }
 
+        const translations = i18n._translations[i18n.activeNamespace];
+
         await browser.tabs.sendMessage(tab.id, {
           action: "startSelectorUI",
+          translations,
+          fallback: i18n._fallback[i18n.activeNamespace],
+          lang: i18n.lang,
           editMode: isEdit,
           theme: currentTheme,
           style: getCurrentStyleAttributes(),
@@ -256,8 +262,9 @@ const popupModule = {
         });
 
         window.close();
-      } catch (_) {
-        showPopupMessage("This page is not supported", "error", 2000);
+      } catch (err) {
+        logError("Error injecting selector:", err);
+        showPopupMessage(i18n.t("popupMessage.notSupported"), "error", 2000);
         enableButton();
       }
     };
@@ -330,6 +337,9 @@ let domLoadedListener = null;
 
 domLoadedListener = async () => {
   try {
+    await i18n.load("extension");
+
+    applyTsPlugins();
     // Check for wide mode parameter
     const params = new URLSearchParams(window.location.search);
     if (params.get("wideMode")) document.body.classList.add("wideMode");
@@ -349,6 +359,7 @@ domLoadedListener = async () => {
 
     // Start the Section Manager
     sectionManager.init();
+    applyParserOptionLabels();
 
     // Initialize Filter and Dashboard Buttons
     const btnFilter = document.querySelector("#openFiltersBtn");
@@ -426,6 +437,7 @@ domLoadedListener = async () => {
 
     // Initialize popup module
     popupModule.init();
+    applyTranslations();
   } catch (error) {
     logError("Error loading settings:", error);
   }

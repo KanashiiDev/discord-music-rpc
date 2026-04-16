@@ -12,41 +12,61 @@ export function formatTime(sec) {
 }
 
 // Relative Time
+const t = (key, params) => window.i18n?.t(key, params) ?? "—";
 export function relativeTime(dateValue) {
-  const now = Date.now();
-  const past = Number(dateValue);
+  if (dateValue == null || dateValue === "") return "—";
+
+  let past = typeof dateValue === "number" ? dateValue : NaN;
+
+  if (isNaN(past)) {
+    const asNum = Number(dateValue);
+    if (!isNaN(asNum) && asNum > 0) {
+      past = asNum;
+    } else {
+      const d = dateValue instanceof Date ? dateValue : new Date(dateValue);
+      past = isNaN(d.getTime()) ? NaN : d.getTime();
+    }
+  }
+
   if (!past || isNaN(past)) return "—";
 
+  const now = Date.now();
   const s = Math.floor((now - past) / 1000);
-  if (s < 45) return "just now";
-  if (s < 90) return "1 minute ago";
-  if (s < 3600) return Math.floor(s / 60) + " minutes ago";
+  if (s < 0) return t("time.just_now");
+
+  if (s < 45) return t("time.just_now");
+  if (s < 90) return t("time.minute_ago", [1]);
+  if (s < 3600) return t("time.minutes_ago", [Math.floor(s / 60)]);
 
   const mins = Math.floor(s / 60);
-  if (mins < 90) return "1 hour ago";
-  if (mins < 1440) return Math.floor(mins / 60) + " hours ago";
+  if (mins < 90) return t("time.hour_ago", [1]);
+  if (mins < 1440) return t("time.hours_ago", [Math.floor(mins / 60)]);
 
-  const hours = Math.floor(mins / 60);
-  const days = Math.floor(hours / 24);
-
-  if (days === 1) return "yesterday";
-  if (days < 7) return days + " days ago";
+  const days = Math.floor(mins / 1440);
+  if (days === 1) return t("time.yesterday");
+  if (days < 7) return t("time.days_ago", [days]);
 
   const weeks = Math.floor(days / 7);
-  if (weeks === 1) return "1 week ago";
-  if (weeks < 5) return weeks + " weeks ago";
+  if (weeks === 1) return t("time.week_ago", [1]);
+  if (weeks < 5) return t("time.weeks_ago", [weeks]);
 
   const months = Math.floor(days / 30.4);
-  if (months < 1) return weeks + " weeks ago";
-  if (months < 12) return months + ` month${months === 1 ? "" : "s"} ago`;
+  if (months < 12) return t("time.months_ago", [months]);
 
-  const years = Math.floor(months / 12);
-  return years + ` year${years === 1 ? "" : "s"} ago`;
+  return t("time.years_ago", [Math.floor(months / 12)]);
 }
 
 // Full Date Time
 export function fullDateTime(dateValue, fallbackLocale = "en-US") {
-  const timestamp = Number(dateValue);
+  let timestamp;
+  if (typeof dateValue === "number") {
+    timestamp = dateValue;
+  } else if (dateValue instanceof Date) {
+    timestamp = dateValue.getTime();
+  } else {
+    const asNum = Number(dateValue);
+    timestamp = !isNaN(asNum) && asNum > 0 ? asNum : new Date(dateValue).getTime();
+  }
   if (isNaN(timestamp)) return "Invalid date";
 
   return new Date(timestamp).toLocaleString(navigator.language || fallbackLocale, {
@@ -57,6 +77,29 @@ export function fullDateTime(dateValue, fallbackLocale = "en-US") {
     minute: "2-digit",
     second: "2-digit",
     hour12: false,
+  });
+}
+
+// Recalculate all relative time elements on the page
+export function refreshRelativeTimes() {
+  document.querySelectorAll("[data-timestamp]").forEach((el) => {
+    const raw = el.dataset.timestamp;
+    if (!raw) return;
+    const ago = relativeTime(raw);
+    if (el.dataset.timestampFormat === "log") {
+      el.textContent = `${ago} (${fullDateTime(Number(raw))})`;
+    } else {
+      el.textContent = ago;
+    }
+  });
+}
+
+// Refresh the dates when the tab comes to the front from the background
+export function initVisibilityRefresh() {
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") {
+      refreshRelativeTimes();
+    }
   });
 }
 

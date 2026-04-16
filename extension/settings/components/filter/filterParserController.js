@@ -82,7 +82,7 @@ const ParserController = {
     const selection = this.getSelection();
 
     if (selection.length === 0) {
-      alert("Please select at least one site");
+      alert(i18n.t("parserManager.selectOne"));
       return false;
     }
 
@@ -95,13 +95,13 @@ const ParserController = {
 
     // All selected are orphaned - hard block
     if (orphanedIds.length === selection.length) {
-      alert("None of the selected sites exist anymore.\n" + "Please select at least one active site before saving.");
+      alert(i18n.t("filter.warn.noneSelectedSites"));
       return false;
     }
 
     // Some orphaned - warn and ask
     const orphanedCount = orphanedIds.length;
-    const confirmed = confirm(`${orphanedCount} of the selected site(s) no longer exist and will be removed on save.\n\n` + "Do you want to continue?");
+    const confirmed = confirm(i18n.t("filter.warn.noneSelectedSites", { count: orphanedCount }));
 
     if (confirmed) {
       // Strip orphaned IDs before save proceeds

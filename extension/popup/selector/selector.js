@@ -25,8 +25,11 @@ const SELECTOR_CONSTANTS = {
 };
 
 // User Add RPC - Add Selector UI to the page
-browser.runtime.onMessage.addListener((msg) => {
+browser.runtime.onMessage.addListener(async (msg) => {
   if (msg.action === "startSelectorUI") {
+    i18nData.translations = msg.translations;
+    i18nData.fallback = msg.fallback;
+
     injectSelectorUI(msg.editMode, msg.theme, msg.style, msg.bg, msg.blur);
   }
 });
@@ -53,6 +56,9 @@ async function injectSelectorUI(editMode = false, theme = "dark", style = {}, bg
   shadow.appendChild(root);
   await injectStyles(shadow);
 
+  applyInjectedTranslations(root);
+  resolveFieldsConfig(FIELDS_CONFIG);
+
   setupDragFunctionality(root);
   positionElement(root);
 
@@ -64,7 +70,7 @@ async function injectSelectorUI(editMode = false, theme = "dark", style = {}, bg
 
 // User Add RPC - Element Selector
 function startSelectorMode(field, shadowDoc) {
-  showStatusMsg("Please click the element on the page with the mouse! \n(Press 'ESC' or click here to leave)", 0, 0, shadowDoc);
+  showStatusMsg(t("selector.message.select"), 0, 0, shadowDoc);
 
   // Clear old overlays/choosers
   cleanupOldSelectorElements(shadowDoc);

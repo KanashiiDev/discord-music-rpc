@@ -2,7 +2,7 @@
 <html>
   <head>
     <meta charset="utf-8" />
-    <title>Discord Music Rpc - UserScript Manager</title>
+    <title data-i18n="userscript.app.title">Discord Music Rpc - UserScript Manager</title>
     <link rel="stylesheet" href="userScriptManager.css" />
     <link rel="stylesheet" href="../libs/codemirror/css/codemirror.css" />
     <link rel="stylesheet" href="../libs/codemirror/css/codemirror-material-darker.css" />
@@ -12,13 +12,13 @@
   <body data-theme="dark">
     <div class="header">
       <div>
-        <h3>Discord Music RPC - UserScript Manager</h3>
-        <p class="header-desc">Add more advanced music parsers using userscripts!</p>
+        <h3 data-i18n="userscript.header.title">Discord Music Rpc - UserScript Manager</h3>
+        <p class="header-desc" data-i18n="userscript.header.description">Add more advanced music websites using userscripts!</p>
       </div>
       <div id="listControls">
-        <button id="btnNew">+ New Script</button>
-        <button id="btnImport">Import</button>
-        <button id="btnExport">Export</button>
+        <button id="btnNew" data-i18n="userscript.listControls.newScript">+ New Script</button>
+        <button id="btnImport" data-i18n="userscript.listControls.import">Import</button>
+        <button id="btnExport" data-i18n="userscript.listControls.export">Export</button>
       </div>
     </div>
 
@@ -31,84 +31,86 @@
       <div id="editor-container">
         <div id="editor-left">
           <div class="container">
-            <p>Script Name:</p>
-            <input type="text" id="inTitle" placeholder="Music Website" />
+            <p data-i18n="userscript.editor.scriptName.label">Script Name:</p>
+            <input type="text" id="inTitle" data-i18n="userscript.editor.scriptName.placeholder" placeholder="Music Website" />
           </div>
           <div class="container">
-            <p>Description:</p>
-            <input type="text" id="inDesc" placeholder="My Userscript for Music Website." />
-            <small>A brief description of what your script does.</small>
+            <p data-i18n="userscript.editor.description.label">Description:</p>
+            <input type="text" id="inDesc" data-i18n="userscript.editor.description.placeholder" placeholder="My Userscript for Music Website." />
+            <small data-i18n="userscript.editor.description.help">A brief description of what your script does.</small>
           </div>
           <div class="container">
-            <p>Authors (comma separated):</p>
+            <p data-i18n="userscript.editor.authors.label">Authors (comma separated):</p>
             <input type="text" id="inAuthors" placeholder="kanashiiDev,KanashiiDev2" />
           </div>
           <div class="container">
-            <p>Authors Links (comma separated, Optional):</p>
+            <p data-i18n="userscript.editor.authorsLinks.label">Authors Links (comma separated, Optional):</p>
             <input type="text" id="inAuthorsLinks" placeholder="https://github.com/KanashiiDev" />
-            <small>Links to the authors' profiles.</small>
+            <small data-i18n="userscript.editor.authorsLinks.help">Links to the authors' profiles.</small>
           </div>
 
           <div class="container">
-            <p>Domain(s) (comma separated):</p>
+            <p data-i18n="userscript.editor.domains.label">Domain(s) (comma separated):</p>
             <input type="text" id="inDomain" placeholder="musicwebsite.com, musicwebsite2.com" />
-            <small>Enter the domains where this script should run.</small>
+            <small data-i18n="userscript.editor.domains.help">Enter the domains where this script should run.</small>
           </div>
 
           <div class="container">
-            <p>URL Pattern(s) (comma separated):</p>
-            <input type="text" id="inUrlPatterns" placeholder="home.*,player.*" />
+            <p data-i18n="userscript.editor.urlPatterns.label">URL Pattern(s) (comma separated):</p>
+            <input type="text" id="inUrlPatterns" data-i18n="userscript.editor.urlPatterns.placeholder" placeholder="home.*,player.*" />
             <div id="patternStatus"></div>
-            <small>Regex patterns to match specific URLs. (Optional)</small>
+            <small data-i18n="userscript.editor.urlPatterns.help">Regex patterns to match specific URLs. (Optional)</small>
             <br />
             <small>
-              Example:
+              <span data-i18n="userscript.editor.urlPatterns.exampleLabel">Example:</span>
               <code>home.*</code>
-              will match URLs that start with "home"
+              <span data-i18n="userscript.editor.urlPatterns.exampleDesc">will match URLs that start with "home"</span>
             </small>
           </div>
           <div class="container">
-            <p>Homepage (Optional):</p>
+            <p data-i18n="userscript.editor.homepage.label">Homepage (Optional):</p>
             <input type="text" id="inHomepage" placeholder="https://musicwebsite.com" />
-            <small>The site that will open when the icon is clicked.</small>
+            <small data-i18n="userscript.editor.homepage.help">The site that will open when the icon is clicked.</small>
           </div>
           <div class="container mode">
-            <p>Activity Mode</p>
+            <p data-i18n="userscript.editor.activityMode.label">Activity Mode</p>
             <select id="inMode">
-              <option value="listen">Listening</option>
-              <option value="watch">Watching</option>
+              <option value="listen" data-i18n="userscript.editor.activityMode.listen">Listening</option>
+              <option value="watch" data-i18n="userscript.editor.activityMode.watch">Watching</option>
             </select>
-            <small>Choose how the activity is displayed on Discord.</small>
+            <small data-i18n="userscript.editor.activityMode.help">Choose how the activity is displayed on Discord.</small>
             <br />
-            <small>
+            <small data-i18n="userscript.editor.activityMode.note">
               Note: If you are using
               <code>Watching</code>
               mode, the source section will only appear when hovering over the activity cover. This is an RPC limitation.
             </small>
           </div>
           <div class="container debug">
-            <p>Debug Mode</p>
-            <small>When your script is active, it displays song information every 5 seconds in the developer console of the relevant page.</small>
+            <p data-i18n="userscript.editor.debugMode.label">Debug Mode</p>
+            <small data-i18n="userscript.editor.debugMode.help">
+              When your script is active, it displays song information every 5 seconds in the developer console of the relevant page.
+            </small>
             <label class="switch-label">
               <input type="checkbox" id="inDebug" placeholder="" value="" />
               <span class="slider"></span>
             </label>
           </div>
           <div class="container">
-            <button id="btnSave">Save Script</button>
-            <button id="btnCancel">Close</button>
+            <button id="btnSave" data-i18n="userscript.editor.buttons.save">Save Script</button>
+            <button id="btnCancel" data-i18n="userscript.editor.buttons.cancel">Close</button>
           </div>
         </div>
         <div class="editor-right">
           <div class="container">
             <div class="code-header">
-              <p>Script Code:</p>
-              <button id="btnFormat">Beautify</button>
+              <p data-i18n="userscript.codeEditor.label">Script Code:</p>
+              <button id="btnFormat" data-i18n="userscript.codeEditor.beautify">Beautify</button>
             </div>
-            <textarea id="inCode" rows="15" placeholder="// Your javaScript code here..."></textarea>
+            <textarea id="inCode" rows="15" data-i18n="userscript.codeEditor.placeholder" placeholder="// Your javaScript code here..."></textarea>
             <div class="code-notes">
               <p class="required-vars">
-                <span>Required Variables:</span>
+                <span data-i18n="userscript.codeEditor.requiredVariables.label">Required Variables:</span>
                 <code>title</code>
                 ,
                 <code>artist</code>
@@ -125,51 +127,51 @@
                 .
               </p>
               <p>
-                <span class="keyboard-shortcuts">Keyboard Shortcuts:</span>
+                <span class="keyboard-shortcuts" data-i18n="userscript.codeEditor.keyboardShortcuts.label">Keyboard Shortcuts:</span>
                 <code>
                   <code>Ctrl+/</code>
-                  Toggle Comment
+                  <span data-i18n="userscript.codeEditor.keyboardShortcuts.toggleComment">Toggle Comment</span>
                 </code>
                 <code>
                   <code>Ctrl+z</code>
-                  Undo
+                  <span data-i18n="userscript.codeEditor.keyboardShortcuts.undo">Undo</span>
                 </code>
                 <code>
                   <code>Ctrl+y</code>
-                  Redo
+                  <span data-i18n="userscript.codeEditor.keyboardShortcuts.redo">Redo</span>
                 </code>
                 <code>
                   <code>Ctrl+F</code>
-                  Find
+                  <span data-i18n="userscript.codeEditor.keyboardShortcuts.find">Find</span>
                 </code>
                 <code>
                   <code>Ctrl+S</code>
-                  Save
+                  <span data-i18n="userscript.codeEditor.keyboardShortcuts.save">Save</span>
                 </code>
               </p>
               <p>
-                <span class="execution-world">Execution World:</span>
+                <span class="execution-world" data-i18n="userscript.codeEditor.executionWorld.label">Execution World:</span>
                 <code>
                   <code>//@world main</code>
-                  Use at the top of your script if you need access to page globals (e.g. window)
+                  <span data-i18n="userscript.codeEditor.executionWorld.note">Use at the top of your script if you need access to page globals (e.g. window)</span>
                 </code>
               </p>
               <p>
-                <span class="cast-support">Cast Support:</span>
+                <span class="cast-support" data-i18n="userscript.codeEditor.castSupport.label">Cast Support:</span>
                 <code>
                   <code>isPlaying</code>
-                  Any truthy value indicating active playback; used for cast support (optional)
+                  <span data-i18n="userscript.codeEditor.castSupport.note">Any truthy value indicating active playback; used for cast support (optional)</span>
                 </code>
               </p>
             </div>
             <div class="code-notes useSettings">
-              <p>Manage Settings</p>
-              <small>
+              <p data-i18n="userscript.settings.manageSettings">Manage Settings</p>
+              <small data-i18n="userscript.settings.help">
                 This section is for generating and editing default settings. This allows you to change these custom settings from the extension's pop-up window.
               </small>
               <div class="buttons">
-                <button id="createSettingsBtn">Generate Settings</button>
-                <button id="editSettingsBtn">Edit Settings</button>
+                <button id="createSettingsBtn" data-i18n="userscript.settings.generate">Generate Settings</button>
+                <button id="editSettingsBtn" data-i18n="userscript.settings.edit">Edit Settings</button>
               </div>
               <div id="useSettingsContainer" class="use-settings-builder"></div>
             </div>

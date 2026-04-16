@@ -17,9 +17,9 @@ const FilterTabsController = {
     wrapper.className = "filter-tabs";
 
     const tabs = [
-      { value: "all", label: "All" },
-      { value: "block", label: "Block" },
-      { value: "replace", label: "Replace" },
+      { value: "all", label: i18n.t("common.all") },
+      { value: "block", label: i18n.t("common.block") },
+      { value: "replace", label: i18n.t("common.replace") },
     ];
 
     tabs.forEach((tab) => {
@@ -59,11 +59,11 @@ const FilterListController = {
 
     const isReplace = FilterUtils.isReplaceFilter(filter);
 
-    if (!confirm("Do you want to delete this filter?")) return;
+    if (!confirm(i18n.t("filter.confirm.delete"))) return;
 
     // Ask about reverting for replace filters
     if (isReplace) {
-      const shouldRevert = confirm("Do you want to restore the original song data to the history?");
+      const shouldRevert = confirm(i18n.t("filter.confirm.restore"));
 
       if (shouldRevert) {
         await sendAction("filterHistoryReplace", {
@@ -100,7 +100,7 @@ const FilterListController = {
       empty.className = "empty-state";
 
       const p = document.createElement("p");
-      p.textContent = FilterState.ui.activeTab === "all" ? "No filter has been added yet" : `No ${FilterState.ui.activeTab} filters found`;
+      p.textContent = FilterState.ui.activeTab === "all" ? i18n.t("filter.noAdded") : i18n.t("filter.notFoundTab", { tab: FilterState.ui.activeTab });
 
       empty.appendChild(p);
       container.appendChild(empty);
@@ -133,7 +133,7 @@ const FilterListController = {
 
     const modePill = document.createElement("span");
     modePill.className = `filter-mode-pill ${isReplace ? "replace-mode" : "block-mode"}`;
-    modePill.textContent = isReplace ? "Replace" : "Block";
+    modePill.textContent = isReplace ? i18n.t("common.replace") : i18n.t("common.block");
 
     const sourceTag = document.createElement("span");
     sourceTag.className = "filter-source-tag";
@@ -150,14 +150,14 @@ const FilterListController = {
 
     const entryCount = document.createElement("span");
     entryCount.className = "filter-entry-count";
-    entryCount.textContent = `${filter.entries.length} entries`;
+    entryCount.textContent = i18n.t("filter.header.entries", { count: filter.entries.length });
 
     const actions = document.createElement("div");
     actions.className = "filter-actions";
 
     const editBtn = document.createElement("button");
     editBtn.className = "btn-edit icon-btn";
-    editBtn.title = "Edit";
+    editBtn.title = i18n.t("common.edit");
     editBtn.appendChild(createSVG(svg_paths.penIconPaths));
     FilterEvents.add(editBtn, "click", (e) => {
       e.stopPropagation();
@@ -166,7 +166,7 @@ const FilterListController = {
 
     const deleteBtn = document.createElement("button");
     deleteBtn.className = "btn-delete icon-btn icon-btn-danger";
-    deleteBtn.title = "Delete";
+    deleteBtn.title = i18n.t("common.delete");
     deleteBtn.appendChild(createSVG(svg_paths.trashIconPaths));
     FilterEvents.add(deleteBtn, "click", (e) => {
       e.stopPropagation();
@@ -210,13 +210,13 @@ const FilterListController = {
     // More button
     const moreBtn = document.createElement("button");
     moreBtn.className = "btn-more";
-    moreBtn.textContent = "More";
+    moreBtn.textContent = i18n.t("common.more");
     moreBtn.style.display = "none";
     FilterEvents.add(moreBtn, "click", (e) => {
       e.stopPropagation();
       const isExpanded = entriesWrapper.classList.toggle("expanded");
       entriesWrapper.style.maxHeight = isExpanded ? `${entriesWrapper.dataset.maxHeight}px` : "";
-      moreBtn.textContent = isExpanded ? "Less" : "More";
+      moreBtn.textContent = isExpanded ? i18n.t("common.less") : i18n.t("common.more");
     });
 
     collapsedBody.append(entriesWrapper, moreBtn);

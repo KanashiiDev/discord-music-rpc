@@ -7,12 +7,16 @@ const { bundleParsers } = require("./steps/bundleParsers");
 const { createInlineUtils } = require("./steps/inlineUtils");
 const { applyCssConfig } = require("./steps/applyCssConfig");
 const registerInlines = require("./inlineConfig");
+const { copyLocales } = require("./steps/copyLocales");
+const { checkMissingTranslations } = require("../checkMissingTranslations");
 
 const ROOT_DIR = path.join(__dirname, "..", "..");
 const TARGET = process.env.TARGET || "chrome";
 const EXTENSION_DIR = path.join(ROOT_DIR, "extension");
 const SHARED_DIR = path.join(ROOT_DIR, "shared");
+const LOCALES_DIR = path.join(ROOT_DIR, "locales");
 const DIST_DIR = path.join(ROOT_DIR, "extensionBuilds", TARGET);
+const DIST_LOCALES_DIR = path.join(DIST_DIR, "locales");
 const pkgVersion = JSON.parse(fs.readFileSync(path.join(ROOT_DIR, "package.json"), "utf8")).version;
 
 const CSS_TARGETS = ["popup/popup.css", "popup/selector/selector.css", "manager/userScriptManager.css", "settings/settings.css"];
@@ -43,7 +47,12 @@ const CSS_TARGETS = ["popup/popup.css", "popup/selector/selector.css", "manager/
   applyCssConfig(SHARED_DIR, DIST_DIR, "css-config.css", CSS_TARGETS);
   applyCssConfig(SHARED_DIR, DIST_DIR, "css-global.css", CSS_TARGETS, "/*CSS-GLOBAL*/");
 
-  // 8. Write manifest
+  // 8. Copy locales
+  checkMissingTranslations(LOCALES_DIR, ["extension"]);
+  fs.mkdirSync(DIST_LOCALES_DIR, { recursive: true });
+  copyLocales(LOCALES_DIR, DIST_LOCALES_DIR);
+
+  // 9. Write manifest
   writeManifest(DIST_DIR, manifest);
 
   console.log(`✅ ${TARGET} build completed: ${DIST_DIR}`);

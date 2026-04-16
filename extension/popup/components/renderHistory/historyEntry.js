@@ -28,28 +28,56 @@ function createHistoryEntry(entry, historyIndex, type, filteredHistory = []) {
   const info = document.createElement("div");
   info.className = "history-info";
 
+  // Title
   const strong = Object.assign(document.createElement("strong"), {
     textContent: entry.t,
     className: "history-title",
   });
+  info.appendChild(strong);
 
-  const small = Object.assign(document.createElement("small"), {
-    className: "history-source",
-  });
+  // Source and plays container
+  const small = document.createElement("small");
+  small.className = "history-source";
 
-  const time = new Date(entry.p);
-  let extraText = "";
+  // Source span
+  const sourceSpan = document.createElement("span");
+  sourceSpan.className = "history-source-text";
+  sourceSpan.textContent = entry.s;
+  small.appendChild(sourceSpan);
 
+  // Separator
   if (type === "stats") {
     const totalPlays = filteredHistory.filter((e) => e.t === entry.t).length;
-    if (totalPlays) extraText = ` • ${totalPlays} plays`;
+    if (totalPlays > 0) {
+      const separatorSpan = document.createElement("span");
+      separatorSpan.className = "history-separator";
+      separatorSpan.textContent = " • ";
+      small.appendChild(separatorSpan);
+
+      // Plays span
+      const playsSpan = document.createElement("span");
+      playsSpan.className = "history-plays";
+      playsSpan.textContent = `${totalPlays} plays`;
+      playsSpan.dataset.i18n = "stats.totalPlays.count";
+      playsSpan.dataset.i18nParams = JSON.stringify([totalPlays]);
+      small.appendChild(playsSpan);
+    }
   } else {
-    const formattedTime = dateHourMinute(time);
-    if (formattedTime) extraText = ` • ${formattedTime}`;
+    const formattedTime = dateHourMinute(new Date(entry.p));
+    if (formattedTime) {
+      const separatorSpan = document.createElement("span");
+      separatorSpan.className = "history-separator";
+      separatorSpan.textContent = " • ";
+      small.appendChild(separatorSpan);
+
+      const timeSpan = document.createElement("span");
+      timeSpan.className = "history-time";
+      timeSpan.textContent = formattedTime;
+      small.appendChild(timeSpan);
+    }
   }
 
-  small.textContent = `${entry.s}${extraText}`;
-  info.appendChild(strong);
+  info.appendChild(small);
 
   if (entry.a !== "Radio") {
     const artist = Object.assign(document.createElement("span"), {
@@ -64,7 +92,7 @@ function createHistoryEntry(entry, historyIndex, type, filteredHistory = []) {
   // Link
   const link = Object.assign(document.createElement("a"), {
     className: "song-link",
-    title: "Go to The Song",
+    title: i18n.t("history.goToSong"),
     target: "_blank",
     rel: "noopener noreferrer",
   });

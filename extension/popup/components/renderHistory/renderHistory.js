@@ -70,7 +70,7 @@ async function renderHistory({ reset = true, query = "" } = {}) {
 
   if (reset && !pagedHistory.length) {
     const emptyMsg = Object.assign(document.createElement("i"), {
-      textContent: hasFilter ? "No results." : "Empty.",
+      textContent: hasFilter ? i18n.t("common.noResults") : i18n.t("common.empty"),
     });
     target.appendChild(emptyMsg);
     return;
@@ -80,7 +80,7 @@ async function renderHistory({ reset = true, query = "" } = {}) {
 
   for (const entry of pagedHistory) {
     const time = new Date(entry.p);
-    const header = isSameDay(time, dateToday) ? "Today" : isSameDay(time, dateYesterday) ? "Yesterday" : dateFull(time);
+    const header = isSameDay(time, dateToday) ? i18n.t("stats.today") : isSameDay(time, dateYesterday) ? i18n.t("stats.yesterday") : dateFull(time);
 
     if (header !== historyState.lastRenderedHeader) {
       const h3 = Object.assign(document.createElement("h3"), { textContent: header });
@@ -94,6 +94,8 @@ async function renderHistory({ reset = true, query = "" } = {}) {
   }
 
   target.appendChild(fragment);
+  new Promise(requestAnimationFrame);
+  applyTranslations();
 
   if (historyState.cleaningMode) attachCheckboxListeners();
 }

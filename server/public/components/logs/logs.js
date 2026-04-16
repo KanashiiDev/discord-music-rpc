@@ -18,6 +18,9 @@ export async function initializeLogs() {
     LogState._tsInstance = new TomSelect(dom.errorFilter, {
       controlInput: null,
       sortField: false,
+      plugins: {
+        auto_width: { sb: false },
+      },
       onChange: () => {
         LogRenderer.render({ reset: true });
       },

@@ -26,7 +26,7 @@ async function buildParserEntry({ entry, parserEnabledState, parserSettings, con
   const authorsSection = createAuthorsSection(authors, authorsLinks);
   if (authorsSection) optionsInner.appendChild(authorsSection);
 
-  const descriptionSection = createDescriptionSection(description);
+  const descriptionSection = await createDescriptionSection(description);
   if (descriptionSection) optionsInner.appendChild(descriptionSection);
 
   const categoryTagsSection = createCategoryTagsSection(entry.category ?? [], entry.tags ?? []);
@@ -52,7 +52,7 @@ async function buildParserEntry({ entry, parserEnabledState, parserSettings, con
     optionsInner.appendChild(
       Object.assign(document.createElement("div"), {
         className: "setup-options-message",
-        textContent: "First time setup: close and reopen this popup to load settings.",
+        textContent: i18n.t("setup.message"),
       }),
     );
   }
@@ -64,10 +64,19 @@ async function buildParserEntry({ entry, parserEnabledState, parserSettings, con
     const delBtn = createDeleteButton(id, title, domain, addListener, (updatedList) => renderList(updatedList));
     entryInner.appendChild(delBtn);
 
-    if (tabHostname === normalizeHost(domain)) {
-      const regexes = urlPatterns.map(parseUrlPattern);
-      if (regexes.some((r) => r.test(tabPath))) {
-        document.getElementById("openSelector").textContent = "Edit Music Site";
+    const domains = Array.isArray(domain) ? domain : [domain];
+    const domMatch = domains.some((d) => normalizeHost(d) === tabHostname);
+
+    if (domMatch) {
+      const hasMatch = urlPatterns.map(parseUrlPattern).some((re) => re.test(tabPath));
+
+      if (hasMatch) {
+        document.getElementById("openSelector").textContent = i18n.t("button.edit_music_site");
+        document.getElementById("openSelector").dataset.i18n = "button.edit_music_site";
+        document.getElementById("openSelector").setAttribute("editMode", true);
+      } else {
+        document.getElementById("openSelector").textContent = i18n.t("button.add_music_site");
+        document.getElementById("openSelector").dataset.i18n = "button.add_music_site";
       }
     }
   }

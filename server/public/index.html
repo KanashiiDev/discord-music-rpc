@@ -13,23 +13,23 @@
 
   <div id="bg-layer"></div>
   <body data-theme="dark">
-    <header>Discord Music RPC Server Dashboard</header>
+    <header data-i18n="app.title">Discord Music RPC Server Dashboard</header>
 
     <div class="container">
       <!-- Navigation -->
       <span id="actions">
-        <span id="toggleContainer" title="Change View" role="button" aria-label="Toggle Grid/List View"></span>
-        <span id="settingsToggle" title="Settings" role="button" aria-label="Open Settings"></span>
-        <span id="settingsBack" title="Back" style="display: none" role="button" aria-label="Back to Dashboard"></span>
+        <span id="toggleContainer" data-i18n="actions.toggle_view" data-i18n-attr="title" role="button" aria-label="Toggle Grid/List View"></span>
+        <span id="settingsToggle" data-i18n="actions.settings" data-i18n-attr="title" role="button" aria-label="Open Settings"></span>
+        <span id="settingsBack" data-i18n="actions.back" data-i18n-attr="title" style="display: none" role="button" aria-label="Back to Dashboard"></span>
       </span>
 
       <!-- Settings Container -->
       <div id="settingsContainer" style="display: none">
-        <h2 id="settingsTitle">Settings</h2>
+        <h2 id="settingsTitle" data-i18n="settings.title"></h2>
         <form id="settingsForm"></form>
         <div class="buttons">
-          <button id="saveSettingsBtn" class="save-settings-btn" type="button">Save Changes</button>
-          <button id="resetSettingsBtn" class="reset-settings-btn" type="button">Reset to Default</button>
+          <button id="saveSettingsBtn" class="save-settings-btn" type="button" data-i18n="settings.save">Save Changes</button>
+          <button id="resetSettingsBtn" class="reset-settings-btn" type="button" data-i18n="settings.reset">Reset to Default</button>
         </div>
       </div>
 
@@ -39,10 +39,10 @@
           <div class="left">
             <!-- Status -->
             <section>
-              <h2 id="rpcHeader">RPC Status</h2>
+              <h2 id="rpcHeader" data-i18n="rpc.status">RPC Status</h2>
               <div class="status-box">
                 <div class="status">
-                  Status:
+                  <span data-i18n="rpc.label">Status:</span>
                   <span id="rpcStatus" aria-live="polite">Loading...</span>
                 </div>
               </div>
@@ -50,9 +50,9 @@
 
             <!-- Current Activity -->
             <section>
-              <h2 class="collapsible" role="button" aria-expanded="true" tabindex="0">
-                <span>Current Activity</span>
-                <span class="arrow" aria-hidden="true"></span>
+              <h2 class="collapsible" role="button">
+                <span data-i18n="activity.current">Current Activity</span>
+                <span class="arrow"></span>
               </h2>
               <div class="activity activity-box">
                 <div id="activityWrapper" data-simplebar>
@@ -63,9 +63,9 @@
 
             <!-- Last Update -->
             <section>
-              <h2 class="collapsible" role="button" aria-expanded="true" tabindex="0">
-                <span>Last Update</span>
-                <span class="arrow" aria-hidden="true"></span>
+              <h2 class="collapsible" role="button">
+                <span data-i18n="activity.last">Last Update</span>
+                <span class="arrow"></span>
               </h2>
               <div class="last-activity activity-box">
                 <div id="lastActivityWrapper" data-simplebar>
@@ -78,7 +78,7 @@
           <div class="right">
             <!-- Music Card -->
             <section id="musicCardContainer">
-              <h2 id="musicCardHeader">Now Listening</h2>
+              <h2 id="musicCardHeader" data-i18n="music.title">Now Listening</h2>
               <div class="music-card" id="musicCard">
                 <div class="music-body">
                   <div class="music-cover">
@@ -109,12 +109,14 @@
 
             <!-- Recent Songs -->
             <section>
-              <h2 class="collapsible history" role="button" aria-expanded="true" tabindex="0">
-                <span>Recent Songs</span>
-                <select id="historyFilter" aria-label="Filter history by platform">
-                  <option value="all">All</option>
+              <h2 class="collapsible history" role="button">
+                <span data-i18n="history.title">Recent Songs</span>
+
+                <select id="historyFilter" data-i18n-attr="aria-label" data-i18n="history.filter">
+                  <option value="all" data-i18n="common.all">All</option>
                 </select>
-                <span class="arrow" aria-hidden="true"></span>
+
+                <span class="arrow"></span>
               </h2>
               <div class="history activity-box">
                 <div id="historyWrapper" data-simplebar>
@@ -130,16 +132,18 @@
 
         <!-- Logs -->
         <section id="LogsContainer">
-          <h2 class="collapsible logs" role="button" aria-expanded="false" tabindex="0">
-            <span>Logs</span>
+          <h2 class="collapsible logs" role="button">
+            <span data-i18n="logs.title"></span>
+
             <label class="log-select">
-              <select id="errorFilter" aria-label="Filter logs by level">
-                <option value="all">All</option>
-                <option value="error">Error</option>
-                <option value="info">Info</option>
+              <select id="errorFilter" data-i18n-attr="aria-label" data-i18n="logs.filter">
+                <option value="all" data-i18n="common.all">All</option>
+                <option value="error" data-i18n="logs.error">Error</option>
+                <option value="info" data-i18n="logs.info">Info</option>
               </select>
             </label>
-            <span class="arrow" aria-hidden="true"></span>
+
+            <span class="arrow"></span>
           </h2>
           <div class="logs activity-box">
             <div id="logsWrapper" data-simplebar>
@@ -150,14 +154,20 @@
       </div>
     </div>
 
-    <footer><a href="https://github.com/KanashiiDev/discord-music-rpc">Discord Music RPC by KanashiiDev</a></footer>
+    <footer>
+      <a href="https://github.com/KanashiiDev/discord-music-rpc">
+        <span data-i18n="footer.text">Discord Music RPC by KanashiiDev</span>
+      </a>
+    </footer>
 
     <!-- Libs -->
     <script src="libs/simplebar.js"></script>
     <script src="libs/chart.js"></script>
     <script src="libs/tinycolor.js"></script>
     <script src="libs/tom-select.js"></script>
+    <script src="../../shared/tom-select-plugins.js"></script>
     <script src="libs/html2canvas-pro.js"></script>
+    <script src="../../shared/i18n.js"></script>
 
     <!-- Main -->
     <script type="module" src="index.js"></script>

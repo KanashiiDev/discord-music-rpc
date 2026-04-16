@@ -38,6 +38,20 @@
   animation: fadeInUp var(--transition-reduced) ease-out;
 }
 
+.ts-dropdown.scrollbar-active.is-extension .simplebar-track.simplebar-vertical[style="visibility: visible;"] {
+  margin-right: 2px;
+}
+
+.ts-dropdown.scrollbar-active.is-server .simplebar-track.simplebar-vertical {
+  margin-right: 4px;
+  height: calc(100% - 8px);
+  top: 4px;
+}
+
+.ts-dropdown.scrollbar-active.is-server .simplebar-content {
+  padding-right: 15px !important;
+}
+
 .simplebar-track.smooth .simplebar-scrollbar.simplebar-visible {
   -webkit-transition: var(--transition-reduced) ease-out;
   transition: var(--transition-reduced) ease-out;
@@ -225,10 +239,6 @@ svg:not(.flatpickr-calendar svg):not(.IroHandle) {
   z-index: 100;
 }
 
-h2.collapsible.history .ts-wrapper.dropdown-active {
-  min-width: 230px;
-}
-
 .ts-control {
   display: flex;
   align-items: center;
@@ -305,13 +315,13 @@ h2.collapsible.history .ts-wrapper.dropdown-active {
   overflow: hidden;
 }
 
-.collapsible.history .ts-dropdown {
-  padding: 4px 4px 4px 0;
-}
-
 .ts-dropdown-content {
   scrollbar-width: none;
   -ms-overflow-style: none;
+}
+
+.scrollbar-visible .ts-dropdown-content .simplebar-content {
+  padding-right: 4px !important;
 }
 
 /* Dropdown item */
@@ -327,6 +337,14 @@ h2.collapsible.history .ts-wrapper.dropdown-active {
 .ts-dropdown .option.active {
   background: var(--foreground-color-400);
   color: var(--text-color-primary);
+}
+
+.ts-dropdown.is-overflow .option {
+  word-break: break-word;
+}
+
+.ts-dropdown.is-overflow.scrollbar-active.is-extension .option {
+  margin-right: 2px;
 }
 
 @-webkit-keyframes loadingBar {

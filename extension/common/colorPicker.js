@@ -29,7 +29,7 @@ function createPickerPopover() {
   degreeContainer.style.cssText = "margin-bottom: 8px;";
 
   const degreeLabel = document.createElement("label");
-  degreeLabel.textContent = "Degree";
+  degreeLabel.textContent = i18n.t("colorPicker.degree");
 
   const degreeSliderRow = document.createElement("div");
   degreeSliderRow.className = "degree-slider-row";
@@ -52,7 +52,7 @@ function createPickerPopover() {
   colorCountContainer.className = "colorCountContainer";
 
   const colorCountLabel = document.createElement("label");
-  colorCountLabel.textContent = "Colors:";
+  colorCountLabel.textContent = i18n.t("colorPicker.colors");
 
   const btnRemoveColor = document.createElement("span");
   btnRemoveColor.className = "gradient-color-btn button";
@@ -212,7 +212,7 @@ function setupPickerEventsOnce() {
   btnBlur.addEventListener("click", (e) => {
     e.stopPropagation();
     isBlurMode = !isBlurMode;
-    btnBlur.textContent = isBlurMode ? "Disable Blur" : "Enable Blur";
+    btnBlur.textContent = i18n.t("settings.backgroundImage.blur") + " (" + (isBlurMode ? i18n.t("common.disable") : i18n.t("common.enable")) + ")";
     pickerEnd();
   });
 
@@ -319,7 +319,7 @@ function toggleGradientMode() {
 
     isGradientMode = true;
     popover.classList.add("gradient-mode");
-    btnGradient.textContent = "Single Color";
+    btnGradient.textContent = i18n.t("colorPicker.single");
     gradientControls.classList.remove("hidden");
     hexInputContainer.classList.add("hidden");
     colorCount.textContent = globalPicker.colors.length;
@@ -344,7 +344,7 @@ function toggleGradientMode() {
 
     isGradientMode = false;
     popover.classList.remove("gradient-mode");
-    btnGradient.textContent = "Make Gradient";
+    btnGradient.textContent = i18n.t("colorPicker.gradient");
     gradientControls.classList.add("hidden");
     hexInputContainer.classList.remove("hidden");
     hexInput.value = globalPicker.colors[0].hexString;
@@ -586,13 +586,13 @@ async function openPickerForSwatch(item, swatch, btnDelete) {
   btnGradient.style.display = item.enableGradient ? "inline-block" : "none";
 
   isBlurMode = colorConfig.applyFgBlur;
-  btnBlur.textContent = isBlurMode ? "Disable Blur" : "Enable Blur";
+  btnBlur.textContent = i18n.t("settings.backgroundImage.blur") + " (" + (isBlurMode ? i18n.t("common.disable") : i18n.t("common.enable")) + ")";
 
   if (isGradientMode) {
     popover.classList.add("gradient-mode");
     gradientControls.classList.remove("hidden");
     hexInputContainer.classList.add("hidden");
-    btnGradient.textContent = "Single Color";
+    btnGradient.textContent = i18n.t("colorPicker.single");
     degreeSlider.value = gradientDegree;
     degreeValue.textContent = `${gradientDegree}°`;
     colorCount.textContent = globalPicker.colors.length;
@@ -601,7 +601,7 @@ async function openPickerForSwatch(item, swatch, btnDelete) {
     popover.classList.remove("gradient-mode");
     gradientControls.classList.add("hidden");
     hexInputContainer.classList.remove("hidden");
-    btnGradient.textContent = "Make Gradient";
+    btnGradient.textContent = i18n.t("colorPicker.gradient");
     hexInput.value = globalPicker.colors[0].hexString;
     // Clear color list
     while (globalPickerElements.colorListContainer.firstChild) {

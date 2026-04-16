@@ -5,7 +5,7 @@ export const HistoryState = {
   filteredData: [],
   previousHash: "",
   currentOffset: 0,
-  maxLoad: 20,
+  maxLoad: 8,
   selectedSources: new Set(),
   isFiltering: false,
 };

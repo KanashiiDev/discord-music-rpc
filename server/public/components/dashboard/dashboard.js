@@ -7,12 +7,12 @@ import { HistoryRenderer } from "../history/historyRenderer.js";
 import { LogState } from "../logs/logs.js";
 import { LogRenderer } from "../logs/logsRenderer.js";
 
-export function initDashboard() {
+export async function initDashboard() {
   // Listen to status changes
   DataStore.subscribe("status", (status) => {
     if (!status) return;
 
-    const rpcText = status.rpcConnected ? "Connected" : "Not Connected";
+    const rpcText = status.rpcConnected ? i18n.t("rpc.connected") : i18n.t("rpc.disconnected");
     if (AppState.previousRpcStatus !== rpcText) {
       AppState.previousRpcStatus = rpcText;
       dom.rpcStatus.textContent = rpcText;
