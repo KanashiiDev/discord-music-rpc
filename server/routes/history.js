@@ -5,6 +5,54 @@ const { mergeHistories } = require("../utils.js");
 function createHistoryRouter(historyFilePath, logFilePath) {
   const router = Router();
 
+  // POST /add-history
+  // Called by the extension to add a new history entry.
+  // The server only appends the entry; listening time is tracked separately.
+  router.post("/add-history", (req, res) => {
+    const { title, artist, image, source, songUrl, date } = req.body ?? {};
+
+    if (!title || typeof title !== "string" || !artist || typeof artist !== "string") {
+      return res.status(400).json({ error: "title and artist are required strings" });
+    }
+
+    fs.readFile(historyFilePath, "utf8", (readErr, data) => {
+      let history = [];
+      if (!readErr && data) {
+        try {
+          const parsed = JSON.parse(data);
+          if (Array.isArray(parsed)) history = parsed;
+        } catch (e) {
+          console.error("[HISTORY] Parse error:", e.message);
+        }
+      }
+
+      // Skip if identical to the last entry
+      const last = history[history.length - 1];
+      if (last && last.title === title.trim() && last.artist === artist.trim()) {
+        return res.json({ success: true, action: "skipped" });
+      }
+
+      const entry = {
+        title: title.trim(),
+        artist: artist.trim(),
+        image: typeof image === "string" ? image.trim() : "",
+        source: typeof source === "string" ? source.trim() : "",
+        songUrl: typeof songUrl === "string" ? songUrl.trim() : "",
+        date,
+        total_listened_ms: 0,
+      };
+
+      history.push(entry);
+
+      fs.writeFile(historyFilePath, JSON.stringify(history, null, 2), "utf8", (writeErr) => {
+        if (writeErr) {
+          return res.status(500).json({ error: "History save failed: " + writeErr.message });
+        }
+        res.json({ success: true, action: "added" });
+      });
+    });
+  });
+
   // GET /history
   router.get("/history", (_req, res) => {
     try {

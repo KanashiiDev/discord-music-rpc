@@ -3,7 +3,7 @@ const { getCurrentTime } = require("../../shared/utils.js");
 const { state, CLIENT_TIMEOUT, MAX_CLEAR_RETRIES } = require("../rpc/state.js");
 const { isSameActivity } = require("../utils.js");
 const { connectRPC, scheduleReconnect } = require("../rpc/client.js");
-const { buildActivity, setRpcActivity, clearRpcActivity, resetActivityState, handleHistoryUpdate } = require("../rpc/activity.js");
+const { buildActivity, setRpcActivity, clearRpcActivity, resetActivityState, handleListeningTimeUpdate } = require("../rpc/activity.js");
 
 function createRpcRouter(historyFilePath) {
   const router = Router();
@@ -60,14 +60,13 @@ function createRpcRouter(historyFilePath) {
       const { activity, activitySettings } = buildActivity(data, now);
 
       state.serverSettings.showSmallIcon = Boolean(activitySettings.showFavIcon);
-      state.isHistorySaveEnabled = activitySettings.saveHistory ?? true;
 
       if (state.serverSettings.logSongUpdate && !isSameActivity(activity, state.currentActivity)) {
         console.log(`[RPC] Updated: ${activity.details} - ${getCurrentTime()}`);
       }
 
-      // History only for music (not "watch" / type 3)
-      if (activity.type !== 3) handleHistoryUpdate(activity, historyFilePath);
+      // Listening time tracking only for music (not "watch" / type 3)
+      if (activity.type !== 3) handleListeningTimeUpdate(activity, historyFilePath);
 
       // Deduplicate identical consecutive activities
       const isSame = isSameActivity(activity, state.currentActivity);

@@ -96,12 +96,12 @@ async function accessWindow(path, options = {}) {
       },
     });
 
-    if (result && result.__error) {
-      logError("[Parser] Error:", result.__error);
+    if (result && typeof result === "object" && result.ok === false) {
+      logError("[Parser] Error:", result.error);
       return null;
     }
 
-    return result;
+    return result?.data ?? result;
   } catch (error) {
     logError("[Parser] Error:", error);
     return null;

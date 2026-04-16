@@ -1,7 +1,7 @@
-const { addHistoryEntry, saveListeningTime, isSameActivityIgnore } = require("../utils.js");
+const { saveListeningTime, isSameActivityIgnore } = require("../utils.js");
 const { truncate, isValidUrl } = require("../../shared/utils.js");
 
-const { state, HISTORY_SAVE_TIMEOUT } = require("./state.js");
+const { state } = require("./state.js");
 const { isRpcReady, scheduleReconnect } = require("./client.js");
 
 // Builds a Discord RPC activity object from the raw request payload.
@@ -31,7 +31,7 @@ function buildActivity(data, now) {
       const { hostname } = new URL(dataSongUrl);
       favIcon = `https://www.google.com/s2/favicons?domain=${encodeURIComponent(hostname)}&sz=64`;
     } catch {
-      // invalid URL — favIcon stays null
+      // invalid URL - favIcon stays null
     }
   }
 
@@ -185,7 +185,6 @@ async function clearRpcActivity({ maxRetries = 1, timeoutMs = 5000 } = {}) {
 // Resets all activity-related state fields to their defaults.
 function resetActivityState(historyFilePath) {
   if (historyFilePath) flushListeningTime(historyFilePath);
-  cancelHistoryTimer();
   state.currentActivity = null;
   state.lastUpdateAt = null;
   state.lastActivitySeenAt = null;
@@ -200,45 +199,21 @@ function flushListeningTime(historyFilePath) {
   saveListeningTime(state.currentActivity, listenedMs, historyFilePath);
 }
 
-// Cancels any pending history-save timer and resets the lock.
-function cancelHistoryTimer() {
-  if (state.historyTimeout) {
-    clearTimeout(state.historyTimeout);
-    state.historyTimeout = null;
-    state.historySaveLock = false;
-  }
-}
-
-// Schedules a history-save for activity after HISTORY_SAVE_TIMEOUT ms.
-function scheduleHistorySave(activity, historyFilePath) {
-  state.historyTimeout = setTimeout(() => {
-    if (!isSameActivityIgnore(activity, state.lastSavedHistoryEntry) && state.isHistorySaveEnabled) {
-      state.historySaveLock = true;
-      addHistoryEntry(activity, historyFilePath);
-      state.lastSavedHistoryEntry = structuredClone(activity);
-    }
-    state.historyTimeout = null;
-  }, HISTORY_SAVE_TIMEOUT);
-}
-
-// Handles history update whenever an activity update arrives.
-function handleHistoryUpdate(activity, historyFilePath) {
+// Handles listening time tracking whenever an activity update arrives.
+// History entry creation is handled by the plugin via POST /add-history.
+function handleListeningTimeUpdate(activity, historyFilePath) {
   const trackChanged = !isSameActivityIgnore(activity, state.currentActivity);
 
   if (trackChanged) {
     // Flush previous track's listening time before switching
     flushListeningTime(historyFilePath);
     state.listeningStartTime = Date.now();
-    cancelHistoryTimer();
-    scheduleHistorySave(activity, historyFilePath);
     return;
   }
 
-  // Same track — start timer only if neither lock nor timer is active
-  if (!state.historySaveLock && !state.historyTimeout) {
-    state.listeningStartTime ??= Date.now();
-    state.historySaveLock = true;
-    scheduleHistorySave(activity, historyFilePath);
+  // Same track - start listening timer if not already running
+  if (!state.listeningStartTime) {
+    state.listeningStartTime = Date.now();
   }
 }
 
@@ -247,7 +222,6 @@ module.exports = {
   setRpcActivity,
   clearRpcActivity,
   resetActivityState,
-  handleHistoryUpdate,
+  handleListeningTimeUpdate,
   flushListeningTime,
-  cancelHistoryTimer,
 };

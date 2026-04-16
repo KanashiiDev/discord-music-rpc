@@ -419,6 +419,37 @@ const handleFilterHistoryReplace = async (request) => {
   };
 };
 
+const handleAddHistoryToServer = async ({ image, title, artist, source, songUrl, date }) => {
+  try {
+    const response = await fetchWithTimeout(
+      `http://localhost:${state.serverPort}/add-history`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title,
+          artist,
+          image: image || "",
+          source: source || "",
+          songUrl: songUrl || "",
+          date,
+        }),
+      },
+      CONFIG.requestTimeout,
+    );
+
+    if (!response.ok) {
+      throw new Error(`Server responded with ${response.status}`);
+    }
+
+    const result = await response.json();
+    return { ok: result.success, action: result.action };
+  } catch (err) {
+    console.error("Add history error:", err);
+    return { ok: false, error: err.message };
+  }
+};
+
 const handleSyncHistory = async () => {
   try {
     const history = await loadHistory();
@@ -481,7 +512,7 @@ const handleSyncHistory = async () => {
     };
   } catch (err) {
     console.error("History sync error:", err);
-    return { success: false, error: err.message };
+    return { ok: false, error: err.message };
   }
 };
 
@@ -503,8 +534,10 @@ const handleSyncDeleteToServer = async (req) => {
       },
       CONFIG.requestTimeout,
     );
+    return { ok: true };
   } catch (err) {
     console.error("Server history delete error:", err);
+    return { ok: false };
   }
 };
 
@@ -644,10 +677,10 @@ const handleUpdateRpcPort = async (req) => {
       CONFIG.requestTimeout,
     );
 
-    return { success: true, port: req.data.port };
+    return { ok: true, port: req.data.port };
   } catch (err) {
     console.error("Update port error:", err);
-    return { success: false, error: err.message };
+    return { ok: false, error: err.message };
   }
 };
 
@@ -761,6 +794,7 @@ const setupListeners = () => {
         if (sender.tab?.id != null) {
           browser.tabs.sendMessage(sender.tab.id, req).catch(() => {});
         }
+        return { ok: true };
       }
       if (req.type === "ACCESS_WINDOW") {
         try {
@@ -811,7 +845,7 @@ const setupListeners = () => {
                   current = current[parts[i]];
 
                   if (current === undefined || current === null) {
-                    return { __error: `'${parts.slice(0, i + 1).join(".")}' is ${current}` };
+                    return { ok: false, __error: `'${parts.slice(0, i + 1).join(".")}' is ${current}` };
                   }
                 }
 
@@ -825,7 +859,7 @@ const setupListeners = () => {
 
                 if (shouldCall) {
                   if (!isFunction) {
-                    return { __error: `'${targetPath}' is not a function` };
+                    return { ok: false, __error: `'${targetPath}' is not a function` };
                   }
                   const returnValue = current.apply(parent, fnArgs);
                   return safeSerialize(returnValue);
@@ -833,20 +867,20 @@ const setupListeners = () => {
 
                 return safeSerialize(current);
               } catch (e) {
-                return { __error: e.message };
+                return { ok: false, __error: e.message };
               }
             },
             args: [path, callFunction === undefined ? "auto" : callFunction ? "true" : "false", args || []],
           });
 
-          return results[0]?.result;
+          return results?.[0]?.result ?? { ok: false, error: "No script result" };
         } catch (err) {
-          return { __error: err.message };
+          return { ok: false, __error: err.message };
         }
       }
 
       if (req.type === "GET_TAB_ID") {
-        return sender.tab?.id;
+        return { ok: true, tabId: sender.tab?.id };
       }
 
       // Handle action-based requests
@@ -882,6 +916,9 @@ const setupListeners = () => {
             break;
           case "filterHistoryReplace":
             result = await handleFilterHistoryReplace(req);
+            break;
+          case "addHistoryToServer":
+            result = await handleAddHistoryToServer();
             break;
           case "syncHistory":
             result = await handleSyncHistory();
@@ -930,11 +967,14 @@ const setupListeners = () => {
         return result;
       }
       // If neither action nor type is present
-      return { ok: false, error: "No action or type specified" };
+      if (!req.type && !req.action) {
+        return { ok: false, error: "No action or type specified" };
+      }
     } catch (err) {
       console.error("Unified message handler error:", err);
       return { ok: false, error: err.message };
     }
+    return true;
   });
 
   // update the local storage when the data changes

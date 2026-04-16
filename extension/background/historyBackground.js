@@ -39,33 +39,31 @@ async function loadHistory() {
   });
 }
 
-async function addToHistory({ image, title, artist, source, songUrl }) {
+async function addToHistory({ image, title, artist, source, songUrl, date = Date.now() }) {
   if (!title || !artist) return;
 
   const history = await loadHistory();
   const last = history[0];
   const lastArtist = last?.t === last?.a ? "" : last?.a;
-  const normalized = normalizeTitleAndArtist(title, artist);
-  const normalizedArtist = normalized.artist === normalized.title ? "Radio" : normalized.artist;
-  const normalizedTitle = normalized.title;
-  const titleText = truncate(normalizedTitle, 128, { fallback: "Unknown Song" });
-  const artistText = truncate(normalizedArtist, 128, { fallback: "Unknown Artist" });
-  const sourceText = truncate(source, 32, { fallback: "Unknown Source" });
-  const sameAsLast = last && last.t === titleText && lastArtist === artistText && last.s === sourceText;
+  const sameAsLast = last && last.t === title && lastArtist === artist && last.s === source;
 
   const entry = {
     i: image,
-    t: titleText,
-    a: artistText,
-    s: sourceText,
+    t: title,
+    a: artist,
+    s: source,
     u: songUrl,
-    p: Date.now(),
+    p: date,
   };
 
   if (sameAsLast) {
     history[0] = entry;
   } else {
     history.unshift(entry);
+  }
+
+  if (state.serverPort) {
+    await handleAddHistoryToServer({ title, artist, source, image, songUrl, date });
   }
 
   await saveHistory(history);

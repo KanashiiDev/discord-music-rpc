@@ -73,6 +73,7 @@ async function scheduleHistoryAdd(tabId, songData) {
             artist: songData.artist,
             source: songData.source,
             songUrl: songData.songUrl,
+            date: tracker.startTime || now,
           });
         }
       } catch (error) {

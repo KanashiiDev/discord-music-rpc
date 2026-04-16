@@ -5,7 +5,6 @@ const AUTO_CLEAR_TIMEOUT = 28000;
 const RECONNECT_GRACE_MS = 20000;
 const STUCK_TIMEOUT = 18000;
 const MAX_CLEAR_RETRIES = 3;
-const HISTORY_SAVE_TIMEOUT = 28000;
 
 // State for reconnect management
 const reconnectState = {
@@ -80,10 +79,7 @@ const state = {
   lastUpdateAt: null,
   lastActivitySeenAt: null,
   healthCheckInterval: null,
-  isHistorySaveEnabled: true,
   lastSavedHistoryEntry: null,
-  historySaveLock: false,
-  historyTimeout: null,
   listeningStartTime: null,
   serverInstance: null,
   lastUpdateRequest: null,
@@ -103,6 +99,5 @@ module.exports = {
   AUTO_CLEAR_TIMEOUT,
   STUCK_TIMEOUT,
   MAX_CLEAR_RETRIES,
-  HISTORY_SAVE_TIMEOUT,
   RECONNECT_GRACE_MS,
 };

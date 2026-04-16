@@ -43,49 +43,6 @@ function isSameActivityIgnore(a, b) {
   return a && b && a.details === b.details && a.state === b.state;
 }
 
-function addHistoryEntry(song, historyPath) {
-  if (!song || !song.details || !song.state) {
-    return;
-  }
-
-  let history = [];
-
-  if (fs.existsSync(historyPath)) {
-    const data = fs.readFileSync(historyPath, "utf8");
-    try {
-      history = JSON.parse(data);
-      if (!Array.isArray(history)) history = [];
-    } catch {
-      history = [];
-    }
-  }
-
-  // LAST RECORD COMPARISON
-  const last = history[history.length - 1];
-  if (last) {
-    const sameTitle = last.title === song.details;
-    const sameArtist = last.artist === song.state;
-
-    if (sameTitle && sameArtist) {
-      return;
-    }
-  }
-
-  // Add new entry
-  const entry = {
-    title: song.details || "",
-    artist: song._artist || song.state || "",
-    image: song._cover || song.largeImageKey || "",
-    source: song._source || song.largeImageText || "",
-    songUrl: song.detailsUrl || "",
-    date: Date.now(),
-    total_listened_ms: 0,
-  };
-
-  history.push(entry);
-  fs.writeFileSync(historyPath, JSON.stringify(history, null, 2), "utf8");
-}
-
 function saveListeningTime(song, listenedMs, historyFilePath) {
   if (!song || !song.details || !song.state || listenedMs < 0) {
     return;
@@ -169,7 +126,6 @@ function mergeHistories(serverHistory = [], browserHistory = []) {
 }
 
 module.exports = {
-  addHistoryEntry,
   saveListeningTime,
   isSameActivity,
   isSameActivityIgnore,

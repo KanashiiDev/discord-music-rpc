@@ -2037,40 +2037,35 @@ function waitForScrollbar(instance, timeout = 1000) {
 }
 
 // Send Action to background with retry
-async function sendAction(action, payload = {}, retry = 0) {
-  try {
-    const response = await browser.runtime.sendMessage({ action, ...payload });
+async function sendAction(action, payload = {}) {
+  for (let retry = 0; retry < 10; retry++) {
+    try {
+      const response = await browser.runtime.sendMessage({ action, ...payload });
 
-    // If no response
-    if (!response) {
-      if (retry < 10) {
+      // If no response
+      if (response === undefined) {
         await new Promise((r) => setTimeout(r, 200));
-        return sendAction(action, payload, retry + 1);
+        continue;
       }
-      return { ok: false, error: "No response from background after retries" };
-    }
 
-    // If the response is not an object or the ok field is missing, fallback
-    if (typeof response !== "object" || response.ok === undefined) {
-      return { ok: false, error: "Invalid response format from background" };
-    }
+      if (response && typeof response === "object" && "ok" in response) {
+        return response;
+      }
 
-    return response;
-  } catch (err) {
-    const errMsg = err?.message || JSON.stringify(err);
+      return { ok: true, data: response };
+    } catch (err) {
+      const msg = err?.message || "";
 
-    // If the background is not ready yet or is reloading
-    if (/Receiving end does not exist|Could not establish connection/i.test(errMsg)) {
-      if (retry < 10) {
+      if (/Receiving end does not exist|Could not establish connection/i.test(msg)) {
         await new Promise((r) => setTimeout(r, 200));
-        return sendAction(action, payload, retry + 1);
+        continue;
       }
-      return { ok: false, error: "Receiving end not found after retries" };
-    }
 
-    // Other unexpected errors
-    return { ok: false, error: errMsg };
+      return { ok: false, error: msg };
+    }
   }
+
+  return { ok: false, error: "No response after retries" };
 }
 
 function getCurrentStyleAttributes() {
