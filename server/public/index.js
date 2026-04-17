@@ -42,7 +42,7 @@ export function stopAutoUpdate() {
 }
 
 window.onload = async () => {
-  await i18n.load("locales/server");
+  await i18n.load("server");
   applyTranslations();
   initTheme();
   initEventListeners();

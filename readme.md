@@ -55,6 +55,7 @@ Required to communicate with Discord and display your music status.
 - [How to Add a New Music Site](#-how-to-add-a-new-music-site)
 - [Filter Management](#-filter-management)
 - [Developer Setup](#-developer-setup)
+- [Contributing](#-contributing)
 - [License](#-license)
 
 ## 🚀 Features
@@ -1087,6 +1088,17 @@ npm install
 - **[PostCSS](https://github.com/postcss/postcss)** & **[Autoprefixer](https://github.com/postcss/autoprefixer)** - CSS processing and automatic vendor prefixing
 - **[Acorn](https://github.com/acornjs/acorn)** - JavaScript parser
 - **[Pako](https://github.com/nodeca/pako)** - High-performance compression library
+
+---
+
+## 🤝 Contributing
+
+You can contribute in several ways:
+
+- **Create new Activities** - [Add a new parser (Option 3)](#-how-to-add-a-new-music-site)
+- **Help translate** the project on [Crowdin](https://crowdin.com/project/discord-music-rpc)
+- **Report bugs or request features** via [GitHub Issues](https://github.com/kanashiiDev/discord-music-rpc/issues)
+- **Support the project** by sharing it and helping others discover it
 
 ---
 

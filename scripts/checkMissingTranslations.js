@@ -13,44 +13,48 @@ function getKeys(obj, prefix = "") {
 }
 
 /**
- * Checks for missing translation keys in the server and extension folders
- * under sourceDir, using en.json as the reference for each folder.
- * @param {string} sourceDir - Root directory containing server/ and extension/
+ * Checks for missing translation keys across all locales.
+ * Uses en/{namespace}.json as the reference for each namespace.
+ *
+ * @param {string} sourceDir - Root directory (the "locales" folder)
+ * @param {string[]} targets  - Namespaces to check, e.g. ["server", "extension"]
  * @returns {Object} Report of missing keys per target and locale.
  *   Example: { server: { de: ["key1", "a.b"] }, extension: {} }
  */
 function checkMissingTranslations(sourceDir, targets = ["server", "extension"]) {
   const report = {};
 
+  // Collect all lang dirs (skip "en" — it's the reference)
+  const langDirs = fs
+    .readdirSync(sourceDir, { withFileTypes: true })
+    .filter((item) => item.isDirectory() && item.name !== "en")
+    .map((item) => item.name);
+
   for (const target of targets) {
-    const targetDir = path.join(sourceDir, target);
-
-    if (!fs.existsSync(targetDir)) {
-      console.warn(`[${target}] Directory not found, skipping: ${targetDir}`);
-      continue;
-    }
-
     report[target] = {};
 
-    const enJsonPath = path.join(targetDir, "en.json");
-    if (!fs.existsSync(enJsonPath)) {
-      console.warn(`[${target}] en.json not found, skipping: ${enJsonPath}`);
+    // Reference file: locales/en/{namespace}.json
+    const refPath = path.join(sourceDir, "en", `${target}.json`);
+    if (!fs.existsSync(refPath)) {
+      console.warn(`[${target}] Reference file not found, skipping: ${refPath}`);
       continue;
     }
 
-    const enKeys = getKeys(fs.readJsonSync(enJsonPath));
+    const enKeys = getKeys(fs.readJsonSync(refPath));
 
-    const jsonFiles = fs.readdirSync(targetDir, { withFileTypes: true }).filter((item) => item.isFile() && item.name.endsWith(".json") && item.name !== "en.json");
+    for (const lang of langDirs) {
+      const filePath = path.join(sourceDir, lang, `${target}.json`);
 
-    for (const file of jsonFiles) {
-      const locale = path.basename(file.name, ".json");
-      const filePath = path.join(targetDir, file.name);
+      if (!fs.existsSync(filePath)) {
+        console.warn(`[${target}] "${lang}" file not found, skipping: ${filePath}`);
+        continue;
+      }
 
       let localeData;
       try {
         localeData = fs.readJsonSync(filePath);
       } catch (err) {
-        console.error(`[${target}/${file.name}] Failed to parse JSON: ${err.message}`);
+        console.error(`[${target}/${lang}.json] Failed to parse JSON: ${err.message}`);
         continue;
       }
 
@@ -58,7 +62,7 @@ function checkMissingTranslations(sourceDir, targets = ["server", "extension"]) 
       const missing = enKeys.filter((key) => !localeKeys.includes(key));
 
       if (missing.length > 0) {
-        report[target][locale] = missing;
+        report[target][lang] = missing;
       }
     }
   }

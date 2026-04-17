@@ -85,17 +85,18 @@
 
     /**
      * Resolve the base URL for locale files.
-     * - Extension context  → browser.runtime.getURL("locales/extension")
-     * - All other contexts → the namespace value, defaulting to "/locales"
+     * - Extension context  → browser.runtime.getURL("extension")
+     * - All other contexts → "/locales"
+     * File structure: locales/{lang}/{namespace}.json
      */
     _resolveBase(namespace) {
       if (namespace === "extension") {
         if (!this._isExtension()) {
           throw new Error(`${LOG_PREFIX} namespace="extension" requires a browser extension context.`);
         }
-        return browser.runtime.getURL("locales/extension");
+        return browser.runtime.getURL("locales");
       }
-      return namespace ?? "/locales";
+      return "/locales";
     }
 
     /**
@@ -169,12 +170,12 @@
       const base = this._resolveBase(namespace);
       const ns = namespace ?? "__default__";
 
-      let main = await this._fetch(`${base}/${lang}.json`);
+      let main = await this._fetch(`${base}/${lang}/${ns}.json`);
 
       if (main == null) {
         if (lang !== this.fallbackLang) {
           console.log(`${LOG_PREFIX} "${lang}" not found, falling back to "${this.fallbackLang}".`);
-          main = (await this._fetch(`${base}/${this.fallbackLang}.json`)) ?? {};
+          main = (await this._fetch(`${base}/${this.fallbackLang}/${ns}.json`)) ?? {};
           this.lang = this.fallbackLang;
         } else {
           console.warn(`${LOG_PREFIX} Fallback language "${this.fallbackLang}" also missing for base "${base}".`);
@@ -186,7 +187,7 @@
       }
 
       // Only fetch a separate fallback bundle when it differs from main
-      const fallback = this.lang !== this.fallbackLang ? ((await this._fetch(`${base}/${this.fallbackLang}.json`)) ?? main) : main;
+      const fallback = this.lang !== this.fallbackLang ? ((await this._fetch(`${base}/${this.fallbackLang}/${ns}.json`)) ?? main) : main;
 
       this._translations[ns] = main;
       this._fallback[ns] = fallback;
