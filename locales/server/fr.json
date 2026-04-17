@@ -3,6 +3,7 @@
 
   "common.all": "Tout",
   "common.noResults": "Aucun résultat.",
+  "common.save": "Enregistrer",
 
   "actions.toggle_view": "Changer de vue",
   "actions.settings": "Paramètres",
@@ -60,6 +61,15 @@
   "chart.summary.tracks_played": "Morceaux lus",
 
   "chart.summary.empty": "Aucune donnée pour cette période.",
+
+  "chart.capture.title": "Disposition",
+  "chart.capture.resolution": "Résolution",
+  "chart.capture.small": "Petit",
+  "chart.capture.medium": "Moyen",
+  "chart.capture.large": "Grand",
+  "chart.capture.wide": "Large",
+  "chart.capture.tall": "Haut",
+  "chart.capture.auto": "Auto",
 
   "settings.title": "Paramètres",
   "settings.save": "Enregistrer les modifications",

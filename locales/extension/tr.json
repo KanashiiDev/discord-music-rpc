@@ -104,6 +104,7 @@
 
   "parserlist.search_site": "Site ara...",
   "parserlist.filter_category": "Kategori / Etikete Göre Filtrele",
+  "parserList.delete.confirm": "Bu siteyi silmek istediğinizden emin misiniz? \n({site})",
 
   "parserManager.title": "Web Sitelerini Seçin",
   "parserManager.desc": "Kullanmak istediğiniz web sitelerini seçin. İstediğiniz zaman değiştirebilirsiniz.",

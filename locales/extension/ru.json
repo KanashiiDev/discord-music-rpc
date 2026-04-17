@@ -104,6 +104,7 @@
 
   "parserlist.search_site": "Поиск сайта...",
   "parserlist.filter_category": "Фильтр по категории / тегу",
+  "parserList.delete.confirm": "Вы уверены, что хотите удалить этот сайт? \n({site})",
 
   "parserManager.title": "Выберите веб-сайты",
   "parserManager.desc": "Выберите веб-сайты, которые хотите использовать. Вы можете изменить их в любое время.",

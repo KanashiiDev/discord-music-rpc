@@ -150,7 +150,7 @@ function createCategoryTagsSection(category, tags) {
 function createDeleteButton(id, title, domain, addListener, onDeleted) {
   const btn = Object.assign(document.createElement("a"), {
     className: "del-user-parser",
-    title: "Delete",
+    title: i18n.t("common.delete"),
   });
   btn.appendChild(createSVG(svg_paths.trashIconPaths));
   Object.assign(btn.dataset, { parserId: id, parserTitle: title, parserDomain: domain });
@@ -158,7 +158,7 @@ function createDeleteButton(id, title, domain, addListener, onDeleted) {
   addListener(btn, "click", async (e) => {
     e.stopPropagation();
     const { parserId, parserTitle } = e.currentTarget.dataset;
-    if (!confirm(`Do you want to delete "${parserTitle}" parser?`)) return;
+    if (!confirm(i18n.t("parserList.delete.confirm", { site: parserTitle }))) return;
 
     const [storage, { parserEnabledState: state = {} }] = await Promise.all([
       browser.storage.local.get(["userParserSelectors", "parserList"]),
@@ -188,7 +188,7 @@ function createDeleteButton(id, title, domain, addListener, onDeleted) {
 function createEditScriptButton(id, addListener) {
   const btn = Object.assign(document.createElement("a"), {
     className: "edit-user-script",
-    title: "Edit user script",
+    title: i18n.t("common.edit"),
   });
   btn.appendChild(createSVG(svg_paths.gearIconPaths));
   btn.dataset.parserId = id;

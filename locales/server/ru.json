@@ -3,6 +3,7 @@
 
   "common.all": "Все",
   "common.noResults": "Нет результатов.",
+  "common.save": "Сохранить",
 
   "actions.toggle_view": "Сменить вид",
   "actions.settings": "Настройки",
@@ -60,6 +61,15 @@
   "chart.summary.tracks_played": "Треков проиграно",
 
   "chart.summary.empty": "Нет данных за этот период.",
+
+  "chart.capture.title": "Макет",
+  "chart.capture.resolution": "Разрешение",
+  "chart.capture.small": "Маленький",
+  "chart.capture.medium": "Средний",
+  "chart.capture.large": "Большой",
+  "chart.capture.wide": "Широкий",
+  "chart.capture.tall": "Высокий",
+  "chart.capture.auto": "Авто",
 
   "settings.title": "Настройки",
   "settings.save": "Сохранить изменения",

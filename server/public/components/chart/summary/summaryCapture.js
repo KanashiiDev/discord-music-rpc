@@ -1,10 +1,10 @@
 import { createSVG } from "../../../utils.js";
 
 export const CAPTURE_PRESETS = [
-  { id: "summary-small", label: "Small", width: 1080, widthVertical: 560, maxLengthWide: 56, maxLengthTall: 57 },
-  { id: "summary-medium", label: "Medium", width: 1200, widthVertical: 620, maxLengthWide: 68, maxLengthTall: 68 },
-  { id: "summary-large", label: "Large", width: 1320, widthVertical: 680, maxLengthWide: 78, maxLengthTall: 79 },
-  { id: "summary-wide", label: "Wide", width: 1400, widthVertical: 740, maxLengthWide: 84, maxLengthTall: 90 },
+  { id: "summary-small", label: "Small", i18n: "chart.capture.small", width: 1080, widthVertical: 560, maxLengthWide: 56, maxLengthTall: 57 },
+  { id: "summary-medium", label: "Medium", i18n: "chart.capture.medium", width: 1200, widthVertical: 620, maxLengthWide: 68, maxLengthTall: 68 },
+  { id: "summary-large", label: "Large", i18n: "chart.capture.large", width: 1320, widthVertical: 680, maxLengthWide: 78, maxLengthTall: 79 },
+  { id: "summary-wide", label: "Wide", i18n: "chart.capture.wide", width: 1400, widthVertical: 740, maxLengthWide: 84, maxLengthTall: 90 },
 ];
 
 let _visible = false;
@@ -65,19 +65,19 @@ function _buildMenu(anchorEl) {
   const LAYOUT_OPTIONS = [
     {
       id: "wide",
-      label: "Wide",
+      label: i18n.t("chart.capture.wide"),
       svgPaths: ["M1 3a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V3Z", "M15 3a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2h-6a2 2 0 0 1-2-2V3Z"],
       svgOptions: { width: 28, height: 22, viewBox: "0 0 26 22", strokeWidth: 1.5 },
     },
     {
       id: "tall",
-      label: "Tall",
+      label: i18n.t("chart.capture.tall"),
       svgPaths: ["M1 3a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V3Z", "M1 17a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2v-6Z"],
       svgOptions: { width: 22, height: 28, viewBox: "0 0 22 28", strokeWidth: 1.5 },
     },
   ];
 
-  const layoutSection = _makeSection("Layout");
+  const layoutSection = _makeSection(i18n.t("chart.capture.title"));
   const layoutRow = document.createElement("div");
   layoutRow.className = "capture-menu-layout-row";
 
@@ -101,7 +101,7 @@ function _buildMenu(anchorEl) {
 
       for (const preset of CAPTURE_PRESETS) {
         const dimsEl = presetList.querySelector(`[data-preset="${preset.id}"] .capture-preset-dims`);
-        if (dimsEl) dimsEl.textContent = `${_getActiveWidth(preset, selectedLayout)} × Auto`;
+        if (dimsEl) dimsEl.textContent = `${_getActiveWidth(preset, selectedLayout)} × ${i18n.t("chart.capture.auto")}`;
       }
     });
 
@@ -113,7 +113,7 @@ function _buildMenu(anchorEl) {
   // Resolution section
   let selectedPreset = CAPTURE_PRESETS[0].id;
 
-  const resSection = _makeSection("Resolution");
+  const resSection = _makeSection(i18n.t("chart.capture.resolution"));
   const presetList = document.createElement("div");
   presetList.className = "capture-preset-list";
 
@@ -125,10 +125,11 @@ function _buildMenu(anchorEl) {
     const name = document.createElement("span");
     name.className = "capture-preset-name";
     name.textContent = preset.label;
+    name.dataset.i18n = preset.i18n;
 
     const dims = document.createElement("span");
     dims.className = "capture-preset-dims";
-    dims.textContent = `${preset.width} × Auto`;
+    dims.textContent = `${preset.width} × ${i18n.t("chart.capture.auto")}`;
 
     item.append(name, dims);
 
@@ -150,7 +151,7 @@ function _buildMenu(anchorEl) {
 
   const saveBtn = document.createElement("button");
   saveBtn.className = "capture-menu-action-btn";
-  saveBtn.textContent = "Save";
+  saveBtn.textContent = i18n.t("common.save");
   saveBtn.addEventListener("click", () => {
     const preset = CAPTURE_PRESETS.find((p) => p.id === selectedPreset) ?? CAPTURE_PRESETS[0];
     closeCaptureMenu();
@@ -164,6 +165,7 @@ function _buildMenu(anchorEl) {
   requestAnimationFrame(() => {
     document.addEventListener("pointerdown", _onOutsidePointer, true);
     _applyLayoutPreview("wide");
+    applyTranslations();
   });
 }
 

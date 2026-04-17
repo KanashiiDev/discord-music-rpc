@@ -3,6 +3,7 @@
 
   "common.all": "All",
   "common.noResults": "No results.",
+  "common.save": "Save",
 
   "actions.toggle_view": "Change View",
   "actions.settings": "Settings",
@@ -60,6 +61,15 @@
   "chart.summary.tracks_played": "Tracks Played",
 
   "chart.summary.empty": "No data for this period.",
+
+  "chart.capture.title": "Layout",
+  "chart.capture.resolution": "Resolution",
+  "chart.capture.small": "Small",
+  "chart.capture.medium": "Medium",
+  "chart.capture.large": "Large",
+  "chart.capture.wide": "Wide",
+  "chart.capture.tall": "Tall",
+  "chart.capture.auto": "Auto",
 
   "settings.title": "Settings",
   "settings.save": "Save Changes",

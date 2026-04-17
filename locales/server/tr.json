@@ -3,6 +3,7 @@
 
   "common.all": "Tümü",
   "common.noResults": "Sonuç yok.",
+  "common.save": "Kaydet",
 
   "actions.toggle_view": "Görünümü Değiştir",
   "actions.settings": "Ayarlar",
@@ -60,6 +61,15 @@
   "chart.summary.tracks_played": "Çalınan Parça",
 
   "chart.summary.empty": "Bu dönem için veri bulunamadı.",
+
+  "chart.capture.title": "Düzen",
+  "chart.capture.resolution": "Çözünürlük",
+  "chart.capture.small": "Küçük",
+  "chart.capture.medium": "Orta",
+  "chart.capture.large": "Büyük",
+  "chart.capture.wide": "Geniş",
+  "chart.capture.tall": "Uzun",
+  "chart.capture.auto": "Otomatik",
 
   "settings.title": "Ayarlar",
   "settings.save": "Değişiklikleri Kaydet",
