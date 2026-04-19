@@ -100,11 +100,20 @@ const errorFilter = (() => {
     /update failed \(no response\)/i,
     /Request timed out/i,
     /signal is aborted without reason/i,
+    /Nonexistent script ID/i,
+    /Cannot read properties of undefined \(reading \'getScripts\'\)/i,
+    /No compatible userscript API available/i,
   ];
 
+  const normalizeError = (err) => {
+    if (!err) return "";
+    if (typeof err === "string") return err;
+    return err.message || err.stack || String(err);
+  };
+
   const shouldIgnore = (error) => {
-    const errorString = error?.message?.toLowerCase() || error?.toString?.()?.toLowerCase() || "";
-    return ignorePatterns.some((re) => re.test(errorString));
+    const text = normalizeError(error);
+    return ignorePatterns.some((re) => re.test(text));
   };
 
   return { shouldIgnore };
