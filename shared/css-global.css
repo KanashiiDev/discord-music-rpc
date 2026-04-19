@@ -347,6 +347,140 @@ svg:not(.flatpickr-calendar svg):not(.IroHandle) {
   margin-right: 2px;
 }
 
+.dlg-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+.dlg-overlay.active {
+  display: flex;
+}
+
+.dlg-box {
+  background: var(--background-color);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 20px 22px;
+  min-width: 270px;
+  max-width: 340px;
+  width: 90%;
+  box-shadow: 0 8px 28px var(--shadow-color);
+}
+
+.dlg-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 12px;
+  font-size: 16px;
+  font-weight: 700;
+  user-select: none;
+}
+
+.dlg-icon.danger {
+  background: var(--alert-color);
+  color: var(--red-color);
+}
+
+.dlg-icon.warn {
+  background: var(--warning-color);
+  color: var(--yellow-color);
+}
+
+.dlg-icon.info {
+  background: var(--accent-color);
+  color: var(--text-color-btn);
+}
+
+.dlg-title {
+  font-size: var(--font-h3);
+  font-weight: 600;
+  color: var(--text-color-primary);
+  margin: 0 0 6px;
+}
+.dlg-body {
+  font-size: var(--font-md);
+  color: var(--text-color-secondary);
+  margin: 0 0 16px;
+  line-height: 1.5;
+}
+
+.dlg-tag {
+  display: inline-block;
+  background: var(--foreground-color-200);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  padding: 2px 8px;
+  font-size: var(--font-sm);
+  color: var(--text-color-muted);
+  margin-top: 5px;
+  font-family: monospace;
+}
+
+.dlg-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.dlg-actions-extra {
+  display: flex;
+  gap: 8px;
+  margin-right: auto;
+}
+
+.dlg-btn {
+  background: var(--foreground-color-200);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-default);
+  color: var(--text-color-primary);
+  font-size: var(--font-md);
+  padding: 6px 13px;
+  cursor: pointer;
+  transition: background var(--transition-reduced-fast);
+}
+.dlg-btn:hover {
+  background: var(--foreground-color-300);
+}
+.dlg-btn.primary {
+  background: var(--accent-color);
+  border-color: var(--accent-color-border);
+  color: var(--text-color-primary);
+}
+.dlg-btn.primary:hover {
+  background: var(--accent-color-bright);
+}
+.dlg-btn.danger {
+  border-color: var(--red-color-dark);
+  color: var(--red-color);
+}
+.dlg-btn.danger:hover {
+  background: var(--history-entry-delete-color);
+}
+
+.dlg-error {
+  display: block;
+  min-height: 16px;
+  font-size: var(--font-sm);
+  color: var(--red-color);
+  margin-top: 5px;
+  margin-bottom: 6px;
+}
+
+.dlg-input {
+  max-width: 100% !important;
+  width: 100% !important;
+  font-size: var(--font-md);
+  padding: 7px 10px !important;
+}
+
 @-webkit-keyframes loadingBar {
   0% {
     -webkit-transform: scaleX(0);

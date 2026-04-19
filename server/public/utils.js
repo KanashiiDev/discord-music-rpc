@@ -109,7 +109,7 @@ export function createSVG(paths, options = {}) {
   const key = paths.join("");
   if (svgCache.has(key)) return svgCache.get(key).cloneNode(true);
 
-  const { width = 24, height = 24, stroke = "var(--icon-color)", strokeWidth = 1.4, fill = "none", viewBox = "0 0 28 28" } = options;
+  const { width = 16, height = 16, stroke = "var(--icon-color)", strokeWidth = 1.4, fill = "none", viewBox = "-1 -1 25.5 25.5" } = options;
   const cacheKey = `${paths.join("|")}|${width}|${height}|${stroke}|${strokeWidth}|${fill}|${viewBox}`;
 
   if (svgCache.has(cacheKey)) {
@@ -161,6 +161,7 @@ export const svg_paths = {
      0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83 l-.06.06a1.65 1.65 0 0 0-.33 1.82v.09a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4 h-.09a1.65 1.65 0 0 0-1.51 1z`,
   ],
   back: ["M19 20l-8-8 8-8"],
+  pen: ["M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25z", "M20.71 7.04a1.003 1.003 0 0 0 0-1.42l-2.34-2.34a1.003 1.003 0 0 0-1.42 0l-1.83 1.83 3.75 3.75 1.84-1.82z"],
 };
 
 export function getTotalHeight(element, elementParent) {

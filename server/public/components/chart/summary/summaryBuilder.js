@@ -1,4 +1,67 @@
-import { loadImage } from "../../../utils.js";
+import { createSVG, loadImage, svg_paths } from "../../../utils.js";
+
+const STORAGE_KEY = "summary-custom-images";
+
+function getCustomImages() {
+  return JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
+}
+
+function makeTitleKey(title) {
+  return "title:" + encodeURIComponent(title.toLowerCase().trim());
+}
+
+function makeImageKey(url) {
+  return encodeURIComponent(url);
+}
+
+function saveCustomImage(originalUrl, customUrl) {
+  const images = getCustomImages();
+
+  images[makeImageKey(originalUrl)] = customUrl;
+
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(images));
+}
+
+function saveCustomImageByTitle(title, customUrl) {
+  const images = getCustomImages();
+  images[makeTitleKey(title)] = customUrl;
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(images));
+}
+
+function getCustomImage(originalUrl, title) {
+  const images = getCustomImages();
+  if (title) {
+    const byTitle = images[makeTitleKey(title)];
+    if (byTitle) return byTitle;
+  }
+  return images[makeImageKey(originalUrl)] || null;
+}
+
+async function openImageChangeDialog(currentUrl, title, onSave, onRemove) {
+  const images = getCustomImages();
+  const hasCustom = !!images[makeImageKey(currentUrl)] || !!(title && images[makeTitleKey(title)]);
+
+  const newUrl = await showPrompt(i18n.t("chart.summary.dialog.title"), currentUrl || "", {
+    placeholder: "https://example.com/image.jpg",
+    extraButtons: hasCustom ? [{ label: i18n.t("common.remove"), cls: "danger", value: "__remove__" }] : [],
+    validator: (val) => {
+      try {
+        const parsed = new URL(val);
+        if (!["http:", "https:"].includes(parsed.protocol)) return i18n.t("chart.summary.dialog.error.protocol");
+        return null;
+      } catch {
+        return i18n.t("chart.summary.dialog.error.protocol");
+      }
+    },
+  });
+
+  if (!newUrl) return;
+  if (newUrl === "__remove__") {
+    onRemove?.();
+    return;
+  }
+  onSave(newUrl);
+}
 
 /** Renders the minutes/tracks hero block. */
 export function buildMinutesView(data) {
@@ -68,6 +131,37 @@ export function buildRankedList(items, type) {
     img.alt = "";
     imgWrap.appendChild(img);
 
+    const overlay = document.createElement("button");
+    overlay.className = "summary-img-overlay";
+    overlay.type = "button";
+
+    overlay.addEventListener("click", async (e) => {
+      e.stopPropagation();
+
+      const itemTitle = isSongs ? item.title || null : item.displayName || item.name || null;
+
+      openImageChangeDialog(
+        item.image,
+        itemTitle,
+        (newUrl) => {
+          if (itemTitle) saveCustomImageByTitle(itemTitle, newUrl);
+          else saveCustomImage(item.image, newUrl);
+          loadImage({ target: img, src: newUrl });
+        },
+        () => {
+          const images = getCustomImages();
+          delete images[makeImageKey(item.image)];
+          if (itemTitle) delete images[makeTitleKey(itemTitle)];
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(images));
+          loadImage({ target: img, src: item.image });
+        },
+      );
+    });
+
+    overlay.appendChild(createSVG(svg_paths.pen));
+
+    imgWrap.appendChild(overlay);
+
     const info = document.createElement("div");
     info.className = "summary-info";
 
@@ -114,7 +208,13 @@ export function buildRankedList(items, type) {
     }
 
     wrap.appendChild(row);
-    loadImage({ target: img, src: item.image });
+
+    const customImage = getCustomImage(item.image, isSongs ? item.title : item.displayName || item.name);
+
+    loadImage({
+      target: img,
+      src: customImage || item.image,
+    });
   }
 
   return wrap;
