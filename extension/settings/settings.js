@@ -1,10 +1,3 @@
-// LOG helper
-function log(msg) {
-  const logEl = document.getElementById("log");
-  logEl.classList.add("visible");
-  logEl.textContent += msg + "\n";
-}
-
 function applySectionFromUrl() {
   const params = new URLSearchParams(window.location.search);
   const sectionParam = params.get("section");

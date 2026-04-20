@@ -701,7 +701,7 @@ class UserScriptUI {
     if (result?.ok) {
       await this.refreshList();
     } else {
-      alert(`${action} failed: ${result?.error || "Unknown error"}`);
+      showAlert(action, result?.error || "Unknown error", "warn");
     }
   }
 
@@ -717,7 +717,7 @@ class UserScriptUI {
     if (result?.ok) {
       await this.refreshList();
     } else {
-      alert(`Toggle failed: ${result?.error || "Unknown error"}`);
+      showAlert("Toggle Failed", result?.error || "Unknown error", "warn");
     }
   }
 
@@ -730,14 +730,19 @@ class UserScriptUI {
   };
 
   async onDelete(id, title) {
-    if (!confirm(`Are you sure you want to delete this script? \n[${title}]`)) return;
-
+    if (
+      !(await showConfirm("", {
+        heading: i18n.t("userscript.editor.confirm.delete") + `\n[${title}]`,
+        body: "",
+      }))
+    )
+      return;
     const result = await sendAction("deleteUserScript", { id });
 
     if (result?.ok) {
       await this.refreshList();
     } else {
-      alert("Delete failed: " + (result?.error || "Unknown error"));
+      showAlert("Delete failed: ", result?.error || "Unknown error", "warn");
     }
   }
 
@@ -849,7 +854,7 @@ class UserScriptUI {
 
       await this.refreshList?.();
     } catch (err) {
-      alert("Import failed: " + err.message);
+      showAlert("Import failed", err.message || "Unknown error", "warn");
     } finally {
       e.target.value = "";
     }
@@ -1093,7 +1098,7 @@ class UserScriptUI {
     let scripts = resp?.list || [];
 
     if (!scripts.length) {
-      alert(i18n.t("userscript.export.warn.noScripts"));
+      showAlert(i18n.t("userscript.export.warn.noScripts"), "", "warn");
       return;
     }
 
@@ -1101,7 +1106,7 @@ class UserScriptUI {
     if (options.type === "single" && options.scriptId) {
       scripts = scripts.filter((s) => s.id === options.scriptId);
       if (!scripts.length) {
-        alert(i18n.t("userscript.export.warn.notFound"));
+        showAlert(i18n.t("userscript.export.warn.notFound"), "", "warn");
         return;
       }
     }
@@ -1132,6 +1137,7 @@ class UserScriptUI {
     a.download = fileName;
     a.click();
     URL.revokeObjectURL(url);
+    showAlert(i18n.t("backup.export.complete"));
   }
 
   // Export Menu

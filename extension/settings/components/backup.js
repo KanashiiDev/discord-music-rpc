@@ -26,9 +26,9 @@ function initBackupButtons() {
       a.download = `discord-music-rpc-backup-${dateString}.json`;
       a.click();
       URL.revokeObjectURL(url);
-      log(i18n.t("backup.export.complete"));
+      showAlert(i18n.t("backup.export.complete"));
     } catch (err) {
-      log("Export failed: " + err.message);
+      showAlert("Export failed: " + err.message);
     }
   };
 
@@ -59,7 +59,7 @@ function initBackupButtons() {
         }
         browser.runtime.reload();
       } catch (err) {
-        log("Import failed: " + (err.message || err));
+        showAlert("Import failed: " + (err.message || err));
       }
     };
 

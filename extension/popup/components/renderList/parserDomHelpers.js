@@ -158,7 +158,14 @@ function createDeleteButton(id, title, domain, addListener, onDeleted) {
   addListener(btn, "click", async (e) => {
     e.stopPropagation();
     const { parserId, parserTitle } = e.currentTarget.dataset;
-    if (!confirm(i18n.t("parserList.delete.confirm", { site: parserTitle }))) return;
+
+    if (
+      !(await showConfirm("", {
+        heading: i18n.t("parserList.delete.confirm", { site: parserTitle }),
+        body: "",
+      }))
+    )
+      return;
 
     const [storage, { parserEnabledState: state = {} }] = await Promise.all([
       browser.storage.local.get(["userParserSelectors", "parserList"]),

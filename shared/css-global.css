@@ -369,6 +369,14 @@ svg:not(.flatpickr-calendar svg):not(.IroHandle) {
   max-width: 340px;
   width: 90%;
   box-shadow: 0 8px 28px var(--shadow-color);
+  box-sizing: border-box;
+}
+
+.dlg-header {
+  display: grid;
+  grid-template-columns: 45px 1fr;
+  align-items: center;
+  margin-bottom: 12px;
 }
 
 .dlg-icon {
@@ -378,7 +386,6 @@ svg:not(.flatpickr-calendar svg):not(.IroHandle) {
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: 12px;
   font-size: 16px;
   font-weight: 700;
   user-select: none;
@@ -394,7 +401,8 @@ svg:not(.flatpickr-calendar svg):not(.IroHandle) {
   color: var(--yellow-color);
 }
 
-.dlg-icon.info {
+.dlg-icon.info,
+.dlg-icon.edit {
   background: var(--accent-color);
   color: var(--text-color-btn);
 }
@@ -403,7 +411,6 @@ svg:not(.flatpickr-calendar svg):not(.IroHandle) {
   font-size: var(--font-h3);
   font-weight: 600;
   color: var(--text-color-primary);
-  margin: 0 0 6px;
 }
 .dlg-body {
   font-size: var(--font-md);
@@ -440,9 +447,10 @@ svg:not(.flatpickr-calendar svg):not(.IroHandle) {
   background: var(--foreground-color-200);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-default);
-  color: var(--text-color-primary);
+  color: var(--text-color-secondary);
   font-size: var(--font-md);
   padding: 6px 13px;
+  outline: none;
   cursor: pointer;
   transition: background var(--transition-reduced-fast);
 }
@@ -452,7 +460,7 @@ svg:not(.flatpickr-calendar svg):not(.IroHandle) {
 .dlg-btn.primary {
   background: var(--accent-color);
   border-color: var(--accent-color-border);
-  color: var(--text-color-primary);
+  color: var(--text-color-btn);
 }
 .dlg-btn.primary:hover {
   background: var(--accent-color-bright);

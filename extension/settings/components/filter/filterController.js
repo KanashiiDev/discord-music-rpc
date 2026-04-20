@@ -59,11 +59,21 @@ const FilterListController = {
 
     const isReplace = FilterUtils.isReplaceFilter(filter);
 
-    if (!confirm(i18n.t("filter.confirm.delete"))) return;
+    if (
+      !(await showConfirm("", {
+        heading: i18n.t("filter.confirm.delete"),
+        body: "",
+      }))
+    )
+      return;
 
     // Ask about reverting for replace filters
     if (isReplace) {
-      const shouldRevert = confirm(i18n.t("filter.confirm.restore"));
+      const shouldRevert = await showConfirm("", {
+        type: "info",
+        heading: i18n.t("filter.confirm.restore"),
+        labelCancel: i18n.t("common.close"),
+      });
 
       if (shouldRevert) {
         await sendAction("filterHistoryReplace", {

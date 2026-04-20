@@ -82,7 +82,7 @@ const ParserController = {
     const selection = this.getSelection();
 
     if (selection.length === 0) {
-      alert(i18n.t("parserManager.selectOne"));
+      showAlert(i18n.t("parserManager.selectOne"), "", "warn");
       return false;
     }
 
@@ -95,13 +95,16 @@ const ParserController = {
 
     // All selected are orphaned - hard block
     if (orphanedIds.length === selection.length) {
-      alert(i18n.t("filter.warn.noneSelectedSites"));
+      showAlert(i18n.t("filter.warn.noneSelectedSites"), "", "warn");
       return false;
     }
 
     // Some orphaned - warn and ask
     const orphanedCount = orphanedIds.length;
-    const confirmed = confirm(i18n.t("filter.warn.noneSelectedSites", { count: orphanedCount }));
+    const confirmed = showConfirm("", {
+      heading: i18n.t("filter.warn.noneSelectedSites", { count: orphanedCount }),
+      body: "",
+    });
 
     if (confirmed) {
       // Strip orphaned IDs before save proceeds

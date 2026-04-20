@@ -107,9 +107,14 @@ export const SettingsManager = {
   },
 
   async reset() {
-    if (!confirm(i18n.t("settings.message.reset"))) {
+    if (
+      !(await showConfirm("", {
+        type: "danger",
+        heading: i18n.t("settings.message.reset"),
+        labelOk: i18n.t("common.confirm"),
+      }))
+    )
       return;
-    }
 
     try {
       const response = await fetch("/reset-settings", { method: "POST" });

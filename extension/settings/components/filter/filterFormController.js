@@ -175,7 +175,12 @@ const FormController = {
 
     // Ask about reverting if editing replace filter
     if (hasReplace && FilterState.form.editingFilterId) {
-      const shouldRevert = confirm(i18n.t("filter.confirm.restore"));
+      const shouldRevert = await showConfirm("", {
+        type: "info",
+        heading: i18n.t("filter.confirm.restore"),
+        labelCancel: i18n.t("common.close"),
+      });
+
       if (shouldRevert) {
         const filter = FilterState.parserFilters.find((f) => f.id === FilterState.form.editingFilterId);
         if (filter) {
@@ -199,7 +204,7 @@ const FormController = {
     const validEntries = entries.filter((e) => e.artist.trim() || e.title.trim());
 
     if (validEntries.length === 0) {
-      alert(i18n.t("filter.warn.empty"));
+      showAlert(i18n.t("filter.warn.empty"), "", "warn");
       return null;
     }
 
@@ -207,7 +212,7 @@ const FormController = {
     if (isReplace) {
       const missing = validEntries.some((e) => (e.artist.trim() || e.title.trim()) && !e.replaceArtist.trim() && !e.replaceTitle.trim());
       if (missing) {
-        alert(i18n.t("filter.warn.emptyReplace"));
+        showAlert(i18n.t("filter.warn.emptyReplace"), "", "warn");
         return null;
       }
     }
@@ -245,7 +250,7 @@ const FormController = {
       );
 
       if (newUnique.length === 0) {
-        alert(i18n.t("filter.warn.exists"));
+        showAlert(i18n.t("filter.warn.exists"), "", "warn");
         return;
       }
 
@@ -274,7 +279,7 @@ const FormController = {
       if (editingFilterId) {
         const idx = FilterState.parserFilters.findIndex((f) => f.id === editingFilterId);
         if (idx === -1) {
-          alert(i18n.t("filter.notFound"));
+          showAlert(i18n.t("filter.notFound"), "", "warn");
           return;
         }
         FilterState.parserFilters[idx] = { ...FilterState.parserFilters[idx], ...filterData, updatedAt: new Date().toISOString() };

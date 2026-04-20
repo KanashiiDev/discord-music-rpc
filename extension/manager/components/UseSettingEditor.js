@@ -128,12 +128,12 @@ class UseSettingEditor {
 
   makeCopyButton(outputDiv) {
     return this.makeButton(
-      "Copy",
+      i18n.t("userscript.useSettingEditor.copy"),
       async (e) => {
         try {
           await navigator.clipboard.writeText(outputDiv.textContent);
           e.target.textContent = i18n.t("userscript.useSettingEditor.copied");
-          setTimeout(() => (e.target.textContent = "Copy"), 1500);
+          setTimeout(() => (e.target.textContent = i18n.t("userscript.useSettingEditor.copy")), 1500);
         } catch (err) {
           e.target.textContent = i18n.t("userscript.export.status.error") + ": " + err;
         }

@@ -100,6 +100,23 @@ function exitCleaningMode() {
 }
 
 const handleClearButtonClick = async () => {
+  if (!historyState.fullHistory.length) {
+    await showAlert(i18n.t("history.warn.empty"), "", "warn");
+    return;
+  }
+
+  const selectedIndexes = Array.from(document.querySelectorAll(".history-checkbox:checked"))
+    .filter((cb) => cb.closest(".history-entry")?.style.display !== "none")
+    .map((cb) => parseInt(cb.dataset.index));
+  const filteredSet = new Set(historyState.filteredHistory.map((e) => historyState.fullHistory.indexOf(e)));
+
+  if (historyState.isFiltering) {
+    if (filteredSet.size === 0) {
+      await showAlert(i18n.t("history.warn.empty"), "", "warn");
+      return;
+    }
+  }
+
   if (!historyState.cleaningMode && historyState.fullHistory.length) {
     historyState.cleaningMode = true;
     document.body.classList.add("cleaning-mode");
@@ -110,26 +127,28 @@ const handleClearButtonClick = async () => {
     return;
   }
 
-  if (!historyState.fullHistory.length) {
-    alert(i18n.t("history.warn.empty"));
-    exitCleaningMode();
-    return;
-  }
-
-  const selectedIndexes = Array.from(document.querySelectorAll(".history-checkbox:checked"))
-    .filter((cb) => cb.closest(".history-entry")?.style.display !== "none")
-    .map((cb) => parseInt(cb.dataset.index));
-
   if (selectedIndexes.length === 0) {
     if (historyState.isFiltering) {
-      const filteredSet = new Set(historyState.filteredHistory.map((e) => historyState.fullHistory.indexOf(e)));
-      if (!confirm(i18n.t("history.confirm.delete", { count: filteredSet.size }))) return;
+      if (
+        !(await showConfirm("", {
+          heading: i18n.t("history.confirm.delete", { count: filteredSet.size }),
+          body: "",
+        }))
+      )
+        return;
       showPopupMessage(i18n.t("popupMessage.deleting"), "warning", null, 1);
       const deletedEntries = historyState.fullHistory.filter((_, i) => filteredSet.has(i));
       historyState.fullHistory = historyState.fullHistory.filter((_, i) => !filteredSet.has(i));
       await sendAction("syncDeleteToServer", { data: deletedEntries });
     } else {
-      if (!confirm(i18n.t("history.confirm.deleteAll", { count: historyState.fullHistory.length }))) return;
+      if (
+        !(await showConfirm("", {
+          heading: i18n.t("history.confirm.deleteAll", { count: historyState.fullHistory.length }),
+          body: "",
+        }))
+      )
+        return;
+
       showPopupMessage(i18n.t("popupMessage.deleting"), "warning", null, 1);
       await sendAction("syncDeleteToServer", { data: historyState.fullHistory });
       historyState.fullHistory = [];
@@ -138,7 +157,13 @@ const handleClearButtonClick = async () => {
     const indexSet = new Set(selectedIndexes);
     const count = selectedIndexes.length;
     const key = count > 1 ? "popupMessage.deleteHistory.other" : "popupMessage.deleteHistory.one";
-    if (!confirm(i18n.t(key, { count }))) return;
+    if (
+      !(await showConfirm("", {
+        heading: i18n.t(key, { count }),
+        body: "",
+      }))
+    )
+      return;
 
     showPopupMessage(i18n.t("popupMessage.deleting"), "warning", null, 1);
     const deletedEntries = historyState.fullHistory.filter((_, i) => indexSet.has(i));

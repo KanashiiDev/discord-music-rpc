@@ -1074,14 +1074,11 @@ input[type="number"] {
 .summary-img-overlay {
   position: absolute;
   inset: 0;
-
   display: flex;
   align-items: center;
   justify-content: center;
-
   opacity: 0;
   transition: opacity 0.2s;
-
   background: rgba(0, 0, 0, 0.45);
   border: 0;
   cursor: pointer;
@@ -1089,6 +1086,10 @@ input[type="number"] {
 
 .summary-img-wrap:hover .summary-img-overlay {
   opacity: 1;
+}
+
+.summary-img-overlay svg {
+  stroke: var(--text-color-btn);
 }
 
 .summary-img {
@@ -1278,8 +1279,12 @@ input[type="number"] {
 }
 
 .capture-layout-btn.active {
-  color: var(--text-color-secondary);
+  color: var(--text-color-btn);
   background: var(--accent-color);
+}
+
+.capture-layout-btn.active svg {
+  stroke: var(--text-color-btn);
 }
 
 .capture-layout-btn svg {
@@ -1354,7 +1359,7 @@ input[type="number"] {
   background: var(--accent-color);
   border: none;
   border-radius: 7px;
-  color: var(--text-color-primary);
+  color: var(--text-color-btn);
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;

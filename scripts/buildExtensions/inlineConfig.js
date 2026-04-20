@@ -14,6 +14,9 @@ module.exports = function registerInlines(inlineUtilsFunctions) {
   // Tom Select Plugins
   inlineUtilsFunctions(["popup/popup.js"], "../shared/tom-select-plugins.js", [], [], "end");
 
+  // Dialog
+  inlineUtilsFunctions(["common/utils.js"], "../shared/dialog.js", [], [], "start");
+
   // Truncate
   inlineUtilsFunctions(["common/utils.js", "popup/selector/selector.js", "background.js"], "../shared/utils.js", ["truncate", "normalizeTitleAndArtist"]);
 

@@ -43,7 +43,7 @@ async function openImageChangeDialog(currentUrl, title, onSave, onRemove) {
 
   const newUrl = await showPrompt(i18n.t("chart.summary.dialog.title"), currentUrl || "", {
     placeholder: "https://example.com/image.jpg",
-    extraButtons: hasCustom ? [{ label: i18n.t("common.remove"), cls: "danger", value: "__remove__" }] : [],
+    extraButtons: hasCustom ? [{ label: i18n.t("common.delete"), cls: "danger", value: "__remove__" }] : [],
     validator: (val) => {
       try {
         const parsed = new URL(val);

@@ -115,21 +115,6 @@ button.history-action-btn.replace-btn.edit-mode {
   background: var(--accent-color-bright);
 }
 
-#log {
-  display: none;
-}
-
-#log.visible {
-  display: block;
-  padding: 10px;
-  font-size: 12px;
-  background: var(--foreground-color-100);
-  border-radius: var(--radius-default);
-  white-space: pre-wrap;
-  max-height: 300px;
-  overflow-y: auto;
-}
-
 .container {
   padding: 20px 40px;
 }
