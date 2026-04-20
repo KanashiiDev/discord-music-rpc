@@ -1,7 +1,7 @@
 import { HC_RANGES, chartState } from "../chart.js";
 import { createSVG, svg_paths } from "../../../utils.js";
 import { buildSummaryData } from "./summaryData.js";
-import { buildMinutesView, buildRankedList } from "./summaryBuilder.js";
+import { buildMinutesView, buildRankedList, buildArtistDrillDown } from "./summaryBuilder.js";
 import { captureSummaryPanel, initCaptureMenu, toggleCaptureMenu, closeCaptureMenu } from "./summaryCapture.js";
 
 // Chart element visibility
@@ -45,6 +45,18 @@ function renderPanel(range) {
   if (!content) return;
 
   content.replaceChildren();
+
+  // Wire drill-down events (once per render, delegated on content)
+  content.addEventListener(
+    "summary:artistClick",
+    (e) => {
+      buildArtistDrillDown(e.detail.artist, _cachedData);
+    },
+    { once: true },
+  );
+
+  const panel2 = panel; // alias for clarity inside listener
+  panel2.addEventListener("summary:back", () => renderPanel(chartState.range), { once: true });
 
   const periodLabel = panel.querySelector(".summary-period-label");
   if (periodLabel) periodLabel.textContent = HC_RANGES[range].getLabel(chartState.offset);

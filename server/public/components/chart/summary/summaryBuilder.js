@@ -1,4 +1,5 @@
 import { createSVG, loadImage, svg_paths } from "../../../utils.js";
+import { getArtistTopSongs } from "./summaryData.js";
 
 const STORAGE_KEY = "summary-custom-images";
 
@@ -95,6 +96,69 @@ export function buildMinutesView(data) {
   return wrap;
 }
 
+/**
+ * Builds the artist drill-down view (top 10 songs for one artist).
+ * Replaces `.summary-content` children, adds a back button in the header.
+ * @param {object} artist  - item from topArtists
+ * @param {object} summaryData  - full data returned by buildSummaryData (with _songMap)
+ */
+export function buildArtistDrillDown(artist, summaryData) {
+  const panel = document.getElementById("chartSummaryPanel");
+  if (!panel) return;
+
+  const content = panel.querySelector(".summary-content");
+  if (!content) return;
+
+  // Header: inject back button + artist title
+  const periodLabel = panel.querySelector(".summary-period-label");
+  if (periodLabel) {
+    // Save original label text so we can restore it on back
+    periodLabel.dataset.savedLabel ??= periodLabel.textContent;
+
+    // Replace period label with back button + artist name
+    const backBtn = document.createElement("button");
+    backBtn.className = "summary-back-btn";
+    backBtn.type = "button";
+    backBtn.appendChild(createSVG(svg_paths.leftChev));
+
+    const artistTitle = document.createElement("span");
+    artistTitle.className = "summary-artist-drilldown-title";
+    artistTitle.textContent = artist.displayName || artist.name;
+
+    periodLabel.replaceChildren(backBtn, artistTitle);
+
+    backBtn.addEventListener("click", () => _closeDrillDown(panel, summaryData));
+  }
+
+  // Content: artist hero + song list
+  content.replaceChildren();
+  content.classList.add("summary-content--drilldown");
+
+  // Top songs list
+  const songs = getArtistTopSongs(summaryData, artist.name);
+  const songList = buildRankedList(songs, "songs");
+  songList.classList.add("summary-ranked-list--drilldown");
+  content.appendChild(songList);
+}
+
+function _closeDrillDown(panel) {
+  const content = panel.querySelector(".summary-content");
+  const periodLabel = panel.querySelector(".summary-period-label");
+
+  // Restore original period label
+  if (periodLabel && periodLabel.dataset.savedLabel !== undefined) {
+    periodLabel.textContent = periodLabel.dataset.savedLabel;
+    delete periodLabel.dataset.savedLabel;
+  }
+
+  if (content) {
+    content.classList.remove("summary-content--drilldown");
+  }
+
+  // Re-render the main summary view - import renderPanel lazily via a custom event
+  panel.dispatchEvent(new CustomEvent("summary:back", { bubbles: true }));
+}
+
 /** Renders a ranked list of songs or artists. */
 export function buildRankedList(items, type) {
   const wrap = document.createElement("div");
@@ -115,7 +179,6 @@ export function buildRankedList(items, type) {
   for (const [idx, item] of items.entries()) {
     const row = document.createElement("div");
     row.className = idx === 0 ? "summary-row summary-row--top" : "summary-row";
-    row.style.animationDelay = `${idx * 40}ms`;
 
     const rank = document.createElement("div");
     rank.className = "summary-rank";
@@ -205,6 +268,14 @@ export function buildRankedList(items, type) {
 
     if (isSongs && item.songUrl) {
       row.addEventListener("click", () => window.open(item.songUrl, "_blank", "noopener,noreferrer"));
+    }
+
+    if (!isSongs) {
+      row.classList.add("summary-row--clickable");
+      row.addEventListener("click", (e) => {
+        if (e.target.closest(".summary-img-overlay")) return;
+        row.dispatchEvent(new CustomEvent("summary:artistClick", { bubbles: true, detail: { artist: item } }));
+      });
     }
 
     wrap.appendChild(row);

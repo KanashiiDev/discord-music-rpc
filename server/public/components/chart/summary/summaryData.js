@@ -154,5 +154,24 @@ export function buildSummaryData(range) {
     topArtists,
     totalMinutes: Math.round(totalMs / 60_000),
     totalSongs: items.length,
+    _songMap: songMap,
+    _displayNames: displayNames,
   };
+}
+
+/**
+ * Returns the top 10 songs for a given artist norm key within the cached summary data.
+ * @param {{ _songMap: Map, _displayNames: Record<string,string> }} summaryData
+ * @param {string} artistNorm  - the normalized artist key (item.name from topArtists)
+ * @returns {Array}
+ */
+export function getArtistTopSongs(summaryData, artistNorm) {
+  const { _songMap } = summaryData;
+  if (!_songMap) return [];
+
+  return [..._songMap.entries()]
+    .filter(([key]) => key.endsWith(`__${artistNorm}`))
+    .map(([, song]) => song)
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 10);
 }

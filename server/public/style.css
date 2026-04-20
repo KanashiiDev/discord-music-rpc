@@ -755,6 +755,7 @@ input[type="number"] {
   font-size: 13px;
 }
 
+.summary-back-btn,
 #chartPeriodNext,
 #chartPeriodPrev {
   cursor: pointer;
@@ -999,6 +1000,8 @@ input[type="number"] {
 }
 
 .summary-period-label {
+  display: flex;
+  gap: 6px;
   font-size: 0.7rem;
   font-weight: 600;
   letter-spacing: 0.08em;
@@ -1009,6 +1012,10 @@ input[type="number"] {
 .summary-content {
   padding: 0 16px 16px;
   overflow: hidden;
+}
+
+.summary-content--drilldown {
+  margin-top: 10px;
 }
 
 .summary-ranked-list {
@@ -1036,6 +1043,8 @@ input[type="number"] {
   cursor: default;
 }
 
+.summary-row--clickable,
+.summary-ranked-list--drilldown .summary-row,
 .summary-column-left .summary-row {
   cursor: pointer;
 }
@@ -1125,6 +1134,10 @@ input[type="number"] {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.summary-ranked-list--drilldown .summary-sub {
+  display: none;
 }
 
 .summary-right {

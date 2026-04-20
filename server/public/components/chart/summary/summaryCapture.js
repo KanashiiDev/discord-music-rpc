@@ -196,7 +196,7 @@ export async function captureSummaryPanel({ layout = "wide", preset = CAPTURE_PR
       logging: false,
       proxy: `${location.href}/proxy`,
 
-      ignoreElements: (e) => e.classList.contains("summary-capture") || e.id === "captureMenu",
+      ignoreElements: (e) => e.classList.contains("summary-capture") || e.classList.contains("summary-back-btn") || e.id === "captureMenu",
 
       onclone: (doc) => {
         const original = doc.getElementById("chartSummaryPanel");
