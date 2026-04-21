@@ -103,8 +103,8 @@ function truncate(str, maxLength = 128, { fallback = "Unknown", minLength = 2, m
 }
 
 function normalizeTitleAndArtist(title, artist, replaceArtist = true) {
-  let dataTitle = title?.trim() || "";
-  let dataArtist = artist?.trim() || "";
+  let dataTitle = (typeof title === "string" ? title : "").trim();
+  let dataArtist = (typeof artist === "string" ? artist : "").trim();
   if (!dataTitle) return { title: dataTitle, artist: dataArtist };
 
   const calculateSimilarity = (str1, str2) => {

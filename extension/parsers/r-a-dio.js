@@ -12,6 +12,11 @@ registerParser({
     const sourceElem = "https://r-a-d.io/";
     const timePassedElem = getText("#progress-current");
     const timeElem = getText("#progress-max");
+    const isPlaying = Boolean(
+      document.querySelector("#stream-play-pause")?.textContent.startsWith("Stop") ||
+      navigator?.mediaSession?.playbackState === "playing" ||
+      (document.querySelector("audio") && !document.querySelector("audio").paused),
+    );
 
     return {
       title: titleElem,
@@ -21,7 +26,7 @@ registerParser({
       songUrl: sourceElem,
       timePassed: timePassedElem,
       duration: timeElem,
-      isPlaying: Boolean(document.querySelector("#stream-play-pause")?.textContent.startsWith("Stop")),
+      isPlaying,
     };
   },
 });

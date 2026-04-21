@@ -46,6 +46,11 @@ registerParser({
     const timePassed = getText(".playbackTimeline__timePassed span:nth-child(2)");
     const duration = getText(".playbackTimeline__duration span:nth-child(2)");
 
+    const isPlaying = Boolean(
+      document.querySelector("#app > .playControls .playControl svg path")?.getAttribute("d")?.startsWith("M10") ||
+      document.querySelector("#app > .playControls .playControl.playing"),
+    );
+
     return {
       title,
       artist,
@@ -54,7 +59,7 @@ registerParser({
       duration,
       source: "SoundCloud",
       songUrl: url,
-      isPlaying: Boolean(document.querySelector("#app > .playControls .playControl")?.title?.includes("Pause")),
+      isPlaying,
     };
   },
 });

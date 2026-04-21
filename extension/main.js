@@ -11,6 +11,7 @@ const state = {
   lastPauseState: null,
   pendingUpdateReason: null,
   lastBlockedLog: null,
+  isFirstUpdate: true,
   debugStats: {
     failedUpdates: 0,
     connectionLost: 0,
@@ -117,6 +118,7 @@ async function mainLoop() {
     if (isChanged) {
       rpcState.reset();
       state.lastRawPosition = 0;
+      state.isFirstUpdate = true;
     }
 
     // Seed position once
@@ -132,7 +134,26 @@ async function mainLoop() {
     const progress = song.progress !== undefined ? song.progress : hasValidDuration && hasValidPosition ? Math.min(100, (song.position / song.duration) * 100) : null;
 
     const timeSinceLastUpdate = Date.now() - (state.lastUpdateTime || Date.now());
-    const playerPlaying = song.isPlaying !== undefined ? song.isPlaying : true;
+
+    // Audible Check
+    let audibleCheck = null;
+    try {
+      audibleCheck = await browser.runtime.sendMessage({ type: "IS_TAB_AUDIBLE" });
+    } catch (_) {}
+
+    const isPlayingAudio = !!song.isPlaying;
+    const isAudible = !!audibleCheck?.audible;
+
+    // Playing Detection
+    let playerPlaying;
+
+    if (isAudible) {
+      playerPlaying = true;
+    } else if (song.isPlaying !== undefined) {
+      playerPlaying = song.isPlaying;
+    } else {
+      playerPlaying = false;
+    }
 
     const { isSeeking, isPaused } = rpcState.analyzePlayback(song.position, song.duration, playerPlaying);
 
@@ -154,8 +175,13 @@ async function mainLoop() {
       state.pendingUpdateReason = null;
     } else {
       if (isSeeking) state.pendingUpdateReason = "Seek Detected";
-      if (isPaused !== state.lastPauseState && state.lastPauseState !== null) {
-        state.pendingUpdateReason = isPaused ? "Paused" : "Resumed";
+
+      if (state.lastPauseState === null) {
+        state.lastPauseState = isPaused;
+      } else if (isPaused !== state.lastPauseState) {
+        if (state.pendingUpdateReason !== "Seek Detected") {
+          state.pendingUpdateReason = isPaused ? "Paused" : "Resumed";
+        }
       }
 
       if (timeSinceLastUpdate >= CONSTANTS.ACTIVE_INTERVAL) {
@@ -174,16 +200,7 @@ async function mainLoop() {
 
     state.lastPauseState = isPaused;
 
-    // Audible Check
-    let audibleCheck = null;
-    try {
-      audibleCheck = await browser.runtime.sendMessage({ type: "IS_TAB_AUDIBLE" });
-    } catch (_) {}
-
-    const isPlayingAudio = !!song.isPlaying;
-    const isAudible = !!audibleCheck?.audible;
-
-    if (!isAudible && !isPlayingAudio) {
+    if (!playerPlaying) {
       if (rpcState.lastActivity?.lastUpdated) await handleNoSong();
       state.lastUpdateStatus = "skipped";
       state.isUpdating = false;
@@ -211,7 +228,8 @@ async function mainLoop() {
 
     if (didUpdate && isValidNumber(song.position)) {
       state.lastRawPosition = song.position;
-      state.lastUpdateTime = Date.now();
+      state.lastUpdateTime = state.isFirstUpdate ? Date.now() - CONSTANTS.NORMAL_UPDATE_INTERVAL : Date.now();
+      state.isFirstUpdate = false;
       state.lastUpdateStatus = "updated";
     } else {
       state.lastUpdateStatus = "failed";

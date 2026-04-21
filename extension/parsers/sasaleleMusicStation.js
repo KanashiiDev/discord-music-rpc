@@ -18,7 +18,7 @@ registerParser({
       stationName = "Sasalele Music Station";
     }
     if (artist === "Visit radio's homepage for playing info" || artist === "Stream not active" || artist === "Unknown" || artist === "Loading...") {
-      artist = -1;
+      artist = "-1";
     }
 
     if (/\.webp(\?.*)?$/i.test(image)) {

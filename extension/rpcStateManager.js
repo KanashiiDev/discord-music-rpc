@@ -6,7 +6,6 @@ window.RPCStateManager = class {
     this.lastPosition = 0;
     this.seekTimeout = null;
     this.errorCount = 0;
-    this.analyzeCallCount = 0;
 
     // Has Only Duration Mode
     this.durationTimer = 0;
@@ -28,14 +27,14 @@ window.RPCStateManager = class {
 
   analyzePlayback(currentPos, duration, isPlaying) {
     const now = Date.now();
-    this.analyzeCallCount++;
 
     if (typeof currentPos !== "number" || isNaN(currentPos)) {
       this.lastCheckTime = now;
       return { isPaused: !isPlaying, isSeeking: false };
     }
 
-    if (this.lastCheckTime === null || this.analyzeCallCount <= 2) {
+    const justStarted = now - this.trackStartTime < 3000;
+    if (this.lastCheckTime === null || justStarted) {
       this.lastCheckTime = now;
       this.lastKnownPosition = currentPos;
       return { isPaused: !isPlaying, isSeeking: false };
@@ -59,7 +58,8 @@ window.RPCStateManager = class {
     const threshold = hasValidDuration ? Math.min(baseThreshold, duration / 3) : baseThreshold;
 
     const isSeeking = hasPrevPos && !this.hasOnlyDuration && drift > threshold;
-    const positionFrozen = hasPrevPos && Math.abs(currentPos - this.lastKnownPosition) < 0.15 && elapsedWallTime > 2.0;
+    const movementThreshold = Math.max(0.5, elapsedWallTime * 0.5);
+    const positionFrozen = hasPrevPos && Math.abs(currentPos - this.lastKnownPosition) < movementThreshold && elapsedWallTime > 3.0;
     const isPaused = !isPlaying || (!isSeeking && positionFrozen);
 
     this.lastCheckTime = now;
@@ -175,7 +175,6 @@ window.RPCStateManager = class {
     this.hasOnlyDurationCount = 0;
     this.lastValidPosition = null;
     this.lastValidDuration = null;
-    this.analyzeCallCount = 0;
     this.resetDurationTimer();
     this.resetRemainingState();
     this.trackStartTime = Date.now();

@@ -18,7 +18,7 @@ registerParser({
       image,
       source: stationName,
       songUrl: location.href,
-      isPlaying: Boolean(document.querySelector("[data-player-target='playBarPlayButton']")?.ariaLabel === "Stop"),
+      isPlaying: Boolean(document.querySelector("[data-player-target='playBarPlayButton']")?.ariaLabel === "Stop" || document.querySelector("use[href='#icon-stop']")),
     };
   },
 });

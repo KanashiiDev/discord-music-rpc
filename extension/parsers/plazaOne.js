@@ -20,7 +20,7 @@ registerParser({
       songUrl: sourceElem,
       timePassed: timeElem,
       duration: timeElem,
-      isPlaying: Boolean(document.querySelector("button.player-play")?.textContent === "Stop"),
+      isPlaying: Boolean(document.querySelector(".col-3") || navigator?.mediaSession?.playbackState === "playing"),
     };
   },
 });
