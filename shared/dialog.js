@@ -216,16 +216,66 @@ async function showPrompt(
           errorEl.textContent = "";
         }
         done(v);
+        return v;
       };
 
-      box.querySelector(".dlg-btn.primary").addEventListener("click", trySubmit);
+      setTimeout(() => {
+        const primaryBtn = box.querySelector(".dlg-btn.primary");
+        const cancelBtn = Array.from(box.querySelectorAll(".dlg-btn")).find((btn) => !btn.classList.contains("primary") && !btn.classList.contains("danger"));
+
+        if (primaryBtn) {
+          const newPrimary = primaryBtn.cloneNode(true);
+          primaryBtn.parentNode.replaceChild(newPrimary, primaryBtn);
+
+          newPrimary.addEventListener("click", (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            trySubmit();
+          });
+        }
+
+        if (cancelBtn) {
+          const newCancel = cancelBtn.cloneNode(true);
+          cancelBtn.parentNode.replaceChild(newCancel, cancelBtn);
+
+          newCancel.addEventListener("click", (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            done(null);
+          });
+        }
+
+        if (extraButtons.length > 0) {
+          const dangerBtns = box.querySelectorAll(".dlg-btn.danger");
+          dangerBtns.forEach((btn, index) => {
+            const newDanger = btn.cloneNode(true);
+            btn.parentNode.replaceChild(newDanger, btn);
+
+            newDanger.addEventListener("click", (e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              const extraBtn = extraButtons[index];
+              done(extraBtn.value || "__extra__");
+            });
+          });
+        }
+      }, 10);
 
       input.addEventListener("input", () => {
         if (errorEl.textContent) errorEl.textContent = "";
       });
+
       input.addEventListener("keydown", (e) => {
-        if (e.key === "Enter") trySubmit();
-        if (e.key === "Escape") done(null);
+        if (e.key === "Enter") {
+          e.preventDefault();
+          e.stopPropagation();
+          trySubmit();
+        }
+        if (e.key === "Escape") {
+          e.preventDefault();
+          e.stopPropagation();
+          done(null);
+        }
       });
 
       input.focus();

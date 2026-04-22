@@ -67,7 +67,7 @@ export const LogRenderer = {
               LogState.fullData = [];
             }
 
-            if (!this._scrollManagerActivated) {
+            if (!this._scrollManagerActivated || reset) {
               await ScrollManager.activate("logs", simpleBars.logs, LogRenderer, LogState, "logsWrapper", "logs");
               this._scrollManagerActivated = true;
             }

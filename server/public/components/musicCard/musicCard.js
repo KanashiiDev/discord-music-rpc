@@ -174,10 +174,7 @@ let _unsubscribeActivity = null;
 
 // Start the music card
 export function initMusicCard() {
-  if (_unsubscribeActivity) {
-    _unsubscribeActivity();
-    _unsubscribeActivity = null;
-  }
+  destroyMusicCard();
 
   // Update static fields (title, artist, cover, etc.) when fetching
   _unsubscribeActivity = DataStore.subscribe("activity", () => {
@@ -185,7 +182,6 @@ export function initMusicCard() {
   });
 
   // Update the UI every 1 second
-  if (uiUpdateInterval) clearInterval(uiUpdateInterval);
   uiUpdateInterval = setInterval(updateMusicCardUI, 1050);
 }
 

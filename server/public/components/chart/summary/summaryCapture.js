@@ -9,6 +9,7 @@ export const CAPTURE_PRESETS = [
 
 let _visible = false;
 let _onCapture = null;
+let _outsideListenerActive = false;
 
 export function initCaptureMenu({ onCapture } = {}) {
   _onCapture = onCapture ?? null;
@@ -30,7 +31,10 @@ export function openCaptureMenu(anchorEl) {
 export function closeCaptureMenu() {
   _visible = false;
   document.getElementById("captureMenu")?.remove();
-  document.removeEventListener("pointerdown", _onOutsidePointer, true);
+  if (_outsideListenerActive) {
+    document.removeEventListener("pointerdown", _onOutsidePointer, true);
+    _outsideListenerActive = false;
+  }
   _applyLayoutPreview();
 }
 
@@ -154,8 +158,13 @@ function _buildMenu(anchorEl) {
   saveBtn.textContent = i18n.t("common.save");
   saveBtn.addEventListener("click", () => {
     const preset = CAPTURE_PRESETS.find((p) => p.id === selectedPreset) ?? CAPTURE_PRESETS[0];
+    if (_onCapture) {
+      _onCapture({ layout: selectedLayout, preset });
+    } else {
+      captureSummaryPanel({ layout: selectedLayout, preset });
+    }
+
     closeCaptureMenu();
-    _onCapture?.({ layout: selectedLayout, preset });
   });
 
   footer.appendChild(saveBtn);
@@ -163,7 +172,9 @@ function _buildMenu(anchorEl) {
   anchorEl.appendChild(menu);
 
   requestAnimationFrame(() => {
+    if (!_visible) return;
     document.addEventListener("pointerdown", _onOutsidePointer, true);
+    _outsideListenerActive = true;
     _applyLayoutPreview("wide");
     applyTranslations();
   });

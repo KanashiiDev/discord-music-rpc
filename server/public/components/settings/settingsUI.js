@@ -2,6 +2,7 @@ import { dom, simpleBars } from "../../core/dom.js";
 import { SettingsManager } from "./settingsManager.js";
 import { formatKeyName, displayValue, getDisplayMinMax, hasChanges } from "./settingsHelpers.js";
 import { startAutoUpdate, stopAutoUpdate } from "../../index.js";
+import { initMusicCard, destroyMusicCard } from "../musicCard/musicCard.js";
 
 const createElement = (tag, className = "", attributes = {}) => {
   const element = document.createElement(tag);
@@ -145,6 +146,7 @@ export const toggleSettings = (show) => {
   setTimeout(() => {
     if (show) {
       stopAutoUpdate();
+      destroyMusicCard();
       dom.main.style.display = "none";
       dom.settings.container.style.display = "block";
       dom.settings.toggle.style.display = "none";
@@ -158,13 +160,21 @@ export const toggleSettings = (show) => {
       dom.settings.toggle.style.display = "block";
       dom.containerToggle.style.display = "block";
       startAutoUpdate();
+      initMusicCard();
     }
     dom.container.classList.remove("switch");
   }, 300);
 };
 
+let _langTsInstance = null;
+
 export const initLanguageSelect = async (container) => {
   if (!container) return;
+
+  if (_langTsInstance) {
+    _langTsInstance.destroy();
+    _langTsInstance = null;
+  }
 
   try {
     const response = await fetch("locales/languages.json");
@@ -188,7 +198,7 @@ export const initLanguageSelect = async (container) => {
     wrapper.append(label, select);
     container.appendChild(wrapper);
 
-    new TomSelect(select, {
+    _langTsInstance = new TomSelect(select, {
       controlInput: null,
       sortField: false,
       plugins: {

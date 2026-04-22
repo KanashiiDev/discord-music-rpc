@@ -2,9 +2,18 @@ import { createSVG, loadImage, svg_paths } from "../../../utils.js";
 import { getArtistTopSongs } from "./summaryData.js";
 
 const STORAGE_KEY = "summary-custom-images";
+let _imageCache = null;
 
 function getCustomImages() {
-  return JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
+  if (!_imageCache) {
+    _imageCache = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
+  }
+  return _imageCache;
+}
+
+function _saveImages(images) {
+  _imageCache = images;
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(images));
 }
 
 function makeTitleKey(title) {
@@ -17,16 +26,14 @@ function makeImageKey(url) {
 
 function saveCustomImage(originalUrl, customUrl) {
   const images = getCustomImages();
-
   images[makeImageKey(originalUrl)] = customUrl;
-
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(images));
+  _saveImages(images);
 }
 
 function saveCustomImageByTitle(title, customUrl) {
   const images = getCustomImages();
   images[makeTitleKey(title)] = customUrl;
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(images));
+  _saveImages(images);
 }
 
 function getCustomImage(originalUrl, title) {
@@ -197,29 +204,8 @@ export function buildRankedList(items, type) {
     const overlay = document.createElement("button");
     overlay.className = "summary-img-overlay";
     overlay.type = "button";
-
-    overlay.addEventListener("click", async (e) => {
-      e.stopPropagation();
-
-      const itemTitle = isSongs ? item.title || null : item.displayName || item.name || null;
-
-      openImageChangeDialog(
-        item.image,
-        itemTitle,
-        (newUrl) => {
-          if (itemTitle) saveCustomImageByTitle(itemTitle, newUrl);
-          else saveCustomImage(item.image, newUrl);
-          loadImage({ target: img, src: newUrl });
-        },
-        () => {
-          const images = getCustomImages();
-          delete images[makeImageKey(item.image)];
-          if (itemTitle) delete images[makeTitleKey(itemTitle)];
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(images));
-          loadImage({ target: img, src: item.image });
-        },
-      );
-    });
+    overlay.dataset.itemIdx = idx;
+    overlay.dataset.itemType = type;
 
     overlay.appendChild(createSVG(svg_paths.pen));
 
@@ -267,7 +253,12 @@ export function buildRankedList(items, type) {
     row.appendChild(right);
 
     if (isSongs && item.songUrl) {
-      row.addEventListener("click", () => window.open(item.songUrl, "_blank", "noopener,noreferrer"));
+      row.addEventListener("click", (e) => {
+        if (e.target.closest(".summary-img-overlay")) {
+          return;
+        }
+        window.open(item.songUrl, "_blank", "noopener,noreferrer");
+      });
     }
 
     if (!isSongs) {
@@ -281,12 +272,42 @@ export function buildRankedList(items, type) {
     wrap.appendChild(row);
 
     const customImage = getCustomImage(item.image, isSongs ? item.title : item.displayName || item.name);
-
-    loadImage({
-      target: img,
-      src: customImage || item.image,
-    });
+    loadImage({ target: img, src: customImage || item.image });
   }
+
+  wrap.addEventListener("click", async (e) => {
+    const overlay = e.target.closest(".summary-img-overlay[data-item-idx]");
+    if (!overlay) return;
+
+    e.stopPropagation();
+    e.preventDefault();
+
+    const idx = Number(overlay.dataset.itemIdx);
+    const itemType = overlay.dataset.itemType;
+    const itemIsSong = itemType === "songs";
+    const item = items[idx];
+    if (!item) return;
+
+    const img = overlay.closest(".summary-img-wrap")?.querySelector(".summary-img");
+    const itemTitle = itemIsSong ? item.title || null : item.displayName || item.name || null;
+
+    await openImageChangeDialog(
+      item.image,
+      itemTitle,
+      (newUrl) => {
+        if (itemTitle) saveCustomImageByTitle(itemTitle, newUrl);
+        else saveCustomImage(item.image, newUrl);
+        if (img) loadImage({ target: img, src: newUrl });
+      },
+      () => {
+        const images = getCustomImages();
+        delete images[makeImageKey(item.image)];
+        if (itemTitle) delete images[makeTitleKey(itemTitle)];
+        _saveImages(images);
+        if (img) loadImage({ target: img, src: item.image });
+      },
+    );
+  });
 
   return wrap;
 }

@@ -3,6 +3,7 @@ import { createSettingOption, showInfoMessage, updateChangeIndicator, clearError
 import { validateValue, convertValue, updateSaveButton, hasChanges, waitForServer } from "./settingsHelpers.js";
 
 const domSettings = dom.settings;
+let _inputListenerAc = null;
 
 const collectSettings = () => {
   const settings = { server: {} };
@@ -34,6 +35,10 @@ export const SettingsManager = {
       if (!response.ok) throw new Error("Settings fetch failed");
 
       const { server: serverSettings } = await response.json();
+      if (_inputListenerAc) {
+        _inputListenerAc.abort();
+      }
+      _inputListenerAc = new AbortController();
 
       dom.settings.form.replaceChildren();
 
@@ -50,13 +55,17 @@ export const SettingsManager = {
       await new Promise((res) => setTimeout(res, 50));
 
       dom.settings.form.querySelectorAll("input").forEach((input) => {
-        input.addEventListener("input", updateChangeIndicator);
+        input.addEventListener("input", updateChangeIndicator, { signal: _inputListenerAc.signal });
         if (input.type === "number") {
-          input.addEventListener("blur", () => {
-            const def = JSON.parse(input.dataset.def);
-            const val = validateValue(input.value, def);
-            val.valid ? clearError(input) : showError(input, val.error);
-          });
+          input.addEventListener(
+            "blur",
+            () => {
+              const def = JSON.parse(input.dataset.def);
+              const val = validateValue(input.value, def);
+              val.valid ? clearError(input) : showError(input, val.error);
+            },
+            { signal: _inputListenerAc.signal },
+          );
         }
       });
       updateChangeIndicator();

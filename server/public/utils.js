@@ -95,16 +95,29 @@ export function refreshRelativeTimes() {
 }
 
 // Refresh the dates when the tab comes to the front from the background
+function _onVisibilityChange() {
+  if (document.visibilityState === "visible") {
+    refreshRelativeTimes();
+  }
+}
+
 export function initVisibilityRefresh() {
-  document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "visible") {
-      refreshRelativeTimes();
-    }
-  });
+  document.removeEventListener("visibilitychange", _onVisibilityChange);
+  document.addEventListener("visibilitychange", _onVisibilityChange);
 }
 
 // Create SVG
+const SVG_CACHE_MAX = 50;
 const svgCache = new Map();
+
+function svgCacheSet(key, val) {
+  if (svgCache.has(key)) svgCache.delete(key);
+  svgCache.set(key, val);
+  if (svgCache.size > SVG_CACHE_MAX) {
+    svgCache.delete(svgCache.keys().next().value);
+  }
+}
+
 export function createSVG(paths, options = {}) {
   const key = paths.join("");
   if (svgCache.has(key)) return svgCache.get(key).cloneNode(true);
@@ -132,9 +145,7 @@ export function createSVG(paths, options = {}) {
     svg.appendChild(path);
   }
 
-  if (svgCache.size < 50) {
-    svgCache.set(cacheKey, svg.cloneNode(true));
-  }
+  svgCacheSet(cacheKey, svg.cloneNode(true));
 
   return svg;
 }

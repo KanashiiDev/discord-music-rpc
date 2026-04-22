@@ -3,6 +3,10 @@ import { HistoryState } from "../history/history.js";
 import { ScrollManager } from "../../manager/scrollManager.js";
 import { createSVG, svg_paths, updateSimpleBarPadding, relativeTime, fullDateTime, loadImage } from "../../utils.js";
 
+const _platformItems = new Map();
+let _detailsClickController = null;
+let _isHiding = false;
+
 // Build a single DOM node
 function hc_buildSongNode(item) {
   const wrap = document.createElement("div");
@@ -10,23 +14,24 @@ function hc_buildSongNode(item) {
 
   // Image link
   if (item.songUrl) {
-    const a = document.createElement("a");
-    a.href = item.songUrl;
-    a.target = "_blank";
-    a.rel = "noopener noreferrer";
-    a.title = i18n.t("history.goToSong");
+    const a = Object.assign(document.createElement("a"), {
+      href: item.songUrl,
+      target: "_blank",
+      rel: "noopener noreferrer",
+      title: i18n.t("history.goToSong"),
+    });
 
     const imgContainer = document.createElement("div");
     imgContainer.className = "history-image-container spinner";
 
-    const img = document.createElement("img");
-    img.className = "song-image";
-    img.alt = item.title || "";
-    img.loading = "lazy";
-    img.decoding = "async";
+    const img = Object.assign(document.createElement("img"), {
+      className: "song-image",
+      alt: item.title ?? "",
+      loading: "lazy",
+      decoding: "async",
+    });
 
     imgContainer.appendChild(img);
-
     a.appendChild(imgContainer);
     wrap.appendChild(a);
     loadImage({ target: img, src: item.image });
@@ -39,27 +44,28 @@ function hc_buildSongNode(item) {
   const dateP = document.createElement("p");
   dateP.className = "date";
   if (item.date) {
+    const ts = item.date instanceof Date ? item.date.getTime() : item.date;
     dateP.title = fullDateTime(item.date);
     dateP.textContent = relativeTime(item.date);
-    dateP.dataset.timestamp = item.date instanceof Date ? item.date.getTime() : item.date;
+    dateP.dataset.timestamp = ts;
   }
 
-  const titleH = document.createElement("h2");
-  titleH.className = "title";
-  titleH.textContent = item.title || "Unknown title";
+  const titleH = Object.assign(document.createElement("h2"), {
+    className: "title",
+    textContent: item.title || "Unknown title",
+  });
 
-  const artistP = document.createElement("p");
-  artistP.className = "artist";
-  artistP.textContent = item.artist || "";
+  const artistP = Object.assign(document.createElement("p"), {
+    className: "artist",
+    textContent: item.artist ?? "",
+  });
 
-  const sourceP = document.createElement("p");
-  sourceP.className = "source";
-  sourceP.textContent = item.source || "";
+  const sourceP = Object.assign(document.createElement("p"), {
+    className: "source",
+    textContent: item.source ?? "",
+  });
 
-  info.appendChild(dateP);
-  info.appendChild(titleH);
-  info.appendChild(artistP);
-  info.appendChild(sourceP);
+  info.append(dateP, titleH, artistP, sourceP);
   wrap.appendChild(info);
 
   return wrap;
@@ -67,28 +73,33 @@ function hc_buildSongNode(item) {
 
 // Toggle the song list for a platform row
 async function hc_toggleSongList(platformRow, songs, platName) {
-  // Close existing open list
+  if (platformRow.dataset.animating === "true") return;
+  platformRow.dataset.animating = "true";
+
+  const TRANSITION_MS = 350;
+
+  // Close existing open list for a different platform
   if (chartState.expandedPlatform && chartState.expandedPlatform !== platName) {
     const open = document.querySelector(".chart-detail-row.hc-expanded");
-    if (open) {
-      open.classList.remove("hc-expanded");
-      const existing = open.nextElementSibling;
-      if (existing?.classList.contains("hc-song-list")) {
-        ScrollManager.cleanups.get(`hcSong_${chartState.expandedPlatform}`)?.();
-        ScrollManager.cleanups.delete(`hcSong_${chartState.expandedPlatform}`);
-        ScrollManager.activeIntervals.delete(`hcSong_${chartState.expandedPlatform}`);
-        existing.classList.remove("hc-open");
-        await new Promise((resolve) => {
-          existing.addEventListener(
-            "transitionend",
-            () => {
-              existing.remove();
-              resolve();
-            },
-            { once: true },
-          );
-        });
-      }
+    const existing = open?.nextElementSibling;
+
+    if (open) open.classList.remove("hc-expanded");
+
+    if (existing?.classList.contains("hc-song-list")) {
+      existing._sbInstance?.unMount();
+      existing._sbInstance = null;
+      ScrollManager.cleanupType(`hcSong_${chartState.expandedPlatform}`);
+      existing.classList.remove("hc-open");
+
+      await new Promise((resolve) => {
+        const finish = () => {
+          existing.remove();
+          existing._sbInstance = null;
+          resolve();
+        };
+        existing.addEventListener("transitionend", finish, { once: true });
+        setTimeout(finish, TRANSITION_MS + 50);
+      });
     }
   }
 
@@ -97,40 +108,52 @@ async function hc_toggleSongList(platformRow, songs, platName) {
 
   if (isOpen) {
     platformRow.classList.remove("hc-expanded");
-    ScrollManager.cleanups.get(`hcSong_${platName}`)?.();
-    ScrollManager.cleanups.delete(`hcSong_${platName}`);
-    ScrollManager.activeIntervals.delete(`hcSong_${platName}`);
+    ScrollManager.cleanupType(`hcSong_${platName}`);
     chartState.expandedPlatform = null;
+
     const listEl = platformRow.nextElementSibling;
     if (listEl?.classList.contains("hc-song-list")) {
+      listEl._sbInstance?.unMount();
+      listEl._sbInstance = null;
       listEl.classList.remove("hc-open");
-      listEl.addEventListener("transitionend", () => listEl.remove(), { once: true });
+      const finish = () => {
+        listEl.remove();
+        listEl._sbInstance = null;
+        delete platformRow.dataset.animating;
+      };
+      listEl.addEventListener("transitionend", finish, { once: true });
+      setTimeout(finish, TRANSITION_MS + 50);
+    } else {
+      delete platformRow.dataset.animating;
     }
     return;
   }
 
+  // Open path
   platformRow.classList.add("hc-expanded");
   chartState.expandedPlatform = platName;
 
   // Build list container
-  const listWrap = document.createElement("div");
-  listWrap.className = "hc-song-list";
-  listWrap.id = "hcSongList";
+  const listWrap = Object.assign(document.createElement("div"), {
+    className: "hc-song-list",
+    id: "hcSongList",
+  });
 
-  const inner = document.createElement("div");
-  inner.className = "hc-song-list-inner";
-  inner.id = "hcSongListInner";
+  const inner = Object.assign(document.createElement("div"), {
+    className: "hc-song-list-inner",
+    id: "hcSongListInner",
+  });
+
   listWrap.appendChild(inner);
   platformRow.insertAdjacentElement("afterend", listWrap);
 
   // SimpleBar init
-  let sbInstance = null;
   if (typeof SimpleBar !== "undefined") {
-    sbInstance = new SimpleBar(listWrap, { autoHide: false });
+    listWrap._sbInstance = new SimpleBar(listWrap, { autoHide: false });
   }
 
   const sorted = [...songs].sort((a, b) => new Date(b.date) - new Date(a.date));
-  const PAGE = 20;
+  const PAGE = 8;
 
   const scrollState = {
     fullData: sorted,
@@ -141,29 +164,45 @@ async function hc_toggleSongList(platformRow, songs, platName) {
   };
 
   const scrollRenderer = {
-    _isRendering: false,
     async render({ reset }) {
       if (reset) {
         inner.textContent = "";
         scrollState.currentOffset = 0;
       }
       const slice = scrollState.fullData.slice(scrollState.currentOffset, scrollState.currentOffset + PAGE);
-      for (const item of slice) {
-        inner.appendChild(hc_buildSongNode(item));
-      }
+      const frag = document.createDocumentFragment();
+      for (const item of slice) frag.appendChild(hc_buildSongNode(item));
+      inner.appendChild(frag);
       scrollState.currentOffset += slice.length;
     },
   };
 
-  await scrollRenderer.render({ reset: true });
-
-  ScrollManager.activate(`hcSong_${platName}`, sbInstance, scrollRenderer, scrollState, "hcSongList", "songs");
+  try {
+    await scrollRenderer.render({ reset: true });
+    ScrollManager.activate(`hcSong_${platName}`, listWrap._sbInstance ?? null, scrollRenderer, scrollState, "hcSongList", "songs");
+  } catch (err) {
+    listWrap._sbInstance?.unMount();
+    listWrap._sbInstance = null;
+    listWrap.remove();
+    scrollState.fullData = [];
+    scrollState.filteredData = [];
+    platformRow.classList.remove("hc-expanded");
+    chartState.expandedPlatform = null;
+    delete platformRow.dataset.animating;
+    throw err;
+  }
 
   requestAnimationFrame(() => listWrap.classList.add("hc-open"));
   updateSimpleBarPadding("hcSongList");
+
+  delete platformRow.dataset.animating;
 }
 
 let _detailsAnimTimer = null;
+export function cancelDetailsAnimation() {
+  clearTimeout(_detailsAnimTimer);
+  _detailsAnimTimer = null;
+}
 
 function _animatePanel(panel, { fromHeight, toHeight, fromOpacity, toOpacity, onComplete }) {
   clearTimeout(_detailsAnimTimer);
@@ -179,7 +218,58 @@ function _animatePanel(panel, { fromHeight, toHeight, fromOpacity, toOpacity, on
     panel.style.opacity = String(toOpacity);
   });
 
-  _detailsAnimTimer = setTimeout(onComplete, 300);
+  _detailsAnimTimer = setTimeout(() => {
+    _detailsAnimTimer = null;
+    if (document.body.contains(panel)) {
+      onComplete();
+    }
+  }, 300);
+}
+
+// One-time click delegation on the panel
+export function initDetailsClickHandler() {
+  _detailsClickController?.abort();
+  _detailsClickController = new AbortController();
+
+  const panel = document.getElementById("chartDetails");
+  if (!panel) return;
+
+  panel.addEventListener(
+    "click",
+    (e) => {
+      if (_isHiding) return;
+      const row = e.target.closest(".chart-detail-row[data-platform]");
+      if (!row) return;
+      const items = _platformItems.get(row.dataset.platform);
+      if (items) hc_toggleSongList(row, items, row.dataset.platform);
+    },
+    { signal: _detailsClickController.signal },
+  );
+}
+
+export function destroyDetailsClickHandler() {
+  _detailsClickController?.abort();
+  _detailsClickController = null;
+}
+
+// Tear down any open song list + its scroll/SimpleBar state
+function _cleanupOpenSongList() {
+  const orphan = document.querySelector(".hc-song-list");
+  if (orphan) {
+    orphan._sbInstance?.unMount();
+    orphan._sbInstance = null;
+    orphan.remove();
+  }
+
+  if (chartState.expandedPlatform) {
+    ScrollManager.cleanupType(`hcSong_${chartState.expandedPlatform}`);
+  }
+
+  const expandedRow = document.querySelector(".chart-detail-row.hc-expanded");
+  if (expandedRow) {
+    expandedRow.classList.remove("hc-expanded");
+    delete expandedRow.dataset.animating;
+  }
 }
 
 // Populate and reveal the detail panel for the clicked bar
@@ -190,12 +280,51 @@ export function hc_showDetails(barIndex, chartData, mode, range) {
   const platformEl = document.getElementById("chartDetailsPlatforms");
   if (!panel || !titleEl || !totalEl || !platformEl) return;
 
+  _isHiding = false;
+  panel.style.pointerEvents = "";
+  cancelDetailsAnimation();
+
+  _cleanupOpenSongList();
   chartState.expandedPlatform = null;
-  titleEl.textContent = chartData.labels[barIndex] ?? "";
+  _platformItems.clear();
   totalEl.textContent = "";
   platformEl.textContent = "";
+  let titleText = "";
 
+  const locale = navigator.language || "en-US";
   const cfg = HC_RANGES[range];
+  const baseDate = new Date(cfg.getStart(chartState.offset));
+
+  if (range === "year") {
+    const d = new Date(baseDate);
+    d.setMonth(barIndex);
+    d.setDate(1);
+
+    titleText = d.toLocaleDateString(locale, {
+      month: "long",
+      year: "numeric",
+    });
+  } else if (range === "month") {
+    const d = new Date(baseDate);
+    d.setDate(d.getDate() + barIndex);
+
+    titleText = d.toLocaleDateString(locale, {
+      day: "numeric",
+      month: "long",
+    });
+  } else {
+    const d = new Date(baseDate);
+    d.setDate(d.getDate() + barIndex);
+
+    titleText = d.toLocaleDateString(locale, {
+      weekday: "long",
+    });
+  }
+
+  titleEl.textContent = titleText;
+
+  initDetailsClickHandler();
+
   const periodStart = new Date(cfg.getStart(chartState.offset));
   const isYear = range === "year";
   const targetMonth = isYear ? barIndex : null;
@@ -205,7 +334,7 @@ export function hc_showDetails(barIndex, chartData, mode, range) {
     periodStart.setHours(0, 0, 0, 0);
   }
 
-  const periodTime = periodStart.getTime();
+  const periodTime = isYear ? null : periodStart.getTime();
   const periodYear = periodStart.getFullYear();
 
   let totalCount = 0;
@@ -217,7 +346,6 @@ export function hc_showDetails(barIndex, chartData, mode, range) {
 
     const src = item.source || "Unknown";
     if (src === "Unknown") continue;
-
     if (mode === "minutes" && !(item.total_listened_ms > 0)) continue;
 
     const d = new Date(item.date);
@@ -246,54 +374,36 @@ export function hc_showDetails(barIndex, chartData, mode, range) {
 
   const minutes = Math.round(totalMs / 60_000);
 
-  let text;
-
-  if (mode === "songs") {
-    const key = totalCount === 1 ? "chart.songs" : "chart.songs_plural";
-    text = i18n.t(key, { count: totalCount });
-  } else {
-    text = i18n.t("chart.total.duration", { minutes });
-  }
-
-  totalEl.textContent = text;
+  totalEl.textContent =
+    mode === "songs" ? i18n.t(totalCount === 1 ? "chart.songs" : "chart.songs_plural", { count: totalCount }) : i18n.t("chart.total.duration", { minutes });
 
   const fragment = document.createDocumentFragment();
 
   for (const [plat, stat] of Object.entries(byPlatform).sort((a, b) => b[1].count - a[1].count)) {
     const row = document.createElement("div");
     row.className = "chart-detail-row";
+    row.dataset.platform = plat;
 
-    const name = document.createElement("span");
-    name.className = "chart-detail-platform";
-    name.textContent = plat;
+    const name = Object.assign(document.createElement("span"), {
+      className: "chart-detail-platform",
+      textContent: plat,
+    });
 
-    const val = document.createElement("span");
-    val.className = "chart-detail-value";
-    const minutes = Math.round(stat.ms / 60_000);
-
-    let text;
-
-    if (mode === "songs") {
-      const key = stat.count === 1 ? "chart.songs" : "chart.songs_plural";
-      text = i18n.t(key, { count: stat.count });
-    } else {
-      text = i18n.t("chart.tracks", {
-        count: stat.count,
-        minutes,
-      });
-    }
-
-    val.textContent = text;
+    const rowMinutes = Math.round(stat.ms / 60_000);
+    const val = Object.assign(document.createElement("span"), {
+      className: "chart-detail-value",
+      textContent:
+        mode === "songs"
+          ? i18n.t(stat.count === 1 ? "chart.songs" : "chart.songs_plural", { count: stat.count })
+          : i18n.t("chart.tracks", { count: stat.count, minutes: rowMinutes }),
+    });
 
     const chevron = document.createElement("span");
     chevron.className = "chart-detail-chevron";
     chevron.append(createSVG(svg_paths.expand));
 
     row.append(name, val, chevron);
-
-    const items = stat.items.slice();
-    row.addEventListener("click", () => hc_toggleSongList(row, items, plat));
-
+    _platformItems.set(plat, stat.items.slice());
     fragment.appendChild(row);
   }
 
@@ -318,6 +428,12 @@ export function hc_hideDetails() {
   const panel = document.getElementById("chartDetails");
   if (!panel) return;
 
+  _isHiding = true;
+  panel.style.pointerEvents = "none";
+
+  _cleanupOpenSongList();
+  _platformItems.clear();
+
   _animatePanel(panel, {
     fromHeight: panel.offsetHeight,
     toHeight: 0,
@@ -325,11 +441,20 @@ export function hc_hideDetails() {
     toOpacity: 0,
     onComplete: () => {
       panel.classList.add("hidden");
-      panel.style.height = "";
-      panel.style.opacity = "";
+      panel.style.cssText = "";
+      _isHiding = false;
     },
   });
 
   chartState.lastClickedBarIndex = null;
   chartState.expandedPlatform = null;
+}
+
+export function hc_destroyDetails() {
+  cancelDetailsAnimation();
+  destroyDetailsClickHandler();
+  _cleanupOpenSongList();
+  _platformItems.clear();
+  chartState.expandedPlatform = null;
+  chartState.lastClickedBarIndex = null;
 }

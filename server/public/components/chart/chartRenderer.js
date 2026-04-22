@@ -1,6 +1,6 @@
-import { HC_COLORS, HC_RANGES, chartState } from "./chart.js";
+import { HC_RANGES, chartState, getHcColor } from "./chart.js";
 import { hc_prepareData } from "./chartData.js";
-import { hc_showDetails, hc_hideDetails } from "./chartDetails.js";
+import { hc_showDetails, hc_hideDetails, cancelDetailsAnimation, hc_destroyDetails } from "./chartDetails.js";
 import { DataStore } from "../../core/dataStore.js";
 import { createSVG, getCSS, svg_paths } from "../../utils.js";
 import { syncSummary, toggleSummary, hideSummary as hideSummaryPanel, isSummaryVisible } from "./summary/summary.js";
@@ -8,6 +8,7 @@ import { renderChartContainer } from "./chartDom.js";
 
 // DataStore subscription reference
 let historyUnsubscribe = null;
+let _controlsBound = false;
 
 // Update Navigation Label
 function _updateNavLabel() {
@@ -59,8 +60,9 @@ function drawHistoryChart(mode, range) {
   canvas.style.display = "block";
 
   hc_destroyChart();
+  hc_destroyDetails();
 
-  const color = HC_COLORS[mode] ?? HC_COLORS.minutes;
+  const color = getHcColor(mode);
   const barThickness = HC_RANGES[range].barThickness;
   const isSongs = mode === "songs";
   const yMax = Math.ceil(chartData.maxValue * 1.12) || 1;
@@ -150,6 +152,45 @@ function drawHistoryChart(mode, range) {
               }
               return " " + i18n.t("chart.minutes_listened", { count: v });
             },
+            title(items) {
+              if (!items.length) return "";
+
+              const idx = items[0].dataIndex;
+              const locale = navigator.language || "en-US";
+              const cfg = HC_RANGES[range];
+
+              const baseDate = new Date(cfg.getStart(chartState.offset));
+              let d;
+
+              if (range === "year") {
+                d = new Date(baseDate);
+                d.setMonth(idx);
+                d.setDate(1);
+              } else {
+                d = new Date(baseDate);
+                d.setDate(d.getDate() + idx);
+              }
+
+              d.setHours(12, 0, 0, 0);
+
+              if (range === "year") {
+                return d.toLocaleDateString(locale, {
+                  month: "long",
+                  year: "numeric",
+                });
+              }
+
+              if (range === "month") {
+                return d.toLocaleDateString(locale, {
+                  day: "numeric",
+                  month: "long",
+                });
+              }
+
+              return d.toLocaleDateString(locale, {
+                weekday: "long",
+              });
+            },
           },
         },
       },
@@ -209,13 +250,11 @@ function _initNavigation() {
   const prevBtn = document.getElementById("chartPeriodPrev");
   const nextBtn = document.getElementById("chartPeriodNext");
 
-  if (prevBtn && !prevBtn.__hcBound) {
-    prevBtn.__hcBound = true;
+  if (prevBtn && !_controlsBound) {
     prevBtn.addEventListener("click", () => navigatePeriod(-1));
     prevBtn.appendChild(createSVG(svg_paths.leftChev, { width: 20, height: 20 }));
   }
-  if (nextBtn && !nextBtn.__hcBound) {
-    nextBtn.__hcBound = true;
+  if (nextBtn && !_controlsBound) {
     nextBtn.addEventListener("click", () => navigatePeriod(+1));
     nextBtn.appendChild(createSVG(svg_paths.rightChev, { width: 20, height: 20 }));
   }
@@ -260,9 +299,12 @@ function _handleModeSwitch(btn) {
   switchHistoryChartMode(btn.dataset.mode);
 }
 
-// Main entry point – call once when the history panel opens
+// Main entry point - call once when the history panel opens
 export async function updateHistoryChart() {
-  if (!document.querySelector(".chart-container")) renderChartContainer();
+  if (!document.querySelector(".chart-container")) {
+    renderChartContainer();
+    _controlsBound = false;
+  }
 
   const canvas = document.getElementById("listeningWaveform");
   const loadingEl = document.getElementById("historyChartLoading");
@@ -274,38 +316,34 @@ export async function updateHistoryChart() {
   canvas.style.display = "none";
   hc_hideDetails();
 
-  // Mode toggle
-  const modeToggle = document.getElementById("chartModeToggle");
-  if (modeToggle && !modeToggle.__hcBound) {
-    modeToggle.__hcBound = true;
-    modeToggle.addEventListener("click", (e) => {
-      // Summary toggle button
-      const summaryBtn = e.target.closest("#chartSummaryToggle, [data-mode='summary']");
-      if (summaryBtn) {
-        _handleSummaryToggle(summaryBtn);
-        return;
-      }
+  if (!_controlsBound) {
+    // Mode toggle
+    const modeToggle = document.getElementById("chartModeToggle");
+    if (modeToggle) {
+      modeToggle.addEventListener("click", (e) => {
+        const summaryBtn = e.target.closest("#chartSummaryToggle, [data-mode='summary']");
+        if (summaryBtn) {
+          _handleSummaryToggle(summaryBtn);
+          return;
+        }
+        const btn = e.target.closest(".chart-mode-btn");
+        if (btn?.dataset.mode) _handleModeSwitch(btn);
+      });
+    }
 
-      // Normal mode buttons
-      const btn = e.target.closest(".chart-mode-btn");
-      if (btn?.dataset.mode) {
-        _handleModeSwitch(btn);
-      }
-    });
+    // Range toggle
+    const rangeToggle = document.getElementById("chartRangeToggle");
+    if (rangeToggle) {
+      rangeToggle.addEventListener("click", (e) => {
+        const btn = e.target.closest(".chart-range-btn");
+        if (btn?.dataset.range) switchHistoryChartRange(btn.dataset.range);
+      });
+    }
+
+    // Navigation buttons
+    _initNavigation();
+    _controlsBound = true;
   }
-
-  // Range toggle
-  const rangeToggle = document.getElementById("chartRangeToggle");
-  if (rangeToggle && !rangeToggle.__hcBound) {
-    rangeToggle.__hcBound = true;
-    rangeToggle.addEventListener("click", (e) => {
-      const btn = e.target.closest(".chart-range-btn");
-      if (btn?.dataset.range) switchHistoryChartRange(btn.dataset.range);
-    });
-  }
-
-  // Navigation buttons
-  _initNavigation();
 
   // Restore persisted active states
   document.querySelectorAll(".chart-mode-btn").forEach((btn) => btn.classList.toggle("active", btn.dataset.mode === chartState.mode));
@@ -337,7 +375,9 @@ export async function updateHistoryChart() {
 }
 
 export function destroyHistoryChart() {
+  cancelDetailsAnimation();
   hc_destroyChart();
+  hc_destroyDetails();
   if (historyUnsubscribe) {
     historyUnsubscribe();
     historyUnsubscribe = null;

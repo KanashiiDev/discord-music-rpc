@@ -52,6 +52,7 @@ export const ScrollManager = {
 
         if (this.activeIntervals.has(type)) {
           clearInterval(this.activeIntervals.get(type));
+          this.activeIntervals.delete(type);
         }
 
         const interval = setInterval(() => {
@@ -91,10 +92,9 @@ export const ScrollManager = {
       }
     };
 
-    scrollElement.addEventListener("scroll", scrollListener, { passive: true });
-
     const observer = new MutationObserver(updateDraggingState);
-    observer.observe(panel, { attributes: true, attributeFilter: ["class"] });
+
+    scrollElement.addEventListener("scroll", scrollListener, { passive: true });
 
     this.cleanups.set(type, () => {
       scrollElement.removeEventListener("scroll", scrollListener);
@@ -108,6 +108,8 @@ export const ScrollManager = {
       this.hideHint(type);
       popupShown = false;
     });
+
+    observer.observe(panel, { attributes: true, attributeFilter: ["class"] });
   },
 
   cleanupType(type) {

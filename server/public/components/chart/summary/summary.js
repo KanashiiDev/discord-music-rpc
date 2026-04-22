@@ -30,6 +30,7 @@ function showChartElements() {
 let _visible = false;
 let _cachedData = null;
 let _lastRange = null;
+let _renderAc = null;
 
 // Panel rendering
 function renderPanel(range) {
@@ -45,6 +46,9 @@ function renderPanel(range) {
   if (!content) return;
 
   content.replaceChildren();
+  _renderAc?.abort();
+  _renderAc = new AbortController();
+  const { signal } = _renderAc;
 
   // Wire drill-down events (once per render, delegated on content)
   content.addEventListener(
@@ -52,11 +56,10 @@ function renderPanel(range) {
     (e) => {
       buildArtistDrillDown(e.detail.artist, _cachedData);
     },
-    { once: true },
+    { signal },
   );
 
-  const panel2 = panel; // alias for clarity inside listener
-  panel2.addEventListener("summary:back", () => renderPanel(chartState.range), { once: true });
+  panel.addEventListener("summary:back", () => renderPanel(chartState.range), { signal });
 
   const periodLabel = panel.querySelector(".summary-period-label");
   if (periodLabel) periodLabel.textContent = HC_RANGES[range].getLabel(chartState.offset);
@@ -172,10 +175,17 @@ export function hideSummary() {
   const captureBtn = panel.querySelector(".summary-capture");
   closeCaptureMenu(captureBtn);
 
+  _renderAc?.abort();
+  _renderAc = null;
+
   panel.addEventListener(
     "transitionend",
     () => {
-      if (!_visible) panel.remove();
+      if (!_visible) {
+        panel.remove();
+        _cachedData = null;
+        _lastRange = null;
+      }
     },
     { once: true },
   );

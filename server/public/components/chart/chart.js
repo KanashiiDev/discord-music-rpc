@@ -11,15 +11,17 @@ export const chartState = {
 };
 
 export const HC_COLORS = {
-  minutes: {
-    rgb: getCSS("--chart-time", "#4a6a94", "rgb"),
-    label: "Listening time",
-  },
-  songs: {
-    rgb: getCSS("--chart-songs", "#44864e", "rgb"),
-    label: "Songs",
-  },
+  minutes: { label: "Listening time", cssVar: "--chart-time", fallback: "#4a6a94" },
+  songs: { label: "Songs", cssVar: "--chart-songs", fallback: "#44864e" },
 };
+
+export function getHcColor(mode) {
+  const cfg = HC_COLORS[mode] ?? HC_COLORS.minutes;
+  return {
+    label: cfg.label,
+    rgb: getCSS(cfg.cssVar, cfg.fallback, "rgb"),
+  };
+}
 
 export const HC_RANGES = {
   week: {

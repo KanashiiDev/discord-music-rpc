@@ -12,6 +12,14 @@ export function initTheme() {
   } else {
     dom.statusBox.insertAdjacentElement("afterend", dom.musicCard.container);
   }
+
+  // Add Expand SVG
+  document.querySelectorAll("span.arrow").forEach((arrow) => {
+    if (!arrow.dataset.svgInjected) {
+      arrow.appendChild(createSVG(svg_paths.expand));
+      arrow.dataset.svgInjected = "1";
+    }
+  });
 }
 
 export function handleThemeToggle() {
@@ -35,9 +43,3 @@ export function handleThemeToggle() {
     Object.values(simpleBars).forEach((sb) => sb?.recalculate());
   }, 300);
 }
-
-// Add Expand SVG
-document.querySelectorAll("span.arrow").forEach((arrow) => {
-  const expandSvg = createSVG(svg_paths.expand);
-  arrow.appendChild(expandSvg);
-});
