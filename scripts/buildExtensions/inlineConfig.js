@@ -93,6 +93,8 @@ module.exports = function registerInlines(inlineUtilsFunctions) {
     "getSafeHref",
   ]);
 
+  inlineUtilsFunctions(["mainParser.js", "common/utils.js"], "popup/selector/modules/selectorUtils.js", ["queryWithPartialClass"]);
+
   // Selector Utils
   inlineUtilsFunctions("popup/selector/selector.js", "common/utils.js", [
     "throttle",

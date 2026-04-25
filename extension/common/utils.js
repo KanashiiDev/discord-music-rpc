@@ -1094,7 +1094,16 @@ function processPlaybackInfo(timePassed = "", durationElem = "") {
  */
 function getText(selector, options = {}) {
   const { attr = null, transform = null, root = document } = options;
-  const elem = root.querySelector(selector);
+
+  let elem = null;
+  try {
+    elem = root.querySelector(selector);
+  } catch (_) {}
+
+  if (!elem) {
+    elem = queryWithPartialClass(selector, root)[0] ?? null;
+  }
+
   if (!elem) return "";
 
   let val = attr ? elem.getAttribute(attr) : elem.textContent;
@@ -1137,7 +1146,15 @@ function getTextAll(selector, options = {}) {
  * @returns {string|null} Image URL or null if not found.
  */
 function getImage(selector, root = document) {
-  const elem = root.querySelector(selector);
+  let elem = null;
+  try {
+    elem = root.querySelector(selector);
+  } catch (_) {}
+
+  if (!elem) {
+    elem = queryWithPartialClass(selector, root)[0] ?? null;
+  }
+
   if (!elem) return null;
 
   // Priority: element directly <img>
@@ -1173,13 +1190,21 @@ function getImageAll(selector, root = document) {
 
 // Deep query selector that traverses shadow DOMs
 function querySelectorDeep(selector, root = document) {
-  const el = root.querySelector(selector);
+  let el = null;
+  try {
+    el = root.querySelector(selector);
+  } catch (_) {}
+
+  if (!el) {
+    el = queryWithPartialClass(selector, root)[0] ?? null;
+  }
+
   if (el) return el;
 
   const elemsWithShadow = root.querySelectorAll("*");
-  for (const el of elemsWithShadow) {
-    if (el.shadowRoot) {
-      const found = querySelectorDeep(selector, el.shadowRoot);
+  for (const elem of elemsWithShadow) {
+    if (elem.shadowRoot) {
+      const found = querySelectorDeep(selector, elem.shadowRoot);
       if (found) return found;
     }
   }

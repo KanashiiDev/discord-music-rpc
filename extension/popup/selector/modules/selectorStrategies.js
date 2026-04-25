@@ -23,6 +23,10 @@ function generateSelectorOptions(element) {
     if (hybrid) evaluateAndAddSelector(hybrid, element, allSelectors);
   }
 
+  // 5. Partial-Class Variants
+  const rewriteCandidates = [...allSelectors];
+  generatePartialClassVariants(element, rewriteCandidates).forEach((v) => evaluateAndAddSelector(v, element, allSelectors));
+
   return filterAndSortSelectors([...allSelectors], element);
 }
 
@@ -203,7 +207,7 @@ function addParentContextSelectors(el, clsSelector, set) {
   const tag = el.tagName.toLowerCase();
   let parent = el.parentElement;
 
-  for (let depth = 0; depth < 3 && parent && parent !== document.body; depth++) {
+  for (let depth = 0; depth < SELECTOR_CONSTANTS.MAX_PARENT_DEPTH && parent && parent !== document.body; depth++) {
     const parentSelector = getOptimizedParentSelector(parent);
     if (!parentSelector) {
       parent = parent.parentElement;
@@ -231,6 +235,17 @@ function addParentContextSelectors(el, clsSelector, set) {
 /*        Smart Class Chain         */
 /* ──────────────────────────────── */
 function buildSmartClassChain(el, depth = SELECTOR_CONSTANTS.MAX_COMBINATION_DEPTH, limit = SELECTOR_CONSTANTS.MAX_COMBINATION_DEPTH_LIMIT) {
+  let hasAnyClass = false;
+  let probe = el;
+  for (let i = 0; i < limit && probe && probe !== document.body; i++) {
+    if (filterNonGenericClasses(safeGetClassList(probe)).length > 0 || probe.id) {
+      hasAnyClass = true;
+      break;
+    }
+    probe = probe.parentElement;
+  }
+  if (!hasAnyClass) return null;
+
   let chain = buildSmartClassChainPass(el, depth);
   while (!chain && depth < limit) chain = buildSmartClassChainPass(el, ++depth);
   return chain;
@@ -351,4 +366,78 @@ function getNumericSelector(element) {
   const siblings = Array.from(parent.children);
   const index = siblings.indexOf(element) + 1;
   return `${element.tagName.toLowerCase()}:nth-child(${index})`;
+}
+
+/* ──────────────────────────────────── */
+/*      Partial-Class Variants          */
+/* ──────────────────────────────────── */
+
+/**
+ * Rewrites every hashed class token inside each candidate selector to its
+ * stable prefix form, then validates uniqueness via safeQueryPartial.
+ * Additionally generates standalone prefix selectors for each hashed class
+ * on the element itself and its ancestors (bottom-up, up to MAX_PARENT_DEPTH).
+ *
+ * @param {Element}  element     The target element.
+ * @param {string[]} candidates  Already-discovered selectors to rewrite.
+ * @returns {string[]}
+ */
+function generatePartialClassVariants(element, candidates = []) {
+  const results = new Set();
+
+  // Rewrite every candidate selector
+  for (const sel of candidates) {
+    const rewritten = rewriteSelectorToPartial(sel);
+    // Only add if something actually changed and it resolves uniquely
+    if (rewritten !== sel && safeQueryPartial(rewritten).length > 0) {
+      results.add(rewritten);
+    }
+  }
+
+  // Standalone prefix selectors from the element + ancestors
+  const tag = element.tagName.toLowerCase();
+  let current = element;
+  let depth = 0;
+
+  while (current && current !== document.body && depth <= SELECTOR_CONSTANTS.MAX_PARENT_DEPTH) {
+    const classes = filterNonGenericClasses(safeGetClassList(current));
+    const currentTag = current.tagName.toLowerCase();
+
+    for (const cls of classes) {
+      const prefix = getPartialClassPrefix(cls);
+      if (!prefix) continue;
+
+      const token = `.${CSS.escape(prefix)}`;
+
+      if (current === element) {
+        // Plain prefix and tag+prefix for the element itself - only if unique.
+        if (safeQueryPartial(token).length === 1) results.add(token);
+        const withTag = `${tag}${token}`;
+        if (safeQueryPartial(withTag).length === 1) results.add(withTag);
+      } else {
+        // Ancestor: build "ancestor.prefix_ > tag" and "ancestor.prefix_ tag"
+        const base = `${currentTag}${token}`;
+        const child = `${base} > ${tag}`;
+        const desc = `${base} ${tag}`;
+        if (safeQueryPartial(child).length === 1) results.add(child);
+        if (safeQueryPartial(desc).length === 1) results.add(desc);
+      }
+    }
+
+    current = current.parentElement;
+    depth++;
+  }
+
+  return [...results];
+}
+
+/**
+ * Rewrites every hashed CSS-Modules class token in `selector` to its stable
+ * prefix form. Tokens that are not hashed are left unchanged.
+ */
+function rewriteSelectorToPartial(selector) {
+  return selector.replace(/\.([^\s.#\[>~+:]+)/g, (match, cls) => {
+    const prefix = getPartialClassPrefix(cls);
+    return prefix ? `.${CSS.escape(prefix)}` : match;
+  });
 }

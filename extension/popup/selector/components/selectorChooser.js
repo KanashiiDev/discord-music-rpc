@@ -54,7 +54,7 @@ function showSelectorChooser(scoredOptions, field, shadowDoc) {
   const cancel = document.createElement("a");
   cancel.id = "userRpc-selectorChooser-cancel";
   cancel.className = "userRpc-optionButtons";
-  cancel.textContent = scoredOptions.length ? t("common.cancel") : t("common.exit");
+  cancel.textContent = scoredOptions.length ? t("common.cancel") : t("common.close");
   cancel.onclick = () => container.remove();
 
   container.append(containerList, cancel);

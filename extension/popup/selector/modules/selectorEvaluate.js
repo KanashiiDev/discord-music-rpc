@@ -1,25 +1,32 @@
 // Selector Evaluation
 function evaluateSelector(selector, targetEl = null) {
-  const nodes = safeQuery(selector);
+  const isPartialClass = isPartialClassSelector(selector);
 
-  // Uniqueness check
+  let nodes;
   let isUnique = false;
-  if (nodes.length === 1) isUnique = true;
-  else if (targetEl && nodes[0] === targetEl) {
-    const hasId = selector.includes("#");
-    const hasClass = selector.includes(".");
-    const hasDataAttr = STABLE_DATA_ATTRS.some((p) => p.test(selector));
-    const isTagOnly = /^[a-zA-Z]+$/.test(selector.trim());
-    if ((hasId || hasClass || hasDataAttr) && !isTagOnly) isUnique = true;
+
+  if (isPartialClass) {
+    nodes = safeQueryPartial(selector);
+    if (nodes.length === 1) isUnique = true;
+  } else {
+    nodes = safeQuery(selector);
+    if (nodes.length === 1) isUnique = true;
+    else if (targetEl && nodes[0] === targetEl) {
+      const hasId = selector.includes("#");
+      const hasClass = selector.includes(".");
+      const hasDataAttr = STABLE_DATA_ATTRS.some((p) => p.test(selector));
+      const isTagOnly = /^[a-zA-Z]+$/.test(selector.trim());
+      if ((hasId || hasClass || hasDataAttr) && !isTagOnly) isUnique = true;
+    }
   }
 
-  if (!isUnique) return { score: 0, isUnique: false, isClassChain: false, isSmartChain: false };
+  if (!isUnique) return { score: 0, isUnique: false, isClassChain: false, isSmartChain: false, isPartialClass: false };
 
   let score = 50;
   const parts = selector.split(" > ");
   const testAttrFlag = isTestAttribute(selector);
 
-  const bonus = getSelectorBonus(selector, parts, testAttrFlag);
+  const bonus = getSelectorBonus(selector, parts, testAttrFlag, isPartialClass);
   const penalty = getSelectorPenalty(selector, parts, testAttrFlag);
 
   score += bonus.score;
@@ -33,10 +40,11 @@ function evaluateSelector(selector, targetEl = null) {
     isClassChain: bonus.isClassChain,
     isSmartChain: selector.includes(":nth-child(") || bonus.isClassChain,
     isTestAttribute: testAttrFlag,
+    isPartialClass,
   };
 }
 
-function getSelectorBonus(selector, parts, testAttrFlag) {
+function getSelectorBonus(selector, parts, testAttrFlag, isPartialClass = false) {
   let score = 0;
 
   // Test attribute bonus
@@ -64,6 +72,7 @@ function getSelectorBonus(selector, parts, testAttrFlag) {
   if (SIMPLE_PATTERNS.some((p) => p.test(selector))) score += 15;
   if (selector.length < 40) score += 12;
   if (!selector.includes(":nth-")) score += 10;
+  if (isPartialClass) score += 18;
 
   return { score, isClassChain };
 }
@@ -90,6 +99,7 @@ function getSelectorPenalty(selector, parts, testAttrFlag) {
 function normalizeSelectorStructure(selector) {
   return selector
     .replace(/#[\w-]+/g, "#id")
+    .replace(/\.([\w-]*?[_-])([a-zA-Z0-9]{4,16})(?:_\d+)?(?=[\s>~+\[:#.)\]|$]|$)/g, ".$1class")
     .replace(/\.[\w-]+/g, ".class")
     .replace(/:nth-[^ >]+/g, ":nth")
     .replace(/\[data-[^\]]+\]/g, "[data]");
@@ -163,4 +173,13 @@ function filterAndSortSelectors(selectors, targetElement, maxResults = SELECTOR_
 function evaluateAndAddSelector(selector, element, selectorSet, minScore = SELECTOR_CONSTANTS.SCORE_THRESHOLDS.BASIC_VARIANT) {
   const evaluation = evaluateSelector(selector, element);
   if (evaluation.isUnique && evaluation.score > minScore) selectorSet.add(selector);
+}
+
+/**
+ * Returns true if selector contains a class token that ends with "_" or "-".
+ * Indicates a CSS Modules–style prefix class.
+ */
+function isPartialClassSelector(selector) {
+  // Match ".class_" or ".class-" followed by a selector boundary or end
+  return /\.([^\s.#\[>~+:]+[_-])(?=[\s>~+\[:#.)]|$)/.test(selector);
 }

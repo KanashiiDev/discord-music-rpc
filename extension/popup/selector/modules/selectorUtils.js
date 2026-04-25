@@ -219,19 +219,37 @@ function isElementVisibleAndAtPoint(el, x, y) {
   return isValidElement(el) && isElementAtPoint(el, x, y);
 }
 
+function isFullScreenOverlay(el) {
+  if (!el || el === document.body || el === document.documentElement) return false;
+
+  const rect = el.getBoundingClientRect();
+  const style = getComputedStyle(el);
+
+  const coversViewport = rect.width >= window.innerWidth * 0.9 && rect.height >= window.innerHeight * 0.9;
+  const isPositioned = style.position === "fixed" || style.position === "absolute";
+  const hasNoContent = el.children.length === 0 && el.textContent.trim().length === 0;
+  const isTransparent = style.backgroundColor === "rgba(0, 0, 0, 0)" || style.backgroundColor === "transparent";
+  return coversViewport && isPositioned && (hasNoContent || isTransparent);
+}
+
 function deepElementsFromPoint(x, y, root = document) {
   return safeElementsFromPoint(x, y, root);
 }
 
 function deepElementFromPoint(x, y) {
-  const elements = deepElementsFromPoint(x, y);
-  for (const candidate of elements) {
-    if (isValidElement(candidate)) {
-      const deep = findDeepestValidElementInTree(candidate, x, y);
-      return deep && isValidElement(deep) ? deep : candidate;
-    }
+  const hidden = [];
+
+  let el = document.elementFromPoint(x, y);
+
+  while (el && isFullScreenOverlay(el)) {
+    hidden.push(el);
+    el.style.pointerEvents = "none";
+    el = document.elementFromPoint(x, y);
   }
-  return null;
+
+  hidden.forEach((e) => (e.style.pointerEvents = ""));
+
+  return el;
 }
 
 function findDeepestValidElementInTree(root, x, y, depth = 0) {
@@ -281,4 +299,122 @@ function isGenericClass(cls) {
 
 function filterNonGenericClasses(classes) {
   return Array.from(classes || []).filter((cls) => !isGenericClass(cls));
+}
+/* ─────────────────────────────────────── */
+/*      Partial-Class Query Utilities      */
+/* ─────────────────────────────────────── */
+
+/**
+ * Selector where class tokens are treated as prefix matches.
+ * Supports: space, >, +, ~ combinators.
+ */
+function queryWithPartialClass(selector, root = document) {
+  const tokenRe = /([>~+]|\s+)/;
+  const allParts = selector
+    .split(tokenRe)
+    .map((s) => s.trim())
+    .filter(Boolean);
+
+  const segmentList = [];
+  const combinatorList = [];
+
+  for (const part of allParts) {
+    if (/^[>~+]$/.test(part) || part === "") combinatorList.push(part || " ");
+    else segmentList.push(part);
+  }
+
+  while (combinatorList.length < segmentList.length - 1) combinatorList.push(" ");
+
+  function matchesSegment(el, segment) {
+    if (!el || el.nodeType !== 1) return false;
+
+    const tagMatch = segment.match(/^([a-zA-Z][a-zA-Z0-9]*)?/);
+    const tag = tagMatch?.[1];
+
+    if (tag && el.tagName.toLowerCase() !== tag.toLowerCase()) return false;
+
+    const classTokens = [...segment.matchAll(/\.([^\s.#[>~+:]+)/g)].map((m) => m[1]);
+
+    // Must contain at least tag or class
+    if (!tag && classTokens.length === 0) return false;
+
+    if (classTokens.length === 0) return true;
+
+    const elClasses = el.classList ? [...el.classList] : [];
+    return classTokens.every((p) => elClasses.some((c) => c.startsWith(p)));
+  }
+
+  function initialQueryFor(segment) {
+    const tag = segment.match(/^([a-zA-Z][a-zA-Z0-9]*)/)?.[1];
+    if (tag) return tag;
+    if (segment.includes(".")) return "[class]";
+    return null;
+  }
+
+  const MAX_CANDIDATES = 500;
+
+  function resolve(contextEls, segIndex) {
+    if (segIndex >= segmentList.length) return contextEls;
+
+    const seg = segmentList[segIndex];
+    const combinator = segIndex === 0 ? " " : combinatorList[segIndex - 1] || " ";
+
+    const initialQ = initialQueryFor(seg);
+    if (!initialQ) return [];
+
+    const candidates = [];
+
+    for (const ctx of contextEls) {
+      if (!ctx?.querySelectorAll) continue;
+
+      try {
+        if (segIndex === 0 || combinator === " ") {
+          candidates.push(...ctx.querySelectorAll(initialQ));
+        } else if (combinator === ">") {
+          candidates.push(...(ctx.children || []));
+        } else if (combinator === "+") {
+          if (ctx.nextElementSibling) candidates.push(ctx.nextElementSibling);
+        } else if (combinator === "~") {
+          let sib = ctx.nextElementSibling;
+          while (sib) {
+            candidates.push(sib);
+            sib = sib.nextElementSibling;
+          }
+        }
+      } catch {}
+
+      if (candidates.length >= MAX_CANDIDATES) break;
+    }
+
+    const matched = candidates.slice(0, MAX_CANDIDATES).filter((el) => matchesSegment(el, seg));
+
+    return resolve(matched, segIndex + 1);
+  }
+
+  return resolve([root], 0);
+}
+
+function safeQueryPartial(selector) {
+  if (typeof selector !== "string") return [];
+  try {
+    return queryWithPartialClass(selector, document);
+  } catch {
+    return [];
+  }
+}
+
+function getPartialClassPrefix(cls) {
+  const cssModulesRe = /^(.*?[_-])([a-zA-Z0-9]{4,16})(?:_\d+)?$/;
+  const m = cls.match(cssModulesRe);
+  if (!m) return null;
+
+  const prefix = m[1];
+  const hashSeg = m[2];
+
+  const isMixed = /[a-zA-Z]/.test(hashSeg) && /\d/.test(hashSeg);
+  if (!isMixed) return null;
+
+  if (prefix.replace(/[_-]/g, "").length < 2) return null;
+
+  return prefix;
 }
