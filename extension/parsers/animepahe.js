@@ -1,7 +1,7 @@
 registerParser({
   domain: ["animepahe.pw", "animepahe.com", "animepahe.org"],
   title: "animepahe",
-  urlPatterns: [/\/anime\//],
+  urlPatterns: [/\/play\//],
   description: "Animepahe lets you watch anime online with fast streaming servers.",
   category: "video",
   tags: ["anime"],
@@ -9,7 +9,7 @@ registerParser({
   fn: function ({ iframeData }) {
     const titleElem = getText("#episodeMenu");
     const artistElem = getText("h1:nth-child(2) > a:nth-child(2)");
-    const coverElem = getImage(".poster > div > img");
+    const coverElem = getImage(".anime-poster");
     const { duration, currentTime, playing } = iframeData || {};
 
     return {

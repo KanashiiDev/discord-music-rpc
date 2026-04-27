@@ -9,7 +9,7 @@ registerParser({
   fn: function ({ iframeData }) {
     const titleElem = getText("[data-media-player] .flex.flex-col h2");
     const artistElem = getText("[data-media-player] .flex.flex-col h1");
-    const coverElem = getImage(".group/ep_num.active img");
+    const coverElem = getImage(".active img");
     const video = document.querySelector("[data-media-player] video");
 
     let { duration, currentTime, playing } = iframeData || {};
