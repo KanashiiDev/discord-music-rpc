@@ -84,75 +84,76 @@ let FIELDS_CONFIG = {
     desc: "selector.editor.name.desc",
     type: "text",
     dynamicPlaceholder: true,
+    disableSelect: true,
   },
   title: {
     label: "selector.editor.title.label",
-    placeholder: "selector.editor.title.placeholder",
+    placeholder: "selector.editor.type.selector",
     desc: "selector.editor.title.desc",
     type: "text",
     required: true,
   },
   artist: {
     label: "selector.editor.artist.label",
-    placeholder: "selector.editor.artist.placeholder",
+    placeholder: "selector.editor.type.selector",
     desc: "selector.editor.artist.desc",
     type: "text",
     required: true,
   },
   timePassed: {
     label: "selector.editor.timePassed.label",
-    placeholder: "selector.editor.timePassed.placeholder",
+    placeholder: "selector.editor.type.selector",
     desc: "selector.editor.timePassed.desc",
     type: "text",
   },
   duration: {
     label: "selector.editor.duration.label",
-    placeholder: "selector.editor.duration.placeholder",
+    placeholder: "selector.editor.type.selector",
     desc: "selector.editor.duration.desc",
     type: "text",
   },
   image: {
     label: "selector.editor.image.label",
-    placeholder: "selector.editor.image.placeholder",
+    placeholder: "selector.editor.type.selectorUrl",
     desc: "selector.editor.image.desc",
     type: "text",
   },
   link: {
     label: "selector.editor.link.label",
-    placeholder: "selector.editor.link.placeholder",
+    placeholder: "selector.editor.type.selectorUrl",
     desc: "selector.editor.link.desc",
     type: "text",
   },
   source: {
     label: "selector.editor.source.label",
-    placeholder: "selector.editor.source.placeholder",
+    placeholder: "selector.editor.type.selectorText",
     desc: "selector.editor.source.desc",
     type: "text",
   },
   buttonText: {
     label: "selector.editor.buttonText.label",
-    placeholder: "selector.editor.buttonText.placeholder",
+    placeholder: "selector.editor.type.selectorText",
     desc: "selector.editor.buttonText.desc",
     type: "text",
     group: "buttons",
   },
   buttonLink: {
     label: "selector.editor.buttonLink.label",
-    placeholder: "selector.editor.buttonLink.placeholder",
+    placeholder: "selector.editor.type.selectorUrl",
     desc: "selector.editor.buttonLink.desc",
     type: "text",
     group: "buttons",
   },
   buttonText2: {
     label: "selector.editor.buttonText2.label",
-    placeholder: "selector.editor.buttonText2.placeholder",
+    placeholder: "selector.editor.type.selectorText",
     desc: "selector.editor.buttonText2.desc",
     type: "text",
     group: "buttons",
   },
   buttonLink2: {
     label: "selector.editor.buttonLink2.label",
-    placeholder: "selector.editor.buttonLink2.placeholder",
+    placeholder: "selector.editor.type.selectorUrl",
     desc: "selector.editor.buttonLink2.desc",
     type: "text",
     group: "buttons",
@@ -332,8 +333,10 @@ function createFieldInputs(placeholderMap = getPlaceholderMap()) {
     }
 
     const button = document.createElement("a");
+    const hideSelect = config.type === "select" || config.hidden || config.disableSelect || key === "regex";
+    if (hideSelect) wrapper.classList.add("select-hidden");
     button.setAttribute("data-field", key);
-    button.className = `userRpc-selectBtn ${config.type === "select" || config.hidden ? "hidden" : ""}`;
+    button.className = `userRpc-selectBtn${hideSelect ? " hidden" : ""}`;
     button.title = "selector.editor.selectWithClick";
     button.id = `${key}Button`;
     button.appendChild(createSVG(svg_paths.plusIconPaths));
