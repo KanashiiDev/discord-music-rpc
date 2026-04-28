@@ -226,6 +226,12 @@ br[id*="buttonLink"] {
   justify-content: center;
 }
 
+.userRpc-regexStatus {
+  position: absolute;
+  width: 30px;
+  right: 18px;
+}
+
 .userRpc-selectBtn.hidden {
   pointer-events: none;
   visibility: hidden;
@@ -237,6 +243,10 @@ br[id*="buttonLink"] {
   -webkit-box-align: center;
   -ms-flex-align: center;
   align-items: center;
+}
+
+.field-row.select-hidden {
+  grid-template-columns: 100px 1fr 0px;
 }
 
 .userRpc-select {
@@ -263,6 +273,10 @@ br[id*="buttonLink"] {
 .userRpc-selectBtn:hover,
 .userRpc-optionButtons:hover {
   background: var(--foreground-color-400) !important;
+}
+
+.field-row.select-hidden .userRpc-select {
+  margin-right: 0;
 }
 
 #userRpc-selectorRoot,

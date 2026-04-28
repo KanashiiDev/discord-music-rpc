@@ -130,6 +130,39 @@ let FIELDS_CONFIG = {
     desc: "selector.editor.source.desc",
     type: "text",
   },
+  isPlaying: {
+    label: "selector.editor.isPlaying.label",
+    placeholder: "selector.editor.type.selector",
+    desc: "selector.editor.isPlaying.desc",
+    type: "text",
+  },
+  mode: {
+    label: "selector.editor.activityMode.label",
+    type: "select",
+    desc: "selector.editor.activityMode.desc",
+    options: [
+      { value: "listen", label: "selector.editor.activityMode.listen" },
+      { value: "watch", label: "selector.editor.activityMode.watch" },
+    ],
+    defaultValue: "listen",
+  },
+  watchAutoDetect: {
+    label: "selector.editor.activityMode.watch.autoDetect",
+    type: "select",
+    desc: "",
+    hidden: true,
+    options: [
+      { value: "enable", label: "common.enable" },
+      { value: "disable", label: "common.disable" },
+    ],
+    defaultValue: "enable",
+  },
+  regex: {
+    label: "selector.editor.regex.label",
+    placeholder: "playlist.*",
+    desc: "selector.editor.regex.desc",
+    type: "text",
+  },
   buttonText: {
     label: "selector.editor.buttonText.label",
     placeholder: "selector.editor.type.selectorText",
@@ -157,22 +190,6 @@ let FIELDS_CONFIG = {
     desc: "selector.editor.buttonLink2.desc",
     type: "text",
     group: "buttons",
-  },
-  regex: {
-    label: "selector.editor.regex.label",
-    placeholder: "playlist.*",
-    desc: "selector.editor.regex.desc",
-    type: "text",
-  },
-  mode: {
-    label: "selector.editor.activityMode.label",
-    type: "select",
-    desc: "selector.editor.activityMode.desc",
-    options: [
-      { value: "listen", label: "selector.editor.activityMode.listen" },
-      { value: "watch", label: "selector.editor.activityMode.watch" },
-    ],
-    defaultValue: "listen",
   },
 };
 
@@ -622,6 +639,17 @@ function setupEventListeners(shadow) {
     clearInterval(previewInterval);
     shadow.host.remove();
   });
+
+  // Update Watch Auto-Detect Visibility
+  function updateWatchAutoDetectVisibility() {
+    const modeSelect = shadow.getElementById("modeSelector");
+    const watchAutoDetectRow = shadow.getElementById("watchAutoDetectSelector")?.closest(".field-row");
+    if (!modeSelect || !watchAutoDetectRow) return;
+
+    watchAutoDetectRow.style.display = modeSelect.value === "watch" ? "" : "none";
+  }
+  updateWatchAutoDetectVisibility();
+  shadow.getElementById("modeSelector")?.addEventListener("change", updateWatchAutoDetectVisibility);
 }
 
 // Clean Selector Elements
@@ -736,6 +764,12 @@ function handleElementClick(e, field, shadowDoc, cleanup) {
     targetEl = findLinkElement(el);
     if (!targetEl) {
       showStatusMsg(t("selector.warn.noLink"), 1, 1, shadowDoc);
+      return;
+    }
+  } else if (field === "isPlaying") {
+    targetEl = findElement(el);
+    if (!targetEl) {
+      showStatusMsg(t("selecor.warn.notValid"), 1, 1, shadowDoc);
       return;
     }
   } else {

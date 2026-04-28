@@ -172,7 +172,7 @@ function addIdSelectors(el, tag, set) {
 
 function addDataAttributeSelectors(attrs, set) {
   const dataAttrs = attrs
-    .filter((attr) => attr.name.startsWith("data-") && !matchesAny(attr.name, DATA_BLOCKLIST_PATTERNS) && attr.value?.trim())
+    .filter((attr) => !matchesAny(attr.name, ATTR_BLOCKLIST_PATTERNS) && attr.value?.trim())
     .sort((a, b) => Number(matchesAny(b.name, STABLE_DATA_ATTRS)) - Number(matchesAny(a.name, STABLE_DATA_ATTRS)));
 
   dataAttrs.forEach((attr) => set.add(`[${attr.name}="${CSS.escape(attr.value)}"]`));
@@ -284,8 +284,8 @@ function getSmartSelector(el) {
   const clsSel = getBestClassSelector(el);
   if (clsSel) return clsSel + (getNumericSuffix(el) || "");
 
-  const dataSel = getBestDataSelector(el);
-  if (dataSel) return dataSel;
+  const attrSel = getBestAttrSelector(el);
+  if (attrSel) return attrSel;
 
   return getNumericSelector(el);
 }
@@ -350,13 +350,13 @@ function getNumericSuffix(element) {
   return null;
 }
 
-function getBestDataSelector(element) {
-  const dataAttrs = safeGetAttributes(element)
-    .filter((attr) => attr.name.startsWith("data-") && !DATA_BLOCKLIST_PATTERNS.some((re) => re.test(attr.name)))
+function getBestAttrSelector(element) {
+  const attrs = safeGetAttributes(element)
+    .filter((attr) => !ATTR_BLOCKLIST_PATTERNS.some((re) => re.test(attr.name)))
     .map((attr) => `[${attr.name}="${CSS.escape(attr.value)}"]`)
     .filter((sel) => evaluateSelector(sel, element).isUnique);
 
-  return dataAttrs.length > 0 ? dataAttrs[0] : null;
+  return attrs.length > 0 ? attrs[0] : null;
 }
 
 function getNumericSelector(element) {

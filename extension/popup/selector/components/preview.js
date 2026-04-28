@@ -40,6 +40,10 @@ function createPreviewSection(root) {
   source.className = "source";
   source.textContent = t("selector.editor.source.label");
 
+  const isPlaying = document.createElement("div");
+  isPlaying.className = "isPlaying";
+  isPlaying.textContent = t("selector.editor.source.isPlaying");
+
   const progressContainer = document.createElement("div");
   progressContainer.className = "progress-container";
 
@@ -87,6 +91,7 @@ function createPreviewSection(root) {
   details.appendChild(titleEl);
   details.appendChild(artist);
   details.appendChild(source);
+  details.appendChild(isPlaying);
   details.appendChild(progressContainer);
   details.appendChild(linkContainer);
 
@@ -152,6 +157,7 @@ function updatePreview(shadow, editMode) {
     source: getValue("sourceSelector"),
     regex: getValue("regexSelector"),
     mode: getValue("modeSelector"),
+    isPlaying: getValue("isPlayingSelector"),
   };
 
   // Get elements
@@ -168,6 +174,7 @@ function updatePreview(shadow, editMode) {
     buttonText2: getElement(selectors.buttonText2),
     buttonLink2: getElement(selectors.buttonLink2),
     source: getElement(selectors.source),
+    isPlaying: getElement(selectors.isPlaying),
   };
 
   // Text Values
@@ -416,6 +423,10 @@ function updatePreview(shadow, editMode) {
   if (!isWatch) {
     setText(".source", texts.source, 32);
   }
+
+  const playStatus = details.querySelector(".isPlaying");
+  const isPlaying = selectors.isPlaying ? (elements.isPlaying ? t("selector.preview.playing") : t("selector.preview.paused")) : "";
+  if (playStatus.textContent !== isPlaying) playStatus.textContent = isPlaying;
 
   setText(".title", texts.title, 128);
   setText(".artist", texts.artist, 128);

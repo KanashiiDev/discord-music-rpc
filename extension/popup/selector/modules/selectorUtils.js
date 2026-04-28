@@ -86,6 +86,21 @@ function findParentElementByCondition(el, conditionFn) {
   return null;
 }
 
+function findElement(el, options = {}) {
+  const { excludeHidden = true, excludeScriptStyle = true } = options;
+
+  return findParentElementByCondition(el, (currentEl) => {
+    if (excludeHidden && !isElementVisible(currentEl)) return false;
+
+    if (excludeScriptStyle) {
+      const tag = currentEl.tagName.toLowerCase();
+      if (["script", "style", "noscript"].includes(tag)) return false;
+    }
+
+    return true;
+  });
+}
+
 function findImageElement(el) {
   return findParentElementByCondition(el, (currentEl) => {
     const tag = currentEl.tagName?.toLowerCase();

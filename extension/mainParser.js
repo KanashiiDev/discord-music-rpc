@@ -825,29 +825,39 @@ window.addEventListener("message", async (event) => {
         tags: msg.data.tags,
         urlPatterns: msg.data.urlPatterns,
         mode: msg.data.mode,
+        watchAutoDetect: msg.data.watchAutoDetect,
         userAdd: false,
         userScript: true,
-        fn: async function () {
+        fn: async function ({ iframeData }) {
           try {
             const song = window.latestUserScriptData[msg.data.domain];
             if (!song) return null;
+
+            const { duration, currentTime, playing } = iframeData || {};
+
             return {
               title: song.title,
               artist: song.artist,
               image: song.image,
               source: song.source,
               songUrl: song.songUrl,
-              timePassed: song.timePassed,
-              duration: song.duration,
+              timePassed: currentTime || song.timePassed,
+              duration: duration || song.duration,
               buttons: song.buttons,
               mode: msg.data.mode,
-              isPlaying: Boolean(song.isPlaying),
+              isPlaying: song.isPlaying ? true : msg.data.mode === "watch" ? Boolean(playing) : false,
             };
           } catch (err) {
             logError("User script parser error:", err);
             return null;
           }
         },
+        ...(msg.data.mode === "watch" &&
+          msg.data.watchAutoDetect !== "disable" && {
+            iframeFn: function () {
+              return getVideoInfo();
+            },
+          }),
       });
     }
   }
@@ -1077,7 +1087,7 @@ function fetchIframeData(key, maxDelayMs = 10000) {
             : {}),
         ...(msg.data.paused != null
           ? {
-              playing: msg.data.paused === false && (msg.data.currentTime ?? 0) > 0,
+              playing: msg.data.paused === false,
             }
           : {}),
       };

@@ -16,7 +16,24 @@ const SIMPLE_PATTERNS = [
   /^[a-z][a-zA-Z0-9]{2,32}$/, // camelCase (reasonable length)
 ];
 
-const DATA_BLOCKLIST_PATTERNS = [
+const ATTR_BLOCKLIST_PATTERNS = [
+  // General
+  /class/i,
+  /id/i,
+  /style/i,
+  /src/i,
+  /href/i,
+  /label/i,
+  /title/i,
+  /desc(ription)?/i,
+  /tooltip/i,
+  /hint/i,
+  /placeholder/i,
+  /^alt$/i,
+  /^aria-(label|description|valuetext|placeholder)$/i,
+  /content/i,
+  /text$/i,
+
   // Unique identifiers
   /^\[data-(id|key|guid|uuid|pk|ref|index)\]$/i,
   /^\[data-(id|key|guid|uuid|pk|ref)-[a-z]+\]$/i,
