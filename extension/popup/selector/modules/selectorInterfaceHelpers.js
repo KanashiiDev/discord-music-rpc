@@ -149,7 +149,7 @@ let FIELDS_CONFIG = {
   watchAutoDetect: {
     label: "selector.editor.activityMode.watch.autoDetect",
     type: "select",
-    desc: "",
+    desc: "selector.editor.activityMode.watch.autoDetect.desc",
     hidden: true,
     options: [
       { value: "enable", label: "common.enable" },

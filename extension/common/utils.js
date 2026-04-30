@@ -66,11 +66,18 @@ function shouldAnimate() {
   }
 }
 
+const getDebugMode = async () => {
+  try {
+    const stored = await browser.storage.local.get("debugMode");
+    return stored?.debugMode === 1 ? true : stored?.debugMode === 0 ? false : (CONFIG?.debugMode ?? false);
+  } catch (err) {
+    return CONFIG?.debugMode ?? false;
+  }
+};
+
 // Logs
 const logInfo = async (...args) => {
-  const stored = await browser.storage.local.get("debugMode");
-  const debugMode = stored.debugMode === 1 ? true : CONFIG.debugMode;
-  if (!debugMode) return;
+  if (!(await getDebugMode())) return;
 
   const prefix = "[DISCORD-MUSIC-RPC - INFO]";
   if (typeof args[0] === "string" && args[0].includes("%c")) {
@@ -81,9 +88,7 @@ const logInfo = async (...args) => {
 };
 
 const logWarn = async (...args) => {
-  const stored = await browser.storage.local.get("debugMode");
-  const debugMode = stored.debugMode === 1 ? true : CONFIG.debugMode;
-  if (!debugMode) return;
+  if (!(await getDebugMode())) return;
 
   const prefix = "%c[DISCORD-MUSIC-RPC - WARN]%c";
   const prefixCSS = ["color:#ff9800; font-weight:bold;", "color:#fff;"];
@@ -1097,7 +1102,7 @@ function getText(selector, options = {}) {
 
   let elem = null;
   try {
-    elem = root.querySelector(selector);
+    elem = querySelectorDeep(selector, root);
   } catch (_) {}
 
   if (!elem) {
@@ -1134,7 +1139,7 @@ function getTextAll(selector, options = {}) {
   const elements = root.querySelectorAll(selector);
 
   return Array.from(elements)
-    .map((el) => getText(selector, { ...rest, root: el.parentElement }))
+    .map((el) => extractValue(el, rest))
     .filter((val) => val !== "");
 }
 
@@ -1148,12 +1153,8 @@ function getTextAll(selector, options = {}) {
 function getImage(selector, root = document) {
   let elem = null;
   try {
-    elem = root.querySelector(selector);
+    elem = querySelectorDeep(selector, root);
   } catch (_) {}
-
-  if (!elem) {
-    elem = queryWithPartialClass(selector, root)[0] ?? null;
-  }
 
   if (!elem) return null;
 
@@ -1189,26 +1190,36 @@ function getImageAll(selector, root = document) {
 }
 
 // Deep query selector that traverses shadow DOMs
-function querySelectorDeep(selector, root = document) {
-  let el = null;
+function querySelectorDeep(selector, root = document, all = false) {
+  const results = [];
+
   try {
-    el = root.querySelector(selector);
+    if (all) {
+      results.push(...root.querySelectorAll(selector));
+    } else {
+      let el = root.querySelector(selector);
+
+      if (!el) {
+        el = queryWithPartialClass(selector, root)[0] ?? null;
+      }
+
+      if (el) return el;
+    }
   } catch (_) {}
-
-  if (!el) {
-    el = queryWithPartialClass(selector, root)[0] ?? null;
-  }
-
-  if (el) return el;
 
   const elemsWithShadow = root.querySelectorAll("*");
   for (const elem of elemsWithShadow) {
     if (elem.shadowRoot) {
-      const found = querySelectorDeep(selector, elem.shadowRoot);
-      if (found) return found;
+      const found = querySelectorDeep(selector, elem.shadowRoot, all);
+      if (all) {
+        results.push(...found);
+      } else if (found) {
+        return found;
+      }
     }
   }
-  return null;
+
+  return all ? results : null;
 }
 
 // Pattern hash creation

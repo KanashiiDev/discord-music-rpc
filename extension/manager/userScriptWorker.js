@@ -128,6 +128,9 @@ class UserScriptManager {
     const patternString = normalizedList.map((p) => `"${p}"`).join(", ");
 
     return `
+    // AUTO-GENERATED-UTILS
+    // _INLINE_UTILS
+    // MAIN
     (async function() {
       const trackState = {};
 
@@ -173,7 +176,7 @@ class UserScriptManager {
             trackState.timePassed = typeof timePassed !== "undefined" ? timePassed : null;
             trackState.duration = typeof duration !== "undefined" ? duration : null;
             trackState.buttons = typeof buttons !== "undefined" ? buttons : null;
-            trackState.isPlaying = typeof isPlaying !== "undefined" ? isPlaying : null;
+            trackState.isPlaying = typeof isPlaying !== "undefined" ? Boolean(isPlaying) : null;
 
             // Track Data
             const trackData = {
@@ -187,6 +190,7 @@ class UserScriptManager {
               urlPatterns: [${patternString}],
               title: "${script.title || "Unknown"}",
               mode: "${script.mode || "listen"}",
+              watchAutoDetect: "${script.watchAutoDetect || "disable"}",
               song: { ...trackState }
             };
 
@@ -201,9 +205,10 @@ class UserScriptManager {
                 "color: #efefefff; font-weight: bold; font-size: 14px;"
               );
               console.log("%cScript Information:", "color: #ffb86c; font-weight: bold; font-size: 13px;");
-              console.log("  • Title:     ", trackData.title);
-              console.log("  • Domain:    ", trackData.domain);
-              console.log("  • Url Patterns:  ", trackData.urlPatterns || "—");
+              console.log("  • Title:       ", trackData.title);
+              console.log("  • Domain:      ", trackData.domain);
+              console.log("  • Url Patterns:", trackData.urlPatterns || "—");
+              console.log("  • Mode:        ", trackData.mode);
               const song = trackData.song;
               console.log("%cSong Information:", "color: #8be9fd; font-weight: bold; font-size: 13px;");
               console.log("  • Title:      ", song.title || "Unknown");
@@ -214,6 +219,7 @@ class UserScriptManager {
               console.log("  • Duration:   ", song.duration ?? "N/A");
               console.log("  • Time Passed:", song.timePassed ?? "N/A");
               console.log("  • Buttons:    ", song.buttons ?? "N/A");
+              console.log("  • isPlaying:  ", song.isPlaying ?? "N/A");
               console.groupEnd();
             }
 
@@ -234,8 +240,8 @@ class UserScriptManager {
           }
         }
         await updateTrackData();
-        setInterval(updateTrackData, 5000);
-      }, 5000);
+        setInterval(updateTrackData, 4000);
+      }, 4000);
     })();
     `;
   }
@@ -254,6 +260,9 @@ class UserScriptManager {
 
   async registerUserScript(script) {
     try {
+      if (!script.id) {
+        script.id = this.generateScriptId(script.domain, script.urlPatterns);
+      }
       const manifest = browser.runtime.getManifest();
       const isMV3 = manifest.manifest_version === 3;
       const patterns = Array.isArray(script.urlPatterns) ? script.urlPatterns : [script.urlPatterns];
@@ -281,7 +290,7 @@ class UserScriptManager {
             id: script.id,
             js: [{ code: trackingCode }],
             matches,
-            runAt: script.runAt || "document_idle",
+            runAt: script.runAt || "document_end",
             world: this.resolveWorld(trackingCode),
           },
         ]);
@@ -344,6 +353,10 @@ class UserScriptManager {
     for (const script of scripts) {
       try {
         if (!script.id) script.id = this.generateScriptId(script.domain, script.urlPatterns);
+
+        if (parserEnabledState[`enable_${script.id}`] === undefined) {
+          parserEnabledState[`enable_${script.id}`] = true;
+        }
 
         await this.unregisterUserScript(script, true);
 

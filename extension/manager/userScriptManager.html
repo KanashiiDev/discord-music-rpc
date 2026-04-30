@@ -86,6 +86,14 @@
               mode, the source section will only appear when hovering over the activity cover. This is an RPC limitation.
             </small>
           </div>
+          <div class="container watchAutoDetect">
+            <p data-i18n="selector.editor.activityMode.watch.autoDetect">Auto Detect Video Status</p>
+            <select id="inWatchAutoDetect">
+              <option value="enable" data-i18n="common.enable" selected="true">Enable</option>
+              <option value="disable" data-i18n="common.disable">Disable</option>
+            </select>
+            <small data-i18n="selector.editor.activityMode.watch.autoDetect.desc"></small>
+          </div>
           <div class="container debug">
             <p data-i18n="userscript.editor.debugMode.label">Debug Mode</p>
             <small data-i18n="userscript.editor.debugMode.help">
@@ -109,35 +117,36 @@
             </div>
             <textarea id="inCode" rows="15" data-i18n="userscript.codeEditor.placeholder" placeholder="// Your javaScript code here..."></textarea>
             <div class="code-notes">
-              <p class="required-vars">
+              <p class="helpers note-section">
                 <span data-i18n="userscript.codeEditor.requiredVariables.label">Required Variables:</span>
                 <code>title</code>
-                ,
                 <code>artist</code>
-                ,
                 <code>image</code>
-                ,
                 <code>source</code>
-                ,
                 <code>songUrl</code>
-                ,
                 <code>timePassed</code>
-                ,
                 <code>duration</code>
-                .
               </p>
-              <p>
+              <p class="helpers note-section">
+                <span data-i18n="userscript.codeEditor.helperFunctions.label">Helper Functions:</span>
+                <code>getText("")</code>
+                <code>getTextAll("")</code>
+                <code>getImage("")</code>
+                <code>getImageAll("")</code>
+                <code>querySelectorDeep("")</code>
+              </p>
+              <p class="note-section">
                 <span class="keyboard-shortcuts" data-i18n="userscript.codeEditor.keyboardShortcuts.label">Keyboard Shortcuts:</span>
                 <code>
                   <code>Ctrl+/</code>
                   <span data-i18n="userscript.codeEditor.keyboardShortcuts.toggleComment">Toggle Comment</span>
                 </code>
                 <code>
-                  <code>Ctrl+z</code>
+                  <code>Ctrl+Z</code>
                   <span data-i18n="userscript.codeEditor.keyboardShortcuts.undo">Undo</span>
                 </code>
                 <code>
-                  <code>Ctrl+y</code>
+                  <code>Ctrl+Y</code>
                   <span data-i18n="userscript.codeEditor.keyboardShortcuts.redo">Redo</span>
                 </code>
                 <code>
@@ -149,14 +158,14 @@
                   <span data-i18n="userscript.codeEditor.keyboardShortcuts.save">Save</span>
                 </code>
               </p>
-              <p>
+              <p class="note-section">
                 <span class="execution-world" data-i18n="userscript.codeEditor.executionWorld.label">Execution World:</span>
                 <code>
                   <code>//@world main</code>
                   <span data-i18n="userscript.codeEditor.executionWorld.note">Use at the top of your script if you need access to page globals (e.g. window)</span>
                 </code>
               </p>
-              <p>
+              <p class="note-section">
                 <span class="cast-support" data-i18n="userscript.codeEditor.castSupport.label">Cast Support:</span>
                 <code>
                   <code>isPlaying</code>

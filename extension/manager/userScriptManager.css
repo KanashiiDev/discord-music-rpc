@@ -291,7 +291,6 @@ ul {
   color: var(--text-color-primary);
   font-weight: 600;
   font-size: 1rem;
-  text-transform: uppercase;
   letter-spacing: 0.5px;
   margin-bottom: 6px;
 }
@@ -402,10 +401,6 @@ small > code {
   margin-right: 2px;
 }
 
-code > code {
-  background: var(--foreground-color-500);
-}
-
 .code-notes {
   margin-top: 5px;
   border: 1px solid var(--border-color);
@@ -413,9 +408,24 @@ code > code {
   border-radius: 5px;
   padding: 8px;
   background: var(--foreground-color-200);
-  gap: 6px;
+  gap: 12px;
   display: -ms-grid;
   display: grid;
+}
+
+.code-notes .note-section {
+  display: -webkit-box;
+  display: -ms-flexbox;
+  display: flex;
+  gap: 6px;
+}
+
+.code-notes .note-section code {
+  background: var(--foreground-color-300);
+}
+
+.code-notes .note-section code > code {
+  background: var(--foreground-color-500);
 }
 
 .code-notes.useSettings {

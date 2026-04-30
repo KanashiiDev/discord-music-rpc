@@ -775,8 +775,64 @@ async function applyParserFilters(parserId, artist, title) {
   }
 }
 
+function getBestVideo(videoEls) {
+  const getRectArea = (el) => {
+    const r = el?.getBoundingClientRect?.();
+    return r ? r.width * r.height : 0;
+  };
+
+  const isHiddenEl = (el) => {
+    if (!el) return true;
+    const style = window.getComputedStyle(el);
+    return style.display === "none" || style.visibility === "hidden";
+  };
+
+  const isAdLike = (el) => {
+    const parent = el.closest("[class]");
+    if (!parent) return false;
+    return [...parent.classList].some((c) => /ad|ads|advertisement|preroll/i.test(c));
+  };
+
+  const isFloating = (el) => {
+    const parent = el.closest("[class]");
+    if (!parent) return false;
+    return [...parent.classList].some((c) => /float|pip|mini/i.test(c));
+  };
+
+  const scoreVideo = (v) => {
+    let score = 0;
+
+    if (!v.paused) score += 50;
+    if (v.duration > 60) score += 20;
+    if (!isHiddenEl(v)) score += 30;
+    if (isAdLike(v)) score -= 40;
+    if (isFloating(v)) score -= 20;
+
+    score += getRectArea(v) / 1000;
+
+    return score;
+  };
+
+  let videoEl = null;
+  let bestScore = -Infinity;
+
+  for (const v of videoEls) {
+    if (!(v instanceof HTMLVideoElement)) continue;
+
+    const score = scoreVideo(v);
+
+    if (score > bestScore) {
+      bestScore = score;
+      videoEl = v;
+    }
+  }
+
+  return videoEl ? { el: videoEl, duration: videoEl.duration ?? null, currentTime: videoEl.currentTime ?? null, playing: !videoEl.paused } : {};
+}
+
 // userScript Manager Listener
 const lastUseScriptRequest = Object.create(null);
+const firstTrackSentDomains = new Set();
 window.addEventListener("message", async (event) => {
   if (event.source !== window) return;
   const msg = event.data;
@@ -808,12 +864,24 @@ window.addEventListener("message", async (event) => {
   } else if (msg?.type === "USER_SCRIPT_TRACK_DATA") {
     // Handle User Script Track Data
     const now = Date.now();
-    if (Date.now() - (lastUseScriptRequest[msg.data.domain] || 0) < 1000) return;
-    lastUseScriptRequest[msg.data.domain] = now;
+    const domain = msg.data.domain || location.host;
 
-    window.latestUserScriptData[msg.data.domain] = msg.data.song;
+    if (!firstTrackSentDomains.has(domain)) {
+      firstTrackSentDomains.add(domain);
+
+      try {
+        browser.runtime.sendMessage({
+          type: "RESTART_LOOP",
+        });
+      } catch (e) {
+        logError("Failed to send RESTART_LOOP:", e);
+      }
+    }
+
+    window.latestUserScriptData[domain] = msg.data.song;
 
     if (typeof window.registerParser === "function") {
+      const autoDetectEnabled = msg.data.mode === "watch" && msg.data.watchAutoDetect && msg.data.watchAutoDetect !== "disable";
       window.registerParser?.({
         title: msg.data.title,
         domain: msg.data.domains || msg.data.domain,
@@ -833,7 +901,8 @@ window.addEventListener("message", async (event) => {
             const song = window.latestUserScriptData[msg.data.domain];
             if (!song) return null;
 
-            const { duration, currentTime, playing } = iframeData || {};
+            const videoData = autoDetectEnabled ? getBestVideo(document.querySelectorAll("video")) : null;
+            const { duration, currentTime, playing } = iframeData || videoData || {};
 
             return {
               title: song.title,
@@ -845,19 +914,16 @@ window.addEventListener("message", async (event) => {
               duration: duration || song.duration,
               buttons: song.buttons,
               mode: msg.data.mode,
-              isPlaying: song.isPlaying ? true : msg.data.mode === "watch" ? Boolean(playing) : false,
+              isPlaying: Boolean(song.isPlaying || playing),
             };
           } catch (err) {
             logError("User script parser error:", err);
             return null;
           }
         },
-        ...(msg.data.mode === "watch" &&
-          msg.data.watchAutoDetect !== "disable" && {
-            iframeFn: function () {
-              return getVideoInfo();
-            },
-          }),
+        ...(autoDetectEnabled && {
+          iframeFn: true,
+        }),
       });
     }
   }
@@ -885,6 +951,7 @@ async function loadAllSavedUserParsers() {
 
     const hostname = data.domain.toLowerCase();
     const locHostname = location.hostname.replace(/^www\./, "").toLowerCase();
+    const autoDetectEnabled = data.selectors.mode === "watch" && data.selectors.watchAutoDetect && data.selectors.watchAutoDetect !== "disable";
 
     window.registerParser?.({
       domain: hostname,
@@ -892,15 +959,17 @@ async function loadAllSavedUserParsers() {
       urlPatterns: data.urlPatterns,
       userAdd: true,
       mode: data.selectors.mode || "listen",
-      fn: async function () {
+      fn: async function ({ iframeData }) {
         if (locHostname !== hostname && !locHostname.endsWith(`.${hostname}`)) return null;
 
         try {
+          const videoData = autoDetectEnabled ? getBestVideo(document.querySelectorAll("video")) : null;
+          const { duration, currentTime, playing } = iframeData || videoData || {};
+
           const title = get("title")?.textContent?.trim() ?? "";
           const artist = get("artist")?.textContent?.trim() ?? "";
           const source = get("source")?.textContent?.trim() ?? getPlainText(data.selectors["source"]) ?? "";
-          const timePassed = get("timePassed")?.textContent ?? "";
-          const duration = get("duration")?.textContent ?? "";
+
           const imageElement = get("image");
           let image = null;
 
@@ -922,16 +991,15 @@ async function loadAllSavedUserParsers() {
           const buttonLink2 = getSafeHref(get, "buttonLink2", data.selectors.buttonLink2);
           const buttonText2 = getSafeText(get, "buttonText2", data.selectors.buttonText2);
 
-          const { currentPosition, totalDuration, currentProgress, timestamps } = window.processPlaybackInfo?.(timePassed, duration) ?? {};
           return {
             title,
             artist,
             image,
             source: artist === source ? data.title : source || location.hostname,
             songUrl: link || location.href,
-            position: currentPosition,
-            duration: totalDuration,
-            progress: currentProgress,
+            timePassed: currentTime || get("timePassed")?.textContent || "",
+            duration: duration || get("duration")?.textContent || "",
+            isPlaying: Boolean(get("isPlaying") || playing),
             mode: data.selectors.mode || "listen",
             buttons: [
               buttonLink && buttonText
@@ -947,13 +1015,16 @@ async function loadAllSavedUserParsers() {
                   }
                 : null,
             ].filter(Boolean),
-            ...timestamps,
           };
         } catch (e) {
           logError(`User parser error (${hostname}):`, e);
           return null;
         }
       },
+
+      ...(autoDetectEnabled && {
+        iframeFn: true,
+      }),
     });
   }
 }
@@ -1039,7 +1110,14 @@ async function cleanupOrphanSettingsAndEnables() {
   }
 }
 
+const activeFetchIframeListeners = Object.create(null);
+
 function fetchIframeData(key, maxDelayMs = 10000) {
+  if (activeFetchIframeListeners[key]) {
+    browser.runtime.onMessage.removeListener(activeFetchIframeListeners[key]);
+    delete activeFetchIframeListeners[key];
+  }
+
   return new Promise((resolve) => {
     let resolved = false;
 
@@ -1048,6 +1126,7 @@ function fetchIframeData(key, maxDelayMs = 10000) {
       resolved = true;
       clearTimeout(timeoutId);
       browser.runtime.onMessage.removeListener(listener);
+      delete activeFetchIframeListeners[key];
       resolve(value);
     };
 
@@ -1085,16 +1164,13 @@ function fetchIframeData(key, maxDelayMs = 10000) {
           : lastValidValues.duration != null
             ? { duration: lastValidValues.duration }
             : {}),
-        ...(msg.data.paused != null
-          ? {
-              playing: msg.data.paused === false,
-            }
-          : {}),
+        ...(msg.data.paused != null ? { playing: msg.data.paused === false } : {}),
       };
       cache[key] = entry;
       cleanup(entry);
     };
 
+    activeFetchIframeListeners[key] = listener;
     browser.runtime.onMessage.addListener(listener);
     browser.runtime.sendMessage({ type: "FETCH_IFRAME_DATA", key }).catch(() => {});
   });

@@ -31,6 +31,7 @@ class UserScriptUI {
     });
     $("inDomain").addEventListener("input", () => this.handlePatternStatus());
     $("inUrlPatterns").addEventListener("input", () => this.handlePatternStatus());
+    $("inMode").addEventListener("change", () => this.updateWatchAutoDetectVisibility());
 
     // List events
     $("scriptList").addEventListener("click", (e) => this.handleListClick(e));
@@ -68,7 +69,7 @@ class UserScriptUI {
       unused: false, // warnings about unused variables
       browser: true, // It recognizes global variables such as window/document.
       devel: true, // Allows console.log and alert
-      predef: ["useSetting"], // recognizes the useSetting global function
+      predef: ["useSetting", "getText", "getTextAll", "getImage", "getImageAll", "querySelectorDeep"], // recognizes the helper functions
     };
 
     // Init CodeMirror 5
@@ -221,6 +222,11 @@ class UserScriptUI {
       document.getElementById("editSettingsBtn").hidden = false;
     }
     return match;
+  }
+
+  updateWatchAutoDetectVisibility() {
+    const isWatch = $("inMode").value === "watch";
+    document.querySelector(".container.watchAutoDetect").style.display = isWatch ? "" : "none";
   }
 
   async refreshList() {
@@ -448,6 +454,8 @@ class UserScriptUI {
     $("inDomain").value = Array.isArray(script?.domain) ? script.domain.join(", ") : script?.domain || "";
     $("inHomepage").value = script?.homepage || "";
     $("inMode").value = script?.mode || "listen";
+    $("inWatchAutoDetect").value = script?.watchAutoDetect || "disable";
+    this.updateWatchAutoDetectVisibility();
     $("inDebug").checked = script?.debug || false;
     $("inUrlPatterns").value = this.formatPatterns(script?.urlPatterns) || ".*";
     $("inUrlPatterns").dispatchEvent(new Event("input"));
@@ -592,6 +600,7 @@ class UserScriptUI {
       runAt: "document_idle",
       code: this.codeEditor.getValue(),
       mode: $("inMode").value.trim(),
+      watchAutoDetect: $("inWatchAutoDetect").value.trim(),
       debug: $("inDebug").checked,
       settings: extractSettingsFromCode(this.codeEditor.getValue()),
     };
@@ -764,6 +773,7 @@ class UserScriptUI {
         description: "${script.description}",
         lastUpdated: "${script.lastUpdated}",
         mode: "${script.mode}",
+        watchAutoDetect: "${script.watchAutoDetect}"
         homepage: "${script.homepage}",
         urlPatterns: [${urlPatterns}],
         fn: function () {

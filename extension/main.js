@@ -563,6 +563,11 @@ function messageHandler(message, sender, sendResponse) {
     return true;
   }
 
+  if (message.type === "RESTART_LOOP") {
+    state.lastUpdateTime = 0;
+    scheduleNextUpdate(CONSTANTS.ACTIVE_INTERVAL, true);
+  }
+
   if (message.action === "reloadPage") {
     logInfo("messageHandler: reloading page as requested");
     location.reload();
