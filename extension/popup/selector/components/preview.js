@@ -346,7 +346,13 @@ function updatePreview(shadow, editMode) {
     let currentSec = getSeconds(timeEl.textContent);
 
     // If there is timePassed but no duration, or if timePassed equals duration, hide the duration.
-    if ((selectors.timePassed.length > 1 && selectors.duration.length < 1) || (texts.timePassed >= texts.duration && !/^[-–—]/.test(texts.duration.trim()))) {
+    const tp = parseTime(texts.timePassed);
+    const dur = parseTime(texts.duration);
+    const tpHasSelector = selectors.timePassed?.length > 1;
+    const durHasSelector = selectors.duration?.length > 1;
+    const isTimeExceeded = tp != null && dur != null && tp >= dur && !/^[-–—]/.test(texts.duration.trim());
+
+    if ((tpHasSelector && !durHasSelector) || isTimeExceeded) {
       durEl.style.opacity = "0";
       if (!timeEl.hasAttribute("reset")) {
         timeEl.textContent = "00:00";
