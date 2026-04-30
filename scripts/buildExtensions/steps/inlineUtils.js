@@ -117,7 +117,9 @@ function createInlineUtils(extensionDir, distDir) {
    * @param {string|string[]} targetFiles
    * @param {string|string[]} sourceFiles
    * @param {string[]|[]} functionsToInclude - Pass empty array to include all.
-   * @param {"start"|"end"} [position="start"]
+   * @param {"start"|"end"|string} [position="start"] - "start" or "end" for top/bottom injection.
+   *   Any other string is treated as a placeholder (e.g. "_INLINE_UTILS") — the first matching
+   *   line in the target file is replaced with the inlined code. Falls back to "start" if not found.
    * @param {boolean} [shouldDelete=false]
    * @param {boolean|{ shallow?: boolean, dir?: string }} [inlineAllSiblings=false]
    */
@@ -177,17 +179,48 @@ function createInlineUtils(extensionDir, distDir) {
   function buildInlineFunctions() {
     const filesToDelete = new Set();
 
-    for (const [targetFile, inlines] of Object.entries(pendingInlines)) {
+    // Dependency order: targets used as source should be processed first
+    const targetFiles = Object.keys(pendingInlines);
+    const sorted = [...targetFiles].sort((a, b) => {
+      const normalizeSlash = (p) => p.split(path.sep).join("/");
+      const aNorm = normalizeSlash(a);
+      const bNorm = normalizeSlash(b);
+
+      const aUsedAsSource = Object.values(pendingInlines).some((inlines) => inlines.some(({ sourceFile }) => normalizeSlash(sourceFile) === aNorm));
+      const bUsedAsSource = Object.values(pendingInlines).some((inlines) => inlines.some(({ sourceFile }) => normalizeSlash(sourceFile) === bNorm));
+
+      if (aUsedAsSource && !bUsedAsSource) return -1;
+      if (!aUsedAsSource && bUsedAsSource) return 1;
+      return 0;
+    });
+
+    for (const targetFile of sorted) {
+      const inlines = pendingInlines[targetFile];
       const targetPath = path.join(distDir, targetFile);
       let targetContent = fs.readFileSync(targetPath, "utf8");
       let startInlinedCode = "";
       let endInlinedCode = "";
 
       for (const { sourceFile, functionsToInclude, position, shouldDelete } of inlines) {
-        const sourcePath = path.join(extensionDir, sourceFile);
+        // If there is a processed version in dist, use that; otherwise, read it from extensionDir
+        const sourcePath = fs.existsSync(path.join(distDir, sourceFile)) ? path.join(distDir, sourceFile) : path.join(extensionDir, sourceFile);
+
         const extractedFunctions = extractFunctionsFromFile(sourcePath, functionsToInclude);
         const inlineTag = `// === BEGIN INLINE UTILS (${sourceFile}) - (${functionsToInclude?.join?.(", ") || "ALL"}) ===`;
         const inlinedCode = `${inlineTag}\n${extractedFunctions.join("\n\n")}\n// === END INLINE UTILS (${sourceFile}) ===\n\n`;
+
+        const isPlaceholder = typeof position === "string" && position !== "start" && position !== "end";
+
+        if (isPlaceholder) {
+          const escapedPlaceholder = position.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+          const placeholderRegex = new RegExp(`[^\n]*${escapedPlaceholder}[^\n]*\n?`);
+
+          if (placeholderRegex.test(targetContent)) {
+            targetContent = targetContent.replace(placeholderRegex, inlinedCode);
+            if (shouldDelete) filesToDelete.add(path.join(distDir, sourceFile));
+            continue;
+          }
+        }
 
         if (position === "end") {
           endInlinedCode += inlinedCode;

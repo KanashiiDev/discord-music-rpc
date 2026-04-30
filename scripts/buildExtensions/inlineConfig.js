@@ -22,6 +22,7 @@ module.exports = function registerInlines(inlineUtilsFunctions) {
 
   // Logs
   inlineUtilsFunctions(["background.js", "mainParser.js"], "common/utils.js", [
+    "getDebugMode",
     "logInfo",
     "logWarn",
     "errorFilter",
@@ -53,9 +54,6 @@ module.exports = function registerInlines(inlineUtilsFunctions) {
     "factoryReset",
   ]);
 
-  inlineUtilsFunctions("background.js", ["manager/userScriptWorker.js"], []);
-  inlineUtilsFunctions("background.js", ["background/historyBackground.js", "background/backgroundListeners.js"], [], "start", true);
-
   // Main Utils
   inlineUtilsFunctions("main.js", "common/utils.js", [
     "debounce",
@@ -82,7 +80,9 @@ module.exports = function registerInlines(inlineUtilsFunctions) {
     "getTimestamps",
     "processPlaybackInfo",
     "getText",
+    "getTextAll",
     "getImage",
+    "getImageAll",
     "querySelectorDeep",
     "hashFromPatternStrings",
     "makeIdFromDomainAndPatterns",
@@ -120,6 +120,17 @@ module.exports = function registerInlines(inlineUtilsFunctions) {
 
   // User Script Manager
   inlineUtilsFunctions("manager/userScriptManager.js", "manager/components/UseSettingEditor.js", [], "start", true);
+  inlineUtilsFunctions(
+    "manager/userScriptWorker.js",
+    "common/utils.js",
+    ["getText", "getTextAll", "getImage", "getImageAll", "queryWithPartialClass", "querySelectorDeep"],
+    "_INLINE_UTILS",
+  );
+  inlineUtilsFunctions("background.js", ["manager/userScriptWorker.js"], []);
+  inlineUtilsFunctions("iframeParser.js", ["common/utils.js"], ["querySelectorDeep"], "start");
+
+  // Background Listeners
+  inlineUtilsFunctions("background.js", ["background/historyBackground.js", "background/backgroundListeners.js"], [], "start", true);
 
   // Setting Components
   inlineUtilsFunctions("settings/settings.js", [], [], "start", true, { dir: "settings/components" });
