@@ -8,7 +8,7 @@
     "service_worker": "background.js",
     "type": "module"
   },
-  "permissions": ["tabs", "storage", "contextMenus", "userScripts", "scripting"],
+  "permissions": ["tabs", "storage", "contextMenus", "userScripts", "scripting", "webNavigation"],
   "host_permissions": ["*://*/*"],
   "content_scripts": [
     {

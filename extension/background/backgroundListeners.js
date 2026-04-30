@@ -790,9 +790,25 @@ const handleIsHostnameMatch = async (sender) => {
 const setupListeners = () => {
   browser.runtime.onMessage.addListener(async (req, sender) => {
     try {
-      if (req.type === "FETCH_IFRAME_DATA" || req.type === "IFRAME_DATA") {
+      if (req.type === "FETCH_IFRAME_DATA") {
         if (sender.tab?.id != null) {
-          browser.tabs.sendMessage(sender.tab.id, req).catch(() => {});
+          const tabId = sender.tab.id;
+          browser.webNavigation
+            .getAllFrames({ tabId })
+            .then((frames) => {
+              for (const frame of frames) {
+                if (frame.frameId === 0) continue;
+                browser.tabs.sendMessage(tabId, req, { frameId: frame.frameId }).catch(() => {});
+              }
+            })
+            .catch(() => {});
+        }
+        return { ok: true };
+      }
+
+      if (req.type === "IFRAME_DATA") {
+        if (sender.tab?.id != null) {
+          browser.tabs.sendMessage(sender.tab.id, req, { frameId: 0 }).catch(() => {});
         }
         return { ok: true };
       }
