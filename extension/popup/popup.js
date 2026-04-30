@@ -357,6 +357,38 @@ domLoadedListener = async () => {
     // Motion Preference Check
     await initMotionPreference();
 
+    // Check for tab load completion
+    const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
+
+    if (tab.status !== "complete") {
+      await new Promise((resolve, reject) => {
+        const TIMEOUT_MS = 10_000;
+
+        const timer = setTimeout(() => {
+          browser.tabs.onUpdated.removeListener(listener);
+          reject(new Error("Tab load timeout"));
+        }, TIMEOUT_MS);
+
+        const listener = (updatedTabId, changeInfo) => {
+          if (updatedTabId === tab.id && changeInfo.status === "complete") {
+            clearTimeout(timer);
+            browser.tabs.onUpdated.removeListener(listener);
+            resolve();
+          }
+        };
+
+        browser.tabs.onUpdated.addListener(listener);
+
+        browser.tabs.get(tab.id).then((freshTab) => {
+          if (freshTab.status === "complete") {
+            clearTimeout(timer);
+            browser.tabs.onUpdated.removeListener(listener);
+            resolve();
+          }
+        });
+      });
+    }
+
     // Start the Section Manager
     sectionManager.init();
     applyParserOptionLabels();
