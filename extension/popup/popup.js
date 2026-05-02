@@ -419,7 +419,7 @@ domLoadedListener = async () => {
       await browser.storage.local.set({ parserVisibilitySetupDone: true });
       // Seed the snapshot right after the initial setup
       await browser.storage.local.set({
-        parserKnownIds: (freshList ?? []).map((e) => e.id),
+        parserKnownIds: (freshList ?? []).filter((e) => !e.userAdd && !e.userScript).map((e) => e.id),
         parserNewIds: [],
       });
     } else {

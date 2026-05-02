@@ -249,11 +249,11 @@ function openVisibilityDialog(list, isInitial = false) {
     searchInput.addEventListener("input", () => filterRows(searchInput.value));
 
     selectAllBtn.addEventListener("click", () => {
-      list.forEach((e) => visibleIds.add(e.id));
+      list.filter((e) => !e.userAdd && !e.userScript).forEach((e) => visibleIds.add(e.id));
       syncCheckboxes();
     });
     selectNoneBtn.addEventListener("click", () => {
-      visibleIds.clear();
+      list.filter((e) => !e.userAdd && !e.userScript).forEach((e) => visibleIds.delete(e.id));
       syncCheckboxes();
     });
 
@@ -263,9 +263,17 @@ function openVisibilityDialog(list, isInitial = false) {
       textContent: isInitial ? i18n.t("common.continue") : i18n.t("common.save"),
     });
     confirmBtn.addEventListener("click", async () => {
-      const hiddenIds = list.map((e) => e.id).filter((id) => !visibleIds.has(id));
+      const hiddenIds = list
+        .filter((e) => !e.userAdd && !e.userScript)
+        .map((e) => e.id)
+        .filter((id) => !visibleIds.has(id));
 
-      if (visibleIds.size < 1) {
+      const manageableVisible = list
+        .filter((e) => !e.userAdd && !e.userScript)
+        .map((e) => e.id)
+        .filter((id) => visibleIds.has(id));
+
+      if (manageableVisible.length < 1) {
         showPopupMessage(i18n.t("parserManager.selectOne"), "error", 2000, 0, ".pvs-footer");
         return;
       }
