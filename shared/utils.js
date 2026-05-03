@@ -37,7 +37,7 @@ function truncate(str, maxLength = 128, { fallback = "Unknown", minLength = 2, m
 
   // Optional remove (only in brackets)
   const optionalRegexStr = optionalRemoveKeywords.join("|");
-  const afterOptional = strForRegex.replace(/([\[\(（【])([^\]\)）】]+)([\]\)）】])/g, (match, open, content, close) => {
+  const afterOptional = strForRegex.replace(/([\[\(（【［])([^\]\)）】］]+)([\]\)）】］])/g, (match, open, content, close) => {
     const cleanedContent = content
       .replace(new RegExp(`\\b(${optionalRegexStr})\\b`, "gi"), "")
       .replace(/\s{2,}/g, " ")
@@ -49,18 +49,9 @@ function truncate(str, maxLength = 128, { fallback = "Unknown", minLength = 2, m
   strForRegex = afterOptional;
 
   // Remove the dash marks inside the parentheses
-  const afterDash1 = strForRegex.replace(/[\[\(（]\s*-\s*([^\]\)）]+)[\]\)）]/g, "[$1]");
-  const afterDash2 = afterDash1.replace(/[\[\(（]([^\]\)）]+?)\s*-\s*[\]\)）]/g, "[$1]");
+  const afterDash1 = strForRegex.replace(/[\[\(（［](\s*-\s*)([^\]\)）］]+)[\]\)）］]/g, "[$2]");
+  const afterDash2 = afterDash1.replace(/[\[\(（［]([^\]\)）］]+?)(\s*-\s*)[\]\)）］]/g, "[$1]");
   strForRegex = afterDash2;
-
-  // Empty parentheses (run twice to catch newly emptied ones)
-  const afterEmptyParens1 = strForRegex.replace(/[\[\(（【]\s*[\]\)）】]/g, "");
-  const afterEmptyParens2 = afterEmptyParens1.replace(/[\[\(（【]\s*[\]\)）】]/g, "");
-  strForRegex = afterEmptyParens2;
-
-  // Normalize whitespace
-  const afterWhitespace = strForRegex.replace(/\s+/g, " ").trim();
-  strForRegex = afterWhitespace;
 
   // Remove problematic characters, control characters and broken surrogates
   try {
@@ -72,6 +63,15 @@ function truncate(str, maxLength = 128, { fallback = "Unknown", minLength = 2, m
 
     strForRegex = afterNonPrint;
   } catch (_) {}
+
+  // Empty parentheses (run twice to catch newly emptied ones)
+  const afterEmptyParens1 = strForRegex.replace(/[\[\(（【［]\s*[\]\)）】］]/g, "");
+  const afterEmptyParens2 = afterEmptyParens1.replace(/[\[\(（【［]\s*[\]\)）】］]/g, "");
+  strForRegex = afterEmptyParens2;
+
+  // Normalize whitespace
+  const afterWhitespace = strForRegex.replace(/\s+/g, " ").trim();
+  strForRegex = afterWhitespace;
 
   // Max length
   let result = strForRegex;
