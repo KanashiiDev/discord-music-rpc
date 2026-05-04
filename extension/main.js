@@ -396,6 +396,9 @@ async function processRPCUpdate(song, progress) {
     });
 
     if (res?.ok) {
+      if (!keepAliveManager.initialized) {
+        keepAliveManager.init();
+      }
       rpcState.updateLastActivity(song, progress);
       logInfo("✅ RPC Updated Successfully!");
       return true;
