@@ -100,7 +100,7 @@ async function initializeApp() {
       rotationInterval: ConfigManager.config.LOG_ROTATION_INTERVAL,
     });
 
-    Utils.init({ log, logFilePath, historyFilePath, dbPath, config: ConfigManager.config });
+    Utils.init({ userDataPath, log, logFilePath, historyFilePath, dbPath, config: ConfigManager.config });
 
     app.setAppUserModelId?.("com.kanashiidev.discord.music.rpc");
     if (process.platform === "linux") app.setName("Discord Music RPC");

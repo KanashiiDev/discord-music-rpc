@@ -3,8 +3,9 @@ const fs = require("fs");
 const { state } = require("../state");
 const ConfigManager = require("../scripts/configManagement");
 const { log, logStartupTimeout } = require("../scripts/electron-log");
-const { logToFile, getServerPath, getLogFilePath, getHistoryFilePath, getDbPath, getConfig } = require("../utils");
+const { logToFile, getServerPath, getLogFilePath, getHistoryFilePath, getDbPath, getConfig, getUserDataPath } = require("../utils");
 const updateTrayMenu = () => require("./tray").updateTrayMenu();
+const { shell } = require("electron");
 
 // Start
 async function startServer() {
@@ -91,6 +92,7 @@ async function startServer() {
           PORT: config.PORT,
           NODE_ENV: "production",
           LOG_LEVEL: log.transports.file?.level ?? "debug",
+          USERDATA_PATH: getUserDataPath(),
           LOG_FILE_PATH: getLogFilePath(),
           HISTORY_FILE_PATH: getHistoryFilePath(),
           SETTINGS_FILE_PATH: getDbPath(),
@@ -132,6 +134,14 @@ async function startServer() {
     state.serverProcess.on("message", (msg) => {
       if (msg === "ready") {
         handleSuccess();
+      } else if (msg?.type === "OPEN_PATH") {
+        shell.openPath(msg.path).then((error) => {
+          if (error && process.platform === "linux") {
+            require("child_process").exec(`xdg-open "${msg.path}"`);
+          } else if (error) {
+            log.error("[OPEN_PATH] Failed to open path:", error);
+          }
+        });
       } else if (msg?.type === "RPC_STATUS") {
         state.isRpcConnected = msg.value;
         updateTrayMenu();

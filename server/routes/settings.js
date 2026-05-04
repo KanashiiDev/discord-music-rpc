@@ -1,6 +1,7 @@
 const fs = require("fs");
 const { Router } = require("express");
 const { sendRestart, sendResetConfig } = require("../services/electron.js");
+const { sendOpenPath } = require("../services/electron.js");
 
 // Reads and parses the settings file.
 function readSettings(filePath, res) {
@@ -17,6 +18,18 @@ function readSettings(filePath, res) {
 
 function createSettingsRouter(settingsFilePath) {
   const router = Router();
+
+  router.post("/open-path", (req, res) => {
+    const { path } = req.body;
+    if (!path) return res.status(400).json({ success: false });
+
+    if (!fs.existsSync(path)) {
+      return res.status(404).json({ success: false, reason: "not_found" });
+    }
+
+    sendOpenPath(path);
+    res.json({ success: true });
+  });
 
   // GET /settings
   router.get("/settings", (_req, res) => {
@@ -95,4 +108,4 @@ function createSettingsRouter(settingsFilePath) {
   return router;
 }
 
-module.exports = { createSettingsRouter };
+module.exports = { createSettingsRouter, readSettings };

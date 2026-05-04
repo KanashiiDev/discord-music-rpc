@@ -22,5 +22,6 @@ function sendToElectron(message, delay = 0) {
 const sendReady = () => sendToElectron("ready");
 const sendRestart = () => sendToElectron("RESTART_SERVER", 1000);
 const sendResetConfig = () => sendToElectron("RESET_CONFIG", 1000);
+const sendOpenPath = (folderPath) => sendToElectron({ type: "OPEN_PATH", path: folderPath });
 
-module.exports = { sendReady, sendRestart, sendResetConfig };
+module.exports = { sendReady, sendRestart, sendResetConfig, sendOpenPath };

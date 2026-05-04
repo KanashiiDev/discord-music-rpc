@@ -2,13 +2,15 @@ const { dialog, shell } = require("electron");
 const path = require("path");
 const fs = require("fs");
 
+let _userDataPath = null;
 let _log = null;
 let _logFilePath = null;
 let _historyFilePath = null;
 let _dbPath = null;
 let _config = null;
 
-function init({ log, logFilePath, historyFilePath, dbPath, config }) {
+function init({ log, userDataPath, logFilePath, historyFilePath, dbPath, config }) {
+  _userDataPath = userDataPath;
   _log = log;
   _logFilePath = logFilePath;
   _historyFilePath = historyFilePath;
@@ -17,6 +19,7 @@ function init({ log, logFilePath, historyFilePath, dbPath, config }) {
 }
 
 // Getters — called by other modules after init
+const getUserDataPath = () => _userDataPath;
 const getLogFilePath = () => _logFilePath;
 const getHistoryFilePath = () => _historyFilePath;
 const getDbPath = () => _dbPath;
@@ -192,6 +195,7 @@ module.exports = {
   getResourcePath,
   getServerPath,
   getIconPath,
+  getUserDataPath,
   getLogFilePath,
   getHistoryFilePath,
   getDbPath,

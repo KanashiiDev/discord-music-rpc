@@ -75,7 +75,8 @@
     "electron-updater": "^6.8.3",
     "express": "^5.2.1",
     "semver": "^7.7.4",
-    "simple-json-db": "^2.0.0"
+    "simple-json-db": "^2.0.0",
+    "ws": "^8.20.0"
   },
   "devDependencies": {
     "acorn": "^8.16.0",

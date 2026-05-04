@@ -92,6 +92,25 @@ const defaultConfig = {
       note: "Log rotation interval",
       hidden: true,
     },
+
+    EXPORT_ACTIVITY_FILES: {
+      value: false,
+      type: "boolean",
+      note: "Writes current activity data to files in the userData directory.",
+      path: null,
+    },
+
+    WNP_RAINMETER_SUPPORT: {
+      value: false,
+      type: "boolean",
+      note: "Enable WNP Rainmeter support.",
+    },
+
+    WNP_OBS_SUPPORT: {
+      value: false,
+      type: "boolean",
+      note: "Enable WNP OBS support.",
+    },
   },
 };
 
@@ -179,6 +198,9 @@ const initialize = (userDataPath, logger = console) => {
 
   // Set the logger
   log = logger;
+
+  // Set userData path for EXPORT_ACTIVITY_FILES
+  defaultConfig.server.EXPORT_ACTIVITY_FILES.path = path.join(userDataPath, "currentActivity");
 
   // Create the DB path and start the store
   dbPath = path.join(userDataPath, "config.json");

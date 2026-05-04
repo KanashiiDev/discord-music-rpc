@@ -11,9 +11,10 @@ const { connectRPC, destroyClient, cancelReconnect } = require("./rpc/client.js"
 const { resetActivityState } = require("./rpc/activity.js");
 const { startHealthCheckTimer, stopHealthCheckTimer } = require("./services/healthCheck.js");
 const { sendReady } = require("./services/electron.js");
+const wnpClient = require("./services/wnpClient.js");
 const { createRpcRouter } = require("./routes/rpc.js");
 const { createHistoryRouter } = require("./routes/history.js");
-const { createSettingsRouter } = require("./routes/settings.js");
+const { createSettingsRouter, readSettings } = require("./routes/settings.js");
 
 // Singleton Guard
 if (global.__SERVER_INSTANCE_RUNNING__) {
@@ -30,6 +31,14 @@ const PORT = IS_ELECTRON ? Number(process.env.PORT) || 3000 : 3000;
 const settingsFilePath = process.env.SETTINGS_FILE_PATH;
 const logFilePath = process.env.LOG_FILE_PATH;
 const historyFilePath = process.env.HISTORY_FILE_PATH;
+const settings = readSettings(settingsFilePath)?.settings?.server;
+
+// WebNowPlaying Check
+const wnpAdapters = ["WNP_RAINMETER_SUPPORT", "WNP_OBS_SUPPORT"];
+const wnpSupport = wnpAdapters.some((key) => settings[key]?.value === true);
+const activeWnpSupports = Object.entries(settings)
+  .filter(([key, val]) => wnpAdapters.includes(key) && val.value === true)
+  .map(([key]) => key);
 
 console.log("[SERVER] Starting Discord MUSIC RPC Server");
 console.log(`[SERVER] Port: ${PORT} | Electron: ${process.env.ELECTRON_MODE} | ` + `Platform: ${process.platform} | Node: ${process.version}`);
@@ -123,6 +132,7 @@ async function shutdown() {
     try {
       cancelReconnect();
       stopHealthCheckTimer();
+      if (wnpSupport) wnpClient.stop();
       resetActivityState(historyFilePath);
 
       // Clean up RPC client
@@ -225,6 +235,7 @@ state.serverInstance = app.listen(PORT, () => {
   sendReady();
   connectRPC().catch((err) => console.error("[SERVER] Initial RPC connect failed:", err.message));
   startHealthCheckTimer(historyFilePath);
+  if (wnpSupport) wnpClient.start(activeWnpSupports);
 });
 
 state.serverInstance.on("error", (err) => {

@@ -3,6 +3,16 @@ const { truncate, isValidUrl } = require("../../shared/utils.js");
 
 const { state } = require("./state.js");
 const { isRpcReady, scheduleReconnect } = require("./client.js");
+const wnpClient = require("../services/wnpClient.js");
+const { readSettings } = require("../routes/settings.js");
+const userDataPath = process.env.USERDATA_PATH;
+const settingsFilePath = process.env.SETTINGS_FILE_PATH;
+
+// Init Activity File Store
+const settings = readSettings(settingsFilePath)?.settings?.server;
+const localActivitySave = settings?.EXPORT_ACTIVITY_FILES?.value;
+const activityWriter = require("../services/activityFileStore.js");
+activityWriter.init(userDataPath);
 
 // Builds a Discord RPC activity object from the raw request payload.
 function buildActivity(data, now) {
@@ -157,6 +167,12 @@ async function setRpcActivity(activity) {
     await client.user.setActivity(activity);
     state.currentActivity = activity;
     state.lastActivitySeenAt = Date.now();
+    // Write currentActivity files
+    if (localActivitySave && activity.type !== 3) {
+      activityWriter.writeActivityFiles(activity).catch((err) => {
+        console.log("[ACTIVITY] Error writing activity files: " + err);
+      });
+    }
     return true;
   } catch (err) {
     console.error("[ACTIVITY] setActivity failed:", err.message);
@@ -190,6 +206,9 @@ function resetActivityState(historyFilePath) {
   state.lastActivitySeenAt = null;
   state.lastActiveClient = null;
   state.listeningStartTime = null;
+  // Remove currentActivity files
+  if (localActivitySave) activityWriter.clearActivityFiles();
+  wnpClient.clearActivity();
 }
 
 // Persists the listening duration for the currently playing track, if any.

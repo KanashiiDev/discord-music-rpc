@@ -54,6 +54,7 @@ Required to communicate with Discord and display your music status.
 - [Troubleshooting](#-troubleshooting)
 - [How to Add a New Music Site](#-how-to-add-a-new-music-site)
 - [Filter Management](#-filter-management)
+- [Live Activity Output](#-live-activity-output)
 - [Developer Setup](#-developer-setup)
 - [Contributing](#-contributing)
 - [License](#-license)
@@ -61,25 +62,61 @@ Required to communicate with Discord and display your music status.
 ## 🚀 Features
 
 - No login required, works entirely locally
-- Prebuilt integrations for a wide range of music platforms
-- Easy to extend — add support for almost any music site using the built-in selector system or UserScripts
-- Filter management for blocking or modifying songs
+- Prebuilt integrations for 20+ music and radio platforms
+- Easy to extend - add support for almost any music and video site using the built-in selector system or userscripts
+- Filter system - block or replace songs by artist/title, per-site or globally
+- Both listening and watching activity support
+- Automatic iframe detection for embedded players
+- Live activity output - WebNowPlaying (Rainmeter & OBS), and plain text/JSON files on disk
 - Cross-platform Electron desktop app (Windows / Linux / macOS)
 - Automatic updates for both the browser extension and the desktop app
-- Customizable settings and options (custom covers, buttons, etc.)
+- Fully customizable Discord status per site - control artist, source, cover art, buttons, timestamps, and more
+- Multi-language support - [help translate on Crowdin](https://crowdin.com/project/discord-music-rpc)
 - Open-source and community-driven
 
 ---
 
 ## 🎵 Supported Websites
 
-These are the prebuilt integrations included with the extension. Additional sites can be easily added using the built-in selector system or the UserScript manager — see the [How to Add a New Music Site](#-how-to-add-a-new-music-site) section.
+These are the prebuilt integrations included with the extension. Additional sites can be easily added using the built-in selector system or the UserScript manager - see the [How to Add a New Music Site](#-how-to-add-a-new-music-site) section.
 
-| [<img src="https://www.google.com/s2/favicons?domain=youtube.com" width="20">](https://www.youtube.com) YouTube                      | [<img src="https://www.google.com/s2/favicons?domain=music.youtube.com" width="20">](https://music.youtube.com) YouTube Music | [<img src="https://www.google.com/s2/favicons?domain=soundcloud.com" width="20">](https://soundcloud.com) SoundCloud       | [<img src="https://www.google.com/s2/favicons?domain=deezer.com" width="20">](https://www.deezer.com) Deezer                       | [<img src="https://www.google.com/s2/favicons?domain=tidal.com" width="20">](https://tidal.com) Tidal        |
-| :----------------------------------------------------------------------------------------------------------------------------------- | :---------------------------------------------------------------------------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------- | :--------------------------------------------------------------------------------------------------------------------------------- | :----------------------------------------------------------------------------------------------------------- |
-| [<img src="https://www.google.com/s2/favicons?domain=pandora.com" width="20">](https://www.pandora.com) Pandora                      | [<img src="https://www.google.com/s2/favicons?domain=music.apple.com" width="20">](https://music.apple.com) Apple Music       | [<img src="https://www.google.com/s2/favicons?domain=music.amazon.com" width="20">](https://music.amazon.com) Amazon Music | [<img src="https://www.google.com/s2/favicons?domain=vk.com" width="20">](https://www.vk.com) VK                                   | [<img src="https://www.google.com/s2/favicons?domain=tunein.com" width="20">](https://tunein.com) TuneIn     |
-| [<img src="https://www.google.com/s2/favicons?domain=onlineradiobox.com" width="20">](https://www.onlineradiobox.com) OnlineRadioBox | [<img src="https://www.google.com/s2/favicons?domain=iheart.com" width="20">](https://www.iheart.com) iHeartRadio             | [<img src="https://www.google.com/s2/favicons?domain=radio.net" width="20">](https://www.radio.net) Radio.net              | [<img src="https://www.google.com/s2/favicons?domain=radio.garden" width="20">](https://radio.garden) Radio Garden                 | [<img src="https://www.google.com/s2/favicons?domain=listen.moe" width="20">](https://listen.moe) Listen.moe |
-| [<img src="https://www.google.com/s2/favicons?domain=gensokyoradio.net" width="20">](https://gensokyoradio.net) Gensokyo Radio       | [<img src="https://www.google.com/s2/favicons?domain=accuRadio.com" width="20">](https://accuRadio.com) accuRadio             | [<img src="https://www.google.com/s2/favicons?domain=anison.fm" width="20">](https://anison.fm) anison.fm                  | [<img src="https://www.google.com/s2/favicons?domain=asiaDreamRadio.com" width="20">](https://asiaDreamRadio.com) Asia Dream Radio | [<img src="https://www.google.com/s2/favicons?domain=plaza.one" width="20">](https://plaza.one) Plaza One    |
+<table>
+  <tr>
+    <td><a href="https://www.youtube.com"><img src="https://www.google.com/s2/favicons?domain=youtube.com" width="15"></a> YouTube</td>
+    <td><a href="https://music.youtube.com"><img src="https://www.google.com/s2/favicons?domain=music.youtube.com" width="15"></a> YouTube Music</td>
+    <td><a href="https://soundcloud.com"><img src="https://www.google.com/s2/favicons?domain=soundcloud.com" width="15"></a> SoundCloud</td>
+    <td><a href="https://www.deezer.com"><img src="https://www.google.com/s2/favicons?domain=deezer.com" width="15"></a> Deezer</td>
+    <td><a href="https://tidal.com"><img src="https://www.google.com/s2/favicons?domain=tidal.com" width="15"></a> Tidal</td>
+  </tr>
+  <tr>
+    <td><a href="https://www.pandora.com"><img src="https://www.google.com/s2/favicons?domain=pandora.com" width="15"></a> Pandora</td>
+    <td><a href="https://music.apple.com"><img src="https://www.google.com/s2/favicons?domain=music.apple.com" width="15"></a> Apple Music</td>
+    <td><a href="https://music.amazon.com"><img src="https://www.google.com/s2/favicons?domain=music.amazon.com" width="15"></a> Amazon Music</td>
+    <td><a href="https://www.vk.com"><img src="https://www.google.com/s2/favicons?domain=vk.com" width="15"></a> VK</td>
+    <td><a href="https://tunein.com"><img src="https://www.google.com/s2/favicons?domain=tunein.com" width="15"></a> TuneIn</td>
+  </tr>
+  <tr>
+    <td><a href="https://www.onlineradiobox.com"><img src="https://www.google.com/s2/favicons?domain=onlineradiobox.com" width="15"></a> OnlineRadioBox</td>
+    <td><a href="https://www.iheart.com"><img src="https://www.google.com/s2/favicons?domain=iheart.com" width="15"></a> iHeartRadio</td>
+    <td><a href="https://www.radio.net"><img src="https://www.google.com/s2/favicons?domain=radio.net" width="15"></a> Radio.net</td>
+    <td><a href="https://radio.garden"><img src="https://www.google.com/s2/favicons?domain=radio.garden" width="15"></a> Radio Garden</td>
+    <td><a href="https://listen.moe"><img src="https://www.google.com/s2/favicons?domain=listen.moe" width="15"></a> Listen.moe</td>
+  </tr>
+  <tr>
+    <td><a href="https://gensokyoradio.net"><img src="https://www.google.com/s2/favicons?domain=gensokyoradio.net" width="15"></a> Gensokyo Radio</td>
+    <td><a href="https://accuRadio.com"><img src="https://www.google.com/s2/favicons?domain=accuRadio.com" width="15"></a> accuRadio</td>
+    <td><a href="https://anison.fm"><img src="https://www.google.com/s2/favicons?domain=anison.fm" width="15"></a> anison.fm</td>
+    <td><a href="https://asiaDreamRadio.com"><img src="https://www.google.com/s2/favicons?domain=asiaDreamRadio.com" width="15"></a> Asia Dream Radio</td>
+    <td><a href="https://plaza.one"><img src="https://www.google.com/s2/favicons?domain=plaza.one" width="15"></a> Plaza One</td>
+  </tr>
+  <tr>
+    <td><a href="https://www.bilibili.tv"><img src="https://www.google.com/s2/favicons?domain=bilibili.tv" width="15"></a> Bilibili TV</td>
+    <td><a href="https://kick.com"><img src="https://www.google.com/s2/favicons?domain=kick.com" width="15"></a> Kick</td>
+    <td><a href="https://www.twitch.tv"><img src="https://www.google.com/s2/favicons?domain=twitch.tv" width="15"></a> Twitch</td>
+    <td><a href="https://r-a-d.io"><img src="https://www.google.com/s2/favicons?domain=r-a-d.io" width="15"></a> r/a/dio</td>
+    <td><a href="https://basic.pp.ua"><img src="https://www.google.com/s2/favicons?domain=basic.pp.ua" width="15"></a> Sasalele Music Station</td>
+  </tr>
+</table>
 
 ---
 
@@ -898,6 +935,52 @@ For faster blocking, use the **"Block Current Song"** button at the top of the f
 | **Exact matching**    | Filters match exact strings, not partial       | To block "Song (Remix)", you must specify the full title including "(Remix)" |
 
 </details>
+
+---
+
+## 📤 Live Activity Output
+
+### 🎵 WebNowPlaying Integration
+
+This project has built-in support for **WebNowPlaying**, allowing you to send your current music data to **Rainmeter** and **OBS** in real time.
+
+When enabled, the following metadata is sent every second:
+
+- **Title**
+- **Artist**
+- **Source**
+- **Cover Art**
+- **Playback Position / Duration**
+
+### Setup
+
+You do **NOT** need to install the WebNowPlaying browser extension.
+
+- Rainmeter → [WebNowPlaying Rainmeter Plugin](https://github.com/keifufu/WebNowPlaying-Rainmeter)
+- OBS → [WebNowPlaying OBS Script](https://github.com/keifufu/WebNowPlaying-OBS)
+
+> **Enable/Disable:** App > Dashboard → Settings → `WNP Rainmeter Support` / `WNP OBS Support`
+
+---
+
+### 📁 Activity File Store
+
+Writes your current music activity to plain text and JSON files on disk, making it easy to display track info in streaming overlays, widgets, or any tool that reads files.
+
+**Files written to disk on every track change:**
+
+| File            | Contents                                    |
+| --------------- | ------------------------------------------- |
+| `artist.txt`    | Artist name                                 |
+| `title.txt`     | Track title                                 |
+| `source.txt`    | Track Source                                |
+| `cover.png`     | Album art (downloaded automatically)        |
+| `activity.json` | All fields combined + `updatedAt` timestamp |
+
+When no activity is active, all text files are cleared and `cover.png` is removed.
+
+> **Enable/Disable:** App > Dashboard → Settings  
+> **Open folder:** App > Dashboard → Settings → **Open Directory**
 
 ---
 

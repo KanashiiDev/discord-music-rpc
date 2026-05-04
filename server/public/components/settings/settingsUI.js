@@ -96,6 +96,33 @@ export const createSettingOption = (key, def) => {
   const errorMsg = createElement("span", "error-message");
   errorMsg.style.display = "none";
 
+  if (def.path) {
+    const openBtn = createElement("button", "open-path-btn", {
+      type: "button",
+      title: def.path,
+      textContent: "Open",
+      "data-i18n": "settings.open.directory",
+    });
+    openBtn.addEventListener("click", async () => {
+      try {
+        const res = await fetch("/open-path", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ path: def.path }),
+        });
+        const result = await res.json();
+
+        if (!result.success) {
+          const key = result.reason === "not_found" ? "settings.open.directory.not_found" : "settings.open.directory.error";
+          showInfoMessage(i18n.t(key), "error");
+        }
+      } catch {
+        showInfoMessage(i18n.t("settings.open.directory.error"), "error");
+      }
+    });
+    inputWrapper.appendChild(openBtn);
+  }
+
   inputWrapper.appendChild(errorMsg);
   inputWrapper.appendChild(input);
 
@@ -141,7 +168,10 @@ export const updateChangeIndicator = () => {
 };
 
 export const toggleSettings = (show) => {
-  if (typeof dom.container !== "undefined") dom.container.classList.add("switch");
+  if (typeof dom.container !== "undefined") {
+    dom.container.classList.add("switch");
+    dom.footer.classList.add("switch");
+  }
 
   setTimeout(() => {
     if (show) {
@@ -162,7 +192,10 @@ export const toggleSettings = (show) => {
       startAutoUpdate();
       initMusicCard();
     }
-    dom.container.classList.remove("switch");
+    setTimeout(() => {
+      dom.container.classList.remove("switch");
+      dom.footer.classList.remove("switch");
+    }, 150);
   }, 300);
 };
 

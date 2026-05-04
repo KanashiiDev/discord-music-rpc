@@ -17,6 +17,8 @@ export const dom = {
   lastActivityJson: document.getElementById("lastActivityJson"),
   errorFilter: document.getElementById("errorFilter"),
 
+  footer: document.querySelector("body > footer"),
+
   musicCard: {
     container: document.getElementById("musicCardContainer"),
     trackTitle: document.getElementById("trackTitle"),

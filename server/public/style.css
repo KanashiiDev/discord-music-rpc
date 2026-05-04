@@ -267,6 +267,7 @@ footer {
   padding: 20px 0;
   opacity: 0.5;
   font-size: 14px;
+  transition: opacity 0.3s ease;
 }
 
 footer a {
@@ -594,6 +595,8 @@ input[type="number"] {
 
 .input-wrapper {
   display: flex;
+  align-items: center;
+  gap: 5px;
 }
 
 .settings-option {
@@ -626,6 +629,7 @@ input[type="number"] {
   margin-top: 2px;
 }
 
+.open-path-btn,
 .save-settings-btn,
 .reset-settings-btn {
   background: var(--accent-color);
@@ -643,11 +647,13 @@ input[type="number"] {
   background: var(--accent-color-bright);
 }
 
+.open-path-btn,
 .reset-settings-btn {
   background: var(--foreground-color-300);
   color: var(--text-color-secondary);
 }
 
+.open-path-btn:hover,
 .reset-settings-btn:hover {
   background: var(--foreground-color-400);
 }
