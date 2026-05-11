@@ -143,8 +143,8 @@ function getOptimizedParentSelector(parent) {
     return `[${dataAttr.name}="${CSS.escape(dataAttr.value)}"]`;
   }
 
-  // 4️. Tag fallback
-  return parent.tagName.toLowerCase();
+  // 4️. No useful anchor - skip this parent
+  return null;
 }
 
 /* ──────────────────────────────── */
@@ -217,13 +217,19 @@ function addParentContextSelectors(el, clsSelector, set) {
     const parentHasClass = hasNonGenericClass(parent);
     const elHasClass = hasNonGenericClass(el);
 
-    if (parentHasClass || elHasClass) {
-      const childCombo = `${parentSelector} > ${tag}`;
+    // Only use > combinator if el is a DIRECT child of this parent
+    const isDirectChild = el.parentElement === parent;
+
+    if (isDirectChild && (parentHasClass || elHasClass)) {
+      const childCombo = `${parentSelector} > ${clsSelector}`;
       if (isUniqueSelector(childCombo, el)) set.add(childCombo);
+      // Also try with tag prefix for specificity
+      const childComboTagged = `${parentSelector} > ${tag}${clsSelector}`;
+      if (isUniqueSelector(childComboTagged, el)) set.add(childComboTagged);
     }
 
     if (parentHasClass && elHasClass) {
-      const descCombo = `${parentSelector} ${tag}`;
+      const descCombo = `${parentSelector} ${clsSelector}`;
       if (isUniqueSelector(descCombo, el)) set.add(descCombo);
     }
 

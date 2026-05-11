@@ -86,7 +86,6 @@ module.exports = function registerInlines(inlineUtilsFunctions) {
     "querySelectorDeep",
     "hashFromPatternStrings",
     "makeIdFromDomainAndPatterns",
-    "getExistingElementSelector",
     "getPlainText",
     "isValidUrl",
     "getSafeText",
@@ -99,7 +98,8 @@ module.exports = function registerInlines(inlineUtilsFunctions) {
   inlineUtilsFunctions("popup/selector/selector.js", "common/utils.js", [
     "throttle",
     "formatLabel",
-    "getExistingElementSelector",
+    "querySelectorDeep",
+    "queryWithPartialClass",
     "getPlainText",
     "getIconAsDataUrl",
     "parseRegexArray",
@@ -127,7 +127,7 @@ module.exports = function registerInlines(inlineUtilsFunctions) {
     "_INLINE_UTILS",
   );
   inlineUtilsFunctions("background.js", ["manager/userScriptWorker.js"], []);
-  inlineUtilsFunctions("iframeParser.js", ["common/utils.js"], ["querySelectorDeep"], "start");
+  inlineUtilsFunctions("iframeParser.js", ["common/utils.js"], ["querySelectorDeep", "queryWithPartialClass"], "start");
 
   // Background Listeners
   inlineUtilsFunctions("background.js", ["background/historyBackground.js", "background/backgroundListeners.js"], [], "start", true);

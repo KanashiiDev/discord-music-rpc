@@ -88,17 +88,16 @@ let FIELDS_CONFIG = {
   },
   title: {
     label: "selector.editor.title.label",
-    placeholder: "selector.editor.type.selector",
+    placeholder: "selector.editor.type.selectorText",
     desc: "selector.editor.title.desc",
     type: "text",
     required: true,
   },
   artist: {
     label: "selector.editor.artist.label",
-    placeholder: "selector.editor.type.selector",
+    placeholder: "selector.editor.type.selectorText",
     desc: "selector.editor.artist.desc",
     type: "text",
-    required: true,
   },
   timePassed: {
     label: "selector.editor.timePassed.label",
@@ -539,51 +538,27 @@ function setupEventListeners(shadow) {
   shadow.getElementById("saveSelectors").addEventListener("click", async () => {
     const fields = ALL_FIELDS;
     const selectors = {};
-    let hasError = false;
-    const missingRequired = [];
 
     fields.forEach((f) => {
       const inputEl = shadow.getElementById(`${f}Selector`);
       if (!inputEl) return;
 
       const val = inputEl.tagName === "SELECT" ? inputEl.value.trim() : inputEl.value.trim();
-      if (val) selectors[f] = val;
 
-      if (FIELDS_CONFIG[f]?.required && !val) {
-        hasError = true;
-        missingRequired.push(FIELDS_CONFIG[f].label || f);
-      }
+      if (val) selectors[f] = val;
     });
 
-    if (hasError || missingRequired.length > 0) {
-      const fragment = document.createDocumentFragment();
-      fragment.appendChild(document.createTextNode(t("selector.editor.warn.fieldsMissing")));
-      fragment.appendChild(document.createElement("br"));
-
-      const ul = document.createElement("ul");
-      missingRequired.forEach((label) => {
-        const li = document.createElement("li");
-        li.textContent = label;
-        ul.appendChild(li);
-      });
-
-      fragment.appendChild(ul);
-
-      showStatusMsg(fragment, true, false, shadow);
-      return;
-    }
-
-    if (!selectors.title || !selectors.artist) {
-      showStatusMsg(t("selector.editor.warn.fillFields"), 1, 0, shadow);
+    if (!selectors.title) {
+      showStatusMsg(t("selector.editor.warn.fillTitleField"), 1, 0, shadow);
       return;
     }
 
     // Check Selector Fields
-    const checkFields = ["title", "artist", "timePassed", "duration"];
+    const checkFields = ["timePassed", "duration"];
     const invalidFields = [];
 
     checkFields.forEach((f) => {
-      if (selectors[f] && !getExistingElementSelector(selectors[f])) {
+      if (selectors[f] && !querySelectorDeep(selectors[f])) {
         invalidFields.push(FIELDS_CONFIG[f]?.label || formatLabel(f));
       }
     });

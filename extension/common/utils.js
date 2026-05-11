@@ -1536,23 +1536,6 @@ async function showInitialTutorial() {
   showStep(currentStep);
 }
 
-function getExistingElementSelector(text) {
-  if (typeof text !== "string") return null;
-
-  const trimmed = text.trim();
-  if (!trimmed) return null;
-
-  try {
-    const el = document.querySelector(trimmed);
-    if (el) {
-      return trimmed;
-    }
-    return null;
-  } catch {
-    return null;
-  }
-}
-
 function getPlainText(text) {
   if (typeof text !== "string") return text;
   const trimmed = text.trim();

@@ -1036,8 +1036,9 @@ async function loadAllSavedUserParsers() {
           const videoData = autoDetectEnabled ? getBestVideo(document.querySelectorAll("video")) : null;
           const { duration, currentTime, playing } = iframeData || videoData ? getBestData(iframeData, videoData) : {};
 
-          const title = get("title")?.textContent?.trim() ?? "";
-          const artist = get("artist")?.textContent?.trim() ?? "";
+          const title = get("title")?.textContent?.trim() ?? getPlainText(data.selectors["title"]) ?? "";
+          const artistIsEmpty = !get("artist") && !getPlainText(data.selectors["artist"]);
+          const artist = artistIsEmpty ? "-1" : (get("artist")?.textContent?.trim() ?? getPlainText(data.selectors["artist"]) ?? "");
           const source = get("source")?.textContent?.trim() ?? getPlainText(data.selectors["source"]) ?? "";
 
           const imageElement = get("image");

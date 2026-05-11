@@ -66,9 +66,11 @@ function updateMusicCardUI() {
   }
 
   const title = act.details || "Unknown Title";
-  const artist = act._artist || act.state || "Unknown Artist";
+  let artist = act._artist || act.state || "Unknown Artist";
   const source = act._source || act.largeImageText || "Unknown Source";
   let cover = act._cover || act.largeImageKey || "assets/icon-dark.png";
+
+  if (artist === source) artist = "";
 
   if (cover.startsWith("key-")) {
     cover = "assets/icon-dark.png";

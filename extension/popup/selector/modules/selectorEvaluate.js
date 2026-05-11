@@ -102,7 +102,8 @@ function normalizeSelectorStructure(selector) {
     .replace(/\.([\w-]*?[_-])([a-zA-Z0-9]{4,16})(?:_\d+)?(?=[\s>~+\[:#.)\]|$]|$)/g, ".$1class")
     .replace(/\.[\w-]+/g, ".class")
     .replace(/:nth-[^ >]+/g, ":nth")
-    .replace(/\[data-[^\]]+\]/g, "[data]");
+    .replace(/\[data-[^\]]+\]/g, "[data]")
+    .replace(/(^|(?<=[>\s~+]))([a-z][a-z0-9]*)(?=[>\s~+]|$)(?![#.\[])/g, "$1tag");
 }
 
 function isTestAttribute(selector) {

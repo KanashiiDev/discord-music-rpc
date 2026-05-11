@@ -180,9 +180,9 @@ function updatePreview(shadow, editMode) {
   // Text Values
   let texts = {
     name: selectors.name || getCleanHostname() || "name",
-    title: elements.title?.textContent || getPlainText(selectors.title) || t("selector.editor.title.label") || "title",
-    artist: elements.artist?.textContent || getPlainText(selectors.artist) || t("selector.editor.artist.label") || "artist",
-    source: elements.source?.textContent || getPlainText(selectors.source) || t("selector.editor.source.label") || getCleanHostname() || "source",
+    title: elements.title?.textContent || getPlainText(selectors.title) || (selectors.title ? "" : t("selector.editor.title.label")),
+    artist: elements.artist?.textContent || getPlainText(selectors.artist) || (selectors.artist ? "" : "-1"),
+    source: elements.source?.textContent || getPlainText(selectors.source) || getCleanHostname() || t("selector.editor.source.label") || "source",
     timePassed: elements.timePassed?.textContent,
     duration: elements.duration?.textContent || undefined,
     buttonText: elements.buttonText?.textContent || getPlainText(selectors.buttonText) || "Custom Action",
@@ -193,16 +193,10 @@ function updatePreview(shadow, editMode) {
   // Trim texts
   texts = Object.fromEntries(Object.entries(texts).map(([key, value]) => [key, typeof value === "string" ? value.trim() : value]));
 
-  // If artist name contains title, clean it
-  if (texts.title && texts.artist) {
-    const normalized = normalizeTitleAndArtist(texts.title, texts.artist);
-    texts.title = normalized.title;
-    texts.artist = normalized.artist;
-  }
-
-  // Clean Title
-  texts.title = truncate(texts.title, 128, { fallback: "Unknown Song" });
-  texts.artist = truncate(texts.artist, 128, { fallback: "Unknown Artist" });
+  // Normalization
+  const normalized = normalizeTitleAndArtist(texts.title, texts.artist);
+  texts.title = truncate(normalized.title, 128, { fallback: "Unknown Song" });
+  texts.artist = normalized.artist !== "-1" ? truncate(normalized.artist, 128, { fallback: "Unknown Artist" }) : "-1";
 
   // If "5:47 / 6:57" style string is found, split into both
   let [tp, dur] = extractTimeParts(texts.timePassed);
@@ -225,7 +219,7 @@ function updatePreview(shadow, editMode) {
   const setText = (selector, value, maxLength) => {
     const el = details.querySelector(selector);
     if (el) {
-      const truncatedValue = truncate(value, maxLength);
+      const truncatedValue = value !== "-1" ? truncate(value, maxLength) : "";
       if (el.textContent !== truncatedValue) el.textContent = truncatedValue;
     }
   };
@@ -424,7 +418,7 @@ function updatePreview(shadow, editMode) {
 
   // Apply updates
   const sourceEl = details.querySelector(".source");
-  const isWatch = selectors.mode === "watch";
+  const isWatch = selectors.mode === "watch" && texts.artist !== "-1";
   sourceEl.style.display = isWatch ? "none" : "block";
   if (!isWatch) {
     setText(".source", texts.source, 32);
@@ -436,7 +430,7 @@ function updatePreview(shadow, editMode) {
 
   setText(".title", texts.title, 128);
   setText(".artist", texts.artist, 128);
-  setText(".header", `${texts.mode} ${texts.artist}`, 128);
+  setText(".header", `${texts.mode} ${texts.artist !== "-1" ? texts.artist : texts.source}`, 128);
   if (editMode) {
     const header = shadow.querySelector(".userRpc-h4");
     if (header && header.textContent !== texts.name) header.textContent = texts.name;

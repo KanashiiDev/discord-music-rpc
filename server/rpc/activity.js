@@ -21,18 +21,19 @@ function buildActivity(data, now) {
   const dataTitle = String(data.title ?? "").trim();
   const rawArtist = String(data.artist ?? "").trim();
   const artistIsIntentionallyEmpty = !rawArtist || rawArtist === "-1";
-  const dataArtist = artistIsIntentionallyEmpty ? "" : rawArtist;
+  let dataArtist = artistIsIntentionallyEmpty ? "" : rawArtist;
   const dataImage = String(data.image ?? "").trim();
   const dataSource = String(data.source ?? "").trim();
   const dataSongUrl = String(data.songUrl ?? "").trim();
-  const artistIsMissingOrSame = artistIsIntentionallyEmpty || dataArtist === dataTitle;
+
+  if (!dataArtist && dataSource) dataArtist = dataSource;
 
   const activitySettings = {
     ...(data.settingsDefault && typeof data.settingsDefault === "object" ? data.settingsDefault : {}),
     ...(data.settings && typeof data.settings === "object" ? data.settings : {}),
   };
 
-  const shouldShowArtist = !artistIsMissingOrSame && activitySettings.showArtist;
+  const shouldShowArtist = activitySettings.showArtist;
 
   // FavIcon
   let favIcon = null;
@@ -80,7 +81,7 @@ function buildActivity(data, now) {
   }
 
   // Large image text
-  if (!artistIsIntentionallyEmpty && activitySettings.showSource && activitySettings.showArtist && dataTitle !== dataArtist && dataTitle !== dataSource) {
+  if (!artistIsIntentionallyEmpty && activitySettings.showSource && activitySettings.showArtist) {
     activity.largeImageText = dataSource;
   }
 
