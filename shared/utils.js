@@ -102,68 +102,100 @@ function truncate(str, maxLength = 128, { fallback = "Unknown", minLength = 2, m
   return result;
 }
 
-function normalizeTitleAndArtist(title, artist, replaceArtist = true) {
-  let dataTitle = (typeof title === "string" ? title : "").trim();
-  let dataArtist = (typeof artist === "string" ? artist : "").trim();
-  if (!dataTitle) return { title: dataTitle, artist: dataArtist };
+function normalizeTitleAndArtist(inputTitle, inputArtist, replaceArtist = true) {
+  let title = typeof inputTitle === "string" ? inputTitle : "";
+  let artist = typeof inputArtist === "string" ? inputArtist : "";
 
-  const calculateSimilarity = (str1, str2) => {
-    const normalize = (s) => s.toLowerCase().replace(/[^\w\s]/g, "");
-    const s1 = normalize(str1);
-    const s2 = normalize(str2);
-    if (s1 === s2) return 1;
-    if (!s1 || !s2) return 0;
-    const [longer, shorter] = s1.length >= s2.length ? [s1, s2] : [s2, s1];
-    return longer.includes(shorter) ? shorter.length / longer.length : 0;
+  if (!title) return { title, artist };
+
+  // Core Helpers
+  const canonical = (s) =>
+    (s || "")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "")
+      .trim();
+
+  const splitArtists = (str) =>
+    (str || "")
+      .split(/\s*(?:,|&|\+|x|×|feat\.?|featuring|ft\.?|with)\s*/i)
+      .map((s) => s.trim())
+      .filter(Boolean);
+
+  const mergeArtists = (a, b) => {
+    const map = new Map();
+
+    for (const x of [...splitArtists(a), ...splitArtists(b)]) {
+      const key = canonical(x);
+      if (key && !map.has(key)) {
+        map.set(key, x);
+      }
+    }
+
+    return [...map.values()].join(" & ");
   };
 
-  const parenIndex = dataTitle.search(/[\[\(（【]/);
-  const titleBeforeParen = parenIndex !== -1 ? dataTitle.slice(0, parenIndex) : dataTitle;
-  const parenPart = parenIndex !== -1 ? dataTitle.slice(parenIndex) : "";
-  const dashMatch = titleBeforeParen.match(/^(.+?)\s[-–—]\s(.+)$/);
+  const isRemix = (t) => /\b(remix|edit|vip|flip)\b/i.test(t);
+
+  // Title Preprocess
+  const parenIndex = title.search(/[\[\(（【]/);
+  const baseTitle = parenIndex !== -1 ? title.slice(0, parenIndex) : title;
+  const parenPart = parenIndex !== -1 ? title.slice(parenIndex) : "";
+
+  // Dash Parse
+  const dashMatch = baseTitle.match(/^(.+?)\s[-–—]\s(.+)$/);
+
   if (dashMatch && replaceArtist) {
-    const extractedArtist = dashMatch[1].trim();
-    const newTitle = dashMatch[2] + parenPart;
+    const left = dashMatch[1].trim();
+    const right = dashMatch[2].trim() + (parenPart ? " " + parenPart : "");
 
-    // Check if the two parts are similar (repetitive title)
-    const similarity = calculateSimilarity(extractedArtist, newTitle);
+    const leftCanon = canonical(left);
+    const inputCanon = canonical(artist);
 
-    // If similarity is high , use the first part as title and keep original artist
-    if (similarity > 0.7) {
-      return { title: extractedArtist, artist: dataArtist };
+    const leftArtists = splitArtists(left);
+    const inputArtists = splitArtists(artist);
+
+    const overlap = leftCanon === inputCanon || leftArtists.some((a) => inputArtists.some((b) => canonical(a) === canonical(b)));
+
+    // Remix Mode
+    if (isRemix(title)) {
+      const remixer = artist;
+
+      artist = left;
+      title = right;
+
+      return {
+        title,
+        artist,
+        remixer,
+      };
     }
 
-    const artistLower = dataArtist.toLowerCase();
-    const extractedLower = extractedArtist.toLowerCase();
-
-    const artistPattern = new RegExp(`(^|\\s|[-–—])${dataArtist.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s*[-–—]`, "i");
-    const artistAppearsInTitle = artistPattern.test(dataTitle);
-    const extractedMatchesCurrent = extractedLower === artistLower || extractedLower.includes(artistLower) || artistLower.includes(extractedLower);
-
-    if (artistAppearsInTitle || extractedMatchesCurrent) {
-      dataArtist = extractedArtist;
-      dataTitle = newTitle;
+    // Normal Mode
+    if (overlap) {
+      // Merge same entity
+      artist = mergeArtists(left, artist);
+    } else {
+      // Dash left is authority - ignore input artist
+      artist = left;
     }
+
+    title = right;
   }
 
-  const cleanTitle = (title, artist) => {
-    if (!title || !artist) return title;
+  // Clean Prefix Artifacts
+  const cleanTitle = (t, artistStr) => {
+    if (!t || !artistStr) return t;
 
-    const artistList = artist
-      .split(/\s*(?:,|&|feat\.?|featuring|ft\.?|with)\s*/i)
-      .map((a) => a.trim())
-      .filter((a) => a.length >= 2);
+    const escaped = artistStr.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const pattern = new RegExp(`^\\s*${escaped}\\s*[-–—:]\\s*`, "i");
 
-    if (!artistList.length) return title;
-
-    const escaped = artistList.map((a) => a.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|");
-    const prefixPattern = new RegExp(`^\\s*(?:(?:${escaped})(?:\\s*[&+,xX×]\\s*(?:${escaped}))*)\\s*[-–—:]\\s*`, "i");
-    const cleaned = title.replace(prefixPattern, "").trim();
-    return cleaned.length >= 2 ? cleaned : title;
+    return t.replace(pattern, "").trim();
   };
 
-  const finalTitle = cleanTitle(dataTitle, dataArtist);
-  return { title: finalTitle, artist: dataArtist };
+  title = cleanTitle(title, artist);
+
+  // Output
+  return { title, artist };
 }
 
 function getCurrentTime() {
