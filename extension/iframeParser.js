@@ -12,8 +12,16 @@ function getVideoInfo() {
 
   const isHiddenEl = (el) => {
     if (!el) return true;
+
     const style = window.getComputedStyle(el);
-    return style.display === "none" || style.visibility === "hidden";
+    if (style.display === "none" || style.visibility === "hidden") return true;
+    if (parseFloat(style.opacity) === 0) return true;
+
+    const rect = el.getBoundingClientRect();
+    if (rect.width <= 1 || rect.height <= 1) return true;
+    if (rect.bottom < -100 || rect.right < -100) return true;
+
+    return false;
   };
 
   function detectCasting(videoEl) {
@@ -198,6 +206,7 @@ function getVideoInfo() {
           paused: state !== "playing",
           isCasting,
           source: "jwplayer-dom",
+          area: getRectArea(bestContainer),
         };
       } catch (e) {
         console.warn("JWPlayer error:", e);
@@ -247,6 +256,7 @@ function getVideoInfo() {
               paused: normalizePaused(best.player.paused?.(), best.isCasting),
               isCasting: best.isCasting,
               source: "videojs",
+              area: getRectArea(best),
             };
           }
         }
@@ -315,6 +325,7 @@ function getVideoInfo() {
           paused: normalizePaused(!classList.contains("vjs-playing"), isCasting),
           isCasting,
           source: "videojs-dom",
+          area: getRectArea(bestContainer),
         };
       } catch (e) {
         console.warn("VideoJS error:", e);
@@ -363,6 +374,7 @@ function getVideoInfo() {
               paused: normalizePaused(best.p.paused, best.isCasting),
               isCasting: best.isCasting,
               source: "plyr",
+              area: getRectArea(best),
             };
           }
         }
@@ -430,6 +442,7 @@ function getVideoInfo() {
           paused: normalizePaused(!classList.contains("plyr--playing"), isCasting),
           isCasting,
           source: "plyr-dom",
+          area: getRectArea(bestContainer),
         };
       } catch (e) {
         console.warn("Plyr error:", e);
@@ -503,6 +516,7 @@ function getVideoInfo() {
             paused: normalizePaused(!best.player.playing, best.isCasting),
             isCasting: best.isCasting,
             source: "flowplayer",
+            area: getRectArea(best),
           };
         }
 
@@ -573,6 +587,7 @@ function getVideoInfo() {
           paused: normalizePaused(best.paused, isCasting),
           isCasting,
           source: "html5",
+          area: getRectArea(best),
         };
       } catch {
         return null;

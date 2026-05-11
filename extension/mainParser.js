@@ -783,8 +783,18 @@ function getBestVideo(videoEls) {
 
   const isHiddenEl = (el) => {
     if (!el) return true;
+
     const style = window.getComputedStyle(el);
-    return style.display === "none" || style.visibility === "hidden";
+
+    if (style.display === "none" || style.visibility === "hidden") return true;
+    if (parseFloat(style.opacity) === 0) return true;
+
+    const rect = el.getBoundingClientRect();
+    if (rect.width <= 1 || rect.height <= 1) return true;
+
+    if (rect.bottom < -100 || rect.right < -100) return true;
+
+    return false;
   };
 
   const isAdLike = (el) => {
@@ -800,14 +810,14 @@ function getBestVideo(videoEls) {
   };
 
   const scoreVideo = (v) => {
-    let score = 0;
+    if (isHiddenEl(v)) return -Infinity;
 
+    let score = 0;
     if (!v.paused) score += 50;
     if (v.duration > 60) score += 20;
-    if (!isHiddenEl(v)) score += 30;
+    score += 30;
     if (isAdLike(v)) score -= 40;
     if (isFloating(v)) score -= 20;
-
     score += getRectArea(v) / 1000;
 
     return score;
@@ -827,7 +837,67 @@ function getBestVideo(videoEls) {
     }
   }
 
-  return videoEl ? { el: videoEl, duration: videoEl.duration ?? null, currentTime: videoEl.currentTime ?? null, playing: !videoEl.paused } : {};
+  return videoEl
+    ? { el: videoEl, duration: videoEl.duration ?? null, currentTime: videoEl.currentTime ?? null, playing: !videoEl.paused, area: getRectArea(videoEl) }
+    : {};
+}
+
+function getBestData(iframeData, videoData) {
+  const isValidNumber = (n) => typeof n === "number" && !Number.isNaN(n);
+
+  const normalize = (data) => {
+    if (!data) return null;
+
+    return {
+      duration: isValidNumber(data.duration) ? data.duration : null,
+      currentTime: isValidNumber(data.currentTime) ? data.currentTime : 0,
+      paused: typeof data.paused === "boolean" ? data.paused : null,
+      playing: typeof data.playing === "boolean" ? data.playing : data.paused === false,
+    };
+  };
+
+  const candidates = [normalize(iframeData), normalize(videoData)].filter(Boolean);
+
+  if (candidates.length === 0) return {};
+
+  if (candidates.length === 1) return candidates[0];
+
+  const score = (d) => {
+    let s = 0;
+
+    // duration strong signal
+    if (d.duration !== null && d.duration > 0) s += 3;
+
+    // is currentTime meaningful
+    if (d.currentTime > 0) s += 1;
+
+    // additional signal if there is pause information
+
+    if (typeof d.paused === "boolean") s += 1;
+
+    // if playing true, strong signal
+    if (d.playing === true) s += 2;
+
+    // if area is meaningful, add it to the score
+    if (d.area > 0) s += Math.log(d.area) * 0.5;
+
+    return s;
+  };
+
+  const [a, b] = candidates;
+  const scoreA = score(a);
+  const scoreB = score(b);
+
+  if (scoreA > scoreB) return a;
+  if (scoreB > scoreA) return b;
+
+  // if equal, the one with the greater duration
+  if (a.duration && b.duration) {
+    return a.duration >= b.duration ? a : b;
+  }
+
+  // last fallback: prefer the video element
+  return videoData || iframeData || {};
 }
 
 // userScript Manager Listener
@@ -902,7 +972,7 @@ window.addEventListener("message", async (event) => {
             if (!song) return null;
 
             const videoData = autoDetectEnabled ? getBestVideo(document.querySelectorAll("video")) : null;
-            const { duration, currentTime, playing } = iframeData || videoData || {};
+            const { duration, currentTime, playing } = iframeData || videoData ? getBestData(iframeData, videoData) : {};
 
             return {
               title: song.title,
@@ -964,7 +1034,7 @@ async function loadAllSavedUserParsers() {
 
         try {
           const videoData = autoDetectEnabled ? getBestVideo(document.querySelectorAll("video")) : null;
-          const { duration, currentTime, playing } = iframeData || videoData || {};
+          const { duration, currentTime, playing } = iframeData || videoData ? getBestData(iframeData, videoData) : {};
 
           const title = get("title")?.textContent?.trim() ?? "";
           const artist = get("artist")?.textContent?.trim() ?? "";
@@ -995,7 +1065,7 @@ async function loadAllSavedUserParsers() {
             title,
             artist,
             image,
-            source: artist === source ? data.title : source || location.hostname,
+            source: artist === source ? data.title : source || location.hostname.replace(/^www\./i, ""),
             songUrl: link || location.href,
             timePassed: currentTime || get("timePassed")?.textContent || "",
             duration: duration || get("duration")?.textContent || "",
