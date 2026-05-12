@@ -1,5 +1,5 @@
 const fs = require("fs-extra");
-const archiver = require("archiver");
+const { ZipArchive } = require("archiver");
 const path = require("path");
 
 const TARGET = process.env.TARGET ?? "chrome";
@@ -28,14 +28,15 @@ if (!fs.existsSync(sourceDir)) {
 }
 
 const output = fs.createWriteStream(outputPath);
-const archive = archiver("zip", { zlib: { level: 9 } });
+const archive = new ZipArchive({ zlib: { level: 9 } });
 
 output.on("close", () => {
   console.log(`${TARGET}-build.zip created (${archive.pointer()} total bytes)`);
 });
 
 archive.on("error", (err) => {
-  throw err;
+  console.error("An error occurred while packing:", err);
+  process.exit(1);
 });
 
 archive.pipe(output);

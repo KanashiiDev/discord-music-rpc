@@ -1,6 +1,6 @@
 const fs = require("fs");
 const path = require("path");
-const archiver = require("archiver");
+const { ZipArchive } = require("archiver");
 const { version } = require("../package.json");
 const { checkMissingTranslations } = require("./checkMissingTranslations");
 const inputVersion = process.argv[2];
@@ -125,7 +125,7 @@ for (const fullPath of distFiles) {
 function zipFile(sourcePath, zipName) {
   const zipPath = path.join(releaseDir, zipName);
   const output = fs.createWriteStream(zipPath);
-  const archive = archiver("zip", { zlib: { level: 9 } });
+  const archive = new ZipArchive({ zlib: { level: 9 } });
 
   return new Promise((resolve, reject) => {
     output.on("close", () => {
