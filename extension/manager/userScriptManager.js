@@ -1212,6 +1212,31 @@ class UserScriptUI {
     msgElement.className = `message ${type}`;
   }
 
+  parseTemplate(str, boldMap = {}, codeMap = {}) {
+    const nodes = [];
+    const parts = str.split(/(\{bold_\w+\}|\{code_\w+\}|\n)/);
+
+    for (const part of parts) {
+      if (!part) continue;
+
+      if (part === "\n") {
+        nodes.push(document.createElement("br"));
+      } else if (part.startsWith("{bold_")) {
+        const key = part.slice(1, -1);
+        const text = boldMap[key] ?? part;
+        nodes.push(this.createBold(text));
+      } else if (part.startsWith("{code_")) {
+        const key = part.slice(1, -1);
+        const text = codeMap[key] ?? part;
+        nodes.push(this.createCode(text));
+      } else {
+        nodes.push(document.createTextNode(part));
+      }
+    }
+
+    return nodes;
+  }
+
   // If mv3 and the user have not granted userscript permission, show a warning.
   createMv3PermissionAlert(config) {
     const wrapper = document.createElement("div");
@@ -1226,13 +1251,7 @@ class UserScriptUI {
 
     // Intro
     const intro = document.createElement("p");
-    intro.append(
-      document.createTextNode(i18n.t("userscript.apiWarn.intro1")),
-      this.createBold(i18n.t("userscript.apiWarn.userScriptsApi")),
-      document.createTextNode(i18n.t("userscript.apiWarn.intro2")),
-      document.createElement("br"),
-      document.createTextNode(i18n.t("userscript.apiWarn.intro3")),
-    );
+    intro.append(...this.parseTemplate(i18n.t("userscript.apiWarn.intro"), { bold_api: i18n.t("userscript.apiWarn.introApi") }));
 
     // Why section
     const whyTitle = document.createElement("h4");
@@ -1248,25 +1267,19 @@ class UserScriptUI {
     const fixText = document.createElement("p");
 
     // Step 1
-    fixText.append(
-      document.createTextNode(i18n.t("userscript.apiWarn.fixStep1Open")),
-      this.createBold(i18n.t("userscript.apiWarn.fixStep1Page")),
-      this.createCode(config.extensionPage),
-      document.createTextNode(i18n.t("userscript.apiWarn.fixStep1Locate")),
-      document.createElement("br"),
-    );
+    fixText.append(...this.parseTemplate(i18n.t("userscript.apiWarn.fixStep1"), {}, { code_page: config.extensionPage }));
+
+    fixText.appendChild(document.createElement("br"));
 
     if (config.showPermissionAndDataStep) {
-      fixText.append(document.createTextNode(i18n.t("userscript.apiWarn.fixStepPermissionClick")), document.createElement("br"));
+      fixText.append(document.createTextNode(i18n.t("userscript.apiWarn.fixStepPermission")));
+      fixText.appendChild(document.createElement("br"));
     }
 
     // Step 2
-    fixText.append(
-      document.createTextNode(i18n.t("userscript.apiWarn.fixStep2Look")),
-      this.createCode(config.permissionLabel),
-      document.createTextNode(i18n.t("userscript.apiWarn.fixStep2Enable")),
-      document.createElement("br"),
-    );
+    fixText.append(...this.parseTemplate(i18n.t("userscript.apiWarn.fixStep2"), {}, { code_permission: config.permissionLabel }));
+
+    fixText.appendChild(document.createElement("br"));
 
     // Step 3
     fixText.append(document.createTextNode(i18n.t("userscript.apiWarn.fixStep3")));
@@ -1305,14 +1318,11 @@ class UserScriptUI {
     const manifest = browser.runtime.getManifest();
     if (manifest.manifest_version !== 3) return;
 
-    const hasPermission = browser.userScripts;
-
-    if (!hasPermission) {
+    if (!browser.userScripts) {
       const browserType = detectBrowser();
       const config = BROWSER_CONFIG[browserType];
       if (document.getElementById("mv3Alert")) return;
-      const alertNode = this.createMv3PermissionAlert(config);
-      document.body.appendChild(alertNode);
+      document.body.appendChild(this.createMv3PermissionAlert(config));
     }
   }
 }
