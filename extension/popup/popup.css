@@ -374,11 +374,6 @@ body.fg-blur.parser-options-open #siteList .simplebar-offset {
   display: flex;
 }
 
-.setup-dialog-open #siteList {
-  min-height: 220px;
-  pointer-events: none;
-}
-
 #settingsContainer,
 .settings-option.buttons-wrapper {
   display: grid;
@@ -1606,7 +1601,6 @@ body.cleaning-mode .selected .history-trash {
 }
 
 .setup-dialog {
-  position: absolute;
   top: 0;
   left: 0;
   background: var(--foreground-color-200);
@@ -1615,8 +1609,6 @@ body.cleaning-mode .selected .history-trash {
   -webkit-box-shadow: 0 4px 8px var(--shadow-color);
   box-shadow: 0 4px 8px var(--shadow-color);
   z-index: 1000;
-  margin: 15px;
-  margin-top: 60px;
 }
 
 .setup-dialog-content {
@@ -1685,6 +1677,12 @@ body.cleaning-mode .selected .history-trash {
 
 .setup-dialog .setup-note-link {
   margin-bottom: 10px;
+}
+
+html.setup-dialog-open .search-controls,
+html.setup-dialog-open #siteList,
+html.setup-dialog-open #mainFooterButtons {
+  display: none !important;
 }
 
 .setup-list-message,

@@ -10,7 +10,7 @@
 
   "permissions": ["tabs", "storage", "contextMenus", "scripting", "webNavigation"],
   "optional_permissions": ["userScripts"],
-  "host_permissions": ["*://*/*"],
+  "optional_host_permissions": ["*://*/*"],
 
   "content_scripts": [
     {

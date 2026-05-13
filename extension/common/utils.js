@@ -1289,6 +1289,110 @@ function createPlatformDropdown(label, options, manifestVersion) {
 
 // Show initial setup dialog
 function showInitialSetupDialog() {
+  return new Promise((resolve) => {
+    const dialog = document.createElement("div");
+    dialog.className = "setup-dialog";
+
+    const content = document.createElement("div");
+    content.className = "setup-dialog-content";
+
+    const contentHeader = document.createElement("h2");
+    contentHeader.textContent = i18n.t("setup.companion.header");
+    content.appendChild(contentHeader);
+
+    const contentText = document.createElement("p");
+    contentText.textContent = i18n.t("setup.companion.message");
+    content.appendChild(contentText);
+
+    const contentLinkContainer = document.createElement("div");
+    contentLinkContainer.classList.add("setup-link-container");
+    content.appendChild(contentLinkContainer);
+
+    const manifestVersion = browser.runtime.getManifest().version;
+
+    // Windows Dropdown
+    const windowsOptions = [
+      {
+        label: "Installer (EXE)",
+        url: `https://github.com/KanashiiDev/discord-music-rpc/releases/download/{version}/Discord-Music-RPC-{version}-x64-installer.exe`,
+      },
+      {
+        label: "Portable (ZIP)",
+        url: `https://github.com/KanashiiDev/discord-music-rpc/releases/download/{version}/Discord-Music-RPC-{version}-x64.zip`,
+      },
+    ];
+    contentLinkContainer.appendChild(createPlatformDropdown("Windows", windowsOptions, manifestVersion));
+
+    // Linux Dropdown
+    const linuxOptions = [
+      {
+        label: "AppImage (x64)",
+        url: `https://github.com/KanashiiDev/discord-music-rpc/releases/download/{version}/discord-music-rpc-{version}-x86_64.AppImage`,
+      },
+      {
+        label: "DEB (x64)",
+        url: `https://github.com/KanashiiDev/discord-music-rpc/releases/download/{version}/discord-music-rpc-{version}-amd64.deb`,
+      },
+      {
+        label: "RPM (x64)",
+        url: `https://github.com/KanashiiDev/discord-music-rpc/releases/download/{version}/discord-music-rpc-{version}-x86_64.rpm`,
+      },
+    ];
+    contentLinkContainer.appendChild(createPlatformDropdown("Linux", linuxOptions, manifestVersion));
+
+    // MacOS Dropdown
+    const macOptions = [
+      {
+        label: "Universal",
+        url: `https://github.com/KanashiiDev/discord-music-rpc/releases/download/{version}/Discord-Music-RPC-{version}-universal.dmg`,
+      },
+    ];
+    contentLinkContainer.appendChild(createPlatformDropdown("MacOS", macOptions, manifestVersion));
+
+    const contentNote = document.createElement("p");
+    contentNote.textContent = i18n.t("setup.companion.provider");
+    contentNote.classList.add("setup-note");
+    content.appendChild(contentNote);
+
+    const contentNote2 = document.createElement("p");
+    const noteText = document.createTextNode(i18n.t("setup.companion.provider.link"));
+    const noteLink = document.createElement("a");
+    noteLink.href = "https://github.com/KanashiiDev/discord-music-rpc/releases/latest";
+    noteLink.target = "_blank";
+    noteLink.rel = "noopener noreferrer";
+    noteLink.textContent = "GitHub Releases";
+    noteLink.classList.add("setup-link-github");
+    noteLink.classList.add("setup-note-link");
+
+    contentNote2.appendChild(noteText);
+    contentNote2.appendChild(noteLink);
+    content.appendChild(contentNote2);
+
+    const confirmButton = document.createElement("button");
+    confirmButton.id = "confirmSetup";
+    confirmButton.textContent = i18n.t("setup.companion.installed");
+    content.appendChild(confirmButton);
+
+    dialog.appendChild(content);
+    const contentDiv = document.querySelector(".content");
+    contentDiv.appendChild(dialog);
+    document.documentElement.classList.add("setup-dialog-open");
+
+    const cleanup = () => {
+      contentDiv.removeChild(dialog);
+      document.documentElement.classList.remove("setup-dialog-open");
+    };
+
+    document.getElementById("confirmSetup").addEventListener("click", async () => {
+      await browser.storage.local.set({ initialSetupDone: true });
+      cleanup();
+      resolve();
+    });
+  });
+}
+
+// Show host permission dialog
+async function showHostPermissionDialog() {
   const dialog = document.createElement("div");
   dialog.className = "setup-dialog";
 
@@ -1296,94 +1400,39 @@ function showInitialSetupDialog() {
   content.className = "setup-dialog-content";
 
   const contentHeader = document.createElement("h2");
-  contentHeader.textContent = i18n.t("setup.companion.header");
+  contentHeader.textContent = i18n.t("setup.permission.header");
   content.appendChild(contentHeader);
 
   const contentText = document.createElement("p");
-  contentText.textContent = i18n.t("setup.companion.message");
+  contentText.textContent = i18n.t("setup.permission.message");
   content.appendChild(contentText);
 
-  const contentLinkContainer = document.createElement("div");
-  contentLinkContainer.classList.add("setup-link-container");
-  content.appendChild(contentLinkContainer);
-
-  const manifestVersion = browser.runtime.getManifest().version;
-
-  // Windows Dropdown
-  const windowsOptions = [
-    {
-      label: "Installer (EXE)",
-      url: `https://github.com/KanashiiDev/discord-music-rpc/releases/download/{version}/Discord-Music-RPC-{version}-x64-installer.exe`,
-    },
-    {
-      label: "Portable (ZIP)",
-      url: `https://github.com/KanashiiDev/discord-music-rpc/releases/download/{version}/Discord-Music-RPC-{version}-x64.zip`,
-    },
-  ];
-  contentLinkContainer.appendChild(createPlatformDropdown("Windows", windowsOptions, manifestVersion));
-
-  // Linux Dropdown
-  const linuxOptions = [
-    {
-      label: "AppImage (x64)",
-      url: `https://github.com/KanashiiDev/discord-music-rpc/releases/download/{version}/discord-music-rpc-{version}-x86_64.AppImage`,
-    },
-    {
-      label: "DEB (x64)",
-      url: `https://github.com/KanashiiDev/discord-music-rpc/releases/download/{version}/discord-music-rpc-{version}-amd64.deb`,
-    },
-    {
-      label: "RPM (x64)",
-      url: `https://github.com/KanashiiDev/discord-music-rpc/releases/download/{version}/discord-music-rpc-{version}-x86_64.rpm`,
-    },
-  ];
-  contentLinkContainer.appendChild(createPlatformDropdown("Linux", linuxOptions, manifestVersion));
-
-  // MacOS Dropdown
-  const macOptions = [
-    {
-      label: "Universal",
-      url: `https://github.com/KanashiiDev/discord-music-rpc/releases/download/{version}/Discord-Music-RPC-{version}-universal.dmg`,
-    },
-  ];
-  contentLinkContainer.appendChild(createPlatformDropdown("MacOS", macOptions, manifestVersion));
-
   const contentNote = document.createElement("p");
-  contentNote.textContent = i18n.t("setup.companion.provider");
+  contentNote.textContent = i18n.t("setup.permission.note");
   contentNote.classList.add("setup-note");
   content.appendChild(contentNote);
 
-  const contentNote2 = document.createElement("p");
-  const noteText = document.createTextNode(i18n.t("setup.companion.provider.link"));
-  const noteLink = document.createElement("a");
-  noteLink.href = "https://github.com/KanashiiDev/discord-music-rpc/releases/latest";
-  noteLink.target = "_blank";
-  noteLink.rel = "noopener noreferrer";
-  noteLink.textContent = "GitHub Releases";
-  noteLink.classList.add("setup-link-github");
-  noteLink.classList.add("setup-note-link");
-
-  contentNote2.appendChild(noteText);
-  contentNote2.appendChild(noteLink);
-  content.appendChild(contentNote2);
-
-  const confirmButton = document.createElement("button");
-  confirmButton.id = "confirmSetup";
-  confirmButton.textContent = i18n.t("setup.companion.installed");
-  content.appendChild(confirmButton);
+  const grantButton = document.createElement("button");
+  grantButton.id = "grantPermission";
+  grantButton.textContent = i18n.t("setup.permission.grant");
+  content.appendChild(grantButton);
 
   dialog.appendChild(content);
-  document.body.appendChild(dialog);
-  document.documentElement.classList.add("setup-dialog-open");
+  const contentDiv = document.querySelector(".content");
+  contentDiv.appendChild(dialog);
+  document.documentElement.classList.add("setup-dialog-open", "permission");
 
-  let confirmed = false;
-  document.getElementById("confirmSetup").addEventListener("click", async () => {
-    if (confirmed) return;
-    confirmed = true;
-    await browser.storage.local.set({ initialSetupDone: true });
-    document.body.removeChild(dialog);
-    document.documentElement.classList.remove("setup-dialog-open");
-    window.location.reload();
+  let requested = false;
+  document.getElementById("grantPermission").addEventListener("click", async () => {
+    if (requested) return;
+    requested = true;
+
+    const granted = browser.permissions.request({
+      origins: ["*://*/*"],
+    });
+
+    window.close();
+    await granted;
   });
 }
 

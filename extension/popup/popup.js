@@ -350,7 +350,15 @@ domLoadedListener = async () => {
     // Initial Setup
     const setup = await browser.storage.local.get("initialSetupDone");
     if (!setup.initialSetupDone) {
-      showInitialSetupDialog();
+      await showInitialSetupDialog();
+    }
+
+    // Host Permission Check
+    const hasPermission = await browser.permissions.contains({
+      origins: ["*://*/*"],
+    });
+    if (!hasPermission) {
+      showHostPermissionDialog();
       return;
     }
 
