@@ -68,6 +68,8 @@
   "settings.reset": "Сбросить по умолчанию",
   "settings.port": "Порт",
   "settings.port.note": "Порт, на котором слушает сервер",
+  "settings.discord_web_support": "Поддержка Discord Web",
+  "settings.discord_web_support.note": "Включить поддержку Discord Web.",
   "settings.auto_update_check": "Автоматическая проверка обновлений",
   "settings.auto_update_check.note": "Включить автоматическую проверку обновлений",
   "settings.update_check_interval": "Интервал проверки обновлений",

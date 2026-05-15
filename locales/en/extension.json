@@ -45,6 +45,7 @@
   "settings.filter.desc": "Manage the songs to be filtered!",
   "settings.language": "Language",
   "settings.port": "Port",
+  "settings.discordWebPort": "Discord Web Port",
   "settings.apply": "Apply",
   "settings.port_info": "You don't need to change the port separately in the application.",
   "settings.animations": "Animations",

@@ -68,6 +68,8 @@
   "settings.reset": "Varsayılanlara Sıfırla",
   "settings.port": "Port",
   "settings.port.note": "Sunucunun dinleme portu",
+  "settings.discord_web_support": "Discord Web Desteği",
+  "settings.discord_web_support.note": "Discord web desteğini etkinleştir.",
   "settings.auto_update_check": "Otomatik Güncelleme Kontrolü",
   "settings.auto_update_check.note": "Otomatik güncelleme kontrolünü etkinleştir",
   "settings.update_check_interval": "Güncelleme Kontrol Aralığı",

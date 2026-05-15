@@ -1,7 +1,7 @@
 const { saveListeningTime, isSameActivityIgnore } = require("../utils.js");
 const { truncate, isValidUrl } = require("../../shared/utils.js");
+const { state, CLIENT_ID, isBridgeConnected } = require("./state.js");
 
-const { state } = require("./state.js");
 const { isRpcReady, scheduleReconnect } = require("./client.js");
 const wnpClient = require("../services/wnpClient.js");
 const { readSettings } = require("../routes/settings.js");
@@ -50,6 +50,7 @@ function buildActivity(data, now) {
 
   // Base activity
   const activity = {
+    application_id: CLIENT_ID,
     details: dataTitle,
     state: shouldShowArtist ? dataArtist : dataSource,
     type: isWatch ? 3 : 2,
@@ -154,20 +155,117 @@ function buildActivity(data, now) {
   return { activity, activitySettings };
 }
 
+// Send activity to Discord Web bridge
+function sendToWebRPC(activity) {
+  const clients = state.bridgeClients;
+  if (!clients?.size) return;
+
+  const assets = {};
+
+  if (activity.largeImageKey) {
+    assets.large_image = activity.largeImageKey;
+    assets.large_url = activity.largeImageUrl;
+  }
+  if (activity.largeImageText) {
+    assets.large_text = activity.largeImageText;
+  }
+  if (activity.smallImageKey) {
+    assets.small_image = activity.smallImageKey;
+  }
+  if (activity.smallImageText) {
+    assets.small_text = activity.smallImageText;
+  }
+
+  const webActivity = {
+    application_id: activity.application_id,
+    name: activity.state,
+    details: activity.details,
+    details_url: activity.detailsUrl,
+    state: activity.state,
+    type: activity.type,
+    status_display_type: 1,
+    instance: activity.instance ?? false,
+  };
+
+  if (Object.keys(assets).length) {
+    webActivity.assets = assets;
+  }
+
+  if (activity.startTimestamp) {
+    webActivity.timestamps = { start: activity.startTimestamp * 1000 };
+    if (activity.endTimestamp) {
+      webActivity.timestamps.end = activity.endTimestamp * 1000;
+    }
+  }
+
+  if (activity.buttons?.length) {
+    webActivity.buttons = activity.buttons.map((b) => b.label ?? b);
+    const urls = activity.buttons.map((b) => b.url ?? "");
+    if (urls.some((u) => u)) {
+      webActivity.metadata = { button_urls: urls };
+    }
+  }
+
+  const payload = JSON.stringify({ activity: webActivity });
+
+  clients.forEach((client) => {
+    if (client.readyState === 1) {
+      try {
+        client.send(payload);
+      } catch (err) {
+        console.warn("[BRIDGE] Send failed, removing client:", err.message);
+        clients.delete(client);
+      }
+    } else if (client.readyState > 1) {
+      clients.delete(client);
+    }
+  });
+}
+
+function clearWebRPC() {
+  const clients = state.bridgeClients;
+  if (!clients?.size) return;
+
+  const payload = JSON.stringify({ activity: null });
+
+  clients.forEach((client) => {
+    if (client.readyState === 1) {
+      try {
+        client.send(payload);
+      } catch (err) {
+        console.warn("[BRIDGE] clearWebRPC send failed, removing client:", err.message);
+        clients.delete(client);
+      }
+    } else if (client.readyState > 1) {
+      clients.delete(client);
+    }
+  });
+}
+
 // Attempts to set a Discord RPC activity. Handles reconnect on failure.
 async function setRpcActivity(activity) {
+  state.currentActivity = activity;
+  state.lastActivitySeenAt = Date.now();
+
+  // If bridge is active, only send to web
+  if (isBridgeConnected()) {
+    sendToWebRPC(activity);
+    return true;
+  }
+
+  sendToWebRPC(activity);
+
   const client = state.rpcClient;
 
   if (!isRpcReady(client)) {
-    console.error("[ACTIVITY] RPC client not ready");
-    scheduleReconnect(3000, "rpc not ready");
+    if (!state.bridgeClients?.size) {
+      scheduleReconnect(3000, "rpc not ready");
+    }
     return false;
   }
 
   try {
     await client.user.setActivity(activity);
-    state.currentActivity = activity;
-    state.lastActivitySeenAt = Date.now();
     // Write currentActivity files
     if (localActivitySave && activity.type !== 3) {
       activityWriter.writeActivityFiles(activity).catch((err) => {
@@ -201,6 +299,7 @@ async function clearRpcActivity({ maxRetries = 1, timeoutMs = 5000 } = {}) {
 
 // Resets all activity-related state fields to their defaults.
 function resetActivityState(historyFilePath) {
+  clearWebRPC();
   if (historyFilePath) flushListeningTime(historyFilePath);
   state.currentActivity = null;
   state.lastUpdateAt = null;

@@ -47,8 +47,9 @@ export const SettingsManager = {
       await new Promise((res) => setTimeout(res, 50));
 
       Object.entries(serverSettings).forEach(([key, def]) => {
-        if (!def.hidden) {
-          dom.settings.form.appendChild(createSettingOption(key, def));
+        const isChild = Object.values(serverSettings).some((d) => d.children === key);
+        if (!def.hidden && !isChild) {
+          dom.settings.form.appendChild(createSettingOption(key, def, serverSettings));
         }
       });
 

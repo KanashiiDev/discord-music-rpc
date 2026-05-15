@@ -68,6 +68,8 @@
   "settings.reset": "Réinitialiser par défaut",
   "settings.port": "Port",
   "settings.port.note": "Port d’écoute du serveur",
+  "settings.discord_web_support": "Support Web Discord",
+  "settings.discord_web_support.note": "Activer le support Web Discord.",
   "settings.auto_update_check": "Vérification automatique des mises à jour",
   "settings.auto_update_check.note": "Activer la vérification automatique des mises à jour",
   "settings.update_check_interval": "Intervalle de vérification des mises à jour",

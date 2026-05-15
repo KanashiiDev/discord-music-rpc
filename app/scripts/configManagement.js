@@ -11,6 +11,7 @@ const defaultConfig = {
       value: 3000,
       type: "number",
       note: "Server listening port",
+      placeholder: "PORT",
       min: 1,
       max: 65535,
     },
@@ -110,6 +111,21 @@ const defaultConfig = {
       value: false,
       type: "boolean",
       note: "Enable WNP OBS support.",
+    },
+
+    DISCORD_WEB_SUPPORT: {
+      value: true,
+      type: "boolean",
+      note: "Enable discord web support.",
+      children: "DISCORD_WEB_PORT",
+    },
+
+    DISCORD_WEB_PORT: {
+      value: 1337,
+      type: "number",
+      placeholder: "PORT",
+      min: 1,
+      max: 65535,
     },
   },
 };

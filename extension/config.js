@@ -1,5 +1,6 @@
 const CONFIG = {
   serverPort: 3000,
+  discordWebPort: 1337,
   activeInterval: 5000,
   idleInterval: 10000,
   stuckThreshold: 20000,

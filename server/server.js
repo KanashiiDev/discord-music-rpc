@@ -1,13 +1,14 @@
 const path = require("path");
 const express = require("express");
 const cors = require("cors");
+const { WebSocketServer } = require("ws");
 
 const { detectElectronMode } = require("./utils.js");
 const IS_ELECTRON = detectElectronMode();
 process.env.ELECTRON_MODE = IS_ELECTRON ? "true" : "false";
 
-const { state } = require("./rpc/state.js");
-const { connectRPC, destroyClient, cancelReconnect } = require("./rpc/client.js");
+const { state, isAnyConnected, isBridgeConnected, purgeStaleBridgeClients } = require("./rpc/state.js");
+const { connectRPC, destroyClient, cancelReconnect, scheduleReconnect, disconnectForBridge } = require("./rpc/client.js");
 const { resetActivityState } = require("./rpc/activity.js");
 const { startHealthCheckTimer, stopHealthCheckTimer } = require("./services/healthCheck.js");
 const { sendReady } = require("./services/electron.js");
@@ -73,7 +74,10 @@ app.get("/", (_req, res) => res.sendFile(path.join(publicPath, "index.html")));
 app.get("/health", (_req, res) =>
   res.json({
     status: "ok",
-    rpcConnected: state.isRpcConnected,
+    rpcConnected: isAnyConnected(),
+    discordConnected: state.isRpcConnected,
+    bridgeConnected: isBridgeConnected(),
+    bridgeClients: state.bridgeClients.size,
     reconnectScheduled: state.reconnectState?.scheduled || false,
     isConnecting: state.isConnecting,
     lastActiveClient: state.lastActiveClient
@@ -89,7 +93,9 @@ app.get("/health", (_req, res) =>
 app.get("/status", (_req, res) =>
   res.json({
     status: "ok",
-    rpcConnected: state.isRpcConnected,
+    rpcConnected: isAnyConnected(),
+    discordConnected: state.isRpcConnected,
+    bridgeConnected: isBridgeConnected(),
     electronMode: process.env.ELECTRON_MODE,
     pid: process.pid,
     uptimeSeconds: Math.floor(process.uptime()),
@@ -98,13 +104,25 @@ app.get("/status", (_req, res) =>
 
 app.get("/proxy", async (req, res) => {
   try {
-    const targetUrl = req.query.url;
+    const rawUrl = req.query.url;
 
-    if (!targetUrl) {
+    if (!rawUrl) {
       return res.status(400).send("Missing url");
     }
 
-    const response = await fetch(targetUrl);
+    let targetUrl;
+    try {
+      targetUrl = new URL(rawUrl);
+    } catch {
+      return res.status(400).send("Invalid url");
+    }
+
+    // Only allow safe, external HTTP(S) URLs
+    if (!["http:", "https:"].includes(targetUrl.protocol)) {
+      return res.status(400).send("Only HTTP/HTTPS URLs are allowed");
+    }
+
+    const response = await fetch(targetUrl.toString());
 
     if (!response.ok) {
       return res.status(response.status).send("Failed to fetch resource");
@@ -130,6 +148,13 @@ async function shutdown() {
     console.log("[SERVER] Shutdown initiated...");
 
     try {
+      // Close Bridge WS
+      if (state.bridgeServer) {
+        state.bridgeServer.close();
+        state.bridgeServer = null;
+        state.bridgeClients.clear();
+      }
+
       cancelReconnect();
       stopHealthCheckTimer();
       if (wnpSupport) wnpClient.stop();
@@ -147,6 +172,9 @@ async function shutdown() {
         console.log("[SERVER] Destroying RPC client...");
         await destroyClient(state.rpcClient);
         state.rpcClient = null;
+        state.isConnecting = false;
+        state.isRpcConnected = false;
+        state.waitingForDiscord = false;
       }
 
       // Close HTTP server
@@ -233,14 +261,68 @@ if (IS_ELECTRON) {
 state.serverInstance = app.listen(PORT, () => {
   console.log(`[SERVER] Running on http://localhost:${PORT}`);
   sendReady();
-  connectRPC().catch((err) => console.error("[SERVER] Initial RPC connect failed:", err.message));
+
+  // Bridge WebSocket - For Discord Web
+  if (settings.DISCORD_WEB_SUPPORT?.value) {
+    const bridgeWss = new WebSocketServer({ host: "127.0.0.1", port: settings?.DISCORD_WEB_PORT?.value || 1337 });
+    state.bridgeServer = bridgeWss;
+
+    bridgeWss.on("connection", (ws) => {
+      ws.on("message", async (data) => {
+        const msg = JSON.parse(data.toString());
+
+        if (msg.type === "INIT_BRIDGE" && msg.origin === "https://discord.com") {
+          console.log("[BRIDGE] Discord Web connected");
+          state.bridgeClients.add(ws);
+
+          // If Discord App RPC is active, hand control over to the bridge
+          if (state.isRpcConnected || state.rpcClient) {
+            console.log("[BRIDGE] RPC client active - handing off to bridge");
+            await disconnectForBridge();
+          }
+        }
+      });
+
+      ws.on("close", () => {
+        const wasRegistered = state.bridgeClients.has(ws);
+        state.bridgeClients.delete(ws);
+        // Purge any other stale sockets that slipped through
+        purgeStaleBridgeClients();
+        // Only act if this ws had been registered via INIT_BRIDGE
+        if (wasRegistered && !isBridgeConnected()) {
+          state.bridgeTakeover = false;
+          scheduleReconnect(1000, "bridge: all clients disconnected");
+        }
+      });
+
+      ws.on("error", (err) => {
+        console.warn("[BRIDGE] Client error:", err.message);
+        const wasRegistered = state.bridgeClients.has(ws);
+        state.bridgeClients.delete(ws);
+        purgeStaleBridgeClients();
+        // Only act if this ws had been registered via INIT_BRIDGE
+        if (wasRegistered && !isBridgeConnected()) {
+          state.bridgeTakeover = false;
+          scheduleReconnect(1000, "bridge: client error, no clients remain");
+        }
+      });
+    });
+
+    bridgeWss.on("error", (err) => {
+      console.error("[BRIDGE] Server error:", err.message);
+    });
+
+    console.log(`[BRIDGE] Web bridge listening on ws://127.0.0.1:${settings?.DISCORD_WEB_PORT?.value || 1337}`);
+  }
+  connectRPC().catch(() => {});
+
   startHealthCheckTimer(historyFilePath);
   if (wnpSupport) wnpClient.start(activeWnpSupports);
 });
 
 state.serverInstance.on("error", (err) => {
   if (err.code === "EADDRINUSE") {
-    console.error(`[SERVER] FATAL: Port ${PORT} already in use — another instance may be running`);
+    console.error(`[SERVER] FATAL: Port ${PORT} already in use - another instance may be running`);
   } else {
     console.error("[SERVER] Fatal error:", err.message);
   }

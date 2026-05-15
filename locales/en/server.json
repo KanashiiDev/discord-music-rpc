@@ -68,6 +68,8 @@
   "settings.reset": "Reset to Default",
   "settings.port": "Port",
   "settings.port.note": "Server listening port",
+  "settings.discord_web_support": "Discord Web Support",
+  "settings.discord_web_support.note": "Enable discord web support.",
   "settings.auto_update_check": "Auto Update Check",
   "settings.auto_update_check.note": "Enable automatic update checks",
   "settings.update_check_interval": "Update Check Interval",

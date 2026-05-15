@@ -1,13 +1,13 @@
 const { Client } = require("@xhayper/discord-rpc");
 const { notifyRpcStatus } = require("../utils.js");
-const { state, reconnectState, CLIENT_ID, RETRY_DELAY } = require("./state.js");
+const { state, reconnectState, CLIENT_ID, RETRY_DELAY, isBridgeConnected } = require("./state.js");
 
 // Returns true only when the RPC client is fully operational.
 function isRpcReady(client) {
   return !!(state.isRpcConnected && client?.user && !client.destroyed);
 }
 
-// Error logging — deduplicate consecutive identical messages
+// Error logging - deduplicate consecutive identical messages
 let _lastLoggedError = null;
 function shouldLogError(msg) {
   if (_lastLoggedError === msg) return false;
@@ -41,11 +41,31 @@ async function hardReset() {
 async function executeReconnect() {
   if (state.isConnecting || state.isShuttingDown) return false;
 
+  // If the bridge is connected, skip reconnecting to Discord App
+  if (isBridgeConnected()) {
+    console.log("[RPC] Skip reconnect - bridge is active");
+    return false;
+  }
+
   reconnectState.begin();
   try {
     await hardReset();
+
+    // Re-check after hardReset - bridge may have connected while we were resetting
+    if (isBridgeConnected()) {
+      console.log("[RPC] Skip reconnect after reset - bridge became active");
+      return false;
+    }
+
     const ok = await connectRPC();
-    if (!ok) throw new Error("Reconnect failed");
+
+    // Bridge may have connected while connectRPC() was running
+    if (!ok && isBridgeConnected()) {
+      console.log("[RPC] Skip reconnect - bridge became active during connect");
+      return false;
+    }
+
+    if (!ok) throw new Error("Discord not reachable");
     return true;
   } catch (err) {
     console.error("[RPC] Reconnect failed:", err.message);
@@ -59,12 +79,19 @@ async function executeReconnect() {
 // Schedule a debounced reconnect
 function scheduleReconnect(delay = 3000, reason = "unknown") {
   if (state.isShuttingDown) return;
-  if (state.isConnecting) {
-    console.log(`[RPC] Skip schedule - already connecting (${reason})`);
+  if (state.bridgeTakeover) {
+    console.log(`[RPC] Skip schedule - bridge takeover active (${reason})`);
     return;
   }
-  if (reconnectState.scheduled) {
-    console.log(`[RPC] Skip schedule - already scheduled (${reason})`);
+
+  // If the bridge is connected, do not enter the reconnect loop
+  if (isBridgeConnected()) {
+    console.log(`[RPC] Skip schedule - bridge is active (${reason})`);
+    return;
+  }
+
+  if (state.isConnecting) {
+    console.log(`[RPC] Skip schedule - already connecting (${reason})`);
     return;
   }
   if (reconnectState.isReconnecting) {
@@ -72,11 +99,12 @@ function scheduleReconnect(delay = 3000, reason = "unknown") {
     return;
   }
 
-  const elapsed = reconnectState.lastReconnectAt ? Date.now() - reconnectState.lastReconnectAt : Infinity;
-  if (elapsed < reconnectState.minReconnectInterval) return;
+  // Use reconnectState.start() so canReconnect() + minReconnectInterval are enforced
+  if (!reconnectState.start(reason)) {
+    console.log(`[RPC] Skip schedule - canReconnect check failed (${reason})`);
+    return;
+  }
 
-  reconnectState.scheduled = true;
-  reconnectState.reason = reason;
   console.log(`[RPC] Schedule reconnect in ${delay}ms (${reason})`);
 
   reconnectState.timer = setTimeout(async () => {
@@ -105,7 +133,6 @@ function setupClientEvents(client, epoch) {
     if (epoch !== state.connectionEpoch) return;
     state.isRpcConnected = true;
     state.isConnecting = false;
-    state.hasConnectedOnce = true;
     cancelReconnect();
     notifyRpcStatus(true);
     console.log("[RPC] Connected successfully");
@@ -145,20 +172,39 @@ async function createClient(epoch) {
   return client;
 }
 
+// Hands control over to the Discord Web bridge.
+async function disconnectForBridge() {
+  cancelReconnect();
+  const old = state.rpcClient;
+  state.rpcClient = null;
+  state.isRpcConnected = false;
+  state.isConnecting = false;
+  state.connectPromise = null;
+  state.connectionEpoch++;
+  state.bridgeTakeover = true;
+  await destroyClient(old);
+  console.log("[RPC] Disconnected - bridge took over");
+}
+
 // Connects the RPC client. Retries indefinitely until shutdown.
 async function connectRPC() {
+  // If the Bridge is connected, there is no need for the Discord App connection
+  if (isBridgeConnected()) return false;
+
   if (state.isRpcConnected && isRpcReady(state.rpcClient)) return true;
+  if (state.isConnecting) return false;
   state.connectPromise ??= _connect();
   try {
     return await state.connectPromise;
   } finally {
-    if (state.connectPromise === null) state.isConnecting = false;
+    state.connectPromise = null;
   }
 }
 
 // Internal retry loop
 async function _connect() {
   if (state.isConnecting) return false;
+  if (state.bridgeTakeover) return false;
 
   state.isConnecting = true;
   state.connectionEpoch++;
@@ -166,6 +212,12 @@ async function _connect() {
   let attempt = 0;
 
   while (!state.isShuttingDown) {
+    // If the bridge is connected, stop the Discord App loop
+    if (isBridgeConnected() || state.bridgeTakeover) {
+      state.isConnecting = false;
+      return false;
+    }
+
     attempt++;
     if (currentEpoch !== state.connectionEpoch) return false;
 
@@ -174,8 +226,10 @@ async function _connect() {
       if (currentEpoch !== state.connectionEpoch) return false;
 
       if (attempt === 1) {
-        console.log(state.hasConnectedOnce ? "[RPC] Waiting for Discord..." : "[RPC] Connecting to Discord...");
+        console.log(state.waitingForDiscord ? "[RPC] Waiting for Discord..." : "[RPC] Connecting to Discord...");
       }
+
+      if (!state.waitingForDiscord) state.waitingForDiscord = true;
 
       await Promise.race([client.login(), new Promise((_, reject) => setTimeout(() => reject(new Error("Login timeout")), RETRY_DELAY))]);
 
@@ -221,4 +275,5 @@ module.exports = {
   cancelReconnect,
   destroyClient,
   executeReconnect,
+  disconnectForBridge,
 };

@@ -684,6 +684,25 @@ const handleUpdateRpcPort = async (req) => {
   }
 };
 
+const handleUpdatediscordWebPort = async (req) => {
+  try {
+    const response = await fetchWithTimeout(
+      `http://localhost:${state.serverPort}/update-web-bridge-port`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(req.data),
+      },
+      CONFIG.requestTimeout,
+    );
+
+    return { ok: true, port: req.data.port };
+  } catch (err) {
+    console.error("Update web bridge port error:", err);
+    return { ok: false, error: err.message };
+  }
+};
+
 const handleIsTabAudible = async (sender) => {
   try {
     const tab = await getSenderTab(sender);
@@ -895,6 +914,271 @@ const setupListeners = () => {
         }
       }
 
+      if (req.type === "INJECT_BRIDGE") {
+        browser.scripting.executeScript({
+          target: { tabId: sender.tab.id },
+          func: (webPort) => {
+            if (window._RPC_BRIDGE_LOADED_) return;
+            window._RPC_BRIDGE_LOADED_ = true;
+
+            const BRIDGE_URL = `ws://127.0.0.1:${webPort || 1337}`;
+            const RETRY_DELAYS = [1000, 2000, 5000, 10000];
+            const MAX_RETRY_DELAY = 10000;
+
+            let Dispatcher, lookupAsset, lookupApp;
+            const apps = {};
+            let ws = null;
+            let retryCount = 0;
+            let retryTimer = null;
+
+            // Webpack Helpers
+            const eachCandidate = (mod, fn) => {
+              if (!mod) return;
+              try {
+                fn(mod);
+              } catch {}
+              try {
+                if (mod.default) fn(mod.default);
+              } catch {}
+              try {
+                for (const key of Reflect.ownKeys(mod)) {
+                  try {
+                    fn(mod[key]);
+                  } catch {}
+                }
+              } catch {}
+            };
+
+            const getWebpackRequire = () => {
+              const reqs = [];
+              const seen = new Set();
+
+              window.webpackChunkdiscord_app.push([
+                [Symbol()],
+                {},
+                (req) => {
+                  if (req && !seen.has(req)) {
+                    seen.add(req);
+                    reqs.push(req);
+                  }
+                },
+              ]);
+              window.webpackChunkdiscord_app.pop();
+
+              const hasSource = (req, ...needles) => {
+                for (const id in req?.m) {
+                  let source;
+                  try {
+                    source = req.m[id]?.toString?.();
+                  } catch {
+                    continue;
+                  }
+                  if (source && needles.every((n) => source.includes(n))) return true;
+                }
+                return false;
+              };
+
+              return (
+                reqs.find((req) => hasSource(req, "getAssetImage: size must === [") && hasSource(req, "Invalid Origin", "coverImage", ".application")) || reqs.at(-1)
+              );
+            };
+
+            const findModule = (wpRequire, ...needles) => {
+              for (const id in wpRequire.m) {
+                let source;
+                try {
+                  source = wpRequire.m[id]?.toString?.();
+                } catch {
+                  continue;
+                }
+                if (!source || !needles.every((n) => source.includes(n))) continue;
+                try {
+                  return wpRequire(id);
+                } catch {}
+              }
+            };
+
+            const findInCache = (wpRequire, test, depth = 4) => {
+              const seen = new WeakSet();
+              let found;
+
+              const walk = (value, remainingDepth) => {
+                if (found || !value || (typeof value !== "object" && typeof value !== "function")) return;
+                if (value === window || value === document || value === globalThis) return;
+                if (seen.has(value)) return;
+                seen.add(value);
+                try {
+                  if (test(value)) {
+                    found = value;
+                    return;
+                  }
+                } catch {}
+                if (!remainingDepth) return;
+                eachCandidate(value, (candidate) => walk(candidate, remainingDepth - 1));
+              };
+
+              for (const id in wpRequire.c) {
+                const mod = wpRequire.c[id]?.exports;
+                if (!mod) continue;
+                walk(mod, depth);
+                if (found) return found;
+              }
+            };
+
+            // Discord Internals
+            function initDiscordInternals() {
+              if (Dispatcher && lookupAsset && lookupApp) return true;
+
+              const wpRequire = getWebpackRequire();
+
+              Dispatcher = findInCache(wpRequire, (candidate) => candidate && typeof candidate.dispatch === "function" && typeof candidate.subscribe === "function");
+
+              const assetMod = findModule(wpRequire, "getAssetImage: size must === [");
+              eachCandidate(assetMod, (candidate) => {
+                if (!lookupAsset && typeof candidate === "function") {
+                  const str = candidate.toString();
+                  if (str.includes("APPLICATION_ASSETS_FETCH_SUCCESS") && str.includes('startsWith("http:")')) {
+                    lookupAsset = async (appId, name) => (await candidate(appId, [name]))[0];
+                  }
+                }
+              });
+
+              const appMod = findModule(wpRequire, "Invalid Origin", "coverImage", ".application");
+              eachCandidate(appMod, (candidate) => {
+                if (!lookupApp && typeof candidate === "function") {
+                  const str = candidate.toString();
+                  if (str.includes("Invalid Origin") && str.includes("coverImage") && str.includes(".application")) {
+                    lookupApp = async (appId) => {
+                      const socket = {};
+                      await candidate(socket, appId);
+                      return socket.application;
+                    };
+                  }
+                }
+              });
+
+              if (!Dispatcher || !lookupAsset || !lookupApp) {
+                console.warn(
+                  `[RPC Bridge] Internals not ready yet: ${[!Dispatcher && "Dispatcher", !lookupAsset && "lookupAsset", !lookupApp && "lookupApp"]
+                    .filter(Boolean)
+                    .join(", ")}`,
+                );
+                return false;
+              }
+
+              return true;
+            }
+
+            // Activity Dispatch
+            async function handleMessage(msg) {
+              try {
+                // Start the internals
+                if (!Dispatcher || !lookupAsset || !lookupApp) {
+                  const initialized = initDiscordInternals();
+                  if (!initialized) {
+                    throw new Error("Discord internals not ready");
+                  }
+                }
+
+                if (!msg.activity || msg.activity === null) {
+                  Dispatcher.dispatch({ type: "LOCAL_ACTIVITY_UPDATE", activity: null });
+                  return;
+                }
+
+                // Process if there are assets
+                if (msg.activity.assets) {
+                  if (msg.activity.assets.large_image) {
+                    msg.activity.assets.large_image = await lookupAsset(msg.activity.application_id, msg.activity.assets.large_image);
+                  }
+                  if (msg.activity.assets.small_image) {
+                    msg.activity.assets.small_image = await lookupAsset(msg.activity.application_id, msg.activity.assets.small_image);
+                  }
+                }
+
+                // Get app information
+                const appId = msg.activity.application_id;
+                if (appId) {
+                  if (!apps[appId]) {
+                    apps[appId] = await lookupApp(appId);
+                  }
+                  const app = apps[appId];
+
+                  if (!msg.activity.name && app?.name) {
+                    msg.activity.name = app.name;
+                  }
+                }
+
+                Dispatcher.dispatch({
+                  type: "LOCAL_ACTIVITY_UPDATE",
+                  activity: msg.activity,
+                });
+              } catch (err) {
+                console.error("[RPC Bridge] Failed to handle message:", err);
+                Dispatcher = null;
+              }
+            }
+
+            function clearActivity() {
+              try {
+                if (Dispatcher) {
+                  Dispatcher.dispatch({ type: "LOCAL_ACTIVITY_UPDATE", activity: null });
+                }
+              } catch (err) {
+                console.error("[RPC Bridge] Failed to clear activity:", err);
+              }
+            }
+
+            // WebSocket
+            function getRetryDelay() {
+              const delay = RETRY_DELAYS[Math.min(retryCount, RETRY_DELAYS.length - 1)];
+              return Math.min(delay, MAX_RETRY_DELAY);
+            }
+
+            function scheduleRetry() {
+              const delay = getRetryDelay();
+
+              retryTimer = setTimeout(() => {
+                retryTimer = null;
+                connect();
+              }, delay);
+            }
+
+            function connect() {
+              if (ws && (ws.readyState === WebSocket.CONNECTING || ws.readyState === WebSocket.OPEN)) return;
+
+              ws = new WebSocket(BRIDGE_URL);
+
+              ws.onopen = () => {
+                ws.send(JSON.stringify({ type: "INIT_BRIDGE", origin: location.origin }));
+                retryCount = 0;
+              };
+
+              ws.onmessage = async (x) => {
+                try {
+                  const msg = JSON.parse(x.data);
+                  await handleMessage(msg);
+                } catch (err) {
+                  console.error("[RPC Bridge] Failed to handle message:", err);
+                }
+              };
+
+              ws.onerror = () => {};
+
+              ws.onclose = () => {
+                clearActivity();
+                retryCount++;
+                scheduleRetry();
+              };
+            }
+
+            connect();
+            document.addEventListener("beforeunload", clearActivity);
+          },
+          args: [state.discordWebPort],
+          world: "MAIN",
+        });
+      }
+
       if (req.type === "GET_TAB_ID") {
         return { ok: true, tabId: sender.tab?.id };
       }
@@ -973,6 +1257,9 @@ const setupListeners = () => {
             break;
           case "UPDATE_RPC_PORT":
             result = await handleUpdateRpcPort(req);
+            break;
+          case "UPDATE_WEB_BRIDGE_PORT":
+            result = await handleUpdatediscordWebPort(req);
             break;
           case "IS_TAB_AUDIBLE":
             result = await handleIsTabAudible(sender);

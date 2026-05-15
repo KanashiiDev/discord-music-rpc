@@ -1,6 +1,6 @@
 const { Router } = require("express");
 const { getCurrentTime } = require("../../shared/utils.js");
-const { state, CLIENT_TIMEOUT, MAX_CLEAR_RETRIES } = require("../rpc/state.js");
+const { state, CLIENT_TIMEOUT, MAX_CLEAR_RETRIES, isAnyConnected, isBridgeConnected } = require("../rpc/state.js");
 const { isSameActivity } = require("../utils.js");
 const { connectRPC, scheduleReconnect } = require("../rpc/client.js");
 const { buildActivity, setRpcActivity, clearRpcActivity, resetActivityState, handleListeningTimeUpdate } = require("../rpc/activity.js");
@@ -35,25 +35,28 @@ function createRpcRouter(historyFilePath) {
         }
       }
 
-      // This client becomes the owner (new, same, or prior owner timed out)
-      state.lastActiveClient = { clientId: incomingId, timestamp: now };
-
-      if (!(await connectRPC())) {
+      // Try the Discord App connection - but if there is a bridge, continue even if it fails
+      const discordConnected = await connectRPC();
+      if (!discordConnected && !isBridgeConnected()) {
         return res.status(500).json({ error: "RPC connection failed" });
       }
 
+      // This client becomes the owner (new, same, or prior owner timed out)
+      state.lastActiveClient = { clientId: incomingId, timestamp: now };
+
       // No status -> clear activity
       if (!data.status) {
-        try {
-          await clearRpcActivity({ maxRetries: 1, timeoutMs: 5000 });
-        } catch (err) {
-          console.warn("[UPDATE-RPC] Failed to clear activity:", err.message);
-          state.isRpcConnected = false;
+        if (discordConnected) {
+          try {
+            await clearRpcActivity({ maxRetries: 1, timeoutMs: 5000 });
+          } catch (err) {
+            console.warn("[UPDATE-RPC] Failed to clear activity:", err.message);
+            state.isRpcConnected = false;
+          }
         }
         resetActivityState(historyFilePath);
         state.lastUpdateAt = now;
         state.lastActivitySeenAt = now;
-
         return res.json({ success: true, action: "cleared" });
       }
 
@@ -72,7 +75,10 @@ function createRpcRouter(historyFilePath) {
       const isSame = isSameActivity(activity, state.currentActivity);
       if (!isSame) {
         const ok = await setRpcActivity(activity);
-        if (!ok) return res.status(503).json({ error: "RPC client not ready" });
+        // If the bridge is connected, consider it successful even if ok=false (Discord App may be closed)
+        if (!ok && !isBridgeConnected()) {
+          return res.status(503).json({ error: "RPC client not ready" });
+        }
       }
 
       state.lastUpdateAt = now;
@@ -127,13 +133,10 @@ function createRpcRouter(historyFilePath) {
           } else {
             clearSuccess = true;
           }
+        } else if (isBridgeConnected()) {
+          // If there is a bridge, consider it successfully cleared
+          clearSuccess = true;
         }
-
-        state.currentActivity = null;
-        state.lastActiveClient = null;
-        state.lastUpdateAt = null;
-        state.lastActivitySeenAt = null;
-        state.listeningStartTime = null;
 
         const response = { success: true, cleared: clearSuccess, reconnected: !clearSuccess };
         state.lastClearRpcResult = response;
@@ -160,7 +163,9 @@ function createRpcRouter(historyFilePath) {
   router.get("/activity", (_req, res) => {
     res.json({
       activity: state.currentActivity,
-      rpcConnected: state.isRpcConnected,
+      rpcConnected: isAnyConnected(),
+      discordConnected: state.isRpcConnected,
+      bridgeConnected: isBridgeConnected(),
       lastUpdateRequest: state.lastUpdateRequest,
     });
   });

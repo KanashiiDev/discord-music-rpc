@@ -105,6 +105,39 @@ function createSettingsRouter(settingsFilePath) {
     });
   });
 
+  router.post("/update-web-bridge-port", (req, res) => {
+    const { newPort } = req.body;
+
+    if (typeof newPort !== "number" || isNaN(newPort)) {
+      return res.status(400).json({ error: "Invalid bridge port value" });
+    }
+
+    const result = readSettings(settingsFilePath, res);
+    if (!result) return;
+
+    const { settings } = result;
+    const portSchema = settings?.server?.DISCORD_WEB_PORT;
+
+    if (!portSchema || portSchema.type !== "number") {
+      return res.status(500).json({ error: "Bridge port setting schema not found" });
+    }
+
+    if ((portSchema.min != null && newPort < portSchema.min) || (portSchema.max != null && newPort > portSchema.max)) {
+      return res.status(400).json({
+        error: `Bridge port must be between ${portSchema.min} and ${portSchema.max}`,
+      });
+    }
+
+    portSchema.value = newPort;
+
+    fs.writeFile(settingsFilePath, JSON.stringify(settings, null, 4), "utf8", (err) => {
+      if (err) return res.status(500).json({ error: "Settings update failed: " + err.message });
+      res.json({ success: true, message: "Bridge port updated successfully", updatedPort: newPort });
+      console.log(`[SETTINGS] Bridge port changed to ${newPort} — restarting...`);
+      sendRestart();
+    });
+  });
+
   return router;
 }
 

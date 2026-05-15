@@ -1,4 +1,5 @@
 async function buildPortButtons(container) {
+  // Port
   const portWrapper = document.createElement("div");
   portWrapper.className = "settings-option port-wrapper";
 
@@ -31,11 +32,16 @@ async function buildPortButtons(container) {
   btnApply.addEventListener("click", async () => {
     btnApply.classList.toggle("spinner");
     try {
-      const [activeTab] = await browser.tabs.query({ active: true, currentWindow: true });
+      const [activeTab] = await browser.tabs.query({
+        active: true,
+        currentWindow: true,
+      });
+
       await browser.runtime.sendMessage({
         type: "UPDATE_RPC_PORT",
         data: { newPort: Number(portInput.value) },
       });
+
       restartExtension(activeTab);
     } catch (err) {
       console.error("Port update failed:", err);
@@ -44,18 +50,74 @@ async function buildPortButtons(container) {
     }
   });
 
-  // Port Info
+  portWrapper.append(portLabel, portInput, btnApply);
+  container.appendChild(portWrapper);
+
+  // Web Bridge Port
+  const webBridgeWrapper = document.createElement("div");
+  webBridgeWrapper.className = "settings-option port-wrapper";
+
+  const webBridgeLabel = document.createElement("label");
+  webBridgeLabel.textContent = "Discord Web Port";
+  webBridgeLabel.dataset.i18n = "settings.discordWebPort";
+  webBridgeLabel.setAttribute("for", "discordWebPortInput");
+
+  const webBridgeInput = document.createElement("input");
+  webBridgeInput.type = "text";
+  webBridgeInput.id = "discordWebPortInput";
+  webBridgeInput.className = "settings-input";
+
+  const { discordWebPort: storeddiscordWebPort } = await browser.storage.local.get("discordWebPort");
+
+  webBridgeInput.value = storeddiscordWebPort ?? CONFIG.discordWebPort;
+
+  webBridgeInput.addEventListener(
+    "input",
+    debounce(async () => {
+      await browser.storage.local.set({
+        discordWebPort: webBridgeInput.value,
+      });
+    }, 300),
+  );
+
+  const btnWebBridgeApply = document.createElement("span");
+  btnWebBridgeApply.appendChild(createSVG(svg_paths.penIconPaths));
+  btnWebBridgeApply.className = "port-apply-btn button";
+  btnWebBridgeApply.title = i18n.t("settings.apply");
+
+  btnWebBridgeApply.addEventListener("click", async () => {
+    btnWebBridgeApply.classList.toggle("spinner");
+    try {
+      const [activeTab] = await browser.tabs.query({
+        active: true,
+        currentWindow: true,
+      });
+
+      await browser.runtime.sendMessage({
+        type: "UPDATE_WEB_BRIDGE_PORT",
+        data: { newPort: Number(webBridgeInput.value) },
+      });
+
+      restartExtension(activeTab);
+    } catch (err) {
+      console.error("Web Bridge Port update failed:", err);
+    } finally {
+      btnWebBridgeApply.classList.toggle("spinner");
+    }
+  });
+
+  webBridgeWrapper.append(webBridgeLabel, webBridgeInput, btnWebBridgeApply);
+
+  container.appendChild(webBridgeWrapper);
+
+  // Port Note
   const portInfo = document.createElement("small");
   portInfo.className = "settings-option-info";
   portInfo.textContent = "You don't need to change the port separately in the application.";
   portInfo.dataset.i18n = "settings.port_info";
-
-  portWrapper.append(portLabel, portInput, btnApply);
-  container.appendChild(portWrapper);
-  portWrapper.insertAdjacentElement("afterend", portInfo);
+  container.appendChild(portInfo);
 
   // Buttons
-
   const buttonsWrapper = document.createElement("div");
   buttonsWrapper.className = "settings-option buttons-wrapper";
 

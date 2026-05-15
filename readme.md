@@ -71,6 +71,7 @@ Required to communicate with Discord and display your music status.
 - Cross-platform Electron desktop app (Windows / Linux / macOS)
 - Automatic updates for both the browser extension and the desktop app
 - Fully customizable Discord status per site - control artist, source, cover art, buttons, timestamps, and more
+- Discord Web support
 - Open-source and community-driven
 
 ---

@@ -3,6 +3,7 @@ import "./libs/pako.js";
 
 const state = {
   serverPort: CONFIG.serverPort,
+  discordWebPort: CONFIG.discordWebPort,
   isLoopRunning: false,
   activeTabMap: new Map(),
   tabUrlMap: new Map(),
@@ -637,6 +638,13 @@ const init = async () => {
       state.serverPort = result.serverPort;
     }
   });
+
+  await browser.storage.local.get("discordWebPort").then((result) => {
+    if (result.discordWebPort !== undefined) {
+      state.discordWebPort = result.discordWebPort;
+    }
+  });
+
   setupListeners();
   await parserReady();
   scriptManager.registerAllScripts();

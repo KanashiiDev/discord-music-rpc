@@ -33,13 +33,14 @@ const createBooleanInput = (key, value, def) => {
   return switchLabel;
 };
 
-const createTextInput = (key, value, def) => {
+const createTextInput = (key, value, def, ph = "") => {
   const displayVal = displayValue(value, def);
   const { min, max } = getDisplayMinMax(def);
 
   const attributes = {
     id: key,
     value: displayVal,
+    placeholder: ph,
     type: def.type === "number" ? "number" : "text",
     "data-original": displayVal,
     "data-def": JSON.stringify(def),
@@ -72,29 +73,27 @@ const createSelect = (id, options = {}, defaultValue = null) => {
   return select;
 };
 
-export const createSettingOption = (key, def) => {
+export const createSettingOption = (key, def, allSettings) => {
   const { type, note, display } = def;
   const wrapper = createElement("div", "settings-option");
   wrapper.setAttribute("data-key", key);
 
-  const wrapperLabel = createElement("div", "setting-label");
-
-  const labelText = formatKeyName(key);
-  const label = createElement("label", "", {
+  const labelWrapper = createElement("div", "setting-label");
+  const title = createElement("label", "", {
     htmlFor: key,
-    textContent: labelText,
+    textContent: formatKeyName(key),
     className: "title",
     title: note || "",
     "data-i18n": `settings.${key.toLowerCase()}`,
   });
-
-  const noteElement = createElement("span", "option-note", { "data-i18n": `settings.${key.toLowerCase()}.note` });
+  const noteElement = createElement("span", "option-note");
   noteElement.textContent = `${note || ""}${display ? ` (${display})` : ""}`;
+  labelWrapper.append(title, noteElement);
 
   const inputWrapper = createElement("div", "input-wrapper");
-  const input = type === "boolean" ? createBooleanInput(key, def.value, def) : createTextInput(key, def.value, def);
   const errorMsg = createElement("span", "error-message");
   errorMsg.style.display = "none";
+  inputWrapper.appendChild(errorMsg);
 
   if (def.path) {
     const openBtn = createElement("button", "open-path-btn", {
@@ -123,11 +122,23 @@ export const createSettingOption = (key, def) => {
     inputWrapper.appendChild(openBtn);
   }
 
-  inputWrapper.appendChild(errorMsg);
-  inputWrapper.appendChild(input);
+  // If there is child input, add it first
+  if (def.children && allSettings[def.children]) {
+    const childDef = allSettings[def.children];
+    const childInput = createTextInput(def.children, childDef.value, childDef, childDef.placeholder);
+    childInput.disabled = !def.value;
+    inputWrapper.appendChild(childInput);
+  }
 
-  wrapperLabel.append(label, noteElement);
-  wrapper.append(wrapperLabel, inputWrapper);
+  if (type === "boolean") {
+    const toggle = createBooleanInput(key, def.value, def);
+    inputWrapper.appendChild(toggle);
+  } else {
+    const input = createTextInput(key, def.value, def, def.placeholder);
+    inputWrapper.appendChild(input);
+  }
+
+  wrapper.append(labelWrapper, inputWrapper);
   return wrapper;
 };
 

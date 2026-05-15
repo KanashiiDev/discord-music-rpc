@@ -45,6 +45,7 @@
   "settings.filter.desc": "Управляй песнями для фильтрации!",
   "settings.language": "Язык",
   "settings.port": "Порт",
+  "settings.discordWebPort": "Порт Discord Web",
   "settings.apply": "Применить",
   "settings.port_info": "Нет необходимости менять порт отдельно в приложении.",
   "settings.animations": "Анимации",

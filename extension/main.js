@@ -547,6 +547,11 @@ function init() {
     startWatching();
   };
 
+  // Discord Web RPC Bridge
+  if (location.origin === "https://discord.com") {
+    browser.runtime.sendMessage({ type: "INJECT_BRIDGE" });
+  }
+
   if (location.href.includes("http://localhost")) applyLocalCustomCSS();
   if (document.readyState !== "loading") start();
   else document.addEventListener("DOMContentLoaded", start, { once: true });

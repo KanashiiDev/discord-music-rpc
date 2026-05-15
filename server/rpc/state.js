@@ -73,7 +73,7 @@ const state = {
   shutdownPromise: null,
   clearRpcInProgress: false,
   connectionEpoch: 0,
-  hasConnectedOnce: false,
+  waitingForDiscord: false,
   currentActivity: null,
   lastActiveClient: null,
   lastUpdateAt: null,
@@ -88,7 +88,30 @@ const state = {
     showSmallIcon: false,
     logSongUpdate: false,
   },
+  bridgeClients: new Set(),
+  bridgeServer: null,
+  deadSince: null,
+  bridgeTakeover: false, // true while bridge is active owner; blocks RPC reconnect loop
 };
+
+function isBridgeConnected() {
+  for (const ws of state.bridgeClients) {
+    if (ws.readyState === 1) return true;
+  }
+  return false;
+}
+
+function purgeStaleBridgeClients() {
+  for (const ws of state.bridgeClients) {
+    if (ws.readyState !== 1) {
+      state.bridgeClients.delete(ws);
+    }
+  }
+}
+
+function isAnyConnected() {
+  return state.isRpcConnected || isBridgeConnected();
+}
 
 module.exports = {
   state,
@@ -100,4 +123,7 @@ module.exports = {
   STUCK_TIMEOUT,
   MAX_CLEAR_RETRIES,
   RECONNECT_GRACE_MS,
+  isBridgeConnected,
+  isAnyConnected,
+  purgeStaleBridgeClients,
 };
