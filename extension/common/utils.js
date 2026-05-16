@@ -1709,6 +1709,40 @@ function getPlainText(text) {
   return trimmed;
 }
 
+function uint8ToBase64(uint8) {
+  let binary = "";
+  for (let i = 0; i < uint8.length; i++) {
+    binary += String.fromCharCode(uint8[i]);
+  }
+  return btoa(binary);
+}
+
+function encodeValue(value) {
+  if (value instanceof Uint8Array) {
+    return { __type: "uint8array", data: uint8ToBase64(value) };
+  }
+  if (value instanceof ArrayBuffer) {
+    return { __type: "arraybuffer", data: uint8ToBase64(new Uint8Array(value)) };
+  }
+  return value;
+}
+
+function decodeValue(value) {
+  if (value?.__type === "uint8array") {
+    const binary = atob(value.data);
+    const arr = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) arr[i] = binary.charCodeAt(i);
+    return arr;
+  }
+  if (value?.__type === "arraybuffer") {
+    const binary = atob(value.data);
+    const arr = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) arr[i] = binary.charCodeAt(i);
+    return arr.buffer;
+  }
+  return value;
+}
+
 function openIndexedDB(DB_NAME, STORE_NAME, DB_VERSION) {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open(DB_NAME, DB_VERSION);
@@ -1720,10 +1754,7 @@ function openIndexedDB(DB_NAME, STORE_NAME, DB_VERSION) {
       }
     };
 
-    request.onsuccess = (e) => {
-      resolve(e.target.result);
-    };
-
+    request.onsuccess = (e) => resolve(e.target.result);
     request.onerror = (e) => {
       logError("IndexedDB open error:", e.target.error);
       reject(e.target.error);
@@ -1731,87 +1762,72 @@ function openIndexedDB(DB_NAME, STORE_NAME, DB_VERSION) {
   });
 }
 
-function encodeValue(value) {
-  if (value instanceof Uint8Array) {
-    return {
-      __type: "uint8array",
-      data: btoa(String.fromCharCode(...value)),
-    };
-  }
-  if (value instanceof ArrayBuffer) {
-    const uint8 = new Uint8Array(value);
-    return {
-      __type: "arraybuffer",
-      data: btoa(String.fromCharCode(...uint8)),
-    };
-  }
-  return value;
-}
-
 async function exportIndexedDB(dbName) {
-  return new Promise((resolve, reject) => {
-    const openReq = indexedDB.open(dbName);
+  const db = await new Promise((res, rej) => {
+    const req = indexedDB.open(dbName);
+    req.onsuccess = () => res(req.result);
+    req.onerror = () => rej(req.error);
+  });
 
-    openReq.onerror = () => reject(openReq.error);
+  const storeNames = [...db.objectStoreNames];
 
-    openReq.onsuccess = () => {
-      const db = openReq.result;
-      const tx = db.transaction(db.objectStoreNames, "readonly");
+  if (storeNames.length === 0) {
+    db.close();
+    return {};
+  }
 
-      const result = {};
-      let pending = db.objectStoreNames.length;
+  const tx = db.transaction(storeNames, "readonly");
+  const result = {};
 
-      for (const storeName of db.objectStoreNames) {
-        const store = tx.objectStore(storeName);
-
+  await Promise.all(
+    storeNames.map((storeName) => {
+      const store = tx.objectStore(storeName);
+      return new Promise((res, rej) => {
         const keysReq = store.getAllKeys();
         const valsReq = store.getAll();
 
-        keysReq.onsuccess = () => {
-          valsReq.onsuccess = () => {
-            const entries = {};
-            keysReq.result.forEach((key, i) => {
-              entries[key] = encodeValue(valsReq.result[i]);
-            });
-
-            result[storeName] = entries;
-
-            pending--;
-            if (pending === 0) resolve(result);
-          };
+        let keys, vals;
+        const tryResolve = () => {
+          if (keys === undefined || vals === undefined) return;
+          const entries = {};
+          keys.forEach((key, i) => {
+            entries[key] = encodeValue(vals[i]);
+          });
+          result[storeName] = entries;
+          res();
         };
-      }
-    };
-  });
-}
 
-function decodeValue(value) {
-  if (value?.__type === "uint8array") {
-    const binary = atob(value.data);
-    const arr = new Uint8Array(binary.length);
-    for (let i = 0; i < binary.length; i++) arr[i] = binary.charCodeAt(i);
-    return arr;
-  }
+        keysReq.onsuccess = () => {
+          keys = keysReq.result;
+          tryResolve();
+        };
+        valsReq.onsuccess = () => {
+          vals = valsReq.result;
+          tryResolve();
+        };
+        keysReq.onerror = valsReq.onerror = () => rej(keysReq.error ?? valsReq.error);
+      });
+    }),
+  );
 
-  if (value?.__type === "arraybuffer") {
-    const binary = atob(value.data);
-    const arr = new Uint8Array(binary.length);
-    for (let i = 0; i < binary.length; i++) arr[i] = binary.charCodeAt(i);
-    return arr.buffer;
-  }
-
-  return value;
+  db.close();
+  return result;
 }
 
 async function importIndexedDB(dbName, data) {
-  await indexedDB.deleteDatabase(dbName);
+  if (!data || Object.keys(data).length === 0) return;
 
-  return new Promise((resolve, reject) => {
+  await new Promise((res, rej) => {
+    const del = indexedDB.deleteDatabase(dbName);
+    del.onsuccess = res;
+    del.onerror = () => rej(del.error);
+  });
+
+  await new Promise((resolve, reject) => {
     const openReq = indexedDB.open(dbName);
 
     openReq.onupgradeneeded = () => {
       const db = openReq.result;
-
       for (const storeName of Object.keys(data)) {
         db.createObjectStore(storeName);
       }
@@ -1819,20 +1835,23 @@ async function importIndexedDB(dbName, data) {
 
     openReq.onsuccess = () => {
       const db = openReq.result;
-
       const tx = db.transaction(Object.keys(data), "readwrite");
 
       for (const [storeName, entries] of Object.entries(data)) {
         const store = tx.objectStore(storeName);
-
         for (const [key, value] of Object.entries(entries)) {
           store.put(decodeValue(value), key);
         }
       }
 
-      tx.oncomplete = () => resolve();
+      tx.oncomplete = () => {
+        db.close();
+        resolve();
+      };
       tx.onerror = () => reject(tx.error);
     };
+
+    openReq.onerror = () => reject(openReq.error);
   });
 }
 
