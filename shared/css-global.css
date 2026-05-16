@@ -358,6 +358,7 @@ svg:not(.flatpickr-calendar svg):not(.IroHandle) {
 }
 .dlg-overlay.active {
   display: flex;
+  white-space: pre-line;
 }
 
 .dlg-box {
@@ -401,6 +402,7 @@ svg:not(.flatpickr-calendar svg):not(.IroHandle) {
   color: var(--yellow-color);
 }
 
+.dlg-icon.tip,
 .dlg-icon.info,
 .dlg-icon.edit {
   background: var(--accent-color);

@@ -39,24 +39,15 @@ const initLanguageSelect = async (container) => {
     new TomSelect(select, {
       controlInput: null,
       sortField: false,
+      plugins: {
+        auto_width: { isExtension: true, maxWidth: 125 },
+        simplebar: {
+          isExtension: true,
+        },
+      },
       onChange: async () => {
         await browser.storage.local.set({ lang: select.value });
         window.location.reload();
-      },
-      onDropdownOpen: (dropdown) => {
-        const list = dropdown.querySelector(".ts-dropdown-content");
-        if (!list) return;
-
-        const tryInit = async (attempts = 0) => {
-          if (list.offsetHeight === 0 && attempts < 15) {
-            requestAnimationFrame(() => tryInit(attempts + 1));
-            return;
-          }
-          await destroySimplebar(list);
-          await activateSimpleBar(list);
-        };
-
-        requestAnimationFrame(() => tryInit());
       },
     });
   } catch (err) {

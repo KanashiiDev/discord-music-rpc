@@ -117,7 +117,7 @@ function startPreviewLoop(shadow, editMode) {
 }
 
 // Preview Update
-function updatePreview(shadow, editMode) {
+async function updatePreview(shadow, editMode) {
   const getValue = (id) => shadow.getElementById(id)?.value?.trim();
   const getElement = (selector) => {
     if (!selector) return null;
@@ -194,7 +194,7 @@ function updatePreview(shadow, editMode) {
   texts = Object.fromEntries(Object.entries(texts).map(([key, value]) => [key, typeof value === "string" ? value.trim() : value]));
 
   // Normalization
-  const normalized = normalizeTitleAndArtist(texts.title, texts.artist);
+  const normalized = await normalizeTitleAndArtist(texts.title, texts.artist);
   texts.title = truncate(normalized.title, 128, { fallback: "Unknown Song" });
   texts.artist = normalized.artist !== "-1" ? truncate(normalized.artist, 128, { fallback: "Unknown Artist" }) : "-1";
 

@@ -815,6 +815,111 @@ function normalizeArtistName(name) {
     .toLowerCase();
 }
 
+// Normalize title and artist
+async function normalizeTitleAndArtist(inputTitle, inputArtist, replaceArtist = true, stripDashPrefix = false) {
+  let title = typeof inputTitle === "string" ? inputTitle : "";
+  let artist = typeof inputArtist === "string" ? inputArtist : "";
+
+  if (!title) return { title, artist };
+  if (!window._NORMALIZATION_STATUS_) window._NORMALIZATION_STATUS_ = await browser.storage.local.get("normalization");
+
+  const { normalization } = window._NORMALIZATION_STATUS_ || (await browser.storage.local.get("normalization"));
+  const map = {
+    enable: [true, false],
+    cleanTitle: [false, true],
+    disable: [false, false],
+  };
+
+  [replaceArtist, stripDashPrefix] = map[normalization] ?? [true, false];
+
+  // Core Helpers
+  const canonical = (s) =>
+    (s || "")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "")
+      .trim();
+
+  const splitArtists = (str) =>
+    (str || "")
+      .split(/\s*(?:,|&|\+|x|×|feat\.?|featuring|ft\.?|with)\s*/i)
+      .map((s) => s.trim())
+      .filter(Boolean);
+
+  const mergeArtists = (a, b) => {
+    const map = new Map();
+
+    for (const x of [...splitArtists(a), ...splitArtists(b)]) {
+      const key = canonical(x);
+      if (key && !map.has(key)) {
+        map.set(key, x);
+      }
+    }
+
+    return [...map.values()].join(" & ");
+  };
+
+  const isRemix = (t) => /\b(remix|edit|vip|flip)\b/i.test(t);
+
+  // Title Preprocess
+  const parenIndex = title.search(/[\[\(（【]/);
+  const baseTitle = parenIndex !== -1 ? title.slice(0, parenIndex) : title;
+  const parenPart = parenIndex !== -1 ? title.slice(parenIndex) : "";
+
+  // Dash Parse
+  const dashMatch = baseTitle.match(/^(.+?)\s[-–—]\s(.+)$/);
+
+  if (dashMatch) {
+    const left = dashMatch[1].trim();
+    const right = dashMatch[2].trim() + (parenPart ? " " + parenPart : "");
+
+    // stripDashPrefix: delete the dash on the left
+    if (stripDashPrefix) {
+      title = right;
+      return { title, artist };
+    }
+
+    if (replaceArtist) {
+      const leftCanon = canonical(left);
+      const inputCanon = canonical(artist);
+
+      const leftArtists = splitArtists(left);
+      const inputArtists = splitArtists(artist);
+
+      const overlap = leftCanon === inputCanon || leftArtists.some((a) => inputArtists.some((b) => canonical(a) === canonical(b)));
+
+      if (isRemix(title)) {
+        const remixer = artist;
+        artist = left;
+        title = right;
+        return { title, artist, remixer };
+      }
+
+      if (overlap) {
+        artist = mergeArtists(left, artist);
+      } else {
+        artist = left;
+      }
+
+      title = right;
+    }
+  }
+
+  // Clean Prefix Artifacts
+  const cleanTitle = (t, artistStr) => {
+    if (!t || !artistStr) return t;
+
+    const escaped = artistStr.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const pattern = new RegExp(`^\\s*${escaped}\\s*[-–—:]\\s*`, "i");
+
+    return t.replace(pattern, "").trim();
+  };
+
+  title = cleanTitle(title, artist);
+
+  // Output
+  return { title, artist };
+}
+
 // Normalize host string
 const normalizeHost = (hostOrUrl) => {
   try {

@@ -227,7 +227,7 @@ module.exports = [
     ignores: ["extension/background.js"],
     languageOptions: {
       ecmaVersion: "latest",
-      sourceType: "script",
+      sourceType: "commonjs",
       globals: {
         ...globals.browser,
         ...globals.webextensions,

@@ -35,6 +35,35 @@ function _dialog_btn(text, cls) {
   return btn;
 }
 
+function appendFormattedText(el, text) {
+  const regex = /<(b|i|code)>(.*?)<\/\1>/gis;
+
+  let lastIndex = 0;
+  let match;
+
+  while ((match = regex.exec(text)) !== null) {
+    // Normal text
+    if (match.index > lastIndex) {
+      el.appendChild(document.createTextNode(text.slice(lastIndex, match.index)));
+    }
+
+    const [, tag, content] = match;
+
+    // Allowed tag
+    const node = document.createElement(tag);
+    node.textContent = content;
+
+    el.appendChild(node);
+
+    lastIndex = regex.lastIndex;
+  }
+
+  // Remaining text
+  if (lastIndex < text.length) {
+    el.appendChild(document.createTextNode(text.slice(lastIndex)));
+  }
+}
+
 /**
  * @param {object}   cfg
  * @param {string}   cfg.titleId
@@ -58,7 +87,7 @@ function _dialog_create({ titleId, type, heading, body, buttons, extraButtons = 
     // Title
     const icon = document.createElement("div");
     icon.className = "dlg-icon " + type;
-    icon.textContent = { danger: "✕", warn: "!", info: "✓" }[type] ?? "✎";
+    icon.textContent = { danger: "✕", warn: "!", info: "✓", tip: "i" }[type] ?? "✎";
 
     const titleEl = document.createElement("p");
     titleEl.className = "dlg-title";
@@ -74,7 +103,13 @@ function _dialog_create({ titleId, type, heading, body, buttons, extraButtons = 
     if (body != null) {
       const p = document.createElement("p");
       p.className = "dlg-body";
-      typeof body === "string" ? (p.textContent = body) : p.appendChild(body);
+
+      if (typeof body === "string") {
+        appendFormattedText(p, body);
+      } else {
+        p.appendChild(body);
+      }
+
       box.appendChild(p);
     }
 

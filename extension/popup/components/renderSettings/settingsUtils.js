@@ -107,13 +107,21 @@ function createSelectRow(labelText, wrapClass, options, currentValue, onChange) 
     select.tomselect.destroy();
   }
 
-  const ts = new TomSelect(select, {
-    controlInput: null,
-    sortField: false,
+  requestAnimationFrame(() => {
+    const ts = new TomSelect(select, {
+      controlInput: null,
+      sortField: false,
+      plugins: {
+        auto_width: { isExtension: true, maxWidth: 125 },
+        simplebar: {
+          isExtension: true,
+        },
+      },
 
-    onChange(value) {
-      onChange({ target: { value } });
-    },
+      onChange(value) {
+        onChange({ target: { value } });
+      },
+    });
   });
 
   return wrap;

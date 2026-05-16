@@ -18,7 +18,7 @@ module.exports = function registerInlines(inlineUtilsFunctions) {
   inlineUtilsFunctions(["common/utils.js"], "../shared/dialog.js", [], [], "start");
 
   // Truncate
-  inlineUtilsFunctions(["common/utils.js", "popup/selector/selector.js", "background.js"], "../shared/utils.js", ["truncate", "normalizeTitleAndArtist"]);
+  inlineUtilsFunctions(["common/utils.js", "popup/selector/selector.js", "background.js"], "../shared/utils.js", ["truncate"]);
 
   // Logs
   inlineUtilsFunctions(["background.js", "mainParser.js"], "common/utils.js", [
@@ -37,6 +37,7 @@ module.exports = function registerInlines(inlineUtilsFunctions) {
   inlineUtilsFunctions("background.js", "common/utils.js", [
     "normalizeHost",
     "normalize",
+    "normalizeTitleAndArtist",
     "getCurrentTime",
     "openIndexedDB",
     "createMutex",
@@ -97,6 +98,7 @@ module.exports = function registerInlines(inlineUtilsFunctions) {
   // Selector Utils
   inlineUtilsFunctions("popup/selector/selector.js", "common/utils.js", [
     "throttle",
+    "normalizeTitleAndArtist",
     "formatLabel",
     "querySelectorDeep",
     "queryWithPartialClass",

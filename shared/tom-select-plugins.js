@@ -7,7 +7,7 @@ function applyTsPlugins() {
     const waitForSimpleBar = (hasSimplebar, el) => {
       return new Promise((resolve) => {
         function check() {
-          if (!hasSimplebar) resolve();
+          if (!hasSimplebar) return resolve();
           if (el.querySelector(".simplebar-content-wrapper")) {
             resolve();
           } else {
@@ -20,36 +20,39 @@ function applyTsPlugins() {
     const autoResizeTs = (ts, reset) => {
       const control = ts.control;
       const dropdown = ts.dropdown;
-
-      const MAX_WIDTH = options.maxWidth || 220;
+      const content = ts.dropdown_content;
 
       if (reset) {
+        content.style.whiteSpace = "";
         dropdown.style.width = "";
         control.style.width = "";
         dropdown.classList.remove("is-overflow");
         return;
       }
 
-      const items = dropdown.querySelectorAll(".option");
-      let maxWidth = control.offsetWidth;
+      const MAX_WIDTH = options.maxWidth || 220;
 
-      items.forEach((item) => {
-        const width = item.scrollWidth;
-        if (width > maxWidth) maxWidth = width;
-      });
+      waitForSimpleBar(hasSimplebar, content).then(() => {
+        const items = dropdown.querySelectorAll(".option");
+        content.style.whiteSpace = "nowrap";
+        let maxWidth = control.offsetWidth;
 
-      let finalWidth = maxWidth;
+        items.forEach((item) => {
+          const width = item.scrollWidth;
+          if (width > maxWidth) maxWidth = width;
+        });
 
-      waitForSimpleBar(hasSimplebar, ts.dropdown_content).then(() => {
         const scrollbar = dropdown.querySelector(".simplebar-vertical[style='visibility: visible;']");
+
         if (scrollbar) dropdown.classList.add("scrollbar-active");
         isExtension ? dropdown.classList.add("is-extension") : dropdown.classList.add("is-server");
 
-        const offset = scrollbar && !isExtension ? scrollbar.offsetWidth + 10 : 0;
-        finalWidth += offset;
+        const offset = scrollbar && !isExtension ? scrollbar.offsetWidth + 10 : 4;
+        let finalWidth = maxWidth + offset;
 
         if (finalWidth > MAX_WIDTH) {
           dropdown.classList.add("is-overflow");
+          content.style.whiteSpace = "";
           finalWidth = MAX_WIDTH;
         } else {
           dropdown.classList.remove("is-overflow");

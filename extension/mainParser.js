@@ -423,7 +423,7 @@ window.registerParser = async function ({
         const rawDurValid = rawDuration !== null && isFinite(rawDuration) && rawDuration > 0;
 
         // NORMALIZATION
-        const normalized = normalizeTitleAndArtist(rest.title ?? "", rest.artist ?? "");
+        const normalized = await normalizeTitleAndArtist(rest.title ?? "", rest.artist ?? "");
 
         const cleanTitle = truncate(normalized.title, 128, { fallback: "Unknown Song" });
         const cleanArtist = truncate(normalized.artist, 128, { fallback: "Unknown Artist" });
@@ -651,7 +651,7 @@ window.getSongInfo = async function () {
               let dataSource = String(song.source || "").trim();
 
               // Normalization
-              const normalized = normalizeTitleAndArtist(dataTitle, dataArtist);
+              const normalized = await normalizeTitleAndArtist(dataTitle, dataArtist);
               dataTitle = normalized?.title || dataTitle;
               dataArtist = normalized?.artist || dataArtist;
 

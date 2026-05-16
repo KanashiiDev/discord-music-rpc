@@ -47,4 +47,39 @@ async function buildThemeMotion(container) {
   });
 
   container.appendChild(motionWrap);
+
+  // Normalization
+  const { normalization: normalizationValue } = await browser.storage.local.get("normalization");
+  let normalizationConfig = normalizationValue ?? "cleanTitle";
+
+  const normalizationOptions = [
+    { value: "enable", text: i18n.t("common.enable") },
+    { value: "cleanTitle", text: i18n.t("settings.normalization.cleanTitle") },
+    { value: "disable", text: i18n.t("common.disable") },
+  ];
+
+  const normalizationWrap = createSelectRow(
+    i18n.t("settings.normalization"),
+    "normalization-wrapper",
+    normalizationOptions,
+    normalizationConfig,
+    debounce(async (e) => {
+      normalizationConfig = e.target.value;
+      await browser.storage.local.set({ normalization: normalizationConfig });
+    }, 300),
+  );
+
+  const normalizationTip = document.createElement("span");
+  normalizationTip.className = "settings-option-tip";
+  normalizationTip.textContent = "i";
+
+  normalizationTip.addEventListener("click", async () => {
+    const t1 = `<b>${i18n.t("common.enable")}</b>\n${i18n.t("settings.normalization.tip.enable")}`;
+    const t2 = `<b>${i18n.t("settings.normalization.cleanTitle")}</b>\n${i18n.t("settings.normalization.tip.cleanTitle")}`;
+    const t3 = `<b>${i18n.t("common.disable")}</b>\n${i18n.t("settings.normalization.tip.disable")}`;
+    await showAlert(i18n.t("settings.normalization"), `${t1}\n\n${t2}\n\n${t3}`, "tip");
+  });
+
+  normalizationWrap.querySelector("label").appendChild(normalizationTip);
+  container.appendChild(normalizationWrap);
 }

@@ -101,103 +101,6 @@ function truncate(str, maxLength = 128, { fallback = "Unknown", minLength = 2, m
 
   return result;
 }
-
-function normalizeTitleAndArtist(inputTitle, inputArtist, replaceArtist = true) {
-  let title = typeof inputTitle === "string" ? inputTitle : "";
-  let artist = typeof inputArtist === "string" ? inputArtist : "";
-
-  if (!title) return { title, artist };
-
-  // Core Helpers
-  const canonical = (s) =>
-    (s || "")
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "")
-      .trim();
-
-  const splitArtists = (str) =>
-    (str || "")
-      .split(/\s*(?:,|&|\+|x|×|feat\.?|featuring|ft\.?|with)\s*/i)
-      .map((s) => s.trim())
-      .filter(Boolean);
-
-  const mergeArtists = (a, b) => {
-    const map = new Map();
-
-    for (const x of [...splitArtists(a), ...splitArtists(b)]) {
-      const key = canonical(x);
-      if (key && !map.has(key)) {
-        map.set(key, x);
-      }
-    }
-
-    return [...map.values()].join(" & ");
-  };
-
-  const isRemix = (t) => /\b(remix|edit|vip|flip)\b/i.test(t);
-
-  // Title Preprocess
-  const parenIndex = title.search(/[\[\(（【]/);
-  const baseTitle = parenIndex !== -1 ? title.slice(0, parenIndex) : title;
-  const parenPart = parenIndex !== -1 ? title.slice(parenIndex) : "";
-
-  // Dash Parse
-  const dashMatch = baseTitle.match(/^(.+?)\s[-–—]\s(.+)$/);
-
-  if (dashMatch && replaceArtist) {
-    const left = dashMatch[1].trim();
-    const right = dashMatch[2].trim() + (parenPart ? " " + parenPart : "");
-
-    const leftCanon = canonical(left);
-    const inputCanon = canonical(artist);
-
-    const leftArtists = splitArtists(left);
-    const inputArtists = splitArtists(artist);
-
-    const overlap = leftCanon === inputCanon || leftArtists.some((a) => inputArtists.some((b) => canonical(a) === canonical(b)));
-
-    // Remix Mode
-    if (isRemix(title)) {
-      const remixer = artist;
-
-      artist = left;
-      title = right;
-
-      return {
-        title,
-        artist,
-        remixer,
-      };
-    }
-
-    // Normal Mode
-    if (overlap) {
-      // Merge same entity
-      artist = mergeArtists(left, artist);
-    } else {
-      // Dash left is authority - ignore input artist
-      artist = left;
-    }
-
-    title = right;
-  }
-
-  // Clean Prefix Artifacts
-  const cleanTitle = (t, artistStr) => {
-    if (!t || !artistStr) return t;
-
-    const escaped = artistStr.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    const pattern = new RegExp(`^\\s*${escaped}\\s*[-–—:]\\s*`, "i");
-
-    return t.replace(pattern, "").trim();
-  };
-
-  title = cleanTitle(title, artist);
-
-  // Output
-  return { title, artist };
-}
-
 function getCurrentTime() {
   const now = new Date();
   return [now.getHours().toString().padStart(2, "0"), now.getMinutes().toString().padStart(2, "0"), now.getSeconds().toString().padStart(2, "0")].join(":");
@@ -221,6 +124,5 @@ const isValidUrl = (url) => {
 module.exports = {
   getCurrentTime,
   truncate,
-  normalizeTitleAndArtist,
   isValidUrl,
 };
