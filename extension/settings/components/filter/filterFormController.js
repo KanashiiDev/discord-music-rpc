@@ -418,7 +418,7 @@ const FormController = {
               "input-replace",
             ),
             this._input(
-              i18n.t("filter.title.original"),
+              i18n.t("filter.title.new"),
               entry.replaceTitle,
               (e) => {
                 FilterState.form.entries[index].replaceTitle = e.target.value;
