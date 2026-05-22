@@ -124,6 +124,7 @@ async function buildPortButtons(container) {
   const { debugMode: storedDebug } = await browser.storage.local.get("debugMode");
   let debugState = storedDebug ?? CONFIG.debugMode;
 
+  const btnParserManager = createBtn(i18n.t("settings.selectorParserManager"), "selectorParserManager");
   const btnRestart = createBtn(i18n.t("settings.restart"), "restart");
   const btnDebug = createBtn(i18n.t(debugState ? "settings.debug.disable" : "settings.debug.enable"), "debugMode");
   const btnFactory = createBtn(i18n.t("settings.factory"), "factoryReset");
@@ -133,6 +134,10 @@ async function buildPortButtons(container) {
 
   // Event listeners
   btnBackup.onclick = () => openSettingsPage("backup");
+
+  btnParserManager.onclick = async () => {
+    openselectorParserManager();
+  };
 
   btnRestart.onclick = async () => {
     const [activeTab] = await browser.tabs.query({ active: true, currentWindow: true });
@@ -169,6 +174,6 @@ async function buildPortButtons(container) {
     }
   };
 
-  buttonsWrapper.append(btnBackup, btnRestart, btnDebug, btnFactory);
+  buttonsWrapper.append(btnParserManager, btnBackup, btnRestart, btnDebug, btnFactory);
   container.append(buttonsWrapper);
 }

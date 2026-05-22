@@ -95,28 +95,34 @@ async function loadParserList() {
     }
 
     const { parserList = [], userParserSelectors = [], userScriptsList = [] } = await browser.storage.local.get(["parserList", "userParserSelectors", "userScriptsList"]);
-    logInfo(`Loaded ${parserList.length} parsers, ${userParserSelectors.length} user parsers and ${userScriptsList.length} user scripts.`);
+    logInfo(`Loaded ${parserList.length} parsers, ${userParserSelectors.length} selector parsers and ${userScriptsList.length} user scripts.`);
 
     // Get the lists from local storage and process them
 
     // Default Parsers
     const builtInList = parserList.filter((p) => !p.userAdd && !p.userScript);
 
-    // User Selector Parsers
-    const userList = userParserSelectors.map((u) => ({
-      ...u,
-      id: u.id || `${u.domain}_${hashFromPatternStrings(u.urlPatterns || [".*"])}`,
-      urlPatterns: u.urlPatterns || u.selectors?.regex || [".*"],
-      userAdd: true,
-    }));
+    // Selector Parsers
+    const userList = userParserSelectors.map((u) => {
+      const fallbackId = generateParserKey(u.domain, u.urlPatterns || [".*"]);
+      return {
+        ...u,
+        id: u.id || fallbackId,
+        urlPatterns: u.urlPatterns || u.selectors?.regex || [".*"],
+        userAdd: true,
+      };
+    });
 
     // UserScript Parsers
-    const userScriptList = userScriptsList.map((u) => ({
-      ...u,
-      id: u.id || `${Array.isArray(u.domain) ? u.domain[0] : u.domain}_${hashFromPatternStrings(u.urlPatterns || [".*"])}`,
-      urlPatterns: u.urlPatterns || [".*"],
-      userScript: true,
-    }));
+    const userScriptList = userScriptsList.map((u) => {
+      const fallbackId = generateParserKey(u.domain, u.urlPatterns || [".*"]);
+      return {
+        ...u,
+        id: u.id || fallbackId,
+        urlPatterns: u.urlPatterns || [".*"],
+        userScript: true,
+      };
+    });
 
     // Merge the lists
     const allParsers = [...builtInList, ...userList, ...userScriptList];

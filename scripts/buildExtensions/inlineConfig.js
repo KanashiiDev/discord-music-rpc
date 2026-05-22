@@ -42,6 +42,7 @@ module.exports = function registerInlines(inlineUtilsFunctions) {
     "openIndexedDB",
     "createMutex",
     "findMatchingParsersForUrl",
+    "generateParserKey",
     "fetchWithTimeout",
     "getSenderTab",
     "isAllowedDomain",
@@ -85,10 +86,11 @@ module.exports = function registerInlines(inlineUtilsFunctions) {
     "getImage",
     "getImageAll",
     "querySelectorDeep",
-    "hashFromPatternStrings",
-    "makeIdFromDomainAndPatterns",
+    "generateParserKey",
     "getPlainText",
     "isValidUrl",
+    "isDomainMatch",
+    "normalizeHost",
     "getSafeText",
     "getSafeHref",
   ]);
@@ -125,7 +127,7 @@ module.exports = function registerInlines(inlineUtilsFunctions) {
   inlineUtilsFunctions(
     "manager/userScriptWorker.js",
     "common/utils.js",
-    ["getText", "getTextAll", "getImage", "getImageAll", "queryWithPartialClass", "querySelectorDeep"],
+    ["getText", "getTextAll", "getImage", "getImageAll", "queryWithPartialClass", "querySelectorDeep", "generateParserKey"],
     "_INLINE_UTILS",
   );
   inlineUtilsFunctions("background.js", ["manager/userScriptWorker.js"], []);

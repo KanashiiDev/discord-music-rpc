@@ -202,7 +202,11 @@ const handleToggleUserScript = async (req) => {
   const isEnabled = parserEnabledState[enableKey] !== false;
   const newEnabledState = req.enabled !== undefined ? req.enabled : !isEnabled;
 
-  parserEnabledState[enableKey] = newEnabledState;
+  if (newEnabledState) {
+    delete parserEnabledState[enableKey];
+  } else {
+    parserEnabledState[enableKey] = false;
+  }
   await browser.storage.local.set({ parserEnabledState });
 
   const scriptsList = await scriptManager.storage.getScripts();

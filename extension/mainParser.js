@@ -292,7 +292,7 @@ async function initializeAllParserSettings() {
 
     // id always based on primaryDomain
     const resolvedPrimary = Array.isArray(domainArg) ? domainArg[0] : domainArg;
-    const id = makeIdFromDomainAndPatterns(resolvedPrimary, data.urlPatterns);
+    const id = generateParserKey(resolvedPrimary, data.urlPatterns);
 
     const settingKey = `settings_${id}`;
     if (!settingsCache[settingKey]) {
@@ -359,7 +359,7 @@ window.registerParser = async function ({
 
   // bind the id
   const primaryDomain = domains[0];
-  const id = makeIdFromDomainAndPatterns(primaryDomain, urlPatterns);
+  const id = generateParserKey(primaryDomain, urlPatterns);
   const boundUseSetting = (key, label, type = "text", defaultValue = "", newValue) => useSetting(id, key, label, type, defaultValue, newValue);
   const patternRegexes = (urlPatterns || []).map(parseUrlPattern);
 
@@ -631,8 +631,13 @@ window.getSongInfo = async function () {
     const hostname = location.hostname.replace(/^www\./, "").toLowerCase();
     const pathname = location.pathname;
 
-    const domainParsers = window.parsers?.[hostname];
-    if (!domainParsers) return null;
+    const exactParsers = window.parsers?.[hostname] || [];
+    const wildcardParsers = Object.entries(window.parsers || {})
+      .filter(([key]) => key.startsWith("*.") && isDomainMatch(key, hostname))
+      .flatMap(([, parsers]) => parsers);
+
+    const domainParsers = [...exactParsers, ...wildcardParsers];
+    if (!domainParsers.length) return null;
 
     for (const parser of domainParsers) {
       try {
@@ -999,7 +1004,7 @@ window.addEventListener("message", async (event) => {
   }
 });
 
-// Load User Parsers
+// Load Selector Parsers
 async function loadAllSavedUserParsers() {
   const settings = await browser.storage.local.get("userParserSelectors");
   const parserArray = settings.userParserSelectors;
@@ -1019,9 +1024,11 @@ async function loadAllSavedUserParsers() {
       }
     };
 
-    const hostname = data.domain.toLowerCase();
+    const rawDomain = Array.isArray(data.domain) ? data.domain[0] : data.domain;
+    const hostname = (typeof rawDomain === "string" ? rawDomain : String(rawDomain)).toLowerCase();
     const locHostname = location.hostname.replace(/^www\./, "").toLowerCase();
     const autoDetectEnabled = data.selectors.mode === "watch" && data.selectors.watchAutoDetect && data.selectors.watchAutoDetect !== "disable";
+    const parserId = data.id || generateParserKey(hostname, data.urlPatterns || [".*"]);
 
     window.registerParser?.({
       domain: hostname,
@@ -1030,7 +1037,7 @@ async function loadAllSavedUserParsers() {
       userAdd: true,
       mode: data.selectors.mode || "listen",
       fn: async function ({ iframeData }) {
-        if (locHostname !== hostname && !locHostname.endsWith(`.${hostname}`)) return null;
+        if (!isDomainMatch(hostname, locHostname)) return null;
 
         try {
           const videoData = autoDetectEnabled ? getBestVideo(document.querySelectorAll("video")) : null;
@@ -1088,7 +1095,7 @@ async function loadAllSavedUserParsers() {
             ].filter(Boolean),
           };
         } catch (e) {
-          logError(`User parser error (${hostname}):`, e);
+          logError(`Selector parser error (${hostname}):`, e);
           return null;
         }
       },

@@ -64,7 +64,7 @@ async function buildParserEntry({ entry, parserEnabledState, parserSettings, con
     entryInner.appendChild(delBtn);
 
     const domains = Array.isArray(domain) ? domain : [domain];
-    const domMatch = domains.some((d) => normalizeHost(d) === tabHostname);
+    const domMatch = domains.some((d) => isDomainMatch(d, tabHostname));
 
     if (domMatch) {
       const hasMatch = urlPatterns.map(parseUrlPattern).some((re) => re.test(tabPath));
@@ -78,6 +78,11 @@ async function buildParserEntry({ entry, parserEnabledState, parserSettings, con
         document.getElementById("openSelector").dataset.i18n = "button.add_music_site";
       }
     }
+  }
+
+  if (userAdd) {
+    const gearBtn = createEditParserButton(id, addListener);
+    entryInner.appendChild(gearBtn);
   }
 
   if (userScript) {

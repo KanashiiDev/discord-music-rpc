@@ -110,17 +110,7 @@ class UserScriptManager {
   }
 
   generateScriptId(domain, urlPatterns) {
-    const primaryDomain = Array.isArray(domain) ? domain[0] : domain;
-    const patternStrings = (Array.isArray(urlPatterns) ? urlPatterns : [urlPatterns])
-      .map((pattern) => this.validator.normalizePatterns(pattern))
-      .flat()
-      .sort();
-
-    const hash = btoa(patternStrings.join("|"))
-      .replace(/[^a-zA-Z0-9]/g, "")
-      .slice(0, 10);
-
-    return `${primaryDomain}_${hash}`;
+    return generateParserKey(domain, urlPatterns);
   }
 
   buildTrackDataScript(script) {

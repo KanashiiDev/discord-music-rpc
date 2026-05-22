@@ -357,10 +357,7 @@ domLoadedListener = async () => {
     const hasPermission = await browser.permissions.contains({
       origins: ["*://*/*"],
     });
-    if (!hasPermission) {
-      showHostPermissionDialog();
-      return;
-    }
+    if (!hasPermission) await showHostPermissionDialog();
 
     // Motion Preference Check
     await initMotionPreference();
@@ -371,29 +368,41 @@ domLoadedListener = async () => {
     if (tab.status !== "complete") {
       await new Promise((resolve, reject) => {
         const TIMEOUT_MS = 10_000;
+        let settled = false;
 
-        const timer = setTimeout(() => {
+        const settle = (fn) => {
+          if (settled) return;
+          settled = true;
+          clearTimeout(timer);
           browser.tabs.onUpdated.removeListener(listener);
-          reject(new Error("Tab load timeout"));
-        }, TIMEOUT_MS);
+          fn();
+        };
 
         const listener = (updatedTabId, changeInfo) => {
           if (updatedTabId === tab.id && changeInfo.status === "complete") {
-            clearTimeout(timer);
-            browser.tabs.onUpdated.removeListener(listener);
-            resolve();
+            settle(resolve);
           }
         };
 
         browser.tabs.onUpdated.addListener(listener);
 
-        browser.tabs.get(tab.id).then((freshTab) => {
-          if (freshTab.status === "complete") {
-            clearTimeout(timer);
-            browser.tabs.onUpdated.removeListener(listener);
-            resolve();
+        const poll = async () => {
+          for (let i = 0; i < 5; i++) {
+            await new Promise((r) => setTimeout(r, 300));
+            if (settled) return;
+            const fresh = await browser.tabs.get(tab.id);
+            if (fresh.status === "complete") {
+              settle(resolve);
+              return;
+            }
           }
-        });
+        };
+
+        poll();
+
+        const timer = setTimeout(() => {
+          settle(resolve);
+        }, TIMEOUT_MS);
       });
     }
 

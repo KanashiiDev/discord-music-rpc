@@ -362,7 +362,7 @@ svg:not(.flatpickr-calendar svg):not(.IroHandle) {
 }
 
 .dlg-box {
-  background: var(--background-color);
+  background: var(--foreground-color-100);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-lg);
   padding: 20px 22px;

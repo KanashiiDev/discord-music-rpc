@@ -184,7 +184,8 @@ function openVisibilityDialog(list, isInitial = false) {
           else visibleIds.delete(entry.id);
         });
 
-        const primaryDomain = Array.isArray(entry.domain) ? entry.domain[0] : entry.domain;
+        const rawDomain = Array.isArray(entry.domain) ? entry.domain[0] : entry.domain;
+        const primaryDomain = (rawDomain || "").replace(/^\*\./, "");
         const favIconContainer = document.createElement("div");
         favIconContainer.className = "pvs-icon-container spinner";
 
@@ -211,7 +212,9 @@ function openVisibilityDialog(list, isInitial = false) {
           );
         }
 
-        row.dataset.searchText = (entry.title ?? primaryDomain ?? "").toLowerCase();
+        const displayDomain = primaryDomain;
+        nameSpan.textContent = entry.title ?? displayDomain;
+        row.dataset.searchText = (entry.title ?? displayDomain ?? "").toLowerCase();
         rowMap.set(entry.id, row);
         fragment.appendChild(row);
       }

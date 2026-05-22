@@ -14,6 +14,7 @@ body {
   .header,
   .export-menu,
   .script-item,
+  .parser-item,
   #editor {
     backdrop-filter: blur(var(--backdrop-blur-amount));
   }
@@ -87,18 +88,18 @@ button:not([disabled]):hover {
   background: var(--foreground-color-500);
 }
 
-#btnNew,
-#btnImport,
-#btnExport {
+#btnNew {
   background: var(--accent-color);
   position: relative;
   color: var(--text-color-btn);
 }
 
-#btnNew:hover,
-#btnImport:hover,
-#btnExport:hover {
+#btnNew:hover {
   background: var(--accent-color-bright);
+}
+
+#btnExport {
+  position: relative;
 }
 
 #btnSave {
@@ -138,7 +139,8 @@ ul {
 }
 
 /* Script Item */
-.script-item {
+.script-item,
+.parser-item {
   display: -webkit-box;
   display: -ms-flexbox;
   display: flex;
@@ -159,15 +161,19 @@ ul {
   transition: background var(--transition-normal) ease;
 }
 
-.script-item:hover {
+.script-item:hover,
+.parser-item:hover {
   background: var(--foreground-color-300);
 }
 
-.script-item.registered {
+.parser-item:not(.disabled),
+.script-item.registered,
+.parser-item.registered {
   border-left-color: var(--accent-color-border);
 }
 
-.script-item.disabled {
+.script-item.disabled,
+.parser-item.disabled {
   background: var(--foreground-color-100);
 }
 
@@ -177,7 +183,8 @@ ul {
   flex: 1;
 }
 
-.script-header {
+.script-header,
+.parser-header {
   display: -webkit-box;
   display: -ms-flexbox;
   display: flex;
@@ -187,7 +194,8 @@ ul {
   gap: 10px;
 }
 
-.script-title {
+.script-title,
+.parser-title {
   font-size: 16px;
   font-weight: 600;
 }
@@ -209,11 +217,13 @@ ul {
   color: var(--red-color);
 }
 
-.script-details {
+.script-details,
+.parser-domain {
   margin-bottom: 2px;
 }
 
 .script-details small,
+.parser-domain,
 .code-notes.useSettings > small {
   display: block;
   color: var(--text-color-muted);
@@ -907,6 +917,10 @@ small > code {
   align-self: center;
 }
 
+.hidden-visibility {
+  visibility: hidden;
+}
+
 .parser-icon-container,
 .parser-icon {
   height: 24px;
@@ -933,4 +947,18 @@ small > code {
   height: 24px;
   width: 24px;
   margin: 0;
+}
+
+.form-group {
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  gap: 10px;
+  margin-bottom: 6px;
+  -webkit-box-align: center;
+  -ms-flex-align: center;
+  align-items: center;
+}
+
+.form-group:last-child {
+  margin-bottom: 0;
 }

@@ -101,7 +101,8 @@ body.fg-blur[data-section="settings"] .button,
 body.fg-blur[data-section="settings"] select,
 body.fg-blur[data-section="settings"] .expandable-section,
 body.fg-blur[data-section="settings"] .settings-option .ts-control,
-body.fg-blur[data-section="settings"] .settings-option .ts-dropdown {
+body.fg-blur[data-section="settings"] .settings-option .ts-dropdown,
+body.fg-blur[data-section="settings"] .dlg-box {
   backdrop-filter: blur(var(--backdrop-blur-amount));
 }
 
@@ -377,7 +378,7 @@ body.fg-blur.parser-options-open #siteList .simplebar-offset {
 #settingsContainer,
 .settings-option.buttons-wrapper {
   display: grid;
-  gap: 7px;
+  gap: 6px;
 }
 
 .settings-btn,
@@ -851,12 +852,13 @@ footer {
 
 .settings-option {
   padding: 0 10px !important;
+  margin-bottom: 0;
 }
 
 .settings-option-info {
-  padding: 8px;
+  padding: 0 10px 4px;
   color: var(--text-color-muted);
-  margin-top: -15px;
+  font-size: 10px;
 }
 
 .settings-option label,
@@ -1028,6 +1030,7 @@ input[type="range"]::-moz-range-thumb {
 .song-link,
 .del-user-parser,
 .edit-user-script,
+.edit-user-parser,
 .redirect-user-parser,
 .gear-button {
   background: none;
@@ -1063,8 +1066,13 @@ input[type="range"]::-moz-range-thumb {
   margin-right: 4px;
 }
 
+.edit-user-parser {
+  margin-right: 4px;
+}
+
 .del-user-parser:hover,
-.edit-user-script:hover {
+.edit-user-script:hover,
+.edit-user-parser:hover {
   -webkit-transform: scale(1.1);
   -ms-transform: scale(1.1);
   transform: scale(1.1);
@@ -1629,6 +1637,13 @@ body.cleaning-mode .selected .history-trash {
 
 .setup-dialog-content {
   text-align: center;
+}
+
+.setup-dialog-buttons {
+  gap: 5px;
+  display: -webkit-inline-box;
+  display: -ms-inline-flexbox;
+  display: inline-flex;
 }
 
 .setup-dialog h2,

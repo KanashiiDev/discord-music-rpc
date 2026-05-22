@@ -288,7 +288,8 @@ class UserScriptUI {
       title.className = "script-title";
       title.textContent = script.title || "";
 
-      const primaryDomain = Array.isArray(script.domain) ? script.domain[0] : script.domain;
+      const rawDomain = Array.isArray(script.domain) ? script.domain[0] : script.domain;
+      const primaryDomain = (rawDomain || "").replace(/^\*\./, "");
 
       // FavIcon
       const favIconContainer = document.createElement("div");
@@ -304,7 +305,7 @@ class UserScriptUI {
 
       // Favicon click
       const handleFavIconClick = () => {
-        const url = script.homepage || `https://${script.domain}`;
+        const url = script.homepage || `https://${primaryDomain}`;
         window.open(url, "_blank", "noopener,noreferrer");
       };
       const listeners = [];
@@ -515,7 +516,7 @@ class UserScriptUI {
       : this.cleanDomain(domainRaw);
     const domainEmpty = Array.isArray(domain) ? domain.length === 0 : !domain;
     if (domainEmpty) {
-      this.showMessage("Domain is required", "error");
+      this.showMessage(i18n.t("userscript.editor.warn.emptyDomain"), "error");
       return;
     }
     const rawPatterns = $("inUrlPatterns").value.trim() || ".*";
@@ -581,7 +582,7 @@ class UserScriptUI {
     }
 
     const script = {
-      id: this.editingId || scriptManager.generateScriptId(domain, normalizedList),
+      id: generateParserKey(domain, normalizedList),
       title: $("inTitle").value.trim(),
       description: $("inDesc").value.trim(),
       authors: $("inAuthors")
@@ -607,17 +608,17 @@ class UserScriptUI {
 
     // Validation
     if (!script.title) {
-      this.showMessage("Script name is required", "error");
+      this.showMessage(i18n.t("userscript.editor.warn.emptyName"), "error");
       return;
     }
 
     if (!script.domain) {
-      this.showMessage("Domain is required", "error");
+      this.showMessage(i18n.t("userscript.editor.warn.emptyDomain"), "error");
       return;
     }
 
     if (!script.code) {
-      this.showMessage("Script code is required", "error");
+      this.showMessage(i18n.t("userscript.editor.warn.emptyCode"), "error");
       return;
     }
 
@@ -631,7 +632,7 @@ class UserScriptUI {
     try {
       PatternValidator.normalizePatterns(script.urlPatterns);
     } catch (error) {
-      this.showMessage("Invalid URL patterns: " + error.message, "error");
+      this.showMessage(i18n.t("userscript.editor.warn.invalidPatterns") + " " + error.message, "error");
       return;
     }
 
@@ -647,7 +648,7 @@ class UserScriptUI {
       this.showMessage("Script saved and registered successfully.", "success");
       await this.refreshList();
     } else {
-      this.showMessage("Failed to save script: " + (response?.error || "Unknown error"), "error");
+      this.showMessage(i18n.t("userscript.editor.warn.saveFailed") + " " + (response?.error || "Unknown error"), "error");
     }
   }
 
@@ -673,7 +674,7 @@ class UserScriptUI {
     if (missing.length) {
       return {
         ok: false,
-        message: `⚠️ Missing required variable(s): ${missing.join(", ")}`,
+        message: `${i18n.t("userscript.editor.warn.missingVariables")} ${missing.join(", ")}`,
       };
     }
 

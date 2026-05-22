@@ -86,6 +86,14 @@ let FIELDS_CONFIG = {
     dynamicPlaceholder: true,
     disableSelect: true,
   },
+  domain: {
+    label: "selector.editor.domain.label",
+    placeholder: (hostname) => hostname,
+    desc: "selector.editor.domain.desc",
+    type: "text",
+    dynamicPlaceholder: true,
+    disableSelect: true,
+  },
   title: {
     label: "selector.editor.title.label",
     placeholder: "selector.editor.type.selectorText",
@@ -500,13 +508,43 @@ function positionElement(root) {
 // Populate existing data
 async function populateExistingData(shadow, hostname = getCleanHostname()) {
   const pathname = location.pathname;
-  const userParsers = (window.parsers?.[hostname] || []).filter((p) => p.userAdd);
+
+  const exactParsers = (window.parsers?.[hostname] || []).filter((p) => p.userAdd);
+  const wildcardParsers = Object.entries(window.parsers || {})
+    .filter(([key]) => key.startsWith("*.") && hostname.endsWith(`.${key.slice(2)}`))
+    .flatMap(([, parsers]) => parsers.filter((p) => p.userAdd));
+
+  const userParsers = [...exactParsers, ...wildcardParsers];
   const matchedParser = userParsers.find((parser) => parser.patterns?.some((regex) => regex.test(pathname)));
+
+  const domainInput = shadow.getElementById("domainSelector");
+  if (domainInput) {
+    if (matchedParser) {
+      const settings = await browser.storage.local.get("userParserSelectors");
+      const parserArray = Array.isArray(settings.userParserSelectors) ? settings.userParserSelectors : [];
+      const current =
+        parserArray.find((p) => p.id === matchedParser.id) ||
+        parserArray.find((p) => {
+          const raw = Array.isArray(p.domain) ? p.domain[0] : p.domain;
+          const pDomain = (raw || "").toLowerCase();
+          return hostname.endsWith(`.${pDomain}`);
+        });
+      domainInput.value = current?.domain ?? hostname;
+    } else {
+      domainInput.value = hostname;
+    }
+  }
 
   if (matchedParser) {
     const settings = await browser.storage.local.get("userParserSelectors");
     const parserArray = Array.isArray(settings.userParserSelectors) ? settings.userParserSelectors : [];
-    const current = parserArray.find((p) => p.id === matchedParser.id);
+    const current =
+      parserArray.find((p) => p.id === matchedParser.id) ||
+      parserArray.find((p) => {
+        const raw = Array.isArray(p.domain) ? p.domain[0] : p.domain;
+        const pDomain = (raw || "").toLowerCase();
+        return hostname.endsWith(`.${pDomain}`);
+      });
 
     if (current?.selectors) {
       for (const [key, val] of Object.entries(current.selectors)) {
@@ -540,11 +578,10 @@ function setupEventListeners(shadow) {
     const selectors = {};
 
     fields.forEach((f) => {
+      if (f === "domain") return;
       const inputEl = shadow.getElementById(`${f}Selector`);
       if (!inputEl) return;
-
-      const val = inputEl.tagName === "SELECT" ? inputEl.value.trim() : inputEl.value.trim();
-
+      const val = inputEl.value.trim();
       if (val) selectors[f] = val;
     });
 
@@ -580,14 +617,22 @@ function setupEventListeners(shadow) {
       return;
     }
 
+    const domainInputVal = shadow.getElementById("domainSelector")?.value?.trim();
     const hostname = getCleanHostname();
+    const savedDomain = domainInputVal.includes(",")
+      ? domainInputVal
+          .split(",")
+          .map((d) => d.trim())
+          .filter(Boolean)
+      : domainInputVal || hostname;
+
     const rawPattern = selectors["regex"] || ".*";
     const patternStrings = Array.isArray(rawPattern) ? rawPattern.map((p) => p.toString()) : [rawPattern.toString()];
-    const id = `${hostname}_${hashFromPatternStrings(patternStrings)}`;
+    const id = generateParserKey(savedDomain, rawPattern);
 
     const newEntry = {
       id,
-      domain: hostname,
+      domain: savedDomain,
       title: selectors["name"] || hostname,
       userAdd: true,
       urlPatterns: patternStrings,

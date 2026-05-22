@@ -24,7 +24,9 @@ function createEmptyState(container, isSearch) {
 }
 
 function createFavIconElement(domain, title, homepage, addListener) {
-  const primaryDomain = Array.isArray(domain) ? domain[0] : domain;
+  const rawDomain = Array.isArray(domain) ? domain[0] : domain;
+  const primaryDomain = (rawDomain || "").replace(/^\*\./, "");
+
   const container = Object.assign(document.createElement("div"), {
     className: "parser-icon-container spinner",
   });
@@ -56,8 +58,11 @@ function createToggleSwitch(id, isEnabled, userAdd, userScript, addListener) {
     const enabled = target.checked;
     const { parserEnabledState: state = {} } = await browser.storage.local.get("parserEnabledState");
 
-    if (enabled) delete state[`enable_${parserId}`];
-    else state[`enable_${parserId}`] = false;
+    if (enabled) {
+      delete state[`enable_${parserId}`];
+    } else {
+      state[`enable_${parserId}`] = false;
+    }
 
     await browser.storage.local.set({ parserEnabledState: state });
     if (isUserScript === "true") await sendAction("toggleUserScript", { id: parserId, enabled });
@@ -187,6 +192,22 @@ function createDeleteButton(id, title, domain, addListener, onDeleted) {
     }
 
     await onDeleted(updatedParserList);
+  });
+
+  return btn;
+}
+
+function createEditParserButton(id, addListener) {
+  const btn = Object.assign(document.createElement("a"), {
+    className: "edit-user-parser",
+    title: i18n.t("common.edit"),
+  });
+  btn.appendChild(createSVG(svg_paths.gearIconPaths));
+  btn.dataset.parserId = id;
+
+  addListener(btn, "click", (e) => {
+    e.stopPropagation();
+    openselectorParserManager(e.currentTarget.dataset.parserId);
   });
 
   return btn;

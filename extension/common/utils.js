@@ -979,7 +979,7 @@ const findMatchingParsersForUrl = (url, list) => {
   const host = normalizeHost(url);
   return list.filter(({ domain }) => {
     const domains = Array.isArray(domain) ? domain : [domain];
-    return domains.some((d) => normalizeHost(d) === host);
+    return domains.some((d) => isDomainMatch(d, host));
   });
 };
 
@@ -1327,23 +1327,43 @@ function querySelectorDeep(selector, root = document, all = false) {
   return all ? results : null;
 }
 
-// Pattern hash creation
-function hashFromPatternStrings(patterns) {
-  return btoa(patterns.join("|"))
-    .replace(/[^a-zA-Z0-9]/g, "")
-    .slice(0, 10);
-}
-
 // Create ID from domain and patterns
-function makeIdFromDomainAndPatterns(domain, urlPatterns) {
-  const patternStrings = (urlPatterns || [])
-    .map((p) => {
-      if (typeof p === "string") return p;
+function generateParserKey(domain, urlPatterns) {
+  let rawDomain = "";
+
+  if (Array.isArray(domain)) {
+    rawDomain = domain[0] || "";
+  } else if (typeof domain === "string") {
+    rawDomain = domain.split(",")[0] || "";
+  }
+
+  if (!rawDomain) {
+    console.log("[generateParserKey] empty domain", { domain, urlPatterns });
+    rawDomain = "unknown";
+  }
+
+  let patternsArray = [];
+  if (Array.isArray(urlPatterns)) {
+    patternsArray = urlPatterns;
+  } else if (typeof urlPatterns === "string") {
+    patternsArray = urlPatterns.split(",");
+  }
+
+  if (!patternsArray.length) patternsArray = [".*"];
+
+  const patternStrings = patternsArray
+    .map(function (p) {
+      if (!p) return ".*";
       if (p instanceof RegExp) return p.source;
-      return p.toString();
+      return p.toString().trim() || ".*";
     })
     .sort();
-  return `${domain}_${hashFromPatternStrings(patternStrings)}`;
+
+  const hash = btoa(patternStrings.join("|"))
+    .replace(/[^a-zA-Z0-9]/g, "")
+    .slice(0, 10);
+
+  return rawDomain + "_" + hash;
 }
 
 // Create a platform dropdown with options
@@ -1498,46 +1518,75 @@ function showInitialSetupDialog() {
 
 // Show host permission dialog
 async function showHostPermissionDialog() {
-  const dialog = document.createElement("div");
-  dialog.className = "setup-dialog";
+  return new Promise((resolve) => {
+    const dialog = document.createElement("div");
+    dialog.className = "setup-dialog";
 
-  const content = document.createElement("div");
-  content.className = "setup-dialog-content";
+    const content = document.createElement("div");
+    content.className = "setup-dialog-content";
 
-  const contentHeader = document.createElement("h2");
-  contentHeader.textContent = i18n.t("setup.permission.header");
-  content.appendChild(contentHeader);
+    const contentHeader = document.createElement("h2");
+    contentHeader.textContent = i18n.t("setup.permission.header");
+    content.appendChild(contentHeader);
 
-  const contentText = document.createElement("p");
-  contentText.textContent = i18n.t("setup.permission.message");
-  content.appendChild(contentText);
+    const contentText = document.createElement("p");
+    contentText.textContent = i18n.t("setup.permission.message");
+    content.appendChild(contentText);
 
-  const contentNote = document.createElement("p");
-  contentNote.textContent = i18n.t("setup.permission.note");
-  contentNote.classList.add("setup-note");
-  content.appendChild(contentNote);
+    const contentNote = document.createElement("p");
+    contentNote.textContent = i18n.t("setup.permission.note");
+    contentNote.classList.add("setup-note");
+    content.appendChild(contentNote);
 
-  const grantButton = document.createElement("button");
-  grantButton.id = "grantPermission";
-  grantButton.textContent = i18n.t("setup.permission.grant");
-  content.appendChild(grantButton);
+    const buttons = document.createElement("div");
+    buttons.className = "setup-dialog-buttons";
 
-  dialog.appendChild(content);
-  const contentDiv = document.querySelector(".content");
-  contentDiv.appendChild(dialog);
-  document.documentElement.classList.add("setup-dialog-open", "permission");
+    const grantButton = document.createElement("button");
+    grantButton.id = "grantPermission";
+    grantButton.textContent = i18n.t("setup.permission.grant");
 
-  let requested = false;
-  document.getElementById("grantPermission").addEventListener("click", async () => {
-    if (requested) return;
-    requested = true;
+    const ignoreButton = document.createElement("button");
+    ignoreButton.id = "ignorePermission";
+    ignoreButton.textContent = i18n.t("common.continue");
+    ignoreButton.classList.add("secondary");
 
-    const granted = browser.permissions.request({
-      origins: ["*://*/*"],
+    buttons.appendChild(grantButton);
+    buttons.appendChild(ignoreButton);
+
+    content.appendChild(buttons);
+
+    dialog.appendChild(content);
+
+    const contentDiv = document.querySelector(".content");
+    contentDiv.appendChild(dialog);
+
+    document.documentElement.classList.add("setup-dialog-open", "permission");
+
+    let requested = false;
+
+    grantButton.addEventListener("click", async () => {
+      if (requested) return;
+      requested = true;
+
+      try {
+        const granted = await browser.permissions.request({
+          origins: ["*://*/*"],
+        });
+
+        resolve(granted);
+      } catch (err) {
+        resolve(false);
+      } finally {
+        window.close();
+      }
     });
 
-    window.close();
-    await granted;
+    ignoreButton.addEventListener("click", () => {
+      resolve(false);
+      dialog.remove();
+
+      document.documentElement.classList.remove("setup-dialog-open", "permission");
+    });
   });
 }
 
@@ -2280,6 +2329,29 @@ function getCurrentStyleAttributes() {
   return styleAttrs;
 }
 
+// Open Selector Parser Manager
+async function openselectorParserManager(id) {
+  const url = browser.runtime.getURL("manager/selectorParserManager.html");
+  await browser.storage.local.set({
+    managerContext: {
+      target: id,
+    },
+  });
+
+  const tabs = await browser.tabs.query({ url });
+  if (tabs.length > 0 && tabs[0].id) {
+    // if tab is already open → refresh it
+    await browser.tabs.reload(tabs[0].id);
+    await browser.tabs.update(tabs[0].id, { active: true });
+    window.close();
+    return;
+  }
+
+  // if tab is not open → create new tab
+  await browser.tabs.create({ url });
+  window.close();
+}
+
 // Open User Script Manager
 async function openUserScriptManager(id) {
   const url = browser.runtime.getURL("manager/userScriptManager.html");
@@ -2314,7 +2386,9 @@ async function loadFavIcons(icons, concurrency = 3, delayMs = 150, slowAfter = 8
     return new Promise((resolve) => {
       if (!domain) return resolve();
 
-      const primaryDomain = domain.split(",")[0].trim();
+      const rawDomain = Array.isArray(domain) ? domain[0] : domain;
+      const cleanDomain = (rawDomain || "").replace(/^\*\./, "");
+      const primaryDomain = cleanDomain.split(",")[0].trim();
       const proxyUrl = `https://favicons.seadfeng.workers.dev/${primaryDomain}.ico`;
       const googleUrl = `https://www.google.com/s2/favicons?domain=${primaryDomain}&sz=32`;
       const fallback = browser.runtime.getURL("icons/48x48.png");
