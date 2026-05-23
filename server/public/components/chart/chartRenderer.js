@@ -227,12 +227,43 @@ function switchHistoryChartMode(mode) {
   drawHistoryChart(mode, chartState.range);
 }
 
+export function showSummaryRangeBtn() {
+  document.querySelectorAll(".chart-range-btn[data-summary-only]").forEach((btn) => {
+    btn.style.display = "";
+  });
+}
+
+export function hideSummaryRangeBtn() {
+  document.querySelectorAll(".chart-range-btn[data-summary-only]").forEach((btn) => {
+    btn.style.display = "none";
+    if (btn.classList.contains("active")) {
+      btn.classList.remove("active");
+      chartState.range = "month";
+      document.querySelectorAll(".chart-range-btn").forEach((b) => b.classList.toggle("active", b.dataset.range === "month"));
+    }
+  });
+  // Always restore period nav when leaving summary
+  const periodNav = document.querySelector(".chart-period-nav");
+  if (periodNav) {
+    periodNav.style.opacity = "";
+    periodNav.style.pointerEvents = "";
+  }
+}
+
 function switchHistoryChartRange(range) {
   chartState.range = range;
-  chartState.offset = 0;
+  if (range !== "alltime") chartState.offset = 0;
   document.querySelectorAll(".chart-range-btn").forEach((btn) => btn.classList.toggle("active", btn.dataset.range === range));
+
+  // Hide period nav for alltime
+  const periodNav = document.querySelector(".chart-period-nav");
+  if (periodNav) {
+    periodNav.style.opacity = range === "alltime" ? "0" : "";
+    periodNav.style.pointerEvents = range === "alltime" ? "none" : "";
+  }
+
   hc_hideDetails();
-  drawHistoryChart(chartState.mode, range);
+  if (range !== "alltime") drawHistoryChart(chartState.mode, range);
   syncSummary();
 }
 

@@ -3,6 +3,7 @@ import { createSVG, svg_paths } from "../../../utils.js";
 import { buildSummaryData } from "./summaryData.js";
 import { buildMinutesView, buildRankedList, buildArtistDrillDown } from "./summaryBuilder.js";
 import { captureSummaryPanel, initCaptureMenu, toggleCaptureMenu, closeCaptureMenu } from "./summaryCapture.js";
+import { showSummaryRangeBtn, hideSummaryRangeBtn } from "../chartRenderer.js";
 
 // Chart element visibility
 const CHART_SELECTORS = ["#listeningWaveform", "#historyChartLoading", "#chartDetails", ".chart-canvas-wrap"];
@@ -28,8 +29,6 @@ function showChartElements() {
 
 // Panel state
 let _visible = false;
-let _cachedData = null;
-let _lastRange = null;
 let _renderAc = null;
 
 // Panel rendering
@@ -37,10 +36,7 @@ function renderPanel(range) {
   const panel = document.getElementById("chartSummaryPanel");
   if (!panel) return;
 
-  if (_lastRange !== range) {
-    _cachedData = buildSummaryData(range);
-    _lastRange = range;
-  }
+  const data = buildSummaryData(range);
 
   const content = panel.querySelector(".summary-content");
   if (!content) return;
@@ -54,7 +50,7 @@ function renderPanel(range) {
   content.addEventListener(
     "summary:artistClick",
     (e) => {
-      buildArtistDrillDown(e.detail.artist, _cachedData);
+      buildArtistDrillDown(e.detail.artist, data);
     },
     { signal },
   );
@@ -63,8 +59,6 @@ function renderPanel(range) {
 
   const periodLabel = panel.querySelector(".summary-period-label");
   if (periodLabel) periodLabel.textContent = HC_RANGES[range].getLabel(chartState.offset);
-
-  const data = _cachedData;
   const layout = document.createElement("div");
   layout.className = "summary-two-column-layout";
 
@@ -140,6 +134,7 @@ function createPanel() {
       panel.classList.remove("disable-motion");
       captureBtnIcon.classList.remove("spinner");
     },
+    onRowCountChange: () => renderPanel(chartState.range),
   });
 
   return panel;
@@ -159,6 +154,7 @@ export function showSummary() {
   }
 
   hideChartElements();
+  showSummaryRangeBtn();
   _visible = true;
   requestAnimationFrame(() => panel.classList.add("summary-panel--open"));
   renderPanel(chartState.range);
@@ -171,9 +167,8 @@ export function hideSummary() {
   _visible = false;
   panel.classList.remove("summary-panel--open");
   showChartElements();
-
-  const captureBtn = panel.querySelector(".summary-capture");
-  closeCaptureMenu(captureBtn);
+  hideSummaryRangeBtn();
+  closeCaptureMenu();
 
   _renderAc?.abort();
   _renderAc = null;
@@ -183,8 +178,6 @@ export function hideSummary() {
     () => {
       if (!_visible) {
         panel.remove();
-        _cachedData = null;
-        _lastRange = null;
       }
     },
     { once: true },
@@ -198,10 +191,7 @@ export function toggleSummary() {
 }
 
 export function syncSummary() {
-  if (_visible) {
-    _lastRange = null;
-    renderPanel(chartState.range);
-  }
+  if (_visible) renderPanel(chartState.range);
 }
 
 export function isSummaryVisible() {

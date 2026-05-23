@@ -8,15 +8,20 @@ function buildRangeToggle() {
     { range: "week", label: "Week" },
     { range: "month", label: "Month", active: true },
     { range: "year", label: "Year" },
+    { range: "alltime", label: "All Time", summaryOnly: true },
   ];
 
-  for (const { range, label, active } of ranges) {
+  for (const { range, label, active, summaryOnly } of ranges) {
     const btn = document.createElement("button");
     btn.className = active ? "chart-range-btn active" : "chart-range-btn";
     btn.dataset.range = range;
     btn.type = "button";
     btn.textContent = label;
     btn.dataset.i18n = `chart.range.${range}`;
+    if (summaryOnly) {
+      btn.dataset.summaryOnly = "true";
+      btn.style.display = "none";
+    }
     group.appendChild(btn);
   }
 

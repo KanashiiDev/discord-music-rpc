@@ -9,7 +9,8 @@ export function getPeriodBounds(range) {
 
   if (range === "week") end.setDate(end.getDate() + 7);
   else if (range === "month") end.setMonth(end.getMonth() + 1);
-  else end.setFullYear(end.getFullYear() + 1);
+  else if (range === "year") end.setFullYear(end.getFullYear() + 1);
+  else if (range === "alltime") return { start, end: new Date() };
 
   return { start, end: new Date(Math.min(end.getTime(), Date.now())) };
 }
@@ -136,11 +137,12 @@ export function buildSummaryData(range) {
     if (displayNames[norm]) song.artist = displayNames[norm];
   }
 
-  const topSongs = [...songMap.values()].sort((a, b) => b.count - a.count).slice(0, 5);
+  const rowCount = chartState.summaryRowCount ?? 5;
+  const topSongs = [...songMap.values()].sort((a, b) => b.count - a.count).slice(0, rowCount);
 
   const topArtists = Object.entries(artistCounts)
     .sort((a, b) => b[1] - a[1])
-    .slice(0, 5)
+    .slice(0, rowCount)
     .map(([norm, count]) => ({
       name: norm,
       displayName: displayNames[norm],

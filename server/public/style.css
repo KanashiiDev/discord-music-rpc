@@ -788,6 +788,7 @@ input[type="number"] {
   display: flex;
   align-items: center;
   gap: 10px;
+  transition: opacity var(--transition-normal) ease;
 }
 
 #chartRangeToggle,
@@ -1273,7 +1274,13 @@ input[type="number"] {
   gap: 8px;
 }
 
-.capture-layout-btn {
+.capture-rows-group {
+  display: flex;
+  gap: 5px;
+}
+
+.capture-layout-btn,
+.capture-rows-btn {
   flex: 1;
   display: flex;
   flex-direction: column;
@@ -1292,12 +1299,14 @@ input[type="number"] {
     background 0.15s;
 }
 
-.capture-layout-btn:hover {
+.capture-layout-btn:hover,
+.capture-rows-btn:hover {
   background: var(--foreground-color-300);
   color: var(--text-color-primary);
 }
 
-.capture-layout-btn.active {
+.capture-layout-btn.active,
+.capture-rows-btn.active {
   color: var(--text-color-btn);
   background: var(--accent-color);
 }

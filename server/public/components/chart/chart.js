@@ -8,6 +8,7 @@ export const chartState = {
   instance: null,
   lastClickedBarIndex: null,
   expandedPlatform: null,
+  summaryRowCount: 5,
 };
 
 export const HC_COLORS = {
@@ -87,6 +88,23 @@ export const HC_RANGES = {
 
     getLabel(offset = 0) {
       return String(new Date().getFullYear() + offset);
+    },
+  },
+
+  alltime: {
+    barThickness: 22,
+    labelFormat: null,
+
+    getStart() {
+      return new Date(0);
+    },
+
+    getDayCount() {
+      return Math.ceil((Date.now() - new Date(0).getTime()) / 86_400_000);
+    },
+
+    getLabel() {
+      return i18n.t("chart.range.alltime");
     },
   },
 };

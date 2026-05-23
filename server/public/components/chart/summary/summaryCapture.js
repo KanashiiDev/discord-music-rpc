@@ -1,4 +1,5 @@
 import { createSVG } from "../../../utils.js";
+import { chartState } from "../chart.js";
 
 export const CAPTURE_PRESETS = [
   { id: "summary-small", label: "Small", i18n: "chart.capture.small", width: 1080, widthVertical: 560, maxLengthWide: 56, maxLengthTall: 57 },
@@ -9,10 +10,12 @@ export const CAPTURE_PRESETS = [
 
 let _visible = false;
 let _onCapture = null;
+let _onRowCountChange = null;
 let _outsideListenerActive = false;
 
-export function initCaptureMenu({ onCapture } = {}) {
+export function initCaptureMenu({ onCapture, onRowCountChange } = {}) {
   _onCapture = onCapture ?? null;
+  _onRowCountChange = onRowCountChange ?? null;
 }
 
 export function isCaptureMenuVisible() {
@@ -36,6 +39,11 @@ export function closeCaptureMenu() {
     _outsideListenerActive = false;
   }
   _applyLayoutPreview();
+  // Always reset row count to 5 when menu closes
+  if (chartState.summaryRowCount !== 5) {
+    chartState.summaryRowCount = 5;
+    _onRowCountChange?.(5);
+  }
 }
 
 // Private
@@ -114,6 +122,34 @@ function _buildMenu(anchorEl) {
 
   layoutSection.appendChild(layoutRow);
 
+  // Rows section
+  let selectedRows = chartState.summaryRowCount ?? 5;
+
+  const rowsSection = _makeSection(i18n.t("chart.capture.rows") || "Rows");
+  const rowsBtnGroup = document.createElement("div");
+  rowsBtnGroup.className = "capture-rows-group";
+
+  for (let n = 1; n <= 5; n++) {
+    const btn = document.createElement("button");
+    btn.className = "capture-rows-btn" + (n === selectedRows ? " active" : "");
+    btn.type = "button";
+    btn.dataset.rows = String(n);
+    btn.textContent = String(n);
+
+    btn.addEventListener("click", () => {
+      if (selectedRows === n) return;
+      selectedRows = n;
+      rowsBtnGroup.querySelector(".capture-rows-btn.active")?.classList.remove("active");
+      btn.classList.add("active");
+      chartState.summaryRowCount = n;
+      _onRowCountChange?.(n);
+    });
+
+    rowsBtnGroup.appendChild(btn);
+  }
+
+  rowsSection.appendChild(rowsBtnGroup);
+
   // Resolution section
   let selectedPreset = CAPTURE_PRESETS[0].id;
 
@@ -163,12 +199,11 @@ function _buildMenu(anchorEl) {
     } else {
       captureSummaryPanel({ layout: selectedLayout, preset });
     }
-
     closeCaptureMenu();
   });
 
   footer.appendChild(saveBtn);
-  menu.append(layoutSection, resSection, footer);
+  menu.append(layoutSection, rowsSection, resSection, footer);
   anchorEl.appendChild(menu);
 
   requestAnimationFrame(() => {
@@ -203,9 +238,9 @@ export async function captureSummaryPanel({ layout = "wide", preset = CAPTURE_PR
       backgroundColor: "null",
       width: activeWidth,
       scale: 1,
-      useCORS: true,
+      useCORS: false,
       logging: false,
-      proxy: `${location.href}/proxy`,
+      proxy: `${location.origin}/proxy`,
 
       ignoreElements: (e) => e.classList.contains("summary-capture") || e.classList.contains("summary-back-btn") || e.id === "captureMenu",
 
