@@ -9,7 +9,7 @@ registerParser({
     const main = document.querySelector("[data-test='footer-player']");
     const titleElem = main?.querySelector("[data-test='footer-track-title']")?.innerText ?? "";
     const artistElem = main?.querySelector("[data-test='grid-item-detail-text-title-artist']")?.innerText.trim();
-    const imageElem = main?.querySelector("div.image img")?.src;
+    const imageElem = main?.querySelector("img")?.src;
     const musicLink = main?.querySelector("[data-test='footer-track-title'] a")?.href ?? "";
     const times = main?.querySelector("[data-test='play-controls']").parentElement;
     const timePassed = times?.querySelector("[data-test='current-time']")?.textContent ?? "";
