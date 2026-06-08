@@ -155,7 +155,8 @@ async function mainLoop() {
       playerPlaying = false;
     }
 
-    const { isSeeking, isPaused } = rpcState.analyzePlayback(song.position, song.duration, playerPlaying);
+    const { isSeeking, isPaused: rawIsPaused } = rpcState.analyzePlayback(song.position, song.duration, playerPlaying);
+    const isPaused = isAudible ? false : rawIsPaused;
 
     const rawPositionDiff = isValidNumber(song.position) && isValidNumber(state.lastRawPosition) ? Math.abs(song.position - state.lastRawPosition) : 0;
     const isRadioOrStream = !isValidNumber(song.duration) || song.duration <= 0;
@@ -192,6 +193,9 @@ async function mainLoop() {
         } else if (!isPaused && timeSinceLastUpdate > CONSTANTS.NORMAL_UPDATE_INTERVAL) {
           shouldUpdate = true;
           updateReason = "Normal Progress";
+        } else if (!isPaused && rawPositionDiff > 5) {
+          shouldUpdate = true;
+          updateReason = "Seek Detected";
         }
       } else {
         updateReason = `Cooldown Active (${Math.ceil((CONSTANTS.ACTIVE_INTERVAL - timeSinceLastUpdate) / 1000)}s left)`;
@@ -221,9 +225,12 @@ async function mainLoop() {
       return;
     }
 
-    logInfo(`%c🚀 RPC Update triggered by:%c ${updateReason}`, "color:#4caf50; font-weight:bold;", "color:#fff;");
-
     const updatedProgress = isValidNumber(progress) ? Math.max(progress, 1) : 0;
+
+    if (state.isConnected) {
+      logInfo(`%c🚀 RPC Update triggered by:%c ${updateReason}`, "color:#4caf50; font-weight:bold;", "color:#fff;");
+    }
+
     const didUpdate = await processRPCUpdate(song, updatedProgress);
 
     if (didUpdate && isValidNumber(song.position)) {
@@ -372,10 +379,11 @@ async function mainLoop() {
 async function processRPCUpdate(song, progress) {
   const rpcHealth = await isRpcConnected();
   if (!rpcHealth?.ok) {
-    logInfo(rpcHealth?.reason ? `RPC health check failed: ${rpcHealth.reason}` : "processRPCUpdate: RPC not connected");
     if (state.isConnected) {
       state.debugStats.connectionLost++;
-      logInfo("🔌 RPC CONNECTION LOST!");
+      logInfo(rpcHealth?.reason ? `RPC health check failed: ${rpcHealth.reason}` : "🔌 RPC CONNECTION LOST!");
+    } else if (state.isConnected === null) {
+      logInfo(rpcHealth?.reason ? `RPC health check failed: ${rpcHealth.reason}` : "processRPCUpdate: RPC not connected");
     }
     state.isConnected = false;
     return false;
@@ -541,6 +549,14 @@ function init() {
     if (typeof window.getSongInfo !== "function") {
       logError("init: getSongInfo not available after retries, aborting");
       return;
+    } else {
+      let warmupTries = 0;
+      while (warmupTries < 5) {
+        const testSong = await window.getSongInfo().catch(() => null);
+        if (testSong && testSong !== "blocked" && testSong.title && testSong.artist) break;
+        await delay(1000);
+        warmupTries++;
+      }
     }
 
     registerRuntimeMessageListener();

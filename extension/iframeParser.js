@@ -1,6 +1,6 @@
 // Works only in iframe frames.
 // Looks at window.iframeParsers defined by compiledIframeParsers.js,
-// runs the matching parser, and transmits the data to the main frame via the background.
+// runs the matching parser, and sends the data to the main frame via the background.
 
 function getVideoInfo() {
   const isValidDuration = (d) => Number.isFinite(d) && d > 0;
@@ -626,27 +626,257 @@ function getVideoInfo() {
   return null;
 }
 
-browser.runtime.onMessage.addListener(async (msg) => {
-  if (msg?.type === "FETCH_IFRAME_DATA" && msg.key) {
-    const { key } = msg;
-    const iframeHostname = location.hostname.replace(/^www\./i, "").toLowerCase();
+function resolveRule(rule) {
+  if (!rule || typeof rule !== "object") return null;
 
-    // Built-in parsers
-    const entry = window.iframeParsers?.[key];
-    if (entry?.fn) {
-      if (entry.match) {
-        const matches = [entry.match].flat();
-        if (!matches.some((h) => h === "" || iframeHostname.includes(h.toLowerCase()))) return;
+  try {
+    switch (rule.type) {
+      // video
+      // Returns the entire output of getVideoInfo().
+      // When the caller sees the "$video" key, it spreads this.
+      case "video":
+        return getVideoInfo();
+
+      // exists
+      // Boolean(querySelector(selector))
+      case "exists": {
+        const el = querySelectorDeep(rule.selector);
+        return Boolean(el);
       }
-      const data = await entry.fn();
-      if (data == null) return;
-      browser.runtime.sendMessage({ type: "IFRAME_DATA", key, origin: iframeHostname, href: location.href, data }).catch(() => {});
-      return;
+
+      // not
+      // !Boolean(querySelector(selector))
+      case "not": {
+        const el = querySelectorDeep(rule.selector);
+        return !el;
+      }
+
+      // text
+      // element.textContent (optional trim)
+      case "text": {
+        const el = querySelectorDeep(rule.selector);
+        if (!el) return null;
+        const val = el.textContent ?? "";
+        return rule.trim !== false ? val.trim() : val;
+      }
+
+      // attr
+      // element.getAttribute(attr)
+      case "attr": {
+        const el = querySelectorDeep(rule.selector);
+        return el?.getAttribute(rule.attr) ?? null;
+      }
+
+      // aria
+      // The aria-* shortcut for attr (parseFloat is not applied, returns raw string)
+      case "aria": {
+        const el = querySelectorDeep(rule.selector);
+        return el?.getAttribute(rule.attr) ?? null;
+      }
+
+      // src
+      // img/video/audio src property
+      case "src": {
+        const el = querySelectorDeep(rule.selector);
+        return el?.src ?? null;
+      }
+
+      // href
+      // anchor href property (absolute URL)
+      case "href": {
+        const el = querySelectorDeep(rule.selector);
+        return el?.href ?? null;
+      }
+
+      // number
+      // parseFloat(textContent)
+      case "number": {
+        const el = querySelectorDeep(rule.selector);
+        if (!el) return null;
+        const n = parseFloat(el.textContent);
+        return Number.isFinite(n) ? n : null;
+      }
+
+      // time
+      // "MM:SS" or "HH:MM:SS" → seconds (number)
+      case "time": {
+        const el = querySelectorDeep(rule.selector);
+        if (!el) return null;
+        const text = el.textContent?.trim() ?? "";
+        if (!text || text === "--:--" || text === "-:-") return null;
+        const parts = text.split(":").map(Number);
+        if (parts.some((n) => !Number.isFinite(n) || n < 0)) return null;
+        if (parts.length === 2) return parts[0] * 60 + parts[1];
+        if (parts.length === 3) return parts[0] * 3600 + parts[1] * 60 + parts[2];
+        return null;
+      }
+
+      // classContains
+      // element.classList.contains(class)
+      case "classContains": {
+        const el = querySelectorDeep(rule.selector);
+        if (!el) return false;
+        const classes = Array.isArray(rule.class) ? rule.class : [rule.class];
+        return classes.every((c) => el.classList.contains(c));
+      }
+
+      // dataset
+      // element.dataset[key]
+      case "dataset": {
+        const el = querySelectorDeep(rule.selector);
+        return el?.dataset?.[rule.key] ?? null;
+      }
+
+      // meta
+      // <meta property="og:title"> or <meta name="og:title"> → content
+      case "meta": {
+        const el = document.querySelector(`meta[property='${rule.name}'], meta[name='${rule.name}']`);
+        return el?.content ?? null;
+      }
+
+      // count
+      // querySelectorAll(selector).length
+      case "count": {
+        const els = document.querySelectorAll(rule.selector);
+        return els.length;
+      }
+
+      // prop
+      // window global access: "jwplayer.getPosition" →
+      // window.jwplayer.getPosition() (if it's a function, it calls it)
+      case "prop": {
+        if (!rule.path) return null;
+        const parts = rule.path.split(".");
+        let obj = window;
+        for (const part of parts) {
+          if (obj == null) return null;
+          obj = obj[part];
+        }
+        if (typeof obj === "function") {
+          try {
+            return obj();
+          } catch {
+            return null;
+          }
+        }
+        return obj ?? null;
+      }
+
+      // or
+      // returns the first non-null result in the rules array
+      case "or": {
+        if (!Array.isArray(rule.rules)) return null;
+        for (const r of rule.rules) {
+          const val = resolveRule(r);
+          if (val !== null && val !== undefined && val !== "") return val;
+        }
+        return null;
+      }
+
+      default:
+        return null;
+    }
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Takes the `iframeSelectors` object, runs all fields,
+ * returns an iframeData-compatible object.
+ *
+ * @param {Object} iframeSelectors - { match?, fields: { [key]: FieldRule } }
+ * @param {string} iframeHostname  - the hostname of the current iframe
+ * @returns {Object|null}
+ */
+function resolveIframeSelectors(iframeSelectors, iframeHostname) {
+  if (!iframeSelectors || typeof iframeSelectors !== "object") return null;
+
+  // match filter
+  if (iframeSelectors.match) {
+    const allowed = [iframeSelectors.match].flat();
+    const matched = allowed.some((h) => h === "" || iframeHostname.includes(h.toLowerCase()));
+    if (!matched) return null;
+  }
+
+  const fields = iframeSelectors.fields;
+  if (!fields || typeof fields !== "object") return null;
+
+  const result = {};
+
+  for (const [key, rule] of Object.entries(fields)) {
+    // $video private key: spreads the output of getVideoInfo()
+    if (key === "$video") {
+      const videoData = resolveRule({ type: "video" });
+      if (videoData && typeof videoData === "object") {
+        Object.assign(result, videoData);
+      }
+      continue;
     }
 
-    // Userscript / UserAdd
-    const data = getVideoInfo();
-    if (data == null) return;
-    browser.runtime.sendMessage({ type: "IFRAME_DATA", key, origin: iframeHostname, href: location.href, data }).catch(() => {});
+    const val = resolveRule(rule);
+    if (val !== null && val !== undefined) {
+      result[key] = val;
+    }
   }
+
+  // Empty object → null (means no data)
+  return Object.keys(result).length > 0 ? result : null;
+}
+
+browser.runtime.onMessage.addListener(async (msg) => {
+  if (msg?.type !== "FETCH_IFRAME_DATA" || !msg.key) return;
+
+  const { key } = msg;
+  const iframeHostname = location.hostname.replace(/^www\./i, "").toLowerCase();
+
+  // Built-in parsers
+  const entry = window.iframeParsers?.[key];
+  if (entry?.fn) {
+    if (entry.match) {
+      const matches = [entry.match].flat();
+      if (!matches.some((h) => h === "" || iframeHostname.includes(h.toLowerCase()))) return;
+    }
+    const data = await entry.fn();
+    if (data == null) return;
+    browser.runtime
+      .sendMessage({
+        type: "IFRAME_DATA",
+        key,
+        origin: iframeHostname,
+        href: location.href,
+        data,
+      })
+      .catch(() => {});
+    return;
+  }
+
+  // iframeSelectors DSL
+  if (msg.iframeSelectors) {
+    const data = resolveIframeSelectors(msg.iframeSelectors, iframeHostname);
+    if (data == null) return;
+    browser.runtime
+      .sendMessage({
+        type: "IFRAME_DATA",
+        key,
+        origin: iframeHostname,
+        href: location.href,
+        data,
+      })
+      .catch(() => {});
+    return;
+  }
+
+  // userAdd / userScript / watchAutoDetect
+  const data = getVideoInfo();
+  if (data == null) return;
+  browser.runtime
+    .sendMessage({
+      type: "IFRAME_DATA",
+      key,
+      origin: iframeHostname,
+      href: location.href,
+      data,
+    })
+    .catch(() => {});
 });

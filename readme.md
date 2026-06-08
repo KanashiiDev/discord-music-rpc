@@ -62,23 +62,22 @@ Required to communicate with Discord and display your music status.
 ## 🚀 Features
 
 - No login required, works entirely locally
-- Prebuilt integrations for 20+ music and radio platforms
+- Discord Web support
+- Over 20 community-supported music, video, and radio integrations via the [Activity Library](https://github.com/KanashiiDev/discord-music-rpc-activities).
 - Easy to extend - add support for almost any music and video site using the built-in selector system or userscripts
 - Filter system - block or replace songs by artist/title, per-site or globally
 - Both listening and watching activity support
-- Automatic iframe detection for embedded players
 - Live activity output - WebNowPlaying (Rainmeter & OBS), and plain text/JSON files on disk
 - Cross-platform Electron desktop app (Windows / Linux / macOS)
 - Automatic updates for both the browser extension and the desktop app
 - Fully customizable Discord status per site - control artist, source, cover art, buttons, timestamps, and more
-- Discord Web support
 - Open-source and community-driven
 
 ---
 
 ## 🎵 Supported Websites
 
-These are the prebuilt integrations included with the extension. Additional sites can be easily added using the built-in selector system or the UserScript manager - see the [How to Add a New Music Site](#-how-to-add-a-new-music-site) section.
+These are the integrations available in the activity library. Additional sites can be easily added using the built-in selector system or the UserScript manager - see the [How to Add a New Music Site](#-how-to-add-a-new-music-site) section.
 
 <table>
   <tr>
@@ -250,7 +249,7 @@ For build instructions and NPM scripts, see the [Developer Setup](https://github
 
 You can contribute in several ways:
 
-- **Create new Activities** - [Add a new parser (Option 3)](https://github.com/KanashiiDev/discord-music-rpc/wiki/Adding-a-New-Music-Site#option-3-build-method-developers)
+- **Create new Activities** - [Activity Library](https://github.com/KanashiiDev/discord-music-rpc-activities)
 - **Help translate** the project on [Crowdin](https://crowdin.com/project/discord-music-rpc)
 - **Report bugs or request features** via [GitHub Issues](https://github.com/kanashiiDev/discord-music-rpc/issues)
 - **Support the project** by sharing it and helping others discover it

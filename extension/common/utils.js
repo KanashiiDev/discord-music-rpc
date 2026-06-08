@@ -1029,7 +1029,16 @@ function createSVG(paths, options = {}) {
 
   for (const d of paths) {
     const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
-    path.setAttribute("d", d);
+
+    if (typeof d === "string") {
+      path.setAttribute("d", d);
+    } else {
+      path.setAttribute("d", d.d);
+
+      if (d.fill) path.setAttribute("fill", d.fill);
+      if (d.stroke) path.setAttribute("stroke", d.stroke);
+    }
+
     svg.appendChild(path);
   }
 
@@ -1075,12 +1084,33 @@ const svg_paths = {
   manageParsersIconPaths: ["M4 5h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2z", "M12 9v6", "M9 12h6"],
   filtersIconPaths: ["M2 2h20l-7 8v8l-6 4v-12z"],
   dashboardIconPaths: ["M2 2h20v20H2z", "M6 11l4-3 4 3 4-4", "M6 15h12v2H6z"],
+  storeIconPaths: ["M12 1a11 11 0 1 0 0 22a11 11 0 1 0 0-22", "M1 12h22", "M12 1c4.5 3 4.5 19 0 22", "M12 1c-4.5 3-4.5 19 0 22"],
+  refreshIconPaths: ["M23 4v6h-6", "M1 20v-6h6", "M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"],
+  downloadIconPaths: ["M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4", "M7 10l5 5 5-5", "M12 15V3"],
+  checkIconPaths: ["M20 6L9 17 4 12"],
+  chevronRightIconPaths: ["M9 18l6-6-6-6"],
+  emptyCircleIconPaths: ["M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z", "M12 8v4", "M12 16h.01"],
+  spinnerIconPaths: ["M12 2v4", "M12 18v4", "M4.93 4.93l2.83 2.83", "M16.24 16.24l2.83 2.83", "M2 12h4", "M18 12h4", "M4.93 19.07l2.83-2.83", "M16.24 7.76l2.83-2.83"],
+  listViewIconPaths: ["M4 3h16a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z", "M2 12h20"],
+  gridViewIconPaths: ["M4 3h16a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z", "M12 3v18", "M2 12h20"],
 };
 
 // Get Fresh Parser List
 async function getFreshParserList() {
-  const { parserList = [] } = await browser.storage.local.get("parserList");
-  return Array.isArray(parserList) ? parserList : [];
+  try {
+    const response = await browser.runtime.sendMessage({ type: "REQUEST_FRESH_PARSER_LIST" }).catch(() => null);
+    if (response && response.data && Array.isArray(response.data)) {
+      return response.data;
+    }
+
+    const storageData = await browser.storage.local.get("parserList");
+    if (storageData.parserList && Array.isArray(storageData.parserList)) {
+      return storageData.parserList;
+    }
+  } catch (error) {
+    console.log("An error occurred while getFreshParserList was running:", error);
+    return [];
+  }
 }
 
 // Helper to split time strings like "5:47 / 6:57".
@@ -1271,7 +1301,7 @@ function getImage(selector, root = document) {
   // Alternative: background-image
   const bgImage = getComputedStyle(elem).backgroundImage;
   if (bgImage && bgImage !== "none") {
-    const match = bgImage.match(/url\(["']?(.+?)["']?\)/);
+    const match = bgImage.match(/url\(["']?(https?[^"')]+)["']?\)/);
     return match ? match[1] : null;
   }
 
@@ -1328,7 +1358,7 @@ function querySelectorDeep(selector, root = document, all = false) {
 }
 
 // Create ID from domain and patterns
-function generateParserKey(domain, urlPatterns) {
+function generateParserKey(domain, urlPatterns, authors = []) {
   let rawDomain = "";
 
   if (Array.isArray(domain)) {
@@ -1354,8 +1384,15 @@ function generateParserKey(domain, urlPatterns) {
   const patternStrings = patternsArray
     .map(function (p) {
       if (!p) return ".*";
-      if (p instanceof RegExp) return p.source;
-      return p.toString().trim() || ".*";
+
+      let strPattern = "";
+      if (p instanceof RegExp) {
+        strPattern = p.source;
+      } else {
+        strPattern = p.toString().trim() || ".*";
+      }
+
+      return strPattern.replace(/^\/|\/$/g, "") || ".*";
     })
     .sort();
 
@@ -1363,7 +1400,19 @@ function generateParserKey(domain, urlPatterns) {
     .replace(/[^a-zA-Z0-9]/g, "")
     .slice(0, 10);
 
-  return rawDomain + "_" + hash;
+  const author = Array.isArray(authors) ? authors[0] : authors;
+
+  const safeAuthor = author
+    ? String(author)
+        .toLowerCase()
+        .replace(/[^a-z0-9_\-]/g, "")
+    : "";
+
+  const safeDomain = String(rawDomain)
+    .toLowerCase()
+    .replace(/[^a-z0-9_.\-]/g, "");
+
+  return safeAuthor ? safeAuthor + "_" + safeDomain + "_" + hash : safeDomain + "_" + hash;
 }
 
 // Create a platform dropdown with options
@@ -1612,15 +1661,15 @@ async function showInitialTutorial() {
     },
     {
       text: i18n.t("tutorial.step5"),
-      selector: "#manageParsersBtn",
-    },
-    {
-      text: i18n.t("tutorial.step6"),
       selector: "#openFiltersBtn",
     },
     {
-      text: i18n.t("tutorial.step7"),
+      text: i18n.t("tutorial.step6"),
       selector: "#openDashboardBtn",
+    },
+    {
+      text: i18n.t("tutorial.step7"),
+      selector: "#openLibraryBtn",
     },
   ];
 
@@ -1954,6 +2003,9 @@ const isValidUrl = (url) => {
 };
 
 const isAllowedDomain = async (hostname, pathname) => {
+  if (!state.parserListLoaded || state.parserListLoading) {
+    await (state.parserListLoading || parserReady());
+  }
   try {
     const normHost = normalizeHost(hostname);
     for (const parser of state.parserList) {
@@ -2327,6 +2379,142 @@ function getCurrentStyleAttributes() {
   }
 
   return styleAttrs;
+}
+
+function parseTemplate(str, boldMap = {}, codeMap = {}) {
+  const nodes = [];
+  const parts = str.split(/(\{bold_\w+\}|\{code_\w+\}|\n)/);
+
+  for (const part of parts) {
+    if (!part) continue;
+
+    if (part === "\n") {
+      nodes.push(document.createElement("br"));
+    } else if (part.startsWith("{bold_")) {
+      const key = part.slice(1, -1);
+      const text = boldMap[key] ?? part;
+      nodes.push(createBold(text));
+    } else if (part.startsWith("{code_")) {
+      const key = part.slice(1, -1);
+      const text = codeMap[key] ?? part;
+      nodes.push(createCode(text));
+    } else {
+      nodes.push(document.createTextNode(part));
+    }
+  }
+
+  return nodes;
+}
+
+// If mv3 and the user have not granted userscript permission, show a warning.
+function createMv3PermissionAlert(config) {
+  const wrapper = document.createElement("div");
+  wrapper.id = "mv3Alert";
+
+  const box = document.createElement("div");
+  box.className = "box";
+
+  // Title
+  const title = document.createElement("h2");
+  title.textContent = `⚠️ ${i18n.t("userscript.apiWarn.title")} ⚠️`;
+
+  // Intro
+  const intro = document.createElement("p");
+  intro.append(...parseTemplate(i18n.t("userscript.apiWarn.intro"), { bold_api: i18n.t("userscript.apiWarn.introApi") }));
+
+  // Why section
+  const whyTitle = document.createElement("h4");
+  whyTitle.textContent = i18n.t("userscript.apiWarn.whyTitle");
+
+  const whyText = document.createElement("p");
+  whyText.textContent = i18n.t("userscript.apiWarn.whyText");
+
+  // Fix section
+  const fixTitle = document.createElement("h4");
+  fixTitle.textContent = i18n.t("userscript.apiWarn.fixTitle");
+
+  const fixWrap = document.createElement("div");
+  fixWrap.className = "mv3-fixWrap";
+
+  const fixText = document.createElement("ol");
+  fixText.className = "mv3-fixText";
+
+  // Step 1
+  const fixStep1 = document.createElement("li");
+  fixStep1.append(...parseTemplate(i18n.t("userscript.apiWarn.fixStep1")));
+
+  // Step 2
+  const fixStep2 = document.createElement("li");
+  fixStep2.append(document.createTextNode(i18n.t("userscript.apiWarn.fixStep2")));
+
+  // Step 3
+  const fixStep3 = document.createElement("li");
+  fixStep3.append(document.createTextNode(i18n.t(config.type === "chrome" ? "userscript.apiWarn.fixStep3" : "userscript.apiWarn.fixStep3-moz")));
+
+  // Step 3.5 (Firefox)
+  const fixStep3_moz = document.createElement("li");
+  fixStep3_moz.append(document.createTextNode(i18n.t("userscript.apiWarn.fixStep3.5-moz")));
+
+  const fixStep4 = document.createElement("li");
+  fixStep4.append(...parseTemplate(i18n.t("userscript.apiWarn.fixStep4"), {}, { code_permission: config.permissionLabel }));
+
+  // Step 5
+  const fixStep5 = document.createElement("li");
+  fixStep5.append(document.createTextNode(i18n.t("userscript.apiWarn.fixStep5")));
+
+  const fixImage = document.createElement("img");
+  fixImage.className = "mv3-fixImage";
+  fixImage.src = config.image;
+
+  fixText.append(fixStep1, fixStep2, fixStep3, ...(config.type === "firefox" ? [fixStep3_moz] : []), fixStep4, fixStep5);
+  fixWrap.append(fixText, fixImage);
+
+  box.append(title, intro, document.createElement("br"), whyTitle, whyText, document.createElement("br"), fixTitle, fixWrap);
+  wrapper.appendChild(box);
+  return wrapper;
+}
+
+function createBold(text) {
+  const b = document.createElement("b");
+  b.textContent = text;
+  return b;
+}
+
+function createCode(text) {
+  const code = document.createElement("code");
+  code.textContent = text;
+  return code;
+}
+
+async function checkUserScriptsPermission() {
+  const BROWSER_CONFIG = {
+    chrome: {
+      type: "chrome",
+      extensionPage: "chrome://extensions/",
+      permissionLabel: i18n.t("userscript.apiWarn.chromePermission"),
+      image: browser.runtime.getURL("assets/chrome-userscript.png"),
+      showPermissionAndDataStep: false,
+    },
+    firefox: {
+      type: "firefox",
+      extensionPage: "about:addons",
+      permissionLabel: i18n.t("userscript.apiWarn.firefoxPermission"),
+      image: browser.runtime.getURL("assets/firefox-userscript.png"),
+      showPermissionAndDataStep: true,
+    },
+  };
+
+  const manifest = browser.runtime.getManifest();
+  if (manifest.manifest_version !== 3) return false;
+
+  if (!browser.userScripts) {
+    const browserType = detectBrowser();
+    const config = BROWSER_CONFIG[browserType];
+    if (document.getElementById("mv3Alert")) return false;
+    document.body.appendChild(createMv3PermissionAlert(config));
+    return false;
+  }
+  return true;
 }
 
 // Open Selector Parser Manager

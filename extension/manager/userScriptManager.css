@@ -66,6 +66,15 @@ body {
   flex-wrap: wrap;
 }
 
+a.link {
+  color: var(--link-color);
+  text-decoration: none;
+}
+a.link:hover {
+  color: var(--link-color-bright);
+  text-decoration: none;
+}
+
 button {
   padding: 8px 16px;
   border: none;
@@ -428,6 +437,8 @@ small > code {
   display: -ms-flexbox;
   display: flex;
   gap: 6px;
+  -ms-flex-wrap: wrap;
+  flex-wrap: wrap;
 }
 
 .code-notes .note-section code {
@@ -455,7 +466,9 @@ small > code {
   display: flex;
   gap: 10px;
 }
-.code-notes.useSettings .buttons button {
+
+.code-notes.useSettings .buttons button,
+#btnIframeSelectorsToggle {
   -webkit-box-flex: 1;
   -ms-flex: 1;
   flex: 1;
@@ -464,38 +477,6 @@ small > code {
 .code-notes.useSettings .buttons button.active {
   background: var(--accent-color);
   color: var(--text-color-btn);
-}
-
-/* MV3 Alert */
-#mv3Alert {
-  width: 100vw;
-  position: fixed;
-  height: 100vh;
-  display: block;
-  background: #0000002e;
-  backdrop-filter: blur(4px);
-  top: 0;
-  left: 0;
-  font-size: 20px;
-  -ms-flex-line-pack: center;
-  align-content: center;
-  text-align: center;
-}
-
-#mv3Alert .box {
-  background: var(--foreground-color-300);
-  padding: 20px;
-  margin: 20px;
-  border-radius: 10px;
-  -webkit-box-shadow: 0 4px 12px var(--shadow-color);
-  box-shadow: 0 4px 12px var(--shadow-color);
-  display: inline-block;
-  position: relative;
-  color: var(--text-color-primary);
-}
-
-#mv3Alert p {
-  color: var(--text-color-secondary);
 }
 
 /* Result Modal */

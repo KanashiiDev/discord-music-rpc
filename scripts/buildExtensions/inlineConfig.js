@@ -8,6 +8,8 @@ module.exports = function registerInlines(inlineUtilsFunctions) {
   // CONFIG
   inlineUtilsFunctions(["background.js", "common/utils.js", "mainParser.js"], "config.js", [], "start", true);
 
+  inlineUtilsFunctions(["background.js"], "activityLibrary/service.js", [], "start", true);
+
   // Localization
   inlineUtilsFunctions(["common/utils.js"], "../shared/i18n.js", [], [], "start");
 

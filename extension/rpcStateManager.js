@@ -59,7 +59,7 @@ window.RPCStateManager = class {
 
     const isSeeking = hasPrevPos && !this.hasOnlyDuration && drift > threshold;
     const movementThreshold = Math.max(0.5, elapsedWallTime * 0.5);
-    const positionFrozen = hasPrevPos && Math.abs(currentPos - this.lastKnownPosition) < movementThreshold && elapsedWallTime > 3.0;
+    const positionFrozen = hasPrevPos && Math.abs(currentPos - this.lastKnownPosition) < movementThreshold && elapsedWallTime > 7.0;
     const isPaused = !isPlaying || (!isSeeking && positionFrozen);
 
     this.lastCheckTime = now;

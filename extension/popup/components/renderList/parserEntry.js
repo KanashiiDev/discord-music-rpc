@@ -1,5 +1,5 @@
 async function buildParserEntry({ entry, parserEnabledState, parserSettings, container, tabHostname, tabPath, addListener }) {
-  const { id, domain, title, userAdd, userScript, urlPatterns = [], authors, authorsLinks, homepage, description, tags, category, mode } = entry;
+  const { id, domain, title, userAdd, userScript, storeFilePath, urlPatterns = [], authors, authorsLinks, homepage, description, tags, category, mode } = entry;
   const isEnabled = parserEnabledState[`enable_${id}`] !== false;
 
   const wrapper = document.createElement("div");
@@ -85,7 +85,7 @@ async function buildParserEntry({ entry, parserEnabledState, parserSettings, con
     entryInner.appendChild(gearBtn);
   }
 
-  if (userScript) {
+  if (userScript && !storeFilePath) {
     const gearBtn = createEditScriptButton(id, addListener);
     entryInner.appendChild(gearBtn);
   }

@@ -113,7 +113,8 @@ function buildActivity(data, now) {
   if (existingButtons.length === 0) {
     mergedButtons = customButtons.filter(Boolean);
   } else if (existingButtons.length === 1) {
-    mergedButtons = customButtons[0] ? [existingButtons[0], customButtons[0]] : existingButtons;
+    const firstCustom = customButtons.find(Boolean);
+    mergedButtons = firstCustom ? [existingButtons[0], firstCustom] : existingButtons;
   } else {
     mergedButtons = [customButtons[0] ?? existingButtons[0], customButtons[1] ?? existingButtons[1]];
   }
@@ -130,6 +131,8 @@ function buildActivity(data, now) {
       activity.buttons = validButtons;
     } else if (validButtons.length === 1 && sourceButton) {
       activity.buttons = [validButtons[0], sourceButton];
+    } else if (validButtons.length === 1) {
+      activity.buttons = validButtons;
     } else if (sourceButton) {
       activity.buttons = [sourceButton];
     }

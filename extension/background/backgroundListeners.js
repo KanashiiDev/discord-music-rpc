@@ -1,8 +1,9 @@
 // UserScript Actions
-const handleListUserScripts = async () => {
+const handleListUserScripts = async (showStoreParsers = false) => {
   const scripts = await scriptManager.storage.getScripts();
+  const filteredScripts = showStoreParsers ? scripts : scripts.filter((script) => !script.storeFilePath);
   const { parserEnabledState = {} } = await browser.storage.local.get("parserEnabledState");
-  const scriptsWithStatus = scripts.map((script) => ({
+  const scriptsWithStatus = filteredScripts.map((script) => ({
     ...script,
     enabled: parserEnabledState[`enable_${script.id}`] !== false,
   }));
@@ -15,7 +16,22 @@ const handleSaveUserScript = async (req) => {
   const previousId = req.previousId;
   const scriptsList = await scriptManager.storage.getScripts();
 
-  // If id exists
+  const cleanDomain = (d) => {
+    if (!d) return "";
+    return d
+      .replace(/^https?:\/\//, "")
+      .replace(/^www\./, "")
+      .replace(/\/.*$/, "")
+      .trim();
+  };
+
+  if (Array.isArray(scriptData.domain)) {
+    scriptData.domain = scriptData.domain.map(cleanDomain).filter(Boolean);
+  } else if (typeof scriptData.domain === "string") {
+    const rawDomains = scriptData.domain.split(",");
+    scriptData.domain = rawDomains.length > 1 ? rawDomains.map(cleanDomain).filter(Boolean) : cleanDomain(scriptData.domain);
+  }
+  scriptData.urlPatterns = scriptData.urlPatterns ? PatternValidator.normalizePatterns(scriptData.urlPatterns) : ["/.*/"];
   if (previousId) {
     const prevIndex = scriptsList.findIndex((s) => s.id === previousId);
     if (prevIndex >= 0) {
@@ -33,11 +49,11 @@ const handleSaveUserScript = async (req) => {
       scriptsList.splice(prevIndex, 1);
       await scriptManager.storage.saveScripts(scriptsList);
 
-      scriptData.id = scriptManager.generateScriptId(scriptData.domain, scriptData.urlPatterns);
+      scriptData.id = scriptManager.generateScriptId(scriptData.domain, scriptData.urlPatterns, scriptData.authors || []);
       scriptData._oldSettings = oldSettings;
     }
   } else {
-    scriptData.id = scriptManager.generateScriptId(scriptData.domain, scriptData.urlPatterns);
+    scriptData.id = scriptManager.generateScriptId(scriptData.domain, scriptData.urlPatterns, scriptData.authors || []);
   }
 
   // Normalize URL patterns
@@ -225,6 +241,212 @@ const handleToggleUserScript = async (req) => {
   }
 
   return { ok: true, enabled: newEnabledState };
+};
+
+// GitHub Store Handlers
+/** Lists all registered repositories */
+const handleStoreListRepos = async () => {
+  try {
+    const list = await storeService.listRepos();
+    return { ok: true, list };
+  } catch (err) {
+    logError("handleStoreListRepos:", err);
+    return { ok: false, error: err.message };
+  }
+};
+
+/** Adds a new GitHub repo. */
+const handleStoreAddRepo = async (req) => {
+  if (!req.url?.trim()) return { ok: false, error: "URL required" };
+  try {
+    return await storeService.addRepo(req.url.trim());
+  } catch (err) {
+    logError("handleStoreAddRepo:", err);
+    return { ok: false, error: err.message };
+  }
+};
+
+/** Removes the repo */
+const handleStoreRemoveRepo = async (req) => {
+  if (!req.repoId) return { ok: false, error: "repoId required" };
+
+  if (req.repoId === "KanashiiDev__discord-music-rpc-activities__main") {
+    return { ok: false, error: "The default main repository cannot be deleted from the system!" };
+  }
+
+  try {
+    const scriptsList = await scriptManager.storage.getScripts();
+    const scriptsToDelete = scriptsList.filter((s) => s.storeRepoId === req.repoId);
+
+    for (const script of scriptsToDelete) {
+      await handleDeleteUserScript({ id: script.id });
+    }
+
+    const result = await storeService.removeRepo(req.repoId);
+
+    if (scriptsToDelete.length > 0) {
+      await parserReady(true).catch(() => {});
+    }
+
+    return result;
+  } catch (err) {
+    logError("handleStoreRemoveRepo:", err);
+    return { ok: false, error: err.message };
+  }
+};
+
+/** Checks for updates for all repositories */
+const handleStoreCheckUpdates = async () => {
+  try {
+    const result = await storeService.checkAllReposForUpdates();
+
+    return result;
+  } catch (err) {
+    logError("handleStoreCheckUpdates:", err);
+    return { ok: false, error: err.message };
+  }
+};
+
+/** Single repo update check. */
+const handleStoreCheckRepoUpdates = async (req) => {
+  if (!req.repoId) return { ok: false, error: "repoId required" };
+  try {
+    return await storeService.checkRepoForUpdates(req.repoId);
+  } catch (err) {
+    logError("handleStoreCheckRepoUpdates:", err);
+    return { ok: false, error: err.message };
+  }
+};
+
+/**
+ * Installs a script from the Store.
+ * req.repoId    → repo
+ * req.scriptMeta → the script object in index.json
+ */
+const handleStoreInstallScript = async (req) => {
+  if (!req.repoId) return { ok: false, error: "repoId required" };
+  if (!req.scriptMeta?.file) return { ok: false, error: "scriptMeta.file required" };
+  try {
+    const result = await storeService.installScript(req.repoId, req.scriptMeta);
+
+    if (result.ok && result.scriptObj) {
+      const saveResult = await handleSaveUserScript({
+        script: result.scriptObj,
+        previousId: null,
+      });
+      if (saveResult.ok) {
+        await parserReady(true).catch(() => {});
+      }
+      return saveResult;
+    }
+    return result;
+  } catch (err) {
+    logError("handleStoreInstallScript:", err);
+    return { ok: false, error: err.message };
+  }
+};
+
+const handleStoreUpdateScript = async (req) => {
+  if (!req.repoId) return { ok: false, error: "repoId required" };
+  if (!req.scriptMeta?.file) return { ok: false, error: "scriptMeta.file required" };
+  try {
+    const result = await storeService.updateScript(req.repoId, req.scriptMeta);
+
+    if (result.ok && result.scriptObj) {
+      const saveResult = await handleSaveUserScript({
+        script: result.scriptObj,
+        previousId: result.previousId,
+      });
+      if (saveResult.ok) {
+        await parserReady(true).catch(() => {});
+      }
+      return saveResult;
+    }
+    return result;
+  } catch (err) {
+    logError("handleStoreUpdateScript:", err);
+    return { ok: false, error: err.message };
+  }
+};
+
+const handleStoreBatchUpdate = async (req) => {
+  if (!Array.isArray(req.updates) || !req.updates.length) {
+    return { ok: false, error: "updates array required" };
+  }
+
+  const results = { successful: [], failed: [] };
+
+  for (const { repoId, scriptMeta } of req.updates) {
+    const r = await handleStoreUpdateScript({ repoId, scriptMeta }).catch((err) => ({
+      ok: false,
+      error: err.message,
+    }));
+
+    if (r.ok) {
+      results.successful.push(scriptMeta.id || scriptMeta.title);
+    } else {
+      results.failed.push({ id: scriptMeta.id || scriptMeta.title, error: r.error });
+    }
+  }
+
+  if (results.successful.length) {
+    await parserReady(true).catch(() => {});
+  }
+
+  return { ok: true, ...results };
+};
+
+/**
+ * Returns information about the script in the Store (whether it is installed, whether it is up to date).
+ * req.repoId    → repo
+ * req.scriptId  → the id in index.json
+ */
+const handleStoreGetScriptStatus = async (req) => {
+  if (!req.repoId || !req.scriptId) return { ok: false, error: "repoId and scriptId required" };
+
+  try {
+    const installedList = (await browser.storage.local.get("userScriptsList")).userScriptsList || [];
+    const local = installedList.find((s) => s.id === req.scriptId || s.storeScriptId === req.scriptId);
+
+    const repos = await storeService._loadRepos();
+    const repo = repos[req.repoId];
+    const remoteMeta = repo?.scripts?.find((s) => s.id === req.scriptId);
+
+    return {
+      ok: true,
+      installed: !!local,
+      hasUpdate: local && remoteMeta ? storeService._isNewer(remoteMeta.version, local.version) : false,
+      localVersion: local?.version || null,
+      remoteVersion: remoteMeta?.version || null,
+    };
+  } catch (err) {
+    logError("handleStoreGetScriptStatus:", err);
+    return { ok: false, error: err.message };
+  }
+};
+
+const handleStoreRemoveScript = async (req) => {
+  if (!req.scriptId) return { ok: false, error: "scriptId required" };
+
+  try {
+    const scriptsList = await scriptManager.storage.getScripts();
+    const scriptToDelete = scriptsList.find((s) => (s.id ?? s.storeScriptId) === req.scriptId);
+
+    if (!scriptToDelete) {
+      return { ok: false, error: "Script not found" };
+    }
+
+    const result = await handleDeleteUserScript({ id: scriptToDelete.id });
+
+    if (result.ok) {
+      await parserReady(true).catch(() => {});
+    }
+
+    return result;
+  } catch (err) {
+    logError("handleStoreRemoveScript:", err);
+    return { ok: false, error: err.message };
+  }
 };
 
 // History Actions
@@ -811,8 +1033,16 @@ const handleIsHostnameMatch = async (sender) => {
 
 // Main Setup Function
 const setupListeners = () => {
+  const alarmsApi = (typeof chrome !== "undefined" && chrome.alarms) || browser?.alarms;
+  if (alarmsApi?.onAlarm) {
+    alarmsApi.onAlarm.addListener((alarm) => storeService.onAlarm(alarm));
+  }
+
   browser.runtime.onMessage.addListener(async (req, sender) => {
     try {
+      if (req.type === "REQUEST_FRESH_PARSER_LIST") {
+        return { ok: true, data: state.parserList || [] };
+      }
       if (req.type === "FETCH_IFRAME_DATA") {
         if (sender.tab?.id != null) {
           const tabId = sender.tab.id;
@@ -1230,10 +1460,47 @@ const setupListeners = () => {
           case "syncDeleteToServer":
             result = await handleSyncDeleteToServer(req);
             break;
-
           case "getSongInfo":
             result = await handleGetSongInfo();
             break;
+          case "store_listRepos":
+            result = await handleStoreListRepos();
+            break;
+          case "store_addRepo":
+            result = await handleStoreAddRepo(req);
+            break;
+          case "store_removeRepo":
+            result = await handleStoreRemoveRepo(req);
+            break;
+          case "store_checkUpdates":
+            result = await handleStoreCheckUpdates();
+            break;
+          case "store_checkRepoUpdates":
+            result = await handleStoreCheckRepoUpdates(req);
+            break;
+          case "store_installScript":
+            result = await handleStoreInstallScript(req);
+            break;
+          case "store_updateScript":
+            result = await handleStoreUpdateScript(req);
+            break;
+          case "store_batchUpdate":
+            result = await handleStoreBatchUpdate(req);
+            break;
+          case "store_getScriptStatus":
+            result = await handleStoreGetScriptStatus(req);
+            break;
+          case "store_removeScript":
+            result = await handleStoreRemoveScript(req);
+            break;
+          case "store_setAutoUpdate": {
+            await browser.storage.local.set({ storeAutoUpdate: req.enabled });
+            return { ok: true };
+          }
+          case "store_getAutoUpdate": {
+            const { storeAutoUpdate = true } = await browser.storage.local.get("storeAutoUpdate");
+            return { ok: true, enabled: storeAutoUpdate };
+          }
           default:
             result = { ok: false, error: "Unknown action" };
         }

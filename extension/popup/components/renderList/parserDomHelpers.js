@@ -1,7 +1,6 @@
 function createEmptyState(container, isSearch) {
-  const el = Object.assign(document.createElement("div"), {
-    className: "setup-list-message",
-  });
+  const el = document.createElement("div");
+  el.className = "setup-list-message";
 
   if (isSearch) {
     el.textContent = i18n.t("parserFilters.notFound");
@@ -10,14 +9,18 @@ function createEmptyState(container, isSearch) {
       Object.assign(document.createElement("p"), {
         textContent: i18n.t("setup.list.message"),
       }),
-      Object.assign(document.createElement("a"), {
-        className: "setup-link",
-        href: "https://github.com/KanashiiDev/discord-music-rpc?tab=readme-ov-file#-supported-websites",
-        textContent: i18n.t("setup.list.title"),
-        target: "_blank",
-        rel: "noopener noreferrer",
-      }),
     );
+
+    const btn = document.createElement("a");
+    btn.textContent = i18n.t("setup.list.title");
+    btn.className = "button";
+
+    btn.addEventListener("click", async () => {
+      const url = browser.runtime.getURL("activityLibrary/library.html");
+      await browser.tabs.create({ url });
+    });
+
+    el.appendChild(btn);
   }
 
   container.appendChild(el);
@@ -32,7 +35,6 @@ function createFavIconElement(domain, title, homepage, addListener) {
   });
   const img = Object.assign(document.createElement("img"), {
     className: "parser-icon hidden-visibility",
-    title: `Open ${title ?? primaryDomain}`,
     loading: "lazy",
     decoding: "async",
   });

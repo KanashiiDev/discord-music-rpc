@@ -316,7 +316,9 @@
     const key = el.dataset.i18n;
     if (!key) return;
 
-    const text = i18n.t(key, parseParams(el), namespace);
+    const separator = el.dataset.i18nSep ?? " ";
+    const keys = key.split("|");
+    const text = keys.map((k) => i18n.t(k.trim(), parseParams(el), namespace)).join(separator);
     const attr = el.dataset.i18nAttr;
 
     if (attr) {

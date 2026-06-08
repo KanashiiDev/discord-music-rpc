@@ -14,8 +14,8 @@ function applySectionFromUrl() {
     const currentSectionHeader = `settings.${currentSection}.title`;
     const currentSectionDesc = `settings.${currentSection}.desc`;
 
-    document.querySelector(".header h3").textContent = i18n.t(currentSectionHeader);
-    document.title = i18n.t(currentSectionHeader);
+    document.querySelector(".header h3").textContent = i18n.t("header.title") + " - " + i18n.t(currentSectionHeader);
+    document.title = i18n.t("header.title") + " - " + i18n.t(currentSectionHeader);
     document.querySelector(".header-desc").textContent = i18n.t(currentSectionDesc);
   }
 }

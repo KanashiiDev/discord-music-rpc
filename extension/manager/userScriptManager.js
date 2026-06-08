@@ -12,7 +12,73 @@ class UserScriptUI {
     this.bindEvents();
     this.refreshList();
     this.bindCodeEditor();
-    this.checkUserScriptsPermission();
+
+    this.iframeSelectorsEditor = CodeMirror.fromTextArea(document.getElementById("inIframeSelectors"), {
+      mode: "application/json",
+      theme: "material-darker",
+      lineNumbers: true,
+      indentUnit: 2,
+      tabSize: 2,
+      autoCloseBrackets: true,
+      matchBrackets: true,
+      lineWrapping: true,
+      extraKeys: {
+        "Ctrl-S": function (cm) {
+          document.getElementById("btnSave").click();
+        },
+      },
+    });
+
+    this.iframeSelectorsEditor.setValue(JSON.stringify({ fields: { $video: { type: "video" } } }, null, 2));
+
+    const iframeSelectorsContainer = document.getElementById("iframeSelectorsContainer");
+    const iframeSelectorsToggle = document.getElementById("btnIframeSelectorsToggle");
+    iframeSelectorsToggle.addEventListener("click", () => {
+      const isHidden = iframeSelectorsContainer.hidden;
+      iframeSelectorsContainer.hidden = !isHidden;
+
+      if (!isHidden) {
+        document.getElementById("iframeSelectorsError").textContent = "";
+        iframeSelectorsToggle.textContent = i18n.t("userscript.iframeSelectors.configure");
+      } else {
+        setTimeout(() => this.iframeSelectorsEditor.refresh(), 0);
+        iframeSelectorsToggle.textContent = i18n.t("common.close");
+      }
+    });
+
+    this.iframeSelectorsEditor.on("change", () => {
+      const errorEl = document.getElementById("iframeSelectorsError");
+      const raw = this.iframeSelectorsEditor.getValue().trim();
+
+      if (!raw) {
+        errorEl.textContent = "";
+        return;
+      }
+
+      try {
+        const parsed = JSON.parse(raw);
+        if (!parsed.fields || typeof parsed.fields !== "object") {
+          errorEl.textContent = i18n.t("userscript.iframeSelectors.error.missingFields");
+        } else {
+          errorEl.textContent = "";
+        }
+      } catch (e) {
+        errorEl.textContent = i18n.t("userscript.iframeSelectors.error.invalidJson") + ": " + e.message;
+      }
+    });
+
+    const inModeEl = document.querySelector("#inMode");
+
+    this.inModeTom = new TomSelect(inModeEl, {
+      create: false,
+      allowEmptyOption: false,
+      controlInput: null,
+      onChange: () => {
+        this.updateWatchAutoDetectVisibility();
+      },
+    });
+
+    checkUserScriptsPermission();
     initApplyAttrs();
     initStorageListener();
   }
@@ -31,7 +97,6 @@ class UserScriptUI {
     });
     $("inDomain").addEventListener("input", () => this.handlePatternStatus());
     $("inUrlPatterns").addEventListener("input", () => this.handlePatternStatus());
-    $("inMode").addEventListener("change", () => this.updateWatchAutoDetectVisibility());
 
     // List events
     $("scriptList").addEventListener("click", (e) => this.handleListClick(e));
@@ -43,22 +108,34 @@ class UserScriptUI {
       .split(",")
       .map((d) => d.trim())
       .filter(Boolean);
-    const patterns = $("inUrlPatterns").value.split(",");
-    const matches = domains.flatMap((domain) => patterns.map((p) => PatternValidator.toChromeMatch(domain, p)));
-    const status = $("patternStatus");
-    while (status.firstChild) {
-      status.removeChild(status.firstChild);
-    }
-    matches.forEach((m) => {
-      if (m !== "*://*/*") {
-        if (m.startsWith("*://")) {
-          m = m.slice(4);
-        }
-        const cont = document.createElement("code");
-        cont.textContent = m;
-        status.append(cont);
+
+    // Userscript Matches
+    const matches = domains.flatMap((d) => {
+      const cleanDomain = d.replace(/^(\*\.|www\.)/, "");
+      if (d.startsWith("*.")) {
+        return [`${cleanDomain}/*`, `*.${cleanDomain}/*`];
+      } else {
+        return [`${cleanDomain}/*`];
       }
     });
+
+    // Process the raw patterns
+    const rawPatterns = $("inUrlPatterns").value;
+    const { normalizedList } = PatternValidator.processPatterns(rawPatterns);
+    const patternStatus = $("patternStatus");
+
+    // Clear previous content
+    while (patternStatus.firstChild) {
+      patternStatus.removeChild(patternStatus.firstChild);
+    }
+
+    if (normalizedList.length > 0) {
+      normalizedList.forEach((p) => {
+        const cont = document.createElement("code");
+        cont.textContent = p;
+        patternStatus.append(cont);
+      });
+    }
   }
 
   bindCodeEditor() {
@@ -69,7 +146,22 @@ class UserScriptUI {
       unused: false, // warnings about unused variables
       browser: true, // It recognizes global variables such as window/document.
       devel: true, // Allows console.log and alert
-      predef: ["useSetting", "getText", "getTextAll", "getImage", "getImageAll", "querySelectorDeep"], // recognizes the helper functions
+      predef: [
+        "useSetting",
+        "getText",
+        "getTextAll",
+        "getImage",
+        "getImageAll",
+        "querySelectorDeep",
+        "getIframeData",
+        "AbortController",
+        "fetch",
+        "URL",
+        "URLSearchParams",
+        "crypto",
+        "IntersectionObserver",
+        "ResizeObserver",
+      ], // recognizes the helper functions
     };
 
     // Init CodeMirror 5
@@ -144,7 +236,7 @@ class UserScriptUI {
       indent_size: 2,
       indent_char: " ",
       indent_with_tabs: false,
-      end_with_newline: true,
+      end_with_newline: false,
       preserve_newlines: true,
       max_preserve_newlines: 2,
       space_in_paren: false,
@@ -168,6 +260,26 @@ class UserScriptUI {
       const code = this.codeEditor.getValue();
       const formatted = js_beautify(code, beautifyOptions);
       this.codeEditor.setValue(formatted);
+    });
+
+    const CATEGORY_OPTIONS = [
+      { value: "radio", text: i18n.t("parserFilters.category.radio") },
+      { value: "platform", text: i18n.t("parserFilters.category.platform") },
+      { value: "aggregator", text: i18n.t("parserFilters.category.aggregator") },
+      { value: "video", text: i18n.t("parserFilters.category.video") },
+      { value: "other", text: i18n.t("parserFilters.category.other") },
+    ];
+
+    this.categorySelect = new TomSelect("#inCategory", {
+      options: CATEGORY_OPTIONS,
+      items: [],
+      maxOptions: CATEGORY_OPTIONS.length,
+      create: false,
+      plugins: ["remove_button"],
+      placeholder: i18n.t("userscript.editor.category.placeholder"),
+      onInitialize() {
+        this.control_input.setAttribute("readonly", true);
+      },
     });
 
     this.useSettingEditor = new UseSettingEditor(this.codeEditor, document.getElementById("useSettingsContainer"));
@@ -225,7 +337,7 @@ class UserScriptUI {
   }
 
   updateWatchAutoDetectVisibility() {
-    const isWatch = $("inMode").value === "watch";
+    const isWatch = this.inModeTom.getValue() === "watch";
     document.querySelector(".container.watchAutoDetect").style.display = isWatch ? "" : "none";
   }
 
@@ -297,7 +409,6 @@ class UserScriptUI {
 
       const favIcon = document.createElement("img");
       favIcon.className = "parser-icon hidden-visibility";
-      favIcon.title = `Open ${script.title || script.domain}`;
       favIcon.dataset.src = primaryDomain;
       favIcon.loading = "lazy";
       favIcon.decoding = "async";
@@ -357,10 +468,10 @@ class UserScriptUI {
 
       const btnToggle = document.createElement("button");
       btnToggle.classList.add("btnToggle");
-      btnToggle.classList.add(script.enabled ? "btn-disable" : "btn-enable");
-      btnToggle.title = script.enabled ? i18n.t("common.disable") : i18n.t("common.enable");
-      btnToggle.innerHTML = "";
-      script.enabled ? btnToggle.appendChild(createSVG(svg_paths.pauseIconPaths)) : btnToggle.appendChild(createSVG(svg_paths.startIconPaths));
+      const isActivelyRunning = script.enabled && script.registered;
+      btnToggle.classList.add(isActivelyRunning ? "btn-disable" : "btn-enable");
+      btnToggle.title = isActivelyRunning ? i18n.t("common.disable") : i18n.t("common.enable");
+      isActivelyRunning ? btnToggle.appendChild(createSVG(svg_paths.pauseIconPaths)) : btnToggle.appendChild(createSVG(svg_paths.startIconPaths));
 
       const btnEdit = document.createElement("button");
       btnEdit.className = "btnEdit";
@@ -449,15 +560,44 @@ class UserScriptUI {
 
     $("editorTitle").textContent = script ? `${i18n.t("userscript.editor.editScript")} [${script.title}]` : i18n.t("userscript.editor.newScript");
     $("inTitle").value = script?.title || "";
+    $("inVersion").value = script?.version || "1.0.0";
     $("inDesc").value = script?.description || "";
     $("inAuthors").value = script?.authors || "";
     $("inAuthorsLinks").value = script?.authorsLinks || "";
     $("inDomain").value = Array.isArray(script?.domain) ? script.domain.join(", ") : script?.domain || "";
     $("inHomepage").value = script?.homepage || "";
-    $("inMode").value = script?.mode || "listen";
+    this.inModeTom.setValue(script?.mode || "listen");
     $("inWatchAutoDetect").value = script?.watchAutoDetect || "disable";
+    const rawCategory = script?.category ?? "";
+    const categoryItems = Array.isArray(rawCategory)
+      ? rawCategory
+      : rawCategory
+          .split(",")
+          .map((c) => c.trim())
+          .filter(Boolean);
+
+    this.categorySelect.clear(true);
+    this.categorySelect.setValue(categoryItems, true);
+    $("inTags").value = Array.isArray(script?.tags) ? script.tags.join(", ") : script?.tags || "";
     this.updateWatchAutoDetectVisibility();
     $("inDebug").checked = script?.debug || false;
+
+    const iframeSelectorsContainer = document.getElementById("iframeSelectorsContainer");
+    const iframeSelectorsBtn = document.getElementById("btnIframeSelectorsToggle");
+
+    if (script?.iframeSelectors) {
+      iframeSelectorsContainer.hidden = false;
+      iframeSelectorsBtn.classList.add("active");
+      setTimeout(() => {
+        this.iframeSelectorsEditor.setValue(JSON.stringify(script.iframeSelectors, null, 2));
+        this.iframeSelectorsEditor.refresh();
+      }, 0);
+    } else {
+      iframeSelectorsContainer.hidden = true;
+      iframeSelectorsBtn.classList.remove("active");
+      this.iframeSelectorsEditor.setValue(JSON.stringify({ fields: { $video: { type: "video" } } }, null, 2));
+    }
+
     $("inUrlPatterns").value = this.formatPatterns(script?.urlPatterns) || ".*";
     $("inUrlPatterns").dispatchEvent(new Event("input"));
     this.codeEditor.setValue(
@@ -581,15 +721,38 @@ class UserScriptUI {
       return settings;
     }
 
+    let iframeSelectors = null;
+    const iframeSelectorsContainer = document.getElementById("iframeSelectorsContainer");
+
+    if (!iframeSelectorsContainer.hidden) {
+      const raw = this.iframeSelectorsEditor.getValue().trim();
+      if (raw) {
+        try {
+          const parsed = JSON.parse(raw);
+          if (!parsed.fields || typeof parsed.fields !== "object") {
+            this.showMessage('iframeSelectors: "fields" key is required.', "error");
+            return;
+          }
+          iframeSelectors = parsed;
+        } catch (e) {
+          this.showMessage("iframeSelectors: Invalid JSON — " + e.message, "error");
+          return;
+        }
+      }
+    }
+
+    const authorsData = $("inAuthors")
+      .value.trim()
+      .split(",")
+      .map((a) => a.trim())
+      .filter(Boolean);
+
     const script = {
-      id: generateParserKey(domain, normalizedList),
+      id: generateParserKey(domain, normalizedList, authorsData),
       title: $("inTitle").value.trim(),
+      version: $("inVersion").value.trim(),
       description: $("inDesc").value.trim(),
-      authors: $("inAuthors")
-        .value.trim()
-        .split(",")
-        .map((a) => a.trim())
-        .filter(Boolean),
+      authors: authorsData,
       authorsLinks: $("inAuthorsLinks")
         .value.trim()
         .split(",")
@@ -600,8 +763,20 @@ class UserScriptUI {
       lastUpdated: Date.now(),
       runAt: "document_idle",
       code: this.codeEditor.getValue(),
-      mode: $("inMode").value.trim(),
+      mode: this.inModeTom.getValue(),
       watchAutoDetect: $("inWatchAutoDetect").value.trim(),
+      iframeSelectors,
+      category: (() => {
+        const vals = this.categorySelect.getValue();
+        if (!vals.length) return "";
+        if (vals.length === 1) return vals[0];
+        return vals;
+      })(),
+      tags: $("inTags")
+        .value.trim()
+        .split(",")
+        .map((t) => t.trim())
+        .filter(Boolean),
       debug: $("inDebug").checked,
       settings: extractSettingsFromCode(this.codeEditor.getValue()),
     };
@@ -653,7 +828,7 @@ class UserScriptUI {
   }
 
   validateScriptCode(code) {
-    const requiredVars = ["title", "artist", "image", "source", "songUrl", "timePassed", "duration"];
+    const requiredVars = ["title"];
 
     const missing = [];
     const unused = [];
@@ -721,7 +896,7 @@ class UserScriptUI {
 
     if (!script) return;
 
-    const newState = !script.enabled;
+    const newState = !script.registered ? true : !script.enabled;
     const result = await sendAction("toggleUserScript", { id, enabled: newState });
 
     if (result?.ok) {
@@ -763,79 +938,191 @@ class UserScriptUI {
           .split("\n")
           .map((line) => "    " + line)
           .join("\n");
-
+        const domains = [script.domain].flat().filter(Boolean);
+        const domainStr = domains.length === 1 ? `"${domains[0]}"` : `["${domains.join('", "')}"]`;
         const urlPatterns = (script.urlPatterns || []).map((p) => (p.startsWith("/") ? p : `/${p}/`)).join(", ");
+        const authorsStr = [script.authors].flat().filter(Boolean).join(",");
+        const authorsLinksStr = [script.authorsLinks].flat().filter(Boolean).join(",");
+        const iframeSelectorsStr = script.iframeSelectors ? `\n  iframeSelectors: ${JSON.stringify(script.iframeSelectors, null, 2).split("\n").join("\n  ")},` : "";
+        const tagsStr = Array.isArray(script.tags) && script.tags.length ? `\n  tags: ["${script.tags.join('", "')}"],` : "";
+        const categoryStr = script.category ? `\n  category: "${script.category}",` : "";
 
         return `registerParser({
-        domain: "${script.domain}",
-        authors: "${script.authors}",
-        authorsLinks: "${script.authorsLinks}",
-        title: "${script.title}",
-        description: "${script.description}",
-        lastUpdated: "${script.lastUpdated}",
-        mode: "${script.mode}",
-        watchAutoDetect: "${script.watchAutoDetect}"
-        homepage: "${script.homepage}",
-        urlPatterns: [${urlPatterns}],
-        fn: function () {
-        ${codeIndented}
-        
-        return {
-        title,
-        artist,
-        image,
-        source,
-        songUrl,
-        duration,
-        timePassed,
-        buttons,
-        isPlaying,
-        };
-        },
-      });`;
+  domain: ${domainStr},
+  authors: "${authorsStr}",
+  authorsLinks: "${authorsLinksStr}",
+  title: "${script.title}",
+  version: "${script.version || "1.0.0"}",
+  description: "${script.description || ""}",
+  lastUpdated: "${script.lastUpdated || ""}",
+  mode: "${script.mode || "listen"}",
+  watchAutoDetect: "${script.watchAutoDetect || "disable"}",
+  homepage: "${script.homepage || ""}",${categoryStr}${tagsStr}
+  urlPatterns: [${urlPatterns}],${iframeSelectorsStr}
+  fn: async function () {
+${codeIndented}
+  },
+});`;
       })
       .join("\n\n");
   }
 
   // registerParser.js -> JSON
   importFromRegisterParser(jsText) {
-    const regex = /registerParser\s*\(\s*\{([\s\S]*?)\}\s*\)/g;
     const scripts = [];
-    let match;
 
-    while ((match = regex.exec(jsText)) !== null) {
-      const block = match[1];
+    let i = 0;
+    while (i < jsText.length) {
+      const callIdx = jsText.indexOf("registerParser(", i);
+      if (callIdx === -1) break;
 
-      let domain = /domain:\s*["'`](.*?)["'`]/.exec(block)?.[1] || "";
-      domain = this.cleanDomain(domain);
-      const title = /title:\s*["'`](.*?)["'`]/.exec(block)?.[1] || "";
-      const description = /description:\s*["'`](.*?)["'`]/.exec(block)?.[1] || "";
-      const lastUpdated = /lastUpdated:\s*["'`](.*?)["'`]/.exec(block)?.[1] || "";
-      const homepage = /homepage:\s*["'`](.*?)["'`]/.exec(block)?.[1] || "";
-      const authors = /authors:\s*["'`](.*?)["'`]/.exec(block)?.[1] || "";
-      const authorsLinks = /authorsLinks:\s*["'`](.*?)["'`]/.exec(block)?.[1] || "";
-      const mode = /mode:\s*["'`](.*?)["'`]/.exec(block)?.[1] || "listen";
-      const urlPatternsRaw = /\burlPatterns:\s*\[([\s\S]*?)\]/.exec(block)?.[1] || "";
+      let depth = 0;
+      let blockStart = -1;
+      let blockEnd = -1;
+      let j = callIdx + "registerParser(".length;
+
+      while (j < jsText.length) {
+        if (jsText[j] === "{") {
+          if (blockStart === -1) blockStart = j;
+          depth++;
+        } else if (jsText[j] === "}") {
+          depth--;
+          if (depth === 0) {
+            blockEnd = j;
+            break;
+          }
+        }
+        j++;
+      }
+
+      if (blockStart === -1 || blockEnd === -1) {
+        i = callIdx + 1;
+        continue;
+      }
+
+      const block = jsText.slice(blockStart + 1, blockEnd);
+      i = blockEnd + 1;
+
+      // string field helper
+      const extractStr = (key) => new RegExp(`\\b${key}:\\s*["'\`](.*?)["'\`]`).exec(block)?.[1] ?? "";
+
+      // domain: string or array
+      let domain;
+      const domainArrayMatch = /\bdomain:\s*\[([\s\S]*?)\]/.exec(block);
+      const domainStringMatch = /\bdomain:\s*["'`](.*?)["'`]/.exec(block);
+      if (domainArrayMatch) {
+        const arr = domainArrayMatch[1]
+          .split(",")
+          .map((d) => d.trim().replace(/^["'`]|["'`]$/g, ""))
+          .filter(Boolean)
+          .map((d) => this.cleanDomain(d));
+        domain = arr.length === 1 ? arr[0] : arr;
+      } else if (domainStringMatch) {
+        domain = this.cleanDomain(domainStringMatch[1]);
+      } else {
+        domain = "";
+      }
+
+      // urlPatterns
+      const urlPatternsRaw = /\burlPatterns:\s*\[([\s\S]*?)\]/.exec(block)?.[1] ?? "";
       const urlPatterns = urlPatternsRaw
         .split(",")
         .map((p) => p.trim().replace(/^\/|\/$/g, ""))
         .filter(Boolean);
 
-      const fnBodyMatch = /fn:\s*function\s*\(\)\s*\{([\s\S]*?)return\s*\{/.exec(block);
-      const code = fnBodyMatch ? fnBodyMatch[1].trim() : "";
+      // tags: ["a", "b"] array
+      let tags = [];
+      const tagsArrayMatch = /\btags:\s*\[([\s\S]*?)\]/.exec(block);
+      if (tagsArrayMatch) {
+        tags = tagsArrayMatch[1]
+          .split(",")
+          .map((t) => t.trim().replace(/^["'`]|["'`]$/g, ""))
+          .filter(Boolean);
+      }
+
+      // category: string
+      const category = extractStr("category");
+
+      // iframeSelectors: balanced brace match
+      let iframeSelectors = null;
+      const iframeIdx = block.indexOf("iframeSelectors:");
+      if (iframeIdx !== -1) {
+        let depth2 = 0,
+          objStart = -1,
+          k = iframeIdx;
+        while (k < block.length) {
+          if (block[k] === "{") {
+            if (objStart === -1) objStart = k;
+            depth2++;
+          } else if (block[k] === "}") {
+            depth2--;
+            if (depth2 === 0 && objStart !== -1) {
+              try {
+                iframeSelectors = JSON.parse(block.slice(objStart, k + 1));
+              } catch (_) {}
+              break;
+            }
+          }
+          k++;
+        }
+      }
+
+      // fn body: balanced brace + 2-space dedent
+      let code = "";
+      const fnIdx = block.search(/\bfn:\s*(async\s+)?function\s*\(\s*\)/);
+      if (fnIdx !== -1) {
+        let depth3 = 0,
+          fnBodyStart = -1,
+          m = fnIdx;
+        while (m < block.length) {
+          if (block[m] === "{") {
+            if (fnBodyStart === -1) fnBodyStart = m;
+            depth3++;
+          } else if (block[m] === "}") {
+            depth3--;
+            if (depth3 === 0 && fnBodyStart !== -1) {
+              code = block
+                .slice(fnBodyStart + 1, m)
+                .split("\n")
+                .map((line) => (line.startsWith("  ") ? line.slice(2) : line))
+                .join("\n")
+                .trim();
+              break;
+            }
+          }
+          m++;
+        }
+      }
+
+      const authors = extractStr("authors");
+      const authorsLinks = extractStr("authorsLinks");
 
       scripts.push({
-        title,
-        description,
+        title: extractStr("title"),
+        description: extractStr("description"),
         domain,
-        homepage,
-        authors: authors ? authors.split(",").map((a) => a.trim()) : [],
-        authorsLinks: authorsLinks ? authorsLinks.split(",").map((a) => a.trim()) : [],
+        homepage: extractStr("homepage"),
+        authors: authors
+          ? authors
+              .split(",")
+              .map((a) => a.trim())
+              .filter(Boolean)
+          : [],
+        authorsLinks: authorsLinks
+          ? authorsLinks
+              .split(",")
+              .map((a) => a.trim())
+              .filter(Boolean)
+          : [],
         urlPatterns,
-        mode,
+        mode: extractStr("mode") || "listen",
+        watchAutoDetect: extractStr("watchAutoDetect") || "disable",
+        category,
+        tags,
+        iframeSelectors,
         code,
-        id: `${domain}_${Math.random().toString(36).slice(2, 8)}`,
-        lastUpdated,
+        id: `${[domain].flat()[0] || "script"}_${Math.random().toString(36).slice(2, 8)}`,
+        lastUpdated: extractStr("lastUpdated"),
         runAt: "document_idle",
         registered: false,
       });
@@ -1104,7 +1391,7 @@ class UserScriptUI {
   }
 
   // Export userScript
-  async handleExport(format = "json", options = { type: "all", scriptId: null }) {
+  async handleExport(options = { type: "all", scriptId: null }) {
     const resp = await sendAction("listUserScripts");
     let scripts = resp?.list || [];
 
@@ -1122,24 +1409,14 @@ class UserScriptUI {
       }
     }
 
-    let blob, fileName;
+    let fileName;
 
-    if (format === "js") {
-      const dataStr = this.exportToRegisterParser(scripts);
-      blob = new Blob([dataStr], { type: "text/javascript" });
-      if (options.type === "single") {
-        fileName = `discord-music-rpc-userScript-${scripts[0].title || "script"}.js`;
-      } else {
-        fileName = `discord-music-rpc-userScripts-${new Date().toISOString().split("T")[0]}.js`;
-      }
+    const dataStr = this.exportToRegisterParser(scripts);
+    const blob = new Blob([dataStr], { type: "text/javascript" });
+    if (options.type === "single") {
+      fileName = `discord-music-rpc-userScript-${scripts[0].title || "script"}.js`;
     } else {
-      const dataStr = JSON.stringify(scripts, null, 2);
-      blob = new Blob([dataStr], { type: "application/json" });
-      if (options.type === "single") {
-        fileName = `discord-music-rpc-userScript-${scripts[0].title || "script"}.json`;
-      } else {
-        fileName = `discord-music-rpc-userScripts-${new Date().toISOString().split("T")[0]}.json`;
-      }
+      fileName = `discord-music-rpc-userScripts-${new Date().toISOString().split("T")[0]}.js`;
     }
 
     const url = URL.createObjectURL(blob);
@@ -1153,178 +1430,16 @@ class UserScriptUI {
 
   // Export Menu
   exportMenuClick(e) {
-    const oldMenu = document.querySelector(".export-menu");
-    if (oldMenu) oldMenu.remove();
-
     const li = e.target.closest("li.script-item");
     const scriptId = li?.dataset?.id || null;
     const isSingle = !!scriptId;
-
-    // menu container
-    const menu = document.createElement("div");
-    menu.className = "export-menu";
-
-    // JSON button
-    const btnJson = document.createElement("button");
-    btnJson.className = "export-option";
-    btnJson.dataset.format = "json";
-    btnJson.textContent = "JSON";
-    btnJson.title = i18n.t("userscript.export.asJSON");
-
-    // JS button
-    const btnJs = document.createElement("button");
-    btnJs.className = "export-option";
-    btnJs.dataset.format = "js";
-    btnJs.textContent = "JS";
-    btnJs.title = i18n.t("userscript.export.asJS");
-
-    // click events
-    btnJson.addEventListener("click", async () => {
-      await this.handleExport("json", isSingle ? { type: "single", scriptId } : { type: "all" });
-      menu.remove();
-    });
-    btnJs.addEventListener("click", async () => {
-      await this.handleExport("js", isSingle ? { type: "single", scriptId } : { type: "all" });
-      menu.remove();
-    });
-
-    // add the buttons to the menu
-    menu.appendChild(btnJson);
-    menu.appendChild(btnJs);
-
-    // add the menu to the body
-    e.target.appendChild(menu);
-
-    // Close the menu when clicking outside
-    setTimeout(() => {
-      document.addEventListener(
-        "click",
-        (ev) => {
-          if (!menu.contains(ev.target)) menu.remove();
-        },
-        { once: true },
-      );
-    }, 0);
+    this.handleExport(isSingle ? { type: "single", scriptId } : { type: "all" });
   }
 
   showMessage(message, type = "info") {
     const msgElement = $("editorMsg");
     msgElement.textContent = message;
     msgElement.className = `message ${type}`;
-  }
-
-  parseTemplate(str, boldMap = {}, codeMap = {}) {
-    const nodes = [];
-    const parts = str.split(/(\{bold_\w+\}|\{code_\w+\}|\n)/);
-
-    for (const part of parts) {
-      if (!part) continue;
-
-      if (part === "\n") {
-        nodes.push(document.createElement("br"));
-      } else if (part.startsWith("{bold_")) {
-        const key = part.slice(1, -1);
-        const text = boldMap[key] ?? part;
-        nodes.push(this.createBold(text));
-      } else if (part.startsWith("{code_")) {
-        const key = part.slice(1, -1);
-        const text = codeMap[key] ?? part;
-        nodes.push(this.createCode(text));
-      } else {
-        nodes.push(document.createTextNode(part));
-      }
-    }
-
-    return nodes;
-  }
-
-  // If mv3 and the user have not granted userscript permission, show a warning.
-  createMv3PermissionAlert(config) {
-    const wrapper = document.createElement("div");
-    wrapper.id = "mv3Alert";
-
-    const box = document.createElement("div");
-    box.className = "box";
-
-    // Title
-    const title = document.createElement("h2");
-    title.textContent = `⚠️ ${i18n.t("userscript.apiWarn.title")} ⚠️`;
-
-    // Intro
-    const intro = document.createElement("p");
-    intro.append(...this.parseTemplate(i18n.t("userscript.apiWarn.intro"), { bold_api: i18n.t("userscript.apiWarn.introApi") }));
-
-    // Why section
-    const whyTitle = document.createElement("h4");
-    whyTitle.textContent = i18n.t("userscript.apiWarn.whyTitle");
-
-    const whyText = document.createElement("p");
-    whyText.textContent = i18n.t("userscript.apiWarn.whyText");
-
-    // Fix section
-    const fixTitle = document.createElement("h4");
-    fixTitle.textContent = i18n.t("userscript.apiWarn.fixTitle");
-
-    const fixText = document.createElement("p");
-
-    // Step 1
-    fixText.append(...this.parseTemplate(i18n.t("userscript.apiWarn.fixStep1"), {}, { code_page: config.extensionPage }));
-
-    fixText.appendChild(document.createElement("br"));
-
-    if (config.showPermissionAndDataStep) {
-      fixText.append(document.createTextNode(i18n.t("userscript.apiWarn.fixStepPermission")));
-      fixText.appendChild(document.createElement("br"));
-    }
-
-    // Step 2
-    fixText.append(...this.parseTemplate(i18n.t("userscript.apiWarn.fixStep2"), {}, { code_permission: config.permissionLabel }));
-
-    fixText.appendChild(document.createElement("br"));
-
-    // Step 3
-    fixText.append(document.createTextNode(i18n.t("userscript.apiWarn.fixStep3")));
-
-    box.append(title, intro, document.createElement("br"), whyTitle, whyText, document.createElement("br"), fixTitle, fixText);
-    wrapper.appendChild(box);
-    return wrapper;
-  }
-
-  createBold(text) {
-    const b = document.createElement("b");
-    b.textContent = text;
-    return b;
-  }
-
-  createCode(text) {
-    const code = document.createElement("code");
-    code.textContent = text;
-    return code;
-  }
-
-  async checkUserScriptsPermission() {
-    const BROWSER_CONFIG = {
-      chrome: {
-        extensionPage: "chrome://extensions/",
-        permissionLabel: i18n.t("userscript.apiWarn.chromePermission"),
-        showPermissionAndDataStep: false,
-      },
-      firefox: {
-        extensionPage: "about:addons",
-        permissionLabel: i18n.t("userscript.apiWarn.firefoxPermission"),
-        showPermissionAndDataStep: true,
-      },
-    };
-
-    const manifest = browser.runtime.getManifest();
-    if (manifest.manifest_version !== 3) return;
-
-    if (!browser.userScripts) {
-      const browserType = detectBrowser();
-      const config = BROWSER_CONFIG[browserType];
-      if (document.getElementById("mv3Alert")) return;
-      document.body.appendChild(this.createMv3PermissionAlert(config));
-    }
   }
 }
 

@@ -164,6 +164,7 @@ class KeepAliveManager {
       };
 
       const resume = async () => {
+        if (!this.audioContext) return;
         if (this.audioContext.state === "suspended") {
           await this.audioContext.resume();
         }
@@ -179,6 +180,10 @@ class KeepAliveManager {
         resume().catch((e) => this.log("AudioContext resume error:", e));
         events.forEach((evt) => document.removeEventListener(evt, onGesture, true));
       };
+
+      this._audioGestureHandler = onGesture;
+      this._audioGestureEvents = events;
+
       events.forEach((evt) => document.addEventListener(evt, onGesture, { capture: true, once: false }));
     } catch (e) {
       this.log("AudioContext error:", e);
@@ -391,6 +396,12 @@ class KeepAliveManager {
       } catch (e) {}
     });
     this.oscillators = [];
+
+    if (this._audioGestureHandler && this._audioGestureEvents) {
+      this._audioGestureEvents.forEach((evt) => document.removeEventListener(evt, this._audioGestureHandler, true));
+      this._audioGestureHandler = null;
+      this._audioGestureEvents = null;
+    }
 
     if (this.audioContext) {
       this.audioContext.close().catch(() => {});

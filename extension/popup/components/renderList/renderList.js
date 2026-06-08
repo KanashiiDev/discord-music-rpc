@@ -28,10 +28,7 @@ async function renderList(filteredList = null, isSearch = null) {
   const tabHostname = normalizeHost(tabUrl.hostname);
   const tabPath = tabUrl.pathname;
 
-  await loadHiddenParsers();
-
-  const rawList = filteredList ?? (await getFreshParserList());
-  const list = filterVisibleParsers(rawList);
+  const list = filteredList ?? (await getFreshParserList());
 
   if (!list?.length) {
     spinner.remove();
@@ -48,6 +45,12 @@ async function renderList(filteredList = null, isSearch = null) {
 
   let anySettingsDirty = false;
   const fragment = document.createDocumentFragment();
+
+  list.sort((a, b) => {
+    const titleA = (a.title ?? "").toLowerCase();
+    const titleB = (b.title ?? "").toLowerCase();
+    return titleA.localeCompare(titleB);
+  });
 
   for (const entry of list) {
     const { wrapper, settingsDirty } = await buildParserEntry({

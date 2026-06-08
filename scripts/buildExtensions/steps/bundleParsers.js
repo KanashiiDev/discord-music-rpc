@@ -256,7 +256,6 @@ function bundleParsers(extensionDir, distDir) {
   try {
     stat = fs.statSync(parsersDir);
   } catch {
-    console.warn("[ParserBundler] Parsers directory not found:", parsersDir);
     return;
   }
   if (!stat?.isDirectory()) {

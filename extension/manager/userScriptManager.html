@@ -2,17 +2,18 @@
 <html>
   <head>
     <meta charset="utf-8" />
-    <title data-i18n="userscript.header.title">Discord Music Rpc - UserScript Manager</title>
+    <title data-i18n="header.title | userscript.header.title" data-i18n-sep=" - ">Discord Music Rpc - UserScript Manager</title>
     <link rel="stylesheet" href="userScriptManager.css" />
     <link rel="stylesheet" href="../libs/codemirror/css/codemirror.css" />
     <link rel="stylesheet" href="../libs/codemirror/css/codemirror-material-darker.css" />
+    <link rel="stylesheet" href="../libs/tom-select.css" />
     <link rel="stylesheet" href="../libs/simplebar.css" />
   </head>
   <div id="bg-layer"></div>
   <body data-theme="dark">
     <div class="header">
       <div>
-        <h3 data-i18n="userscript.header.title">Discord Music Rpc - UserScript Manager</h3>
+        <h3 data-i18n="header.title | userscript.header.title" data-i18n-sep=" - ">Discord Music Rpc - UserScript Manager</h3>
         <p class="header-desc" data-i18n="userscript.header.description">Add more advanced music websites using userscripts!</p>
       </div>
       <div id="listControls">
@@ -35,6 +36,20 @@
             <input type="text" id="inTitle" data-i18n="userscript.editor.scriptName.placeholder" placeholder="Music Website" />
           </div>
           <div class="container">
+            <p data-i18n="userscript.editor.version.label">Version:</p>
+            <input type="text" id="inVersion" placeholder="1.0.0" />
+          </div>
+          <div class="container">
+            <p data-i18n="userscript.editor.category.label">Category</p>
+            <select id="inCategory" multiple placeholder="Select categories..."></select>
+            <small data-i18n="userscript.editor.category.help">Used for filtering in the Script Store.</small>
+          </div>
+          <div class="container">
+            <p data-i18n="userscript.editor.tags.label">Tags (comma separated, Optional):</p>
+            <input type="text" id="inTags" placeholder="anime, japan, community" />
+            <small data-i18n="userscript.editor.tags.help">Free-form labels for search and filtering.</small>
+          </div>
+          <div class="container">
             <p data-i18n="userscript.editor.description.label">Description:</p>
             <input type="text" id="inDesc" data-i18n="userscript.editor.description.placeholder" placeholder="My Userscript for Music Website." />
             <small data-i18n="userscript.editor.description.help">A brief description of what your script does.</small>
@@ -48,13 +63,11 @@
             <input type="text" id="inAuthorsLinks" placeholder="https://github.com/KanashiiDev" />
             <small data-i18n="userscript.editor.authorsLinks.help">Links to the authors' profiles.</small>
           </div>
-
           <div class="container">
             <p data-i18n="userscript.editor.domains.label">Domain(s) (comma separated):</p>
             <input type="text" id="inDomain" placeholder="musicwebsite.com, musicwebsite2.com" />
             <small data-i18n="userscript.editor.domains.help">Enter the domains where this script should run.</small>
           </div>
-
           <div class="container">
             <p data-i18n="userscript.editor.urlPatterns.label">URL Pattern(s) (comma separated):</p>
             <input type="text" id="inUrlPatterns" placeholder="home.*,player.*" />
@@ -129,11 +142,60 @@
               </p>
               <p class="helpers note-section">
                 <span data-i18n="userscript.codeEditor.helperFunctions.label">Helper Functions:</span>
-                <code>getText("")</code>
-                <code>getTextAll("")</code>
-                <code>getImage("")</code>
-                <code>getImageAll("")</code>
-                <code>querySelectorDeep("")</code>
+                <a
+                  class="link"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  href="https://github.com/KanashiiDev/discord-music-rpc/wiki/Adding-a-New-Music-Site#getimageselector-root"
+                >
+                  <code>getText()</code>
+                </a>
+                <a
+                  class="link"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  href="https://github.com/KanashiiDev/discord-music-rpc/wiki/Adding-a-New-Music-Site#gettextallselector-options"
+                >
+                  <code>getTextAll()</code>
+                </a>
+                <a
+                  class="link"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  href="https://github.com/KanashiiDev/discord-music-rpc/wiki/Adding-a-New-Music-Site#getimageselector-root"
+                >
+                  <code>getImage()</code>
+                </a>
+                <a
+                  class="link"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  href="https://github.com/KanashiiDev/discord-music-rpc/wiki/Adding-a-New-Music-Site/#getimageallselector-root"
+                >
+                  <code>getImageAll()</code>
+                </a>
+                <a
+                  class="link"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  href="https://github.com/KanashiiDev/discord-music-rpc/wiki/Adding-a-New-Music-Site/#queryselectordeepselector-root-all"
+                >
+                  <code>querySelectorDeep()</code>
+                </a>
+              </p>
+              <p class="note-section">
+                <span class="execution-world" data-i18n="userscript.codeEditor.executionWorld.label">Execution World:</span>
+                <code>
+                  <code>//@world main</code>
+                  <span data-i18n="userscript.codeEditor.executionWorld.note">Use at the top of your script if you need access to page globals (e.g. window)</span>
+                </code>
+              </p>
+              <p class="note-section">
+                <span class="cast-support" data-i18n="userscript.codeEditor.castSupport.label">Cast Support:</span>
+                <code>
+                  <code>isPlaying</code>
+                  <span data-i18n="userscript.codeEditor.castSupport.note">Any truthy value indicating active playback; used for cast support (optional)</span>
+                </code>
               </p>
               <p class="note-section">
                 <span class="keyboard-shortcuts" data-i18n="userscript.codeEditor.keyboardShortcuts.label">Keyboard Shortcuts:</span>
@@ -158,20 +220,6 @@
                   <span data-i18n="userscript.codeEditor.keyboardShortcuts.save">Save</span>
                 </code>
               </p>
-              <p class="note-section">
-                <span class="execution-world" data-i18n="userscript.codeEditor.executionWorld.label">Execution World:</span>
-                <code>
-                  <code>//@world main</code>
-                  <span data-i18n="userscript.codeEditor.executionWorld.note">Use at the top of your script if you need access to page globals (e.g. window)</span>
-                </code>
-              </p>
-              <p class="note-section">
-                <span class="cast-support" data-i18n="userscript.codeEditor.castSupport.label">Cast Support:</span>
-                <code>
-                  <code>isPlaying</code>
-                  <span data-i18n="userscript.codeEditor.castSupport.note">Any truthy value indicating active playback; used for cast support (optional)</span>
-                </code>
-              </p>
             </div>
             <div class="code-notes useSettings">
               <p data-i18n="userscript.settings.manageSettings">Manage Settings</p>
@@ -184,6 +232,37 @@
               </div>
               <div id="useSettingsContainer" class="use-settings-builder"></div>
             </div>
+            <div class="code-notes iframeSelectors">
+              <p data-i18n="userscript.iframeSelectors.label">Iframe Selectors</p>
+              <small>
+                <span data-i18n="userscript.iframeSelectors.help"></span>
+                <a
+                  class="link"
+                  href="https://github.com/KanashiiDev/discord-music-rpc/wiki/Adding-a-New-Music-Site#iframeselectors"
+                  target="_blank"
+                  data-i18n="userscript.iframeSelectors.helpLink"
+                ></a>
+              </small>
+              <button id="btnIframeSelectorsToggle" data-i18n="userscript.iframeSelectors.configure">Configure</button>
+              <div id="iframeSelectorsContainer" class="iframe-selectors-builder" hidden>
+                <textarea id="inIframeSelectors"></textarea>
+                <div id="iframeSelectorsError" class="iframe-selectors-error"></div>
+                <div class="iframe-selectors-hint">
+                  <p class="note-section">
+                    <span data-i18n="userscript.iframeSelectors.fieldTypes">Field types:</span>
+                    <code>video</code>
+                    <code>exists</code>
+                    <code>text</code>
+                    <code>attr</code>
+                    <code>time</code>
+                    <code>number</code>
+                    <code>classContains</code>
+                    <code>prop</code>
+                    <code>or</code>
+                  </p>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -195,6 +274,7 @@
     <script src="../libs/simplebar.js"></script>
     <script src="../common/utils.js"></script>
     <script src="../libs/codemirror/codemirror.js"></script>
+    <script src="../libs/tom-select.js"></script>
     <script src="userScriptWorker.js"></script>
     <script src="userScriptManager.js"></script>
   </body>

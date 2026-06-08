@@ -14,6 +14,22 @@ async function openSettingsPage(section) {
   window.close();
 }
 
+async function openStorePage() {
+  const url = browser.runtime.getURL(`activityLibrary/library.html`);
+  try {
+    const [existing] = await browser.tabs.query({ url });
+    if (existing) {
+      await browser.tabs.update(existing.id, { active: true });
+      await browser.windows.update(existing.windowId, { focused: true }).catch(() => {});
+    } else {
+      await browser.tabs.create({ url });
+    }
+  } catch (err) {
+    logError("Open store failed:", err);
+  }
+  window.close();
+}
+
 async function openDashboardPage() {
   const { port } = await browser.runtime.sendMessage({
     type: "GET_RPC_PORT",

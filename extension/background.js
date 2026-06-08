@@ -95,12 +95,8 @@ async function loadParserList() {
     }
 
     const { parserList = [], userParserSelectors = [], userScriptsList = [] } = await browser.storage.local.get(["parserList", "userParserSelectors", "userScriptsList"]);
-    logInfo(`Loaded ${parserList.length} parsers, ${userParserSelectors.length} selector parsers and ${userScriptsList.length} user scripts.`);
-
-    // Get the lists from local storage and process them
-
-    // Default Parsers
     const builtInList = parserList.filter((p) => !p.userAdd && !p.userScript);
+    logInfo(`Loaded ${builtInList.length} built-in parsers, ${userParserSelectors.length} selector parsers and ${userScriptsList.length} user scripts.`);
 
     // Selector Parsers
     const userList = userParserSelectors.map((u) => {
@@ -115,7 +111,7 @@ async function loadParserList() {
 
     // UserScript Parsers
     const userScriptList = userScriptsList.map((u) => {
-      const fallbackId = generateParserKey(u.domain, u.urlPatterns || [".*"]);
+      const fallbackId = generateParserKey(u.domain, u.urlPatterns || [".*"], u.authors);
       return {
         ...u,
         id: u.id || fallbackId,
@@ -637,24 +633,29 @@ const mainLoop = async () => {
   }
 };
 
+const keepAlive = () => {
+  setInterval(() => {
+    chrome.runtime.getPlatformInfo(() => {});
+  }, 20000);
+};
+
 // Start
 const init = async () => {
   await browser.storage.local.get("serverPort").then((result) => {
-    if (result.serverPort !== undefined) {
-      state.serverPort = result.serverPort;
-    }
+    if (result.serverPort !== undefined) state.serverPort = result.serverPort;
   });
 
   await browser.storage.local.get("discordWebPort").then((result) => {
-    if (result.discordWebPort !== undefined) {
-      state.discordWebPort = result.discordWebPort;
-    }
+    if (result.discordWebPort !== undefined) state.discordWebPort = result.discordWebPort;
   });
 
   setupListeners();
   await parserReady();
-  scriptManager.registerAllScripts();
+  await scriptManager.registerAllScripts();
+  await storeService.setupUpdateAlarm();
+  await storeService.checkRepoUpdates();
   await mainLoop();
+  keepAlive();
 };
 
 init();

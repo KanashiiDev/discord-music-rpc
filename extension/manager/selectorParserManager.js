@@ -200,7 +200,7 @@ class UserParserUI {
 
       const favIcon = document.createElement("img");
       favIcon.className = "parser-icon hidden-visibility";
-      favIcon.title = `${i18n.t("selector.preview.open").replace("{source}", parser.title || parser.domain)}`;
+      favIcon.title = `${i18n.t("selector.preview.open").replace("{source}", parser.title || primaryDomain)}`;
       favIcon.dataset.src = primaryDomain;
       favIcon.loading = "lazy";
       favIcon.decoding = "async";
@@ -377,77 +377,22 @@ class UserParserUI {
 
   // Export
   exportMenuClick(e, parser = null) {
-    const oldMenu = document.querySelector(".export-menu");
-    if (oldMenu) oldMenu.remove();
-
-    const menu = document.createElement("div");
-    menu.className = "export-menu";
-
-    const btnJson = document.createElement("button");
-    btnJson.className = "export-option";
-    btnJson.dataset.format = "json";
-    btnJson.textContent = "JSON";
-    btnJson.title = i18n.t("userscript.export.asJSON");
-
-    const btnJs = document.createElement("button");
-    btnJs.className = "export-option";
-    btnJs.dataset.format = "js";
-    btnJs.textContent = "JS";
-    btnJs.title = i18n.t("userscript.export.asJS");
-
-    menu.append(btnJson, btnJs);
-
-    btnJson.addEventListener("click", () => {
-      parser ? this.exportSingleParser(parser, "json") : this.exportAllParsers("json");
-      menu.remove();
-    });
-    btnJs.addEventListener("click", () => {
-      parser ? this.exportSingleParser(parser, "js") : this.exportAllParsers("js");
-      menu.remove();
-    });
-
-    e.target.appendChild(menu);
-
-    setTimeout(() => {
-      document.addEventListener(
-        "click",
-        (ev) => {
-          if (!menu.contains(ev.target)) menu.remove();
-        },
-        { once: true },
-      );
-    }, 0);
+    parser ? this.exportSingleParser(parser) : this.exportAllParsers();
   }
 
-  exportSingleParser(parser, format = "json") {
-    if (format === "js") {
-      const jsContent = `const userParserSelectors = ${JSON.stringify([parser], null, 4)};\n\nexport default userParserSelectors;`;
-      this.downloadFile(
-        jsContent,
-        `discord-music-rpc-user-parser-${parser.title || parser.domain}-${new Date().toISOString().split("T")[0]}.js`,
-        "application/javascript",
-      );
-    } else {
-      this.downloadFile(
-        JSON.stringify([parser], null, 4),
-        `discord-music-rpc-user-parser-${parser.title || parser.domain}-${new Date().toISOString().split("T")[0]}.json`,
-        "application/json",
-      );
-    }
+  exportSingleParser(parser) {
+    const jsContent = `const userParserSelectors = ${JSON.stringify([parser], null, 4)};\n\nexport default userParserSelectors;`;
+    this.downloadFile(jsContent, `discord-music-rpc-user-parser-${parser.title || parser.domain}-${new Date().toISOString().split("T")[0]}.js`, "application/javascript");
   }
 
-  exportAllParsers(format = "json") {
+  exportAllParsers() {
     if (this.parsers.length === 0) {
       showAlert(i18n.t("userscript.export.warn.noScripts"), "", "warn");
       return;
     }
     const jsonStr = JSON.stringify(this.parsers, null, 4);
-    if (format === "js") {
-      const jsContent = `const userParserSelectors = ${jsonStr};\n\nexport default userParserSelectors;`;
-      this.downloadFile(jsContent, `discord-music-rpc-user-parsers-${new Date().toISOString().split("T")[0]}.js`, "application/javascript");
-    } else {
-      this.downloadFile(jsonStr, `discord-music-rpc-user-parsers-${new Date().toISOString().split("T")[0]}.json`, "application/json");
-    }
+    const jsContent = `const userParserSelectors = ${jsonStr};\n\nexport default userParserSelectors;`;
+    this.downloadFile(jsContent, `discord-music-rpc-user-parsers-${new Date().toISOString().split("T")[0]}.js`, "application/javascript");
   }
 
   downloadFile(content, name, mime) {

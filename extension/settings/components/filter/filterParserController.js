@@ -102,7 +102,7 @@ const ParserController = {
     // Some orphaned - warn and ask
     const orphanedCount = orphanedIds.length;
     const confirmed = showConfirm("", {
-      heading: i18n.t("filter.warn.noneSelectedSites", { count: orphanedCount }),
+      heading: i18n.t("filter.warn.removedSelectedSites", { count: orphanedCount }),
       body: "",
     });
 

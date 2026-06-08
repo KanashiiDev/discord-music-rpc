@@ -47,8 +47,7 @@ async function buildParserTagCache() {
   _parserTagCache.allCategories.clear();
   _parserTagCache.allTags.clear();
 
-  const raw = await getFreshParserList();
-  const list = filterVisibleParsers(raw);
+  const list = await getFreshParserList();
   for (const entry of list) {
     const cats = entry.category
       ? [entry.category]
@@ -152,12 +151,11 @@ function applyParserTagFilter(list, query = "") {
   parserTagFilterResetBtn?.classList.toggle("filter-active", hasActive);
 
   // Always strip hidden parsers before any further filtering
-  const visibleList = filterVisibleParsers(list);
-  if (!hasTagFilter && !hasTextFilter) return visibleList;
+  if (!hasTagFilter && !hasTextFilter) return list;
 
   const lq = query.trim().toLowerCase();
 
-  return visibleList.filter((entry) => {
+  return list.filter((entry) => {
     const matchesText = !hasTextFilter || (entry.title && entry.title.toLowerCase().includes(lq));
 
     const entryCategories = entry.category

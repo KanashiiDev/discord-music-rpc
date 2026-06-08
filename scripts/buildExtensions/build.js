@@ -19,7 +19,7 @@ const DIST_DIR = path.join(ROOT_DIR, "extensionBuilds", TARGET);
 const DIST_LOCALES_DIR = path.join(DIST_DIR, "locales");
 const pkgVersion = JSON.parse(fs.readFileSync(path.join(ROOT_DIR, "package.json"), "utf8")).version;
 
-const CSS_TARGETS = ["popup/popup.css", "popup/selector/selector.css", "manager/userScriptManager.css", "settings/settings.css"];
+const CSS_TARGETS = ["popup/popup.css", "popup/selector/selector.css", "manager/userScriptManager.css", "settings/settings.css", "activityLibrary/library.css"];
 
 (async () => {
   // 1. Clean dist folder

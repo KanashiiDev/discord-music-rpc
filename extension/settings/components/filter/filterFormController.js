@@ -543,14 +543,21 @@ const FormController = {
 
         FilterState.parserList
           .filter((p) => !selectedIds.includes(p.id))
+          .sort((a, b) => {
+            const aKey = (a.title || a.domain || "").toLowerCase();
+            const bKey = (b.title || b.domain || "").toLowerCase();
+            return aKey.localeCompare(bKey);
+          })
           .forEach((parser) => {
             const chip = document.createElement("span");
             chip.className = "parser-chip available";
             chip.textContent = parser.title || parser.domain;
+
             FilterEvents.add(chip, "click", () => {
               ParserController.toggle(parser.id, true);
               renderParsers();
             });
+
             chips.appendChild(chip);
           });
       }

@@ -66,13 +66,13 @@ function createInlineUtils(extensionDir, distDir) {
         if (!decl) continue;
 
         if (decl.type === "FunctionDeclaration" && shouldInclude(decl.id?.name)) {
-          extracted.push(code.slice(node.start, node.end));
+          extracted.push(code.slice(decl.start, decl.end));
         }
 
         if (decl.type === "VariableDeclaration") {
           const declarations = decl.declarations.filter((d) => shouldInclude(d.id?.name));
           if (declarations.length > 0 || includeAll) {
-            extracted.push(code.slice(node.start, node.end));
+            extracted.push(code.slice(decl.start, decl.end));
           }
         }
         continue;
@@ -206,12 +206,20 @@ function createInlineUtils(extensionDir, distDir) {
         const sourcePath = fs.existsSync(path.join(distDir, sourceFile)) ? path.join(distDir, sourceFile) : path.join(extensionDir, sourceFile);
 
         const extractedFunctions = extractFunctionsFromFile(sourcePath, functionsToInclude);
-        const inlineTag = `// === BEGIN INLINE UTILS (${sourceFile}) - (${functionsToInclude?.join?.(", ") || "ALL"}) ===`;
-        const inlinedCode = `${inlineTag}\n${extractedFunctions.join("\n\n")}\n// === END INLINE UTILS (${sourceFile}) ===\n\n`;
+        let joinedFunctions = extractedFunctions.join("\n\n");
 
-        const isPlaceholder = typeof position === "string" && position !== "start" && position !== "end";
+        // If the position is not 'start' or 'end', it is a special placeholder (e.g., _INLINE_UTILS).
+        const isPlaceholderMode = typeof position === "string" && position !== "start" && position !== "end";
 
-        if (isPlaceholder) {
+        if (isPlaceholderMode) {
+          // Since it will be embedded into a code string, we automatically double the backslashes (including in regex).
+          joinedFunctions = joinedFunctions.replace(/\\/g, "\\\\");
+        }
+
+        const inlineTag = `// === BEGIN INLINE UTILS (${sourceFile}) ===`;
+        const inlinedCode = `${inlineTag}\n${joinedFunctions}\n// === END INLINE UTILS (${sourceFile}) ===\n\n`;
+
+        if (isPlaceholderMode) {
           const escapedPlaceholder = position.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
           const placeholderRegex = new RegExp(`[^\n]*${escapedPlaceholder}[^\n]*\n?`);
 
@@ -233,7 +241,11 @@ function createInlineUtils(extensionDir, distDir) {
         }
       }
 
-      targetContent = startInlinedCode + "\n" + targetContent + "\n" + endInlinedCode;
+      // If only start/end modes were used, add the content to the beginning/end
+      if (startInlinedCode || endInlinedCode) {
+        targetContent = startInlinedCode + "\n" + targetContent + "\n" + endInlinedCode;
+      }
+
       fs.writeFileSync(targetPath, targetContent, "utf8");
     }
 

@@ -6,49 +6,37 @@ class PatternValidator {
   static toRegex(pattern) {
     if (!pattern) return /.*/;
     try {
-      const match = pattern.match(/^\/(.+)\/$/);
-      const regexStr = match ? match[1] : pattern;
-      return new RegExp(regexStr);
+      let cleanPattern = pattern.trim();
+      if (cleanPattern.startsWith("/") && cleanPattern.endsWith("/")) {
+        cleanPattern = cleanPattern.slice(1, -1);
+      } else if (cleanPattern.startsWith("/") && cleanPattern.endsWith("/i")) {
+        cleanPattern = cleanPattern.slice(1, -2);
+        return new RegExp(cleanPattern, "i");
+      }
+
+      return new RegExp(cleanPattern);
     } catch (err) {
       console.warn("Invalid regex pattern:", pattern, err);
-      return /.*/; // fallback
+      return /.*/;
     }
-  }
-
-  // Domain + regex → Chrome URL match pattern
-  static toChromeMatch(domain, pattern) {
-    if (!domain) return "*://*/*";
-
-    // Make the general patterns compatible with Chrome
-    if (!pattern || pattern === "*" || pattern === "." || pattern === "<all_urls>") {
-      return "*://*/*";
-    }
-
-    const cleanDomain = domain.replace(/^https?:\/\//, "").replace(/\/$/, "");
-
-    // Fix / signs in regex and make .* → *
-    const match = pattern.match(/^\/(.+)\/$/);
-    const inner = match ? match[1] : pattern;
-
-    let wildcard = inner
-      .replace(/\\\//g, "/") // \/ → /
-      .replace(/\.\*/g, "*"); // .* → *
-
-    if (!wildcard.startsWith("/")) wildcard = "/" + wildcard;
-
-    return `*://${cleanDomain}${wildcard}`;
   }
 
   // Input string → list of normalized patterns
   static normalizePatterns(patterns) {
-    if (!patterns) return ["/*"];
+    if (!patterns) return [];
     if (typeof patterns === "string") patterns = patterns.split(/\s*,\s*/);
-    return patterns.map((p) => {
-      const trimmed = p.trim();
-      if (!trimmed) return "/*"; // empty pattern → all URLs
-      if (/^\/.*\/$/.test(trimmed)) return trimmed;
-      return `/${trimmed}/`;
-    });
+
+    return patterns
+      .map((p) => {
+        const trimmed = p.trim();
+        if (!trimmed) return "";
+
+        if (trimmed.startsWith("/") && (trimmed.endsWith("/") || trimmed.endsWith("/i"))) {
+          return trimmed;
+        }
+        return `/${trimmed}/`;
+      })
+      .filter(Boolean);
   }
 
   // Return the pattern list as regex and normalized list
@@ -109,17 +97,71 @@ class UserScriptManager {
     this.registeredScripts = new Map();
   }
 
-  generateScriptId(domain, urlPatterns) {
-    return generateParserKey(domain, urlPatterns);
+  generateScriptId(domain, urlPatterns, authors = []) {
+    return generateParserKey(domain, urlPatterns, authors);
   }
 
   buildTrackDataScript(script) {
     const { normalizedList } = PatternValidator.processPatterns(script.urlPatterns);
-    const patternString = normalizedList.map((p) => `"${p}"`).join(", ");
 
     return `
     // AUTO-GENERATED-UTILS
     // _INLINE_UTILS
+    function normalizeTrackData(input) {
+      const seen = new WeakSet();
+
+      function clean(value, path) {
+        path = path || "root";
+
+        if (
+          value === null ||
+          typeof value === "string" ||
+          typeof value === "number" ||
+          typeof value === "boolean"
+        ) {
+          return value;
+        }
+
+        if (typeof value === "undefined") return null;
+
+        if (
+          value instanceof Node ||
+          value instanceof Window ||
+          value instanceof Document ||
+          value instanceof HTMLCollection ||
+          value instanceof NodeList ||
+          value instanceof Element
+        ) {
+          if (${script.debug}) {
+            console.warn("Dropped DOM value at:", path);
+          }
+          return null;
+        }
+
+        if (typeof value === "object") {
+          if (seen.has(value)) return null;
+          seen.add(value);
+        }
+
+        if (Array.isArray(value)) {
+          return value.map((v, i) => clean(v, path + "[" + i + "]"));
+        }
+
+        if (typeof value === "object") {
+          const out = {};
+          for (const key in value) {
+            const nextPath = path + "." + key;
+            const v = clean(value[key], nextPath);
+            if (v !== undefined) out[key] = v;
+          }
+          return out;
+        }
+
+        return null;
+      }
+
+      return clean(input, "root");
+    }
     // MAIN
     (async function() {
       const trackState = {};
@@ -152,36 +194,63 @@ class UserScriptManager {
             setTimeout(() => reject(new Error("useSetting timeout")), 5000);
           });
         }
+        function getIframeData() {
+          return new Promise((resolve) => {
+            const requestId = \`iframeData_\${Date.now()}_\${Math.random()}\`;
+
+            function handleResponse(event) {
+              if (event.source !== window) return;
+              const msg = event.data;
+              if (!msg || msg.type !== "USER_SCRIPT_IFRAME_DATA_RESPONSE" || msg.requestId !== requestId) return;
+              window.removeEventListener("message", handleResponse);
+              resolve(msg.data || null);
+            }
+
+            window.addEventListener("message", handleResponse);
+
+            window.postMessage({
+              type: "USER_SCRIPT_IFRAME_DATA_REQUEST",
+              requestId,
+              id: "${script.id}",
+              iframeSelectors: ${JSON.stringify(script.iframeSelectors || null)},
+            }, "*");
+
+            setTimeout(() => resolve(null), 12000);
+          });
+        }
         // update trackData
         async function updateTrackData() {
           try {
             // UserScript
             ${script.code || ""}
             // update trackState
-            trackState.title = typeof title !== "undefined" ? title : null;
-            trackState.artist = typeof artist !== "undefined" ? artist : null;
-            trackState.image = typeof image !== "undefined" ? image : null;
-            trackState.source = typeof source !== "undefined" ? source : null;
-            trackState.songUrl = typeof songUrl !== "undefined" ? songUrl : null;
-            trackState.timePassed = typeof timePassed !== "undefined" ? timePassed : null;
-            trackState.duration = typeof duration !== "undefined" ? duration : null;
-            trackState.buttons = typeof buttons !== "undefined" ? buttons : null;
+            trackState.title = typeof title === "string" ? title : (title == null ? null : String(title));
+            trackState.artist = typeof artist === "string" ? artist : (artist == null ? null : String(artist));
+            trackState.image = typeof image === "string" ? image : (image == null ? null : String(image));
+            trackState.source = typeof source === "string" ? source : (source == null ? null : String(source));
+            trackState.songUrl = typeof songUrl === "string" ? songUrl : (songUrl == null ? null : String(songUrl));
+            trackState.timePassed = typeof timePassed === "number" || typeof timePassed === "string" ? timePassed : null;
+            trackState.duration = typeof duration === "number" || typeof duration === "string" ? duration : null;
+            trackState.buttons = typeof buttons !== "undefined" && Array.isArray(buttons) ? buttons : null;
             trackState.isPlaying = typeof isPlaying !== "undefined" ? Boolean(isPlaying) : null;
 
             // Track Data
             const trackData = {
               id: "${script.id}",
+              version: "${script.version || "1.0.0"}",
               domain: "${Array.isArray(script.domain) ? script.domain[0] : script.domain}",
               domains: ${JSON.stringify(Array.isArray(script.domain) ? script.domain : [script.domain])},
               authors: ${JSON.stringify(script.authors || [])},
               authorsLinks: ${JSON.stringify(script.authorsLinks || [])},
               homepage: "${script.homepage || ""}",
               description: "${script.description || ""}",
-              urlPatterns: [${patternString}],
+              urlPatterns: ${JSON.stringify(normalizedList)},
               title: "${script.title || "Unknown"}",
               mode: "${script.mode || "listen"}",
               watchAutoDetect: "${script.watchAutoDetect || "disable"}",
-              song: { ...trackState }
+              iframeSelectors: ${JSON.stringify(script.iframeSelectors || null)},
+              isLibraryActivity: ${Boolean(script.storeScriptId)},
+              song: normalizeTrackData({ ...trackState })
             };
 
             // Debug Mode
@@ -206,14 +275,14 @@ class UserScriptManager {
               console.log("  • Source:     ", song.source || "Unknown");
               console.log("  • Song URL:   ", song.songUrl || "N/A");
               console.log("  • Image:      ", song.image || "Default Image");
-              console.log("  • Duration:   ", song.duration ?? "N/A");
-              console.log("  • Time Passed:", song.timePassed ?? "N/A");
+              console.log("  • Duration:   ", "${script.watchAutoDetect}" === "enable" ? "Auto-Detect" : song.duration ?? "N/A");
+              console.log("  • Time Passed:", "${script.watchAutoDetect}" === "enable" ? "Auto-Detect" : song.timePassed ?? "N/A");
+              console.log("  • isPlaying:  ", "${script.watchAutoDetect}" === "enable" ? "Auto-Detect" : song.isPlaying ?? "N/A");
               console.log("  • Buttons:    ", song.buttons ?? "N/A");
-              console.log("  • isPlaying:  ", song.isPlaying ?? "N/A");
               console.groupEnd();
             }
 
-            window.postMessage({ type: "USER_SCRIPT_TRACK_DATA", data: trackData }, "*");
+            window.postMessage({ type: "USER_SCRIPT_TRACK_DATA", data: { ...trackData, iframeSelectors: ${JSON.stringify(script.iframeSelectors || null)},}}, "*");
           } catch (error) {
             const now = new Date();
             const timeString = \`\${String(now.getHours()).padStart(2,'0')}:\${String(now.getMinutes()).padStart(2,'0')}:\${String(now.getSeconds()).padStart(2,'0')}\`;
@@ -231,7 +300,7 @@ class UserScriptManager {
         }
         await updateTrackData();
         setInterval(updateTrackData, 4000);
-      }, 4000);
+      }, 100);
     })();
     `;
   }
@@ -251,18 +320,23 @@ class UserScriptManager {
   async registerUserScript(script) {
     try {
       if (!script.id) {
-        script.id = this.generateScriptId(script.domain, script.urlPatterns);
+        script.id = this.generateScriptId(script.domain, script.urlPatterns, script.authors || []);
       }
       const manifest = browser.runtime.getManifest();
       const isMV3 = manifest.manifest_version === 3;
-      const patterns = Array.isArray(script.urlPatterns) ? script.urlPatterns : [script.urlPatterns];
+
       const domains = (Array.isArray(script.domain) ? script.domain : [script.domain]).filter(Boolean);
-      const matches = domains
-        .flatMap((d) => {
-          const domainVariants = [`*.${d}`, `www.${d}`];
-          return domainVariants.flatMap((variant) => patterns.map((p) => PatternValidator.toChromeMatch(variant, p)));
-        })
-        .filter((m) => m !== "*://*/*");
+
+      const matches = domains.flatMap((d) => {
+        const cleanDomain = d.replace(/^www\./, "");
+
+        if (d.startsWith("*.")) {
+          return [`*://${cleanDomain}/*`, `*://*.${cleanDomain}/*`];
+        } else {
+          return [`*://${cleanDomain}/*`, `*://www.${cleanDomain}/*`];
+        }
+      });
+
       const { parserEnabledState = {} } = await browser.storage.local.get("parserEnabledState");
       const isEnabled = parserEnabledState[`enable_${script.id}`] !== false;
 
@@ -342,7 +416,7 @@ class UserScriptManager {
 
     for (const script of scripts) {
       try {
-        if (!script.id) script.id = this.generateScriptId(script.domain, script.urlPatterns);
+        if (!script.id) script.id = this.generateScriptId(script.domain, script.urlPatterns, script.authors || []);
 
         if (parserEnabledState[`enable_${script.id}`] === undefined) {
           parserEnabledState[`enable_${script.id}`] = true;

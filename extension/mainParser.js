@@ -9,7 +9,6 @@ const processedScripts = new Set();
 const settingsCache = {};
 const loadingPromises = {};
 const saveTimers = {};
-let initLoadPromise = null;
 
 // Save settings
 function scheduleSave(parserId) {
@@ -253,7 +252,6 @@ async function initializeAllParserSettings() {
   const { userScriptsList: storedUserScriptsList = [] } = await browser.storage.local.get("userScriptsList");
   const userScriptsList = Array.isArray(storedUserScriptsList) ? storedUserScriptsList : [];
 
-  // Get all storage data
   const allStored = await browser.storage.local.get(null);
 
   // Extract settings_*
@@ -312,6 +310,25 @@ async function initializeAllParserSettings() {
   }
 }
 
+function domReady() {
+  if (document.readyState === "complete" || document.readyState === "interactive") {
+    return Promise.resolve();
+  }
+
+  return new Promise((resolve) => {
+    document.addEventListener("DOMContentLoaded", resolve, { once: true });
+  });
+}
+
+window.initParsers = async function () {
+  if (window.__parsersInitialized) return;
+  window.__parsersInitialized = true;
+
+  await loadAllSavedUserParsers();
+  await initializeAllParserSettings();
+  await cleanupOrphanSettingsAndEnables();
+};
+
 // registerParser - Used to process all built-in parsers.
 window.registerParser = async function ({
   title,
@@ -326,7 +343,9 @@ window.registerParser = async function ({
   mode = "listen",
   fn,
   iframeFn,
+  iframeSelectors,
   iframeOrigins,
+  isLibraryActivity,
   userAdd = false,
   userScript = false,
   initOnly = false,
@@ -335,19 +354,12 @@ window.registerParser = async function ({
   const domains = (Array.isArray(domain) ? domain : [domain]).filter(Boolean);
   if (!domains.length || typeof fn !== "function") return;
 
-  // wait initialSettings ready
-  while (!window.initialSettings) {
-    await new Promise((r) => setTimeout(r, 50));
+  async function domReady() {
+    if (document.readyState !== "loading") return Promise.resolve();
+    return new Promise((r) => document.addEventListener("DOMContentLoaded", r, { once: true }));
   }
 
-  if (!initLoadPromise) {
-    initLoadPromise = (async () => {
-      await loadAllSavedUserParsers();
-      await initializeAllParserSettings();
-      await cleanupOrphanSettingsAndEnables();
-    })();
-  }
-  await initLoadPromise;
+  await domReady();
 
   const patternStrings = (urlPatterns || [])
     .map((p) => {
@@ -359,7 +371,7 @@ window.registerParser = async function ({
 
   // bind the id
   const primaryDomain = domains[0];
-  const id = generateParserKey(primaryDomain, urlPatterns);
+  const id = generateParserKey(primaryDomain, urlPatterns, authors);
   const boundUseSetting = (key, label, type = "text", defaultValue = "", newValue) => useSetting(id, key, label, type, defaultValue, newValue);
   const patternRegexes = (urlPatterns || []).map(parseUrlPattern);
 
@@ -385,9 +397,15 @@ window.registerParser = async function ({
       tags,
       mode,
       iframeFn,
+      iframeSelectors,
       iframeOrigins,
+      isLibraryActivity,
       parse: async () => {
-        if (iframeFn) await fetchIframeData(primaryDomain);
+        const needsIframe = iframeFn || iframeSelectors;
+        if (needsIframe) {
+          fetchIframeData(primaryDomain, iframeSelectors).catch(() => {});
+        }
+
         if (initOnly) return null;
 
         const rawData = await fn({
@@ -654,6 +672,9 @@ window.getSongInfo = async function () {
               let dataTitle = String(song.title || "").trim();
               let dataArtist = String(song.artist || "").trim();
               let dataSource = String(song.source || "").trim();
+
+              // return null if there is no title, no artist and it is a library activity
+              if (!song.title && !song.artist && parser.isLibraryActivity) return null;
 
               // Normalization
               const normalized = await normalizeTitleAndArtist(dataTitle, dataArtist);
@@ -936,24 +957,49 @@ window.addEventListener("message", async (event) => {
         "*",
       );
     }
-  } else if (msg?.type === "USER_SCRIPT_TRACK_DATA") {
+  }
+  if (msg?.type === "USER_SCRIPT_IFRAME_DATA_REQUEST") {
+    const { requestId, id, iframeSelectors } = msg;
+    const key = id;
+    fetchIframeData(key, iframeSelectors).then((data) => {
+      window.postMessage(
+        {
+          type: "USER_SCRIPT_IFRAME_DATA_RESPONSE",
+          requestId,
+          data: data ?? null,
+        },
+        "*",
+      );
+    });
+  }
+  if (msg?.type === "USER_SCRIPT_TRACK_DATA") {
     // Handle User Script Track Data
     const now = Date.now();
     const domain = msg.data.domain || location.host;
+    const prevSong = window.latestUserScriptData[domain];
+    const newSong = msg.data.song;
+
+    const isSignificantChange =
+      !prevSong ||
+      prevSong.isPlaying !== newSong.isPlaying ||
+      (typeof prevSong.timePassed === "number" && typeof newSong.timePassed === "number" && Math.abs(newSong.timePassed - prevSong.timePassed) > 2);
+
+    window.latestUserScriptData[domain] = newSong;
 
     if (!firstTrackSentDomains.has(domain)) {
       firstTrackSentDomains.add(domain);
-
       try {
-        browser.runtime.sendMessage({
-          type: "RESTART_LOOP",
-        });
-      } catch (e) {
-        logError("Failed to send RESTART_LOOP:", e);
-      }
+        browser.runtime.sendMessage({ type: "RESTART_LOOP" });
+      } catch (e) {}
+    } else if (isSignificantChange) {
+      try {
+        browser.runtime.sendMessage({ type: "RESTART_LOOP" });
+      } catch (e) {}
     }
 
     window.latestUserScriptData[domain] = msg.data.song;
+    window.latestUserScriptMeta = window.latestUserScriptMeta || {};
+    window.latestUserScriptMeta[domain] = msg.data;
 
     if (typeof window.registerParser === "function") {
       const autoDetectEnabled = msg.data.mode === "watch" && msg.data.watchAutoDetect && msg.data.watchAutoDetect !== "disable";
@@ -971,12 +1017,20 @@ window.addEventListener("message", async (event) => {
         watchAutoDetect: msg.data.watchAutoDetect,
         userAdd: false,
         userScript: true,
+        ...(msg.data.isLibraryActivity && {
+          isLibraryActivity: msg.data.isLibraryActivity,
+        }),
         fn: async function ({ iframeData }) {
           try {
             const song = window.latestUserScriptData[msg.data.domain];
             if (!song) return null;
 
-            const videoData = autoDetectEnabled ? getBestVideo(document.querySelectorAll("video")) : null;
+            const latestMeta = window.latestUserScriptMeta?.[msg.data.domain];
+            const currentAutoDetect = latestMeta
+              ? latestMeta.mode === "watch" && latestMeta.watchAutoDetect && latestMeta.watchAutoDetect !== "disable"
+              : autoDetectEnabled;
+
+            const videoData = currentAutoDetect ? getBestVideo(document.querySelectorAll("video")) : null;
             const { duration, currentTime, playing } = iframeData || videoData ? getBestData(iframeData, videoData) : {};
 
             return {
@@ -998,6 +1052,9 @@ window.addEventListener("message", async (event) => {
         },
         ...(autoDetectEnabled && {
           iframeFn: true,
+        }),
+        ...(msg.data.iframeSelectors && {
+          iframeSelectors: msg.data.iframeSelectors,
         }),
       });
     }
@@ -1190,7 +1247,7 @@ async function cleanupOrphanSettingsAndEnables() {
 
 const activeFetchIframeListeners = Object.create(null);
 
-function fetchIframeData(key, maxDelayMs = 10000) {
+function fetchIframeData(key, iframeSelectors = null, maxDelayMs = 10000) {
   if (activeFetchIframeListeners[key]) {
     browser.runtime.onMessage.removeListener(activeFetchIframeListeners[key]);
     delete activeFetchIframeListeners[key];
@@ -1250,7 +1307,13 @@ function fetchIframeData(key, maxDelayMs = 10000) {
 
     activeFetchIframeListeners[key] = listener;
     browser.runtime.onMessage.addListener(listener);
-    browser.runtime.sendMessage({ type: "FETCH_IFRAME_DATA", key }).catch(() => {});
+    browser.runtime
+      .sendMessage({
+        type: "FETCH_IFRAME_DATA",
+        key,
+        ...(iframeSelectors ? { iframeSelectors } : {}),
+      })
+      .catch(() => {});
   });
 }
 
@@ -1267,3 +1330,11 @@ window.addEventListener("error", (event) => {
     event.preventDefault();
   }
 });
+
+(async function init() {
+  await domReady();
+  await window.initParsers();
+
+  window.__parserSystemReady = true;
+  window.dispatchEvent(new Event("parser-ready"));
+})();

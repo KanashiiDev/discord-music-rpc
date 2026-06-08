@@ -10,12 +10,11 @@ const DEFAULT_JS_FILES = [
   "rpcStateManager.js",
   "keepAliveManager.js",
   "mainParser.js",
-  "compiledParsers.js",
   "popup/selector/selector.js",
   "main.js",
 ];
 
-const IFRAME_JS_FILES = ["libs/browser-polyfill.js", "compiledIframeParsers.js", "iframeParser.js"];
+const IFRAME_JS_FILES = ["libs/browser-polyfill.js", "iframeParser.js"];
 const EXCLUDED_DIRS = ["manifests", "parsers", "matches", path.join("libs", "codemirror", "addons")];
 
 function copyExtensionFiles(extensionDir, distDir) {
@@ -31,6 +30,19 @@ function buildManifest(extensionDir, target, pkgVersion) {
   const manifest = fs.readJsonSync(manifestPath);
   manifest.version = pkgVersion;
 
+  const currentDefaultJs = [...DEFAULT_JS_FILES];
+  const currentIframeJs = [...IFRAME_JS_FILES];
+
+  const compiledParsersPath = path.join(extensionDir, "compiledParsers.js");
+  if (fs.existsSync(compiledParsersPath)) {
+    currentDefaultJs.push("compiledParsers.js");
+  }
+
+  const compiledIframeParsersPath = path.join(extensionDir, "compiledIframeParsers.js");
+  if (fs.existsSync(compiledIframeParsersPath)) {
+    currentIframeJs.push("compiledIframeParsers.js");
+  }
+
   if (!manifest.content_scripts) {
     manifest.content_scripts = [];
   }
@@ -38,13 +50,13 @@ function buildManifest(extensionDir, target, pkgVersion) {
   manifest.content_scripts = manifest.content_scripts.map((script) => ({
     ...script,
     matches: ["<all_urls>"],
-    js: DEFAULT_JS_FILES,
+    js: currentDefaultJs,
   }));
 
   // iframe content script
   manifest.content_scripts.push({
     matches: ["<all_urls>"],
-    js: IFRAME_JS_FILES,
+    js: currentIframeJs,
     all_frames: true,
     match_about_blank: true,
     run_at: "document_idle",

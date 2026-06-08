@@ -138,7 +138,6 @@ body[data-section="main"] #mainFooterButtons {
   opacity: 1;
 }
 
-body[data-section="main"] #manageParsersBtn,
 body[data-section="main"] #historyStatsToggle {
   display: block !important;
 }
@@ -694,6 +693,9 @@ footer {
 
 .parser-title {
   cursor: pointer;
+  -webkit-box-flex: 1;
+  -ms-flex: 1;
+  flex: 1;
 }
 
 .parser-icon-container,
@@ -1120,11 +1122,7 @@ body[data-theme="dark"] #githubLink img {
   filter: invert(1);
 }
 
-#manageParsersBtn,
-#openFiltersBtn,
-#openDashboardBtn,
-#githubLink,
-#settingsToggle {
+footer a {
   opacity: 0.7;
   -webkit-transition: opacity var(--transition-normal) ease;
   transition: opacity var(--transition-normal) ease;
@@ -1368,11 +1366,7 @@ body[data-theme="dark"] #githubLink img {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E %3Cpath d='M15.88 8.29L10 14.17l-1.88-1.88a.996.996 0 1 0-1.41 1.41l2.59 2.59c.39.39 1.02.39 1.41 0L17.3 9.7a.996.996 0 0 0 0-1.41c-.39-.39-1.03-.39-1.42 0z' fill='%23fff'/%3E %3C/svg%3E");
 }
 
-#manageParsersBtn:hover,
-#openFiltersBtn:hover,
-#openDashboardBtn:hover,
-#githubLink:hover,
-#settingsToggle:hover,
+footer a:hover,
 .history-entry:hover .song-link,
 #historyToggle:hover,
 #historyStatsToggle:hover,
@@ -2188,25 +2182,6 @@ span.gradient-color-btn.button {
 .flatpickr-calendar.animate {
   -webkit-animation-duration: var(--transition-reduced) !important;
   animation-duration: var(--transition-reduced) !important;
-}
-
-#manageParsersBtn {
-  display: none;
-  position: relative;
-}
-
-#manageParsersBtn.has-new::after {
-  content: "";
-  position: absolute;
-  top: -3px;
-  right: -5px;
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--red-color);
-  -webkit-box-shadow: 0 0 0 2px var(--shadow-color);
-  box-shadow: 0 0 0 2px var(--shadow-color);
-  pointer-events: none;
 }
 
 .pvs-overlay {

@@ -671,6 +671,10 @@ input[type="text"] {
   border: 1px solid var(--accent-color);
 }
 
+.parser-chip.orphaned {
+  background: var(--red-color-dark);
+}
+
 .chip-remove {
   font-size: 10px;
   opacity: 0.55;
@@ -679,7 +683,7 @@ input[type="text"] {
   transition: opacity var(--transition-reduced) ease;
 }
 
-.parser-chip.selected:hover .chip-remove {
+.parser-chip:hover .chip-remove {
   opacity: 1;
 }
 
