@@ -97,10 +97,6 @@ class UserScriptManager {
     this.registeredScripts = new Map();
   }
 
-  generateScriptId(domain, urlPatterns, authors = []) {
-    return generateParserKey(domain, urlPatterns, authors);
-  }
-
   buildTrackDataScript(script) {
     const { normalizedList } = PatternValidator.processPatterns(script.urlPatterns);
 
@@ -320,7 +316,7 @@ class UserScriptManager {
   async registerUserScript(script) {
     try {
       if (!script.id) {
-        script.id = this.generateScriptId(script.domain, script.urlPatterns, script.authors || []);
+        script.id = generateParserKey(script.domain, script.urlPatterns, script.authors || []);
       }
       const manifest = browser.runtime.getManifest();
       const isMV3 = manifest.manifest_version === 3;
@@ -416,7 +412,7 @@ class UserScriptManager {
 
     for (const script of scripts) {
       try {
-        if (!script.id) script.id = this.generateScriptId(script.domain, script.urlPatterns, script.authors || []);
+        if (!script.id) script.id = generateParserKey(script.domain, script.urlPatterns, script.authors || []);
 
         if (parserEnabledState[`enable_${script.id}`] === undefined) {
           parserEnabledState[`enable_${script.id}`] = true;

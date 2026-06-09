@@ -14,6 +14,7 @@ const handleListUserScripts = async (showStoreParsers = false) => {
 const handleSaveUserScript = async (req) => {
   const scriptData = req.script;
   const previousId = req.previousId;
+  const fromImport = req.fromImport;
   const scriptsList = await scriptManager.storage.getScripts();
 
   const cleanDomain = (d) => {
@@ -48,12 +49,8 @@ const handleSaveUserScript = async (req) => {
 
       scriptsList.splice(prevIndex, 1);
       await scriptManager.storage.saveScripts(scriptsList);
-
-      scriptData.id = scriptManager.generateScriptId(scriptData.domain, scriptData.urlPatterns, scriptData.authors || []);
       scriptData._oldSettings = oldSettings;
     }
-  } else {
-    scriptData.id = scriptManager.generateScriptId(scriptData.domain, scriptData.urlPatterns, scriptData.authors || []);
   }
 
   // Normalize URL patterns
@@ -61,6 +58,20 @@ const handleSaveUserScript = async (req) => {
 
   // Saving Script
   const newIndex = scriptsList.findIndex((s) => s.id === scriptData.id);
+
+  // Duplicate content check
+  const contentDuplicate = scriptsList.find(
+    (s) =>
+      s.id !== (previousId || scriptData.id) &&
+      s.title === scriptData.title &&
+      s.domain?.toString() === scriptData.domain?.toString() &&
+      JSON.stringify(s.urlPatterns) === JSON.stringify(scriptData.urlPatterns),
+  );
+
+  if (!fromImport && !scriptData.storeFilePath && (contentDuplicate || (newIndex >= 0 && !previousId))) {
+    return { ok: false, error: "userscript.editor.warn.saveFailed.duplicate" };
+  }
+
   const newScript = {
     ...scriptData,
     lastUpdated: Date.now(),

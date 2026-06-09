@@ -524,6 +524,8 @@ small > code {
   margin: 10px 0;
   border-radius: var(--radius-default);
   background: var(--foreground-color-100);
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
 
 .modal-content-wrapper .section {

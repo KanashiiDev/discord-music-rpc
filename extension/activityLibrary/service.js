@@ -402,11 +402,13 @@ class GitHubStoreService {
 
       const updates = [];
       const newScripts = [];
+      const remoteIds = new Set();
 
       for (const remoteMeta of scripts) {
         if (!remoteMeta?.file) continue;
 
         const scriptId = remoteMeta.id ?? generateParserKey(remoteMeta.domain, remoteMeta.urlPatterns ?? ["/.*/"], remoteMeta.authors);
+        remoteIds.add(scriptId);
         const localScript = installedMap.get(scriptId);
 
         if (!localScript) {
@@ -416,7 +418,30 @@ class GitHubStoreService {
         }
       }
 
-      return { ok: true, repoId, checked: true, changed, updates, newScripts };
+      // Auto-remove scripts that are no longer in the repo
+      const removedScripts = [];
+      for (const [installedId, localScript] of installedMap) {
+        if (localScript.storeRepoId !== repoId) continue;
+        if (remoteIds.has(installedId)) continue;
+        removedScripts.push(localScript);
+      }
+
+      for (const script of removedScripts) {
+        try {
+          await scriptManager.unregisterUserScript(script);
+          const list = await scriptManager.storage.getScripts();
+          const idx = list.findIndex((s) => s.id === script.id);
+          if (idx !== -1) {
+            list.splice(idx, 1);
+            await scriptManager.storage.saveScripts(list);
+          }
+          console.log(`[GitHubStore] Auto-removed: ${script.title} (${script.id}) — no longer in repo`);
+        } catch (err) {
+          console.error(`[GitHubStore] Auto-remove failed: ${script.id}`, err);
+        }
+      }
+
+      return { ok: true, repoId, checked: true, changed, updates, newScripts, removedScripts };
     } catch (err) {
       repo.lastChecked = Date.now();
       repos[repoId] = repo;

@@ -748,7 +748,7 @@ class UserScriptUI {
       .filter(Boolean);
 
     const script = {
-      id: generateParserKey(domain, normalizedList, authorsData),
+      id: this.editingId || generateParserKey(domain, normalizedList, authorsData),
       title: $("inTitle").value.trim(),
       version: $("inVersion").value.trim(),
       description: $("inDesc").value.trim(),
@@ -787,8 +787,13 @@ class UserScriptUI {
       return;
     }
 
-    if (!script.domain) {
+    if (domainEmpty) {
       this.showMessage(i18n.t("userscript.editor.warn.emptyDomain"), "error");
+      return;
+    }
+
+    if (!script.authors.length) {
+      this.showMessage(i18n.t("userscript.editor.warn.emptyAuthors"), "error");
       return;
     }
 
@@ -823,7 +828,12 @@ class UserScriptUI {
       this.showMessage("Script saved and registered successfully.", "success");
       await this.refreshList();
     } else {
-      this.showMessage(i18n.t("userscript.editor.warn.saveFailed") + " " + (response?.error || "Unknown error"), "error");
+      this.showMessage(
+        `${i18n.t("userscript.editor.warn.saveFailed")} ${
+          response?.error?.startsWith("userscript.editor") ? i18n.t(response.error) : response?.error || "Unknown error"
+        }`,
+        "error",
+      );
     }
   }
 
@@ -948,6 +958,7 @@ class UserScriptUI {
         const categoryStr = script.category ? `\n  category: "${script.category}",` : "";
 
         return `registerParser({
+  id: "${script.id}",
   domain: ${domainStr},
   authors: "${authorsStr}",
   authorsLinks: "${authorsLinksStr}",
@@ -1084,7 +1095,7 @@ ${codeIndented}
               code = block
                 .slice(fnBodyStart + 1, m)
                 .split("\n")
-                .map((line) => (line.startsWith("  ") ? line.slice(2) : line))
+                .map((line) => (line.startsWith("    ") ? line.slice(4) : line))
                 .join("\n")
                 .trim();
               break;
@@ -1096,24 +1107,24 @@ ${codeIndented}
 
       const authors = extractStr("authors");
       const authorsLinks = extractStr("authorsLinks");
+      const splitList = (s) =>
+        s
+          ? s
+              .split(",")
+              .map((x) => x.trim())
+              .filter(Boolean)
+          : [];
+
+      const authorsStr = splitList(authors);
+      const authorsLinksStr = splitList(authorsLinks);
 
       scripts.push({
         title: extractStr("title"),
         description: extractStr("description"),
         domain,
         homepage: extractStr("homepage"),
-        authors: authors
-          ? authors
-              .split(",")
-              .map((a) => a.trim())
-              .filter(Boolean)
-          : [],
-        authorsLinks: authorsLinks
-          ? authorsLinks
-              .split(",")
-              .map((a) => a.trim())
-              .filter(Boolean)
-          : [],
+        authors: authorsStr,
+        authorsLinks: authorsLinksStr,
         urlPatterns,
         mode: extractStr("mode") || "listen",
         watchAutoDetect: extractStr("watchAutoDetect") || "disable",
@@ -1121,7 +1132,7 @@ ${codeIndented}
         tags,
         iframeSelectors,
         code,
-        id: `${[domain].flat()[0] || "script"}_${Math.random().toString(36).slice(2, 8)}`,
+        id: extractStr("id") || generateParserKey(domain, urlPatterns, authorsStr),
         lastUpdated: extractStr("lastUpdated"),
         runAt: "document_idle",
         registered: false,
@@ -1145,8 +1156,8 @@ ${codeIndented}
       const existingResp = await sendAction("listUserScripts");
       const existing = existingResp?.list || [];
 
-      const duplicates = scripts.filter((s) => existing.some((ex) => ex.urlPatterns === s.urlPatterns && ex.domain === s.domain && ex.title === s.title));
-      const newScripts = scripts.filter((s) => !existing.some((ex) => ex.urlPatterns === s.urlPatterns && ex.domain === s.domain && ex.title === s.title));
+      const duplicates = scripts.filter((s) => existing.some((ex) => ex.id === s.id || (ex.title === s.title && ex.domain?.toString() === s.domain?.toString())));
+      const newScripts = scripts.filter((s) => !existing.some((ex) => ex.id === s.id || (ex.title === s.title && ex.domain?.toString() === s.domain?.toString())));
 
       const { duplicates: dupChoices, newScripts: newChoices } = await this.showImportModalSelection(duplicates, newScripts, existing);
 
@@ -1294,7 +1305,7 @@ ${codeIndented}
       const match = existing.find((ex) => ex.domain === s.domain && ex.title === s.title);
       if (match) s.id = match.id;
 
-      const res = await sendAction("saveUserScript", { script: s });
+      const res = await sendAction("saveUserScript", { script: s, fromImport: true });
       results.push({ ...s, status: res?.ok ? "success" : "error" });
       await scriptManager.registerAllScripts();
     }
