@@ -28,7 +28,7 @@ async function renderList(filteredList = null, isSearch = null) {
   const tabHostname = normalizeHost(tabUrl.hostname);
   const tabPath = tabUrl.pathname;
 
-  const list = filteredList ?? (await getFreshParserList());
+  const list = filteredList ?? (await getFreshParserList(true));
 
   if (!list?.length) {
     spinner.remove();

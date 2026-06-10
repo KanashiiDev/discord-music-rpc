@@ -326,8 +326,8 @@ window.initParsers = async function () {
 
   await loadAllSavedUserParsers();
   await initializeAllParserSettings();
+  await scheduleParserListSave();
   await cleanupOrphanSettingsAndEnables();
-  scheduleParserListSave();
 };
 
 // registerParser - Used to process all built-in parsers.
@@ -1213,34 +1213,44 @@ async function syncParserSettings(id, declaredSettings = []) {
 // Cleanup Orphan Settings And Enables
 async function cleanupOrphanSettingsAndEnables() {
   try {
-    const all = await browser.storage.local.get(null);
-    const parserList = (await browser.storage.local.get("parserList")).parserList || [];
-    const validIds = new Set(parserList.map((p) => p.id));
+    const {
+      userScriptsList = [],
+      userParserSelectors = [],
+      parserSettings = {},
+      parserEnabledState = {},
+    } = await browser.storage.local.get(["userScriptsList", "userParserSelectors", "parserSettings", "parserEnabledState"]);
 
-    if (!parserList.length) return;
+    // At least one of them must be filled
+    if (!userScriptsList.length && !userParserSelectors.length) return;
 
-    for (const key of Object.keys(all)) {
-      // settings_ clean
-      if (key.startsWith("settings_")) {
-        const id = key.replace("settings_", "");
+    const validIds = new Set([...userScriptsList.map((s) => s.id), ...userParserSelectors.map((s) => s.id)]);
 
-        if (!validIds.has(id)) {
-          logInfo(`Deleted Orphan Setting: ${key}`);
-          await browser.storage.local.remove(key);
-          delete settingsCache[key];
-        }
-      }
-
-      // enable_ clean
-      if (key.startsWith("enable_")) {
-        const id = key.replace("enable_", "");
-
-        if (!validIds.has(id)) {
-          logInfo(`Deleted Orphan Enable: ${key}`);
-          await browser.storage.local.remove(key);
-        }
+    // parserSettings cleanup
+    let settingsDirty = false;
+    for (const key of Object.keys(parserSettings)) {
+      if (!key.startsWith("settings_")) continue;
+      const id = key.slice("settings_".length);
+      if (!validIds.has(id)) {
+        logInfo(`Deleted Orphan Setting: ${key}`);
+        delete parserSettings[key];
+        delete settingsCache[key];
+        settingsDirty = true;
       }
     }
+    if (settingsDirty) await browser.storage.local.set({ parserSettings });
+
+    // parserEnabledState cleanup
+    let enableDirty = false;
+    for (const key of Object.keys(parserEnabledState)) {
+      if (!key.startsWith("enable_")) continue;
+      const id = key.slice("enable_".length);
+      if (!validIds.has(id)) {
+        logInfo(`Deleted Orphan Enable: ${key}`);
+        delete parserEnabledState[key];
+        enableDirty = true;
+      }
+    }
+    if (enableDirty) await browser.storage.local.set({ parserEnabledState });
   } catch (e) {
     logError("cleanupOrphanSettingsAndEnables error:", e);
   }

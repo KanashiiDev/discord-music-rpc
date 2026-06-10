@@ -1052,7 +1052,7 @@ const setupListeners = () => {
   browser.runtime.onMessage.addListener(async (req, sender) => {
     try {
       if (req.type === "REQUEST_FRESH_PARSER_LIST") {
-        await loadParserListOnce(true);
+        await loadParserListOnce(req.force);
         return { ok: true, data: state.parserList || [] };
       }
       if (req.type === "FETCH_IFRAME_DATA") {

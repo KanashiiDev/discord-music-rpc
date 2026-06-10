@@ -421,9 +421,6 @@ domLoadedListener = async () => {
     document.querySelector("#openDashboardBtn").appendChild(createSVG(svg_paths.dashboardIconPaths));
     document.querySelector("#openLibraryBtn").appendChild(createSVG(svg_paths.storeIconPaths));
 
-    // Fetch the full parser list once for snapshot + setup
-    const freshList = await getFreshParserList();
-
     // Initial render
     const renderStatus = await renderList();
     await activateSimpleBar("siteList");

@@ -1096,10 +1096,11 @@ const svg_paths = {
 };
 
 // Get Fresh Parser List
-async function getFreshParserList() {
+async function getFreshParserList(force = false) {
   try {
     const response = await browser.runtime.sendMessage({
       type: "REQUEST_FRESH_PARSER_LIST",
+      force,
     });
 
     return response?.data ?? [];
