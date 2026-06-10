@@ -1098,17 +1098,13 @@ const svg_paths = {
 // Get Fresh Parser List
 async function getFreshParserList() {
   try {
-    const response = await browser.runtime.sendMessage({ type: "REQUEST_FRESH_PARSER_LIST" }).catch(() => null);
-    if (response && response.data && Array.isArray(response.data)) {
-      return response.data;
-    }
+    const response = await browser.runtime.sendMessage({
+      type: "REQUEST_FRESH_PARSER_LIST",
+    });
 
-    const storageData = await browser.storage.local.get("parserList");
-    if (storageData.parserList && Array.isArray(storageData.parserList)) {
-      return storageData.parserList;
-    }
+    return response?.data ?? [];
   } catch (error) {
-    console.log("An error occurred while getFreshParserList was running:", error);
+    console.error("getFreshParserList error:", error);
     return [];
   }
 }

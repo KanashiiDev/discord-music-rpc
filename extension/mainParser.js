@@ -327,6 +327,7 @@ window.initParsers = async function () {
   await loadAllSavedUserParsers();
   await initializeAllParserSettings();
   await cleanupOrphanSettingsAndEnables();
+  scheduleParserListSave();
 };
 
 // registerParser - Used to process all built-in parsers.
@@ -586,9 +587,9 @@ window.registerParser = async function ({
       const bTitle = b.title || (Array.isArray(b.domain) ? b.domain[0] : b.domain) || "";
       return aTitle.toLowerCase().localeCompare(bTitle.toLowerCase());
     });
-
-    scheduleParserListSaveOnce();
   }
+
+  scheduleParserListSaveOnce();
 };
 
 // Save parser metadata to storage

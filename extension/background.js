@@ -177,10 +177,15 @@ async function getParserSettings(parserId) {
 
 // Load the parsers once, return true if they exist.
 const parserListMutex = createMutex();
-const loadParserListOnce = async () => {
+const loadParserListOnce = async (force = false) => {
   return parserListMutex(async () => {
-    if (state.parserListLoaded) {
+    if (!force && state.parserListLoaded) {
       return true;
+    }
+
+    if (force) {
+      state.parserListLoaded = false;
+      state.parserListLoading = null;
     }
 
     if (state.parserListLoading) {
