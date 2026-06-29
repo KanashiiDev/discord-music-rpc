@@ -917,6 +917,25 @@ footer {
   gap: 0;
 }
 
+.settings-option .wiki-wrap,
+.settings-option .debug-wrap {
+  display: -webkit-box;
+  display: -ms-flexbox;
+  display: flex;
+}
+
+.settings-option .wiki-wrap .settings-btn,
+.settings-option .debug-wrap .settings-btn {
+  -webkit-box-flex: 1;
+  -ms-flex: 1;
+  flex: 1;
+}
+
+#debugSection:not(.active) {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
 input[type="range"] {
   -webkit-appearance: none !important;
   -moz-appearance: none !important;

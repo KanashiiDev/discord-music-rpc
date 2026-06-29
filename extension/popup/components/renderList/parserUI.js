@@ -39,7 +39,7 @@ function createEntryClickHandler(container, wrapper, optionsContainer) {
         parserState.isParserOpen = false;
       }
     } catch (err) {
-      console.error(err);
+      logError("[parserOptionsToggle]: error: ", err);
     } finally {
       parserState.isParserAnimating = false;
     }

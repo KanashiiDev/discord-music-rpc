@@ -42,11 +42,12 @@ async function scheduleHistoryAdd(tabId, songData) {
   if (!songData?.title || !songData?.artist) return;
 
   if (!state.historyCounters) state.historyCounters = new Map();
-  const key = `${songData.title}::${songData.artist}::${songData.source}::${songData.image}`;
+  const key = `${songData.title}::${songData.artist}::${songData.source}`;
   const tracker = state.historyCounters.get(tabId);
   const now = Date.now();
 
   if (!tracker || tracker.lastKey !== key) {
+    logInfo("[background:scheduleHistoryAdd]: New song detected for tab:", tabId, "title:", songData.title, "artist:", songData.artist);
     state.historyCounters.set(tabId, { lastKey: key, startTime: now });
     return;
   }
@@ -68,6 +69,7 @@ async function scheduleHistoryAdd(tabId, songData) {
 
         if (!sameAsLast && saveHistory) {
           // Add to History
+          logInfo("[background:scheduleHistoryAdd]: Adding to history - title:", songData.title, "artist:", songData.artist, "source:", songData.source);
           await addToHistory({
             image: songData.image,
             title: songData.title,
@@ -76,9 +78,11 @@ async function scheduleHistoryAdd(tabId, songData) {
             songUrl: songData.songUrl,
             date: tracker.startTime || now,
           });
+        } else {
+          logInfo("[background:scheduleHistoryAdd]: Skipped - sameAsLast:", sameAsLast, "saveHistory:", saveHistory);
         }
       } catch (error) {
-        logError("History add error:", error);
+        logError("[background:scheduleHistoryAdd]: History add error:", error);
       }
     });
     // Clear tracker
@@ -96,7 +100,7 @@ async function loadParserList() {
 
     const { parserList = [], userParserSelectors = [], userScriptsList = [] } = await browser.storage.local.get(["parserList", "userParserSelectors", "userScriptsList"]);
     const builtInList = parserList.filter((p) => !p.userAdd && !p.userScript);
-    logInfo(`Loaded ${builtInList.length} built-in parsers, ${userParserSelectors.length} selector parsers and ${userScriptsList.length} user scripts.`);
+    logInfo(`Loaded ${builtInList.length} built-in, ${userParserSelectors.length} selector, ${userScriptsList.length} userscript parsers`);
 
     // Selector Parsers
     const userList = userParserSelectors.map((u) => {
@@ -137,7 +141,7 @@ async function loadParserList() {
     await loadParserEnabledCache(state.parserEnabledCache, state.parserList);
     state.parserListLoaded = true;
   } catch (error) {
-    logError("Parser list loading failed:", error);
+    logError("[background:loadParserList]: ParserList loading failed:", error);
     state.parserList = [];
     state.parserMap = {};
     state.parserListLoaded = true;
@@ -170,7 +174,7 @@ async function getParserSettings(parserId) {
 
     return parsedSettings;
   } catch (err) {
-    console.error("getParserSettings failed:", err);
+    logError("[background:getParserSettings]: getParserSettings failed:", err);
     return {};
   }
 }
@@ -198,7 +202,7 @@ const loadParserListOnce = async (force = false) => {
         state.parserListLoaded = true;
         return true;
       } catch (e) {
-        logError("Critical: Parser load failed", e);
+        logError("[background:loadParserListOnce]: ParserList load failed", e);
         return false;
       } finally {
         state.parserListLoading = null;
@@ -223,7 +227,7 @@ const clearRpcForTab = async (tabId, reason = "Tab closed") => {
     }
 
     if (state.pendingClear.has(tabId)) {
-      logInfo(`Clear already pending for tab ${tabId}, skipping`);
+      logInfo(`[background:clearRpcForTab]: Clear already pending for tab ${tabId}, skipping`);
       return;
     }
 
@@ -235,7 +239,7 @@ const clearRpcForTab = async (tabId, reason = "Tab closed") => {
       const pending = state.pendingUpdates.get(tabId);
       if (pending?.timeout) {
         clearTimeout(pending.timeout);
-        logInfo(`clearRpcForTab: cleared pending update for tab ${tabId}`);
+        logInfo(`[background:clearRpcForTab]: cleared pending update for tab ${tabId}`);
       }
       state.pendingUpdates.delete(tabId);
 
@@ -249,7 +253,7 @@ const clearRpcForTab = async (tabId, reason = "Tab closed") => {
       const controller = state.pendingFetches.get(tabId);
       if (controller) {
         controller.abort();
-        logInfo(`clearRpcForTab: aborted fetch for tab ${tabId}`);
+        logInfo(`[background:clearRpcForTab]: aborted fetch for tab ${tabId}`);
       }
       state.pendingFetches.delete(tabId);
 
@@ -259,7 +263,7 @@ const clearRpcForTab = async (tabId, reason = "Tab closed") => {
           tab = await browser.tabs.get(tabId);
         } catch (err) {
           if (err.message.includes("No tab with id")) {
-            logInfo(`Tab ${tabId} is already closed, RPC cleanup skipped.`);
+            logInfo(`[background:clearRpcForTab]: Tab ${tabId} is already closed, RPC cleanup skipped.`);
           }
         }
 
@@ -281,6 +285,7 @@ const clearRpcForTab = async (tabId, reason = "Tab closed") => {
           console.log(`Reason: %c${reason}`, "color: #0275d8; font-weight: bold;");
           console.groupEnd();
         }
+        logInfo(`[background:clearRpcForTab]: Clearing RPC for tab ${tabId} - reason: ${reason}`);
         try {
           await fetchWithTimeout(
             `http://localhost:${state.serverPort}/clear-rpc`,
@@ -291,13 +296,13 @@ const clearRpcForTab = async (tabId, reason = "Tab closed") => {
             },
             CONFIG.requestTimeout,
           );
-          logInfo(`✅ Cleared RPC for tab ${tabId}`);
+          logInfo(`[background:clearRpcForTab]: Cleared RPC for tab ${tabId}`);
         } catch (err) {
-          logError(`❌ RPC clear failed for tab ${tabId}:`, err.message);
+          logError(`[background:clearRpcForTab]: RPC clear failed for tab ${tabId}:`, err.message);
         }
       }
     } catch (e) {
-      logError(`Clear RPC failed tab ${tabId}`, e);
+      logError(`[background:clearRpcForTab]: Clear RPC failed tab ${tabId}`, e);
     } finally {
       state.activeTabMap.delete(tabId);
       state.pendingClear.delete(tabId);
@@ -318,6 +323,7 @@ const deferredCleanup = async () => {
 
   const tabsToClean = [...state.cleanupQueue];
   state.cleanupQueue.clear();
+  logInfo("[background:deferredCleanup]: Cleaning up", tabsToClean.length, "tabs:", tabsToClean.join(", "));
   for (const tabId of tabsToClean) {
     await clearRpcForTab(tabId, "deferred Cleanup");
   }
@@ -352,7 +358,7 @@ const updateActiveTabMap = async (state, tabs) => {
               return regex.test(urlObj.pathname);
             });
           } catch (e) {
-            logError(`Pattern error for parser ${parser.id}:`, e);
+            logError(`[background:updateActiveTabMap]: Pattern error for parser ${parser.id}:`, e);
             return false;
           }
         });
@@ -361,7 +367,7 @@ const updateActiveTabMap = async (state, tabs) => {
           matchedTabsMap.set(tab.id, { tab, matched: validMatches });
         }
       } catch (e) {
-        logError("Tab URL parsing error:", e);
+        logError("[background:updateActiveTabMap]: Tab URL parsing error:", e);
       }
     });
 
@@ -388,6 +394,8 @@ const updateActiveTabMap = async (state, tabs) => {
     const mainTab = matchedTabs.find((t) => t.active) || matchedTabs[0];
     const matchedData = matchedTabsMap.get(mainTab.id);
 
+    logInfo("[background:updateActiveTabMap]: New active tab selected:", mainTab.id, "parser:", matchedData?.matched[0]?.id ?? "none");
+
     state.activeTabMap.set(mainTab.id, {
       lastUpdated: Date.now(),
       lastKey: "",
@@ -407,7 +415,7 @@ const updateRpc = async (data, tabId) => {
   try {
     await browser.tabs.get(tabId);
   } catch (err) {
-    logInfo(`updateRpc: tab ${tabId} not found in browser, aborting`);
+    logInfo(`[background:updateRpc]: tab ${tabId} not found in browser, aborting`);
     return;
   }
 
@@ -432,18 +440,18 @@ const updateRpc = async (data, tabId) => {
               const domains = Array.isArray(parser.domain) ? parser.domain : [parser.domain];
               return domains.some((d) => isDomainMatch(d, hostname));
             } catch (e) {
-              logError("Domain match error:", e);
+              logError("[background:updateRpc]: Domain match error:", e);
               return false;
             }
           });
 
           if (exactMatch) {
             parserId = exactMatch.id;
-            logInfo(`Found exact parser match: ${hostname} -> ${parserId}`);
+            logInfo(`[background:updateRpc]: Found exact parser match: ${hostname} -> ${parserId}`);
           }
         }
       } catch (e) {
-        logError("Error finding correct parser:", e);
+        logError("[background:updateRpc]: Error finding correct parser:", e);
       }
     }
 
@@ -473,7 +481,7 @@ const updateRpc = async (data, tabId) => {
     );
   } catch (err) {
     if (err.name !== "AbortError") {
-      logError(`Update RPC failed for tab ${tabId}:`, err);
+      logError(`[background:updateRpc]: Update RPC failed for tab ${tabId}:`, err);
     }
     throw err;
   } finally {
@@ -486,12 +494,12 @@ const updateRpc = async (data, tabId) => {
 // Schedule RPC Update - It is used on the backgroundListeners.js SetupListeners side.
 const scheduleRpcUpdate = (data, tabId) => {
   if (state.pendingClear.has(tabId)) {
-    logInfo(`scheduleRpcUpdate: tab ${tabId} is being cleared, skipping`);
+    logInfo(`[background:scheduleRpcUpdate]: tab ${tabId} is being cleared, skipping`);
     return;
   }
 
   if (!state.activeTabMap.has(tabId)) {
-    logInfo(`scheduleRpcUpdate: tab ${tabId} not in activeTabMap, skipping`);
+    logInfo(`[background:scheduleRpcUpdate]: tab ${tabId} not in activeTabMap, skipping`);
     return;
   }
 
@@ -500,19 +508,19 @@ const scheduleRpcUpdate = (data, tabId) => {
 
   const timeout = setTimeout(() => {
     if (state.pendingClear.has(tabId)) {
-      logInfo(`scheduleRpcUpdate: tab ${tabId} cleared during wait, aborting update`);
+      logInfo(`[background:scheduleRpcUpdate]: tab ${tabId} cleared during wait, aborting update`);
       state.pendingUpdates.delete(tabId);
       return;
     }
 
     if (!state.activeTabMap.has(tabId)) {
-      logInfo(`scheduleRpcUpdate: tab ${tabId} removed during wait, aborting update`);
+      logInfo(`[background:scheduleRpcUpdate]: tab ${tabId} removed during wait, aborting update`);
       state.pendingUpdates.delete(tabId);
       return;
     }
 
     state.pendingUpdates.delete(tabId);
-    updateRpc(data, tabId).catch(logError);
+    updateRpc(data, tabId).catch((err) => logError("[background:updateRpc]", err));
   }, 500);
 
   state.pendingUpdates.set(tabId, { timeout, data });
@@ -547,8 +555,8 @@ const processTab = async (tabId, tabData) => {
 
   if (!res || typeof res !== "object") {
     if (!tabData.lastUpdated || now - tabData.lastUpdated > CONFIG.stuckThreshold) {
-      logInfo(`Tab ${tabId} did not respond, clearing RPC`);
-      await clearRpcForTab(tabId, "tab did not respond").catch(logError);
+      logInfo(`[background:processTab]: Tab ${tabId} did not respond, clearing RPC`);
+      await clearRpcForTab(tabId, "tab did not respond").catch((err) => logError("[background:clearRpcForTab]", err));
     }
     return;
   }
@@ -558,6 +566,7 @@ const processTab = async (tabId, tabData) => {
   // Radio / stream check (duration = 0)
   if (res.duration <= 0) {
     if (now - tabData.lastUpdated >= CONFIG.activeInterval) {
+      logInfo(`[background:processTab]: Tab ${tabId} is a stream/radio, duration=0, updating state`);
       state.activeTabMap.set(tabId, {
         ...res,
         lastUpdated: now,
@@ -579,7 +588,7 @@ const processTab = async (tabId, tabData) => {
 // Main Loop
 const mainLoop = async () => {
   if (state.isLoopRunning) {
-    logInfo("Main loop already running, skipping");
+    logInfo("[background:mainLoop]: Main loop already running, skipping");
     return;
   }
 
@@ -625,7 +634,7 @@ const mainLoop = async () => {
 
     await deferredCleanup();
   } catch (e) {
-    logError("Main Loop Error", e);
+    logError("[background:mainLoop]: Main Loop Error", e);
   } finally {
     state.lastLoopTime = Date.now();
     state.isLoopRunning = false;
@@ -646,19 +655,30 @@ const keepAlive = () => {
 
 // Start
 const init = async () => {
+  logInfo("[background:init]: Extension initializing");
+
   await browser.storage.local.get("serverPort").then((result) => {
-    if (result.serverPort !== undefined) state.serverPort = result.serverPort;
+    if (result.serverPort !== undefined) {
+      state.serverPort = result.serverPort;
+      logInfo("[background:init]: Server port loaded:", state.serverPort);
+    }
   });
 
   await browser.storage.local.get("discordWebPort").then((result) => {
-    if (result.discordWebPort !== undefined) state.discordWebPort = result.discordWebPort;
+    if (result.discordWebPort !== undefined) {
+      state.discordWebPort = result.discordWebPort;
+      logInfo("[background:init]: Discord web port loaded:", state.discordWebPort);
+    }
   });
 
+  debugLogCleanup();
   setupListeners();
   await parserReady();
   await scriptManager.registerAllScripts();
+  logInfo("[background:init]: Scripts registered, setting up store");
   await storeService.setupUpdateAlarm();
   await storeService.checkRepoUpdates();
+  logInfo("[background:init]: Init complete, starting main loop");
   await mainLoop();
   keepAlive();
 };

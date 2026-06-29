@@ -1,5 +1,6 @@
 // UserScript Actions
 const handleListUserScripts = async (showStoreParsers = false) => {
+  logInfo("[background:handleListUserScripts]: Fetching scripts...");
   const scripts = await scriptManager.storage.getScripts();
   const filteredScripts = showStoreParsers ? scripts : scripts.filter((script) => !script.storeFilePath);
   const { parserEnabledState = {} } = await browser.storage.local.get("parserEnabledState");
@@ -7,13 +8,14 @@ const handleListUserScripts = async (showStoreParsers = false) => {
     ...script,
     enabled: parserEnabledState[`enable_${script.id}`] !== false,
   }));
-
+  logInfo("[background:handleListUserScripts]: Script list fetched successfully. Count:", scriptsWithStatus.length);
   return { ok: true, list: scriptsWithStatus };
 };
 
 const handleSaveUserScript = async (req) => {
   const scriptData = req.script;
   const previousId = req.previousId;
+  logInfo("[background:handleSaveUserScript]: Saving script id:", scriptData?.id, "previousId:", previousId ?? "none");
   const fromImport = req.fromImport;
   const scriptsList = await scriptManager.storage.getScripts();
 
@@ -69,6 +71,7 @@ const handleSaveUserScript = async (req) => {
   );
 
   if (!fromImport && !scriptData.storeFilePath && (contentDuplicate || (newIndex >= 0 && !previousId))) {
+    logInfo("[background:handleSaveUserScript]: Duplicate detected, aborting save for:", scriptData.id);
     return { ok: false, error: "userscript.editor.warn.saveFailed.duplicate" };
   }
 
@@ -120,8 +123,10 @@ const handleSaveUserScript = async (req) => {
     if (isEnabled) {
       const registerResult = await scriptManager.registerUserScript(scriptData);
       isRegistered = registerResult?.ok && !registerResult.skipped;
+      logInfo("[background:handleSaveUserScript]: Register result for", scriptData.id, "- ok:", registerResult?.ok, "skipped:", registerResult?.skipped ?? false);
     } else {
       await scriptManager.unregisterUserScript(scriptData);
+      logInfo("[background:handleSaveUserScript]: Script disabled, unregistered:", scriptData.id);
     }
 
     //  Save current status
@@ -135,17 +140,19 @@ const handleSaveUserScript = async (req) => {
     scriptData.registered = isRegistered;
     return { ok: true, script: scriptData };
   } catch (err) {
-    logError("Error during register/unregister after save:", err);
+    logError("[background:userScript]: Error during register/unregister after save:", err);
     return { ok: false, error: err.message };
   }
 };
 
 const handleDeleteUserScript = async (req) => {
+  logInfo("[background:handleDeleteUserScript]: Deleting script id:", req.id);
   const scriptsList = await scriptManager.storage.getScripts();
   const deleteIndex = scriptsList.findIndex((s) => s.id === req.id);
 
   if (deleteIndex === -1) {
-    return { ok: false, error: "Script not found" };
+    logInfo("[background:handleDeleteUserScript]: Script not found:", req.id);
+    return { ok: false, error: "[background:userScript]: Script not found" };
   }
 
   // Unregister
@@ -179,14 +186,17 @@ const handleDeleteUserScript = async (req) => {
 };
 
 const handleRegisterUserScript = async (req) => {
+  logInfo("[background:handleRegisterUserScript]: Registering script id:", req.id);
   const scriptsList = await scriptManager.storage.getScripts();
   const scriptToRegister = scriptsList.find((s) => s.id === req.id);
 
   if (!scriptToRegister) {
+    logInfo("[background:handleRegisterUserScript]: Script not found:", req.id);
     return { ok: false, error: "Script not found" };
   }
 
   const registerResult = await scriptManager.registerUserScript(scriptToRegister);
+  logInfo("[background:handleRegisterUserScript]: Result for", req.id, "- ok:", registerResult.ok, "skipped:", registerResult.skipped);
 
   if (!registerResult.ok) {
     return { ok: false, error: registerResult.error };
@@ -204,10 +214,12 @@ const handleRegisterUserScript = async (req) => {
 };
 
 const handleUnregisterUserScript = async (req) => {
+  logInfo("[background:handleUnregisterUserScript]: Unregistering script id:", req.id);
   const scriptsList = await scriptManager.storage.getScripts();
   const scriptToUnregister = scriptsList.find((s) => s.id === req.id);
 
   if (!scriptToUnregister) {
+    logInfo("[background:handleUnregisterUserScript]: Script not found:", req.id);
     return { ok: false, error: "Script not found" };
   }
 
@@ -224,6 +236,7 @@ const handleUnregisterUserScript = async (req) => {
 };
 
 const handleToggleUserScript = async (req) => {
+  logInfo("[background:handleToggleUserScript]: Toggle script id:", req.id, "enabled:", req.enabled);
   const { parserEnabledState = {} } = await browser.storage.local.get("parserEnabledState");
   const enableKey = `enable_${req.id}`;
   const isEnabled = parserEnabledState[enableKey] !== false;
@@ -261,7 +274,7 @@ const handleStoreListRepos = async () => {
     const list = await storeService.listRepos();
     return { ok: true, list };
   } catch (err) {
-    logError("handleStoreListRepos:", err);
+    logError("[background:githubStore]: handleStoreListRepos:", err);
     return { ok: false, error: err.message };
   }
 };
@@ -272,7 +285,7 @@ const handleStoreAddRepo = async (req) => {
   try {
     return await storeService.addRepo(req.url.trim());
   } catch (err) {
-    logError("handleStoreAddRepo:", err);
+    logError("[background:githubStore]: handleStoreAddRepo:", err);
     return { ok: false, error: err.message };
   }
 };
@@ -282,12 +295,13 @@ const handleStoreRemoveRepo = async (req) => {
   if (!req.repoId) return { ok: false, error: "repoId required" };
 
   if (req.repoId === "KanashiiDev__discord-music-rpc-activities__main") {
-    return { ok: false, error: "The default main repository cannot be deleted from the system!" };
+    return { ok: false, error: "[background:githubStore]: The default main repository cannot be deleted from the system!" };
   }
 
   try {
     const scriptsList = await scriptManager.storage.getScripts();
     const scriptsToDelete = scriptsList.filter((s) => s.storeRepoId === req.repoId);
+    logInfo("[background:handleStoreRemoveRepo]: Removing repo:", req.repoId, "- scripts to delete:", scriptsToDelete.length);
 
     for (const script of scriptsToDelete) {
       await handleDeleteUserScript({ id: script.id });
@@ -301,7 +315,7 @@ const handleStoreRemoveRepo = async (req) => {
 
     return result;
   } catch (err) {
-    logError("handleStoreRemoveRepo:", err);
+    logError("[background:githubStore]: handleStoreRemoveRepo:", err);
     return { ok: false, error: err.message };
   }
 };
@@ -309,11 +323,12 @@ const handleStoreRemoveRepo = async (req) => {
 /** Checks for updates for all repositories */
 const handleStoreCheckUpdates = async () => {
   try {
+    logInfo("[background:handleStoreCheckUpdates]: Checking all repos for updates");
     const result = await storeService.checkAllReposForUpdates();
 
     return result;
   } catch (err) {
-    logError("handleStoreCheckUpdates:", err);
+    logError("[background:githubStore]: handleStoreCheckUpdates:", err);
     return { ok: false, error: err.message };
   }
 };
@@ -324,7 +339,7 @@ const handleStoreCheckRepoUpdates = async (req) => {
   try {
     return await storeService.checkRepoForUpdates(req.repoId);
   } catch (err) {
-    logError("handleStoreCheckRepoUpdates:", err);
+    logError("[background:githubStore]: handleStoreCheckRepoUpdates:", err);
     return { ok: false, error: err.message };
   }
 };
@@ -338,6 +353,7 @@ const handleStoreInstallScript = async (req) => {
   if (!req.repoId) return { ok: false, error: "repoId required" };
   if (!req.scriptMeta?.file) return { ok: false, error: "scriptMeta.file required" };
   try {
+    logInfo("[background:handleStoreInstallScript]: Installing", req.scriptMeta?.file, "from repo:", req.repoId);
     const result = await storeService.installScript(req.repoId, req.scriptMeta);
 
     if (result.ok && result.scriptObj) {
@@ -352,7 +368,7 @@ const handleStoreInstallScript = async (req) => {
     }
     return result;
   } catch (err) {
-    logError("handleStoreInstallScript:", err);
+    logError("[background:githubStore]: handleStoreInstallScript:", err);
     return { ok: false, error: err.message };
   }
 };
@@ -361,6 +377,7 @@ const handleStoreUpdateScript = async (req) => {
   if (!req.repoId) return { ok: false, error: "repoId required" };
   if (!req.scriptMeta?.file) return { ok: false, error: "scriptMeta.file required" };
   try {
+    logInfo("[background:handleStoreUpdateScript]: Updating", req.scriptMeta?.file, "from repo:", req.repoId);
     const result = await storeService.updateScript(req.repoId, req.scriptMeta);
 
     if (result.ok && result.scriptObj) {
@@ -375,7 +392,7 @@ const handleStoreUpdateScript = async (req) => {
     }
     return result;
   } catch (err) {
-    logError("handleStoreUpdateScript:", err);
+    logError("[background:githubStore]: handleStoreUpdateScript:", err);
     return { ok: false, error: err.message };
   }
 };
@@ -384,6 +401,7 @@ const handleStoreBatchUpdate = async (req) => {
   if (!Array.isArray(req.updates) || !req.updates.length) {
     return { ok: false, error: "updates array required" };
   }
+  logInfo("[background:handleStoreBatchUpdate]: Batch updating", req.updates.length, "scripts");
 
   const results = { successful: [], failed: [] };
 
@@ -401,6 +419,7 @@ const handleStoreBatchUpdate = async (req) => {
   }
 
   if (results.successful.length) {
+    logInfo("[background:handleStoreBatchUpdate]: Completed - successful:", results.successful.length, "failed:", results.failed.length);
     await parserReady(true).catch(() => {});
   }
 
@@ -431,7 +450,7 @@ const handleStoreGetScriptStatus = async (req) => {
       remoteVersion: remoteMeta?.version || null,
     };
   } catch (err) {
-    logError("handleStoreGetScriptStatus:", err);
+    logError("[background:githubStore]: handleStoreGetScriptStatus:", err);
     return { ok: false, error: err.message };
   }
 };
@@ -455,7 +474,7 @@ const handleStoreRemoveScript = async (req) => {
 
     return result;
   } catch (err) {
-    logError("handleStoreRemoveScript:", err);
+    logError("[background:githubStore]: handleStoreRemoveScript:", err);
     return { ok: false, error: err.message };
   }
 };
@@ -682,12 +701,13 @@ const handleAddHistoryToServer = async ({ image, title, artist, source, songUrl,
     const result = await response.json();
     return { ok: result.success, action: result.action };
   } catch (err) {
-    console.error("Add history error:", err);
+    logError("[background:handleAddHistoryToServer]: Add history error:", err);
     return { ok: false, error: err.message };
   }
 };
 
 const handleSyncHistory = async () => {
+  logInfo("[background:handleSyncHistory]: Starting history sync with server");
   try {
     const history = await loadHistory();
     const fullHistory = history.map((entry) => ({
@@ -748,7 +768,7 @@ const handleSyncHistory = async () => {
       count: result.count || 0,
     };
   } catch (err) {
-    console.error("History sync error:", err);
+    logError("[background:handleSyncHistory]: History sync error:", err);
     return { ok: false, error: err.message };
   }
 };
@@ -773,7 +793,7 @@ const handleSyncDeleteToServer = async (req) => {
     );
     return { ok: true };
   } catch (err) {
-    console.error("Server history delete error:", err);
+    logError("[background:handleSyncDeleteToServer]: Server history delete error:", err);
     return { ok: false };
   }
 };
@@ -800,7 +820,7 @@ const handleGetSongInfo = async () => {
 const handleUpdateRpc = async (req, sender) => {
   const tab = await getSenderTab(sender);
   if (!tab) {
-    logWarn("No tab info from sender, skipping:", req);
+    logWarn("[background]: No tab info from sender, skipping:", req);
     return { ok: false, error: "No tab info" };
   }
 
@@ -844,12 +864,12 @@ const handleUpdateRpc = async (req, sender) => {
   if (isAudible && state.audibleTimers.has(tabId)) {
     clearTimeout(state.audibleTimers.get(tabId));
     state.audibleTimers.delete(tabId);
-    logInfo(`Tab ${tabId} resumed audio in UPDATE_RPC, timer cancelled`);
+    logInfo(`[background]: Tab ${tabId} resumed audio in UPDATE_RPC, timer cancelled`);
   }
 
   // If it is not on the map and there is no play, reject it
   if (!isPlaying && !state.activeTabMap.has(tabId)) {
-    logInfo(`Tab ${tabId} UPDATE_RPC: not audible, not playing, not in map, rejecting`);
+    logInfo(`[background]: Tab ${tabId} UPDATE_RPC: not audible, not playing, not in map, rejecting`);
 
     state.activeTabMap.set(tabId, {
       ...req.data,
@@ -874,15 +894,15 @@ const handleUpdateRpc = async (req, sender) => {
 
   if (!isPlaying) {
     if (state.activeTabMap.has(tabId)) {
-      logInfo(`Tab ${tabId} UPDATE_RPC: not playing but already tracked, keeping RPC`);
+      logInfo(`[background]: Tab ${tabId} UPDATE_RPC: not playing but already tracked, keeping RPC`);
       return { ok: true };
     }
-    logInfo(`Tab ${tabId} UPDATE_RPC: not audible, not playing, waiting`);
+    logInfo(`[background]: Tab ${tabId} UPDATE_RPC: not audible, not playing, waiting`);
     return { ok: true, waiting: true };
   }
 
   // 3) RPC update
-  scheduleRpcUpdate(req.data, tabId)?.catch((err) => logError("RPC schedule failed", err));
+  scheduleRpcUpdate(req.data, tabId)?.catch((err) => logError("[background:scheduleRpcUpdate]: RPC schedule failed", err));
 
   // 4️) Add History
   if (req.data.mode !== "watch" && req.data.title !== "Unknown Song" && req.data.artist !== "Unknown Artist" && req.data.artist !== "-1") {
@@ -916,7 +936,7 @@ const handleUpdateRpcPort = async (req) => {
 
     return { ok: true, port: req.data.port };
   } catch (err) {
-    console.error("Update port error:", err);
+    logError("[background:handleUpdateRpcPort]: Update port error:", err);
     return { ok: false, error: err.message };
   }
 };
@@ -935,7 +955,7 @@ const handleUpdatediscordWebPort = async (req) => {
 
     return { ok: true, port: req.data.port };
   } catch (err) {
-    console.error("Update web bridge port error:", err);
+    logError("[background:handleUpdateDiscordWebPort]: Update web bridge port error:", err);
     return { ok: false, error: err.message };
   }
 };
@@ -952,7 +972,7 @@ const handleIsTabAudible = async (sender) => {
 const handleClearRpc = async (sender) => {
   const tab = await getSenderTab(sender);
   if (!tab) {
-    logWarn("No tab info from sender, skipping");
+    logWarn("[background]: No tab info from sender, skipping");
     return { ok: false, error: "No tab info" };
   }
 
@@ -1029,11 +1049,11 @@ const handleIsHostnameMatch = async (sender) => {
           };
         }
 
-        logInfo(`Tab ${activeTabId} in map but not audible, updating state`);
+        logInfo(`[background]: Tab ${activeTabId} in map but not audible, updating state`);
         tabData.isAudioPlaying = false;
         activeTabMap.set(activeTabId, tabData);
       } catch {
-        logInfo(`Tab ${activeTabId} not found, removing from map`);
+        logInfo(`[background]: Tab ${activeTabId} not found, removing from map`);
         activeTabMap.delete(activeTabId);
       }
     }
@@ -1359,7 +1379,7 @@ const setupListeners = () => {
                   activity: msg.activity,
                 });
               } catch (err) {
-                console.error("[RPC Bridge] Failed to handle message:", err);
+                logError("[RPC Bridge] Failed to handle message:", err);
                 Dispatcher = null;
               }
             }
@@ -1370,7 +1390,7 @@ const setupListeners = () => {
                   Dispatcher.dispatch({ type: "LOCAL_ACTIVITY_UPDATE", activity: null });
                 }
               } catch (err) {
-                console.error("[RPC Bridge] Failed to clear activity:", err);
+                logError("[RPC Bridge] Failed to clear activity:", err);
               }
             }
 
@@ -1404,7 +1424,7 @@ const setupListeners = () => {
                   const msg = JSON.parse(x.data);
                   await handleMessage(msg);
                 } catch (err) {
-                  console.error("[RPC Bridge] Failed to handle message:", err);
+                  logError("[RPC Bridge] Failed to handle message:", err);
                 }
               };
 
@@ -1513,6 +1533,61 @@ const setupListeners = () => {
             const { storeAutoUpdate = true } = await browser.storage.local.get("storeAutoUpdate");
             return { ok: true, enabled: storeAutoUpdate };
           }
+          case "debug_log": {
+            if (typeof debugLog === "function") {
+              const { level = "info", source = "unknown", args = [] } = req;
+              debugLog(level, source, args);
+            }
+            result = { ok: true };
+            break;
+          }
+
+          case "debug_read_logs": {
+            result = { ok: true, entries: await debugLogReadAll() };
+            break;
+          }
+
+          case "debug_clear_logs": {
+            await debugLogClear();
+            result = { ok: true };
+            break;
+          }
+          case "APPEND_MEMORY_LOGS": {
+            if (req.payload && Array.isArray(req.payload)) {
+              if (!state._memoryLogs) {
+                state._memoryLogs = [];
+              }
+              state._memoryLogs.push(...req.payload);
+
+              if (state._memoryLogs.length > 1000) {
+                state._memoryLogs = state._memoryLogs.slice(-1000);
+              }
+              try {
+                browser.runtime
+                  .sendMessage({
+                    action: "MEMORY_LOGS_UPDATED",
+                    newEntries: req.payload,
+                  })
+                  .catch(() => {});
+              } catch (e) {}
+
+              result = { ok: true };
+            } else {
+              result = { ok: false, error: "Invalid payload" };
+            }
+            break;
+          }
+
+          case "debug_read_memory_logs": {
+            result = { ok: true, entries: state._memoryLogs || [] };
+            break;
+          }
+
+          case "debug_clear_memory_logs": {
+            if (state._memoryLogs) state._memoryLogs.length = 0;
+            result = { ok: true };
+            break;
+          }
           default:
             result = { ok: false, error: "Unknown action" };
         }
@@ -1557,7 +1632,7 @@ const setupListeners = () => {
         return { ok: false, error: "No action or type specified" };
       }
     } catch (err) {
-      console.error("Unified message handler error:", err);
+      logError("[background]: Unified message handler error:", err);
       return { ok: false, error: err.message };
     }
     return true;
@@ -1585,9 +1660,10 @@ const setupListeners = () => {
 
         state.parserReloadDebounce = setTimeout(() => {
           parserListMutex(async () => {
+            logInfo("[background:storageChanged]: Parser list change detected, reloaded parser list.");
             state.parserListLoaded = false;
             await loadParserList();
-          }).catch(logError);
+          }).catch((err) => logError("[background:parserListMutex]:", err));
         }, 200);
       }
     }
@@ -1603,7 +1679,7 @@ const setupListeners = () => {
     state.pendingFetches.delete(tabId);
 
     // Clear RPC
-    await clearRpcForTab(tabId, "tab removed").catch(logError);
+    await clearRpcForTab(tabId, "tab removed").catch((err) => logError("[background:clearRpcForTab]: ", err));
 
     // Clean URL cache
     state.tabUrlMap.delete(tabId);
@@ -1622,16 +1698,16 @@ const setupListeners = () => {
       if (changeInfo.mutedInfo?.muted === true) {
         const pingRes = await safePingTab(tabId).catch(() => null);
         if (!pingRes?.isPlaying) {
-          logInfo(`Tab ${tabId} muted and not playing, clearing RPC`);
+          logInfo(`[background]: Tab ${tabId} muted and not playing, clearing RPC`);
           if (state.audibleTimers.has(tabId)) {
             clearTimeout(state.audibleTimers.get(tabId));
             state.audibleTimers.delete(tabId);
           }
-          await clearRpcForTab(tabId, "tab muted").catch(logError);
+          await clearRpcForTab(tabId, "tab muted").catch((err) => logError("[background:clearRpcForTab]:", err));
           state.tabUrlMap.delete(tabId);
           return;
         }
-        logInfo(`Tab ${tabId} muted but isPlaying is true, keeping RPC`);
+        logInfo(`[background]: Tab ${tabId} muted but isPlaying is true, keeping RPC`);
       }
 
       // 2) Domain change control
@@ -1644,10 +1720,10 @@ const setupListeners = () => {
 
           if (oldHost !== newHost) {
             shouldClearImmediately = true;
-            logInfo(`Tab ${tabId} domain changed: ${oldHost} → ${newHost}, clearing RPC immediately`);
+            logInfo(`[background]: Tab ${tabId} domain changed: ${oldHost} → ${newHost}, clearing RPC immediately`);
           }
         } catch (err) {
-          logError("Domain comparison error:", err);
+          logError("[background]: Domain comparison error:", err);
         }
       }
 
@@ -1659,10 +1735,10 @@ const setupListeners = () => {
 
           if (currentHost !== tabHost) {
             shouldClearImmediately = true;
-            logInfo(`Tab ${tabId} page reloaded on different domain, clearing RPC immediately`);
+            logInfo(`[background]: Tab ${tabId} page reloaded on different domain, clearing RPC immediately`);
           }
         } catch (err) {
-          logError("Page reload check error:", err);
+          logError("[background]: Page reload check error:", err);
         }
       }
 
@@ -1673,7 +1749,7 @@ const setupListeners = () => {
           state.audibleTimers.delete(tabId);
         }
 
-        await clearRpcForTab(tabId, "domain/navigation changed").catch(logError);
+        await clearRpcForTab(tabId, "domain/navigation changed").catch((err) => logError("[background:clearRpcForTab]: ", err));
         state.tabUrlMap.set(tabId, newUrl);
         return;
       }
@@ -1685,14 +1761,14 @@ const setupListeners = () => {
         if (!tabState.isAudioPlaying) {
           tabState.isAudioPlaying = true;
           state.activeTabMap.set(tabId, tabState);
-          logInfo(`Tab ${tabId} became audible, state updated`);
+          logInfo(`[background]: Tab ${tabId} became audible, state updated`);
         }
 
         // If there is an audible timer, cancel it
         if (state.audibleTimers.has(tabId)) {
           clearTimeout(state.audibleTimers.get(tabId));
           state.audibleTimers.delete(tabId);
-          logInfo(`Tab ${tabId} audible resumed, cleanup timer cancelled`);
+          logInfo(`[background]: Tab ${tabId} audible resumed, cleanup timer cancelled`);
         }
       } else {
         // The tab no longer active → just update the state
@@ -1701,13 +1777,13 @@ const setupListeners = () => {
           const isStillPlaying = !!pingRes?.isPlaying;
 
           if (isStillPlaying) {
-            logInfo(`Tab ${tabId} not audible but isPlaying is true, keeping RPC`);
+            logInfo(`[background]: Tab ${tabId} not audible but isPlaying is true, keeping RPC`);
             return;
           }
 
           tabState.isAudioPlaying = false;
           state.activeTabMap.set(tabId, tabState);
-          logInfo(`Tab ${tabId} lost audio, will clear RPC in 5s if not recovered`);
+          logInfo(`[background]: Tab ${tabId} lost audio, will clear RPC in 5s if not recovered`);
 
           // Only start a new timer if there isn't one already
           if (!state.audibleTimers.has(tabId)) {
@@ -1719,17 +1795,17 @@ const setupListeners = () => {
                 const stillPlaying = pingRes2?.isPlaying;
 
                 if (!t.audible && !stillPlaying) {
-                  logInfo(`Tab ${tabId} still not audible after 5s, clearing RPC`);
+                  logInfo(`[background]: Tab ${tabId} still not audible after 5s, clearing RPC`);
                   await clearRpcForTab(tabId, "audio stopped for 5+ seconds");
                 } else {
-                  logInfo(`Tab ${tabId} recovered audio within 5s, keeping RPC active`);
+                  logInfo(`[background]: Tab ${tabId} recovered audio within 5s, keeping RPC active`);
                   if (currentState) {
                     currentState.isAudioPlaying = true;
                     state.activeTabMap.set(tabId, currentState);
                   }
                 }
               } catch (err) {
-                logInfo(`Tab ${tabId} not found during cleanup timer, removing from map`);
+                logInfo(`[background]: Tab ${tabId} not found during cleanup timer, removing from map`);
                 state.activeTabMap.delete(tabId);
               } finally {
                 state.audibleTimers.delete(tabId);
@@ -1737,12 +1813,12 @@ const setupListeners = () => {
             }, 5000);
 
             state.audibleTimers.set(tabId, timer);
-            logInfo(`Tab ${tabId} cleanup timer started (5s)`);
+            logInfo(`[background]: Tab ${tabId} cleanup timer started (5s)`);
           }
         }
       }
     } catch (err) {
-      logError(`Tab ${tabId} onUpdated error:`, err);
+      logError(`[background]: Tab ${tabId} onUpdated error:`, err);
     } finally {
       if (newUrl) state.tabUrlMap.set(tabId, newUrl);
     }
@@ -1750,6 +1826,7 @@ const setupListeners = () => {
 
   // onSuspend
   browser.runtime.onSuspend.addListener(async () => {
+    logInfo("[background:onSuspend]: Service worker suspending, cleaning up", state.activeTabMap.size, "tabs");
     const allTabs = Array.from(state.activeTabMap.keys());
     for (const tabId of allTabs) {
       const controller = state.pendingFetches.get(tabId);

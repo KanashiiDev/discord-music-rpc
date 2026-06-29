@@ -74,7 +74,7 @@ class ScriptStorage {
       const result = await browser.storage.local.get(this.storageKey);
       return result[this.storageKey] || [];
     } catch (error) {
-      logError("Failed to get scripts from storage:", error);
+      logError("[userScriptWorker]: Failed to get scripts from storage:", error);
       return [];
     }
   }
@@ -83,7 +83,7 @@ class ScriptStorage {
     try {
       await browser.storage.local.set({ [this.storageKey]: scripts });
     } catch (error) {
-      logError("Failed to save scripts to storage:", error);
+      logError("[userScriptWorker]: Failed to save scripts to storage:", error);
       throw error;
     }
   }
@@ -359,7 +359,7 @@ class UserScriptManager {
 
       return { ok: true, registrationId: script.id, raw: registeredUserScript };
     } catch (error) {
-      logError("Failed to register user script:", error);
+      logError("[userScriptWorker]: Failed to register user script:", error);
       return { ok: false, error: error?.message || String(error) };
     }
   }
@@ -399,7 +399,7 @@ class UserScriptManager {
       return { ok: true };
     } catch (error) {
       if (!error.message.includes("Nonexistent script ID")) {
-        logError("Failed to unregister user script:", error);
+        logError("[userScriptWorker]: Failed to unregister user script:", error);
       }
       return { ok: true };
     }
@@ -439,7 +439,7 @@ class UserScriptManager {
           results.failed.push({ id: script.id, error: registrationResult.error });
         }
       } catch (error) {
-        logError(`Error processing script ${script.id}:`, error);
+        logError(`[userScriptWorker]: Error processing script ${script.id}:`, error);
         script.registered = false;
         results.failed.push({ id: script.id, error: error.message });
       }

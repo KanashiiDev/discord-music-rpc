@@ -9,6 +9,7 @@ module.exports = function registerInlines(inlineUtilsFunctions) {
   inlineUtilsFunctions(["background.js", "common/utils.js", "mainParser.js"], "config.js", [], "start", true);
 
   inlineUtilsFunctions(["background.js"], "activityLibrary/service.js", [], "start", true);
+  inlineUtilsFunctions(["background.js", "common/utils.js", "main.js"], "common/debugLogger.js", [], "start");
 
   // Localization
   inlineUtilsFunctions(["common/utils.js"], "../shared/i18n.js", [], [], "start");
@@ -25,6 +26,7 @@ module.exports = function registerInlines(inlineUtilsFunctions) {
   // Logs
   inlineUtilsFunctions(["background.js", "mainParser.js"], "common/utils.js", [
     "getDebugMode",
+    "_writeDebugLog",
     "logInfo",
     "logWarn",
     "errorFilter",

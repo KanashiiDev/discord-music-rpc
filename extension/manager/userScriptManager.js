@@ -344,7 +344,7 @@ class UserScriptUI {
   async refreshList() {
     const listResp = await sendAction("listUserScripts");
     if (!listResp || !listResp.ok) {
-      logError("List fetch failed", listResp);
+      logError("[userScriptManager]: List fetch failed", listResp);
       return;
     }
 

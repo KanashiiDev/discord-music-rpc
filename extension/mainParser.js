@@ -41,7 +41,7 @@ function scheduleSave(parserId) {
         },
       });
     } catch (err) {
-      logError(`[settings] save error for ${parserId}:`, err);
+      logError(`[mainParser:settings] save error for ${parserId}:`, err);
     }
   }, 120);
 }
@@ -96,13 +96,13 @@ async function accessWindow(path, options = {}) {
     });
 
     if (result && typeof result === "object" && result.ok === false) {
-      logError("[Parser] Error:", result.error);
+      logError("[mainParser:settings] Error:", result.error);
       return null;
     }
 
     return result?.data ?? result;
   } catch (error) {
-    logError("[Parser] Error:", error);
+    logError("[mainParser:settings] Error:", error);
     return null;
   }
 }
@@ -639,7 +639,7 @@ async function scheduleParserListSave() {
       }
     }
   } catch (error) {
-    logError("Error saving parser list:", error);
+    logError("[mainParser:scheduleParserListSave] Error saving parser list:", error);
   }
 }
 
@@ -696,7 +696,7 @@ window.getSongInfo = async function () {
               // Apply parser filters and replacements
               const filterResult = await applyParserFilters(parser.id, dataArtist, dataTitle);
               if (filterResult.shouldBlock) {
-                if (isChanged) logInfo(`Song blocked: ${dataArtist} - ${dataTitle} (Parser: ${parser.id} | Filter: ${filterResult.filterId})`);
+                if (isChanged) logInfo(`[mainParser]: Song blocked: ${dataArtist} - ${dataTitle} (Parser: ${parser.id} | Filter: ${filterResult.filterId})`);
                 window.getSongInfoLastSong = currentData;
                 return "blocked";
               }
@@ -705,7 +705,7 @@ window.getSongInfo = async function () {
               if (filterResult.replaced) {
                 dataArtist = filterResult.artist;
                 dataTitle = filterResult.title;
-                if (isChanged) logInfo(`Song replaced: ${dataArtist} - ${dataTitle} (Parser: ${parser.id} | Filter: ${filterResult.filterId})`);
+                if (isChanged) logInfo(`[mainParser]: Song replaced: ${dataArtist} - ${dataTitle} (Parser: ${parser.id} | Filter: ${filterResult.filterId})`);
                 window.getSongInfoLastSong = currentData;
               }
 
@@ -717,14 +717,14 @@ window.getSongInfo = async function () {
           }
         }
       } catch (err) {
-        logError(`Parser ${parser.id} failed:`, err);
+        logError(`[mainParser]: Parser ${parser.id} failed:`, err);
         continue;
       }
     }
 
     return null;
   } catch (err) {
-    logError("getSongInfo error:", err);
+    logError("[mainParser]: getSongInfo error:", err);
     return null;
   }
 };
@@ -797,7 +797,7 @@ async function applyParserFilters(parserId, artist, title) {
 
     return { shouldBlock: false, replaced: false, artist, title };
   } catch (err) {
-    logError("applyParserFilters error:", err);
+    logError("[mainParser:applyParserFilters]: error:", err);
     return { shouldBlock: false, replaced: false, artist, title };
   }
 }
@@ -1047,7 +1047,7 @@ window.addEventListener("message", async (event) => {
               isPlaying: Boolean(song.isPlaying || playing),
             };
           } catch (err) {
-            logError("User script parser error:", err);
+            logError("[mainParser:userScript]: User script parser error:", err);
             return null;
           }
         },
@@ -1077,7 +1077,7 @@ async function loadAllSavedUserParsers() {
         const sel = data.selectors[key];
         return sel ? querySelectorDeep(sel) : null;
       } catch (e) {
-        logError(`Selector error for key "${key}" in domain "${data.domain}":`, e);
+        logError(`[mainParser:loadAllSavedUserParsers]: Selector error for key "${key}" in domain "${data.domain}":`, e);
         return null;
       }
     };
@@ -1153,7 +1153,7 @@ async function loadAllSavedUserParsers() {
             ].filter(Boolean),
           };
         } catch (e) {
-          logError(`Selector parser error (${hostname}):`, e);
+          logError(`[mainParser:selectorParser]: Selector parser error (${hostname}):`, e);
           return null;
         }
       },
@@ -1181,7 +1181,7 @@ async function syncParserSettings(id, declaredSettings = []) {
 
   for (const key of Object.keys(cached)) {
     if (!declaredKeys.has(key)) {
-      logInfo(`[settings] Deleting orphan key "${key}" from parser "${id}"`);
+      logInfo(`[mainParser:settings]: Deleting orphan key "${key}" from parser "${id}"`);
       delete cached[key];
       changed = true;
     }
@@ -1231,7 +1231,7 @@ async function cleanupOrphanSettingsAndEnables() {
       if (!key.startsWith("settings_")) continue;
       const id = key.slice("settings_".length);
       if (!validIds.has(id)) {
-        logInfo(`Deleted Orphan Setting: ${key}`);
+        logInfo(`[mainParser:settings]: Deleted Orphan Setting: ${key}`);
         delete parserSettings[key];
         delete settingsCache[key];
         settingsDirty = true;
@@ -1245,14 +1245,14 @@ async function cleanupOrphanSettingsAndEnables() {
       if (!key.startsWith("enable_")) continue;
       const id = key.slice("enable_".length);
       if (!validIds.has(id)) {
-        logInfo(`Deleted Orphan Enable: ${key}`);
+        logInfo(`[mainParser:settings]: Deleted Orphan Enable: ${key}`);
         delete parserEnabledState[key];
         enableDirty = true;
       }
     }
     if (enableDirty) await browser.storage.local.set({ parserEnabledState });
   } catch (e) {
-    logError("cleanupOrphanSettingsAndEnables error:", e);
+    logError("[mainParser:cleanupOrphanSettingsAndEnables]: error:", e);
   }
 }
 

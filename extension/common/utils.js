@@ -66,18 +66,65 @@ function shouldAnimate() {
   }
 }
 
+// Logs
+// Write helper
+function _writeDebugLog(level, args) {
+  const _LOG_SOURCE = (() => {
+    if (typeof window === "undefined") return "background";
+    return "content";
+  })();
+
+  const _IS_BACKGROUND = _LOG_SOURCE === "background";
+  try {
+    if (_IS_BACKGROUND) {
+      if (typeof debugLog === "function") {
+        debugLog(level, _LOG_SOURCE, args);
+      }
+    } else {
+      if (typeof browser !== "undefined" && browser?.runtime?.sendMessage) {
+        browser.runtime.sendMessage({ action: "debug_log", level, source: _LOG_SOURCE, args: args.map(String) }).catch(() => {});
+      }
+    }
+  } catch {}
+}
+
+// Debug mode check
 const getDebugMode = async () => {
   try {
     const stored = await browser.storage.local.get("debugMode");
     return stored?.debugMode === 1 ? true : stored?.debugMode === 0 ? false : (CONFIG?.debugMode ?? false);
-  } catch (err) {
+  } catch {
     return CONFIG?.debugMode ?? false;
   }
 };
 
-// Logs
+// Log functions
 const logInfo = async (...args) => {
   if (!(await getDebugMode())) return;
+
+  const _shouldPersist = (args) => {
+    return typeof args[0] === "string" && /^\[[\w\s:\/\-]+\]/.test(args[0]);
+  };
+
+  const _stripConsoleFormatting = (args) => {
+    if (typeof args[0] !== "string" || !args[0].includes("%c")) return args;
+    const msg = args[0].replace(/%c/g, "");
+    const cleaned = [msg];
+    let cssSkip = (args[0].match(/%c/g) || []).length;
+    for (let i = 1; i < args.length; i++) {
+      if (cssSkip > 0 && typeof args[i] === "string" && args[i].includes("color:")) {
+        cssSkip--;
+        continue;
+      }
+      cleaned.push(args[i]);
+    }
+    return cleaned;
+  };
+
+  // Only those starting with [TAG] in IndexedDB
+  if (_shouldPersist(args)) {
+    _writeDebugLog("info", _stripConsoleFormatting(args));
+  }
 
   const prefix = "[DISCORD-MUSIC-RPC - INFO]";
   if (typeof args[0] === "string" && args[0].includes("%c")) {
@@ -89,6 +136,8 @@ const logInfo = async (...args) => {
 
 const logWarn = async (...args) => {
   if (!(await getDebugMode())) return;
+
+  _writeDebugLog("warn", args);
 
   const prefix = "%c[DISCORD-MUSIC-RPC - WARN]%c";
   const prefixCSS = ["color:#ff9800; font-weight:bold;", "color:#fff;"];
@@ -139,6 +188,8 @@ const logError = (...a) => {
   const shouldIgnoreAny = a.some((arg) => errorFilter.shouldIgnore(arg));
 
   if (!shouldIgnoreAny) {
+    _writeDebugLog("error", a);
+
     console.error(
       "[DISCORD-MUSIC-RPC - ERROR]",
       ...a.map((arg) => {
@@ -995,9 +1046,9 @@ const fetchWithTimeout = async (url, options = {}, timeout = 5000) => {
   } catch (err) {
     clearTimeout(timer);
     if (err.name === "AbortError") {
-      logError(`Request timed out after ${timeout / 1000} seconds: ${url}`);
+      logError(`[Fetch]: Request timed out after ${timeout / 1000} seconds: ${url}`);
     } else {
-      logError(`Fetch error: ${url}`, err);
+      logError(`[Fetch]: Fetch error: ${url}`, err);
     }
     throw err;
   }
@@ -1105,7 +1156,7 @@ async function getFreshParserList(force = false) {
 
     return response?.data ?? [];
   } catch (error) {
-    console.error("getFreshParserList error:", error);
+    logError("[parserList]: getFreshParserList error:", error);
     return [];
   }
 }
@@ -1851,7 +1902,7 @@ function openIndexedDB(DB_NAME, STORE_NAME, DB_VERSION) {
 
     request.onsuccess = (e) => resolve(e.target.result);
     request.onerror = (e) => {
-      logError("IndexedDB open error:", e.target.error);
+      logError("[IndexedDB]: IndexedDB open error:", e.target.error);
       reject(e.target.error);
     };
   });
@@ -2019,14 +2070,14 @@ const isAllowedDomain = async (hostname, pathname) => {
       // Parser enabled check
       const cached = state.parserEnabledCache.has(parser.id) ? state.parserEnabledCache.get(parser.id) : parser.isEnabled !== false;
       if (cached) {
-        return { ok: true, match: `Match: ${hostname}${pathname} (parser: ${parser.title || parser.id})` };
+        return { ok: true, match: `[isAllowedDomain]: Match: ${hostname}${pathname} (parser: ${parser.title || parser.id})` };
       }
     }
 
-    return { ok: false, error: { code: 2, message: "Hostname not allowed, not starting watcher." } };
+    return { ok: false, error: { code: 2, message: `[isAllowedDomain]: Hostname not allowed (${hostname})` } };
   } catch (err) {
-    logError("Domain Match Error", err);
-    return { ok: false, error: { code: 3, message: "Domain Match Error" } };
+    logError("[isAllowedDomain]: Domain Match Error", err);
+    return { ok: false, error: { code: 3, message: "[isAllowedDomain]: Domain Match Error" } };
   }
 };
 
@@ -2072,7 +2123,7 @@ async function getSenderTab(sender) {
     });
     if (activeTab) return activeTab;
   } catch (err) {
-    logWarn("getSenderTab fallback error:", err);
+    logWarn("[background]: getSenderTab fallback error:", err);
   }
 
   return null;
@@ -2695,7 +2746,7 @@ async function restartExtension(tab) {
       browser.runtime.reload();
     }
   } catch (err) {
-    logError("Restart the extension error:", err);
+    logError("[restartExtension]: Restart the extension error:", err);
   }
 }
 
@@ -2711,7 +2762,7 @@ async function toggleDebugMode(tab) {
 
     if (tab && tab.id) browser.tabs.reload(tab.id);
   } catch (err) {
-    logError("Toggle Debug Mode error:", err);
+    logError("[toggleDebugMode]: Toggle Debug Mode error:", err);
   }
 }
 
@@ -2757,7 +2808,7 @@ async function factoryReset(tab, fromSettings = false) {
     if (tab && tab.id) await browser.tabs.reload(tab.id);
     browser.runtime.reload();
   } catch (err) {
-    logError("Reset to Defaults error:", err);
+    logError("[factoryReset]: Reset to Defaults error:", err);
   }
 }
 

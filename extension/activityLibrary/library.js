@@ -1305,7 +1305,7 @@ const autoInstallMatchedScripts = async (matchedDomains) => {
       if (result.ok) await handleSaveUserScript(result.scriptObj);
     }
   } catch (err) {
-    console.error("[Migration] autoInstallMatchedScripts error:", err);
+    logError("[Migration] autoInstallMatchedScripts error:", err);
   }
 };
 

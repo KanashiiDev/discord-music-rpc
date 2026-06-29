@@ -69,6 +69,8 @@
   --icon-color: #ddd;
   --red-color: #f44336;
   --red-color-dark: #8a251e;
+  --blue-color: #4681da;
+  --blue-color-dark: #3a6292;
   --yellow-color: #ffc107;
   --yellow-color-dark: #977718;
   --green-color: #4caf50;
@@ -111,7 +113,7 @@
   --switch-toggle-color: #ddd;
   --icon-color: #1a1a1a;
   --blue-color: #2e6386;
-  --blue-color-bright: #36739c;
+  --blue-color-dark: #3a6292;
   --red-color: #c90000;
   --red-color-dark: #8d1e1e;
   --yellow-color: #c99000;

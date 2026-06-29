@@ -30,7 +30,7 @@ const keepAliveManager = new KeepAliveManager();
 // Start watching tab activity and song changes
 function startWatching() {
   if (state.isUpdating || state.updateTimer) {
-    logInfo("startWatching called but already active");
+    logInfo("[main] startWatching called but already active");
     return;
   }
 
@@ -63,18 +63,18 @@ function stopWatching() {
 // Schedule the next update based on activity
 function scheduleNextUpdate(interval = CONSTANTS.ACTIVE_INTERVAL, log) {
   if (!state.activeTab) {
-    logInfo("scheduleNextUpdate: tab not active, skipping");
+    logInfo("[main:scheduleNextUpdate]: tab not active, skipping");
     return;
   }
 
   if (state.updateTimer) {
-    logInfo("scheduleNextUpdate: clearing existing timer");
+    logInfo("[main:scheduleNextUpdate]: clearing existing timer");
     clearTimeout(state.updateTimer);
     state.updateTimer = null;
   }
 
   if (!log) {
-    logInfo(`%cNext Update Check Scheduled:%c ${interval / 1000} seconds later.`, "color:#999; font-weight:bold;", "color:#4caf50;");
+    logInfo(`[main:scheduleNextUpdate]: %cNext Update Check Scheduled:%c ${interval / 1000} seconds later.`, "color:#999; font-weight:bold;", "color:#4caf50;");
   }
 
   state.updateTimer = setTimeout(() => {
@@ -91,17 +91,12 @@ async function mainLoop() {
     return;
   }
 
-  if (state.isConnected === null) {
-    const rpcHealth = await isRpcConnected();
-    state.isConnected = rpcHealth?.ok ?? false;
-  }
-
   try {
     const song = await safeGetSongInfo();
     window._lastParsedSong = song && song !== "blocked" ? song : null;
 
     if (!song || song === "blocked" || (!song.title && !song.artist)) {
-      if (!song) logInfo("mainLoop: no song info");
+      if (!song) logInfo("[main]: no song info");
       if (rpcState.lastActivity?.lastUpdated) await handleNoSong();
       state.lastRawPosition = null;
       return;
@@ -214,7 +209,7 @@ async function mainLoop() {
     if (!shouldUpdate) {
       if (state.lastUpdateStatus !== "skipped") {
         logInfo(
-          `%cSkipping update:%c ${updateReason || "Update skipped (interval not reached)"} (Δpos: ${rawPositionDiff}s, Δtime: ${timeSinceLastUpdate / 1000}s)`,
+          `[main]: %cSkipping update:%c ${updateReason || "Normal Progress"} (Δpos: ${rawPositionDiff}s, Δtime: ${timeSinceLastUpdate / 1000}s)`,
           "color:#ff9800; font-weight:bold;",
           "color:#fff;",
         );
@@ -228,7 +223,7 @@ async function mainLoop() {
     const updatedProgress = isValidNumber(progress) ? Math.max(progress, 1) : 0;
 
     if (state.isConnected) {
-      logInfo(`%c🚀 RPC Update triggered by:%c ${updateReason}`, "color:#4caf50; font-weight:bold;", "color:#fff;");
+      logInfo(`[main]: %cRPC Update triggered by:%c ${updateReason}`, "color:#4caf50; font-weight:bold;", "color:#fff;");
     }
 
     const didUpdate = await processRPCUpdate(song, updatedProgress);
@@ -247,15 +242,15 @@ async function mainLoop() {
     // State Log
     const lastSeekSeconds = state.lastSeekDetected ? Math.floor((Date.now() - state.lastSeekDetected) / 1000) : "Never";
 
-    let statusLabel = "🎵 SONG";
+    let statusLabel = "SONG";
     let statusMode = 0;
     if (song?.mode === "watch" && isRadioOrStream) {
-      statusLabel = "🔴 STREAM";
+      statusLabel = "STREAM";
       statusMode = 1;
     } else if (song?.mode === "watch") {
-      statusLabel = "📺 VIDEO";
+      statusLabel = "VIDEO";
     } else if (isRadioOrStream) {
-      statusLabel = "📻 RADIO";
+      statusLabel = "RADIO";
       statusMode = 1;
     }
 
@@ -326,6 +321,41 @@ async function mainLoop() {
       },
     ];
 
+    // Activity Debug Log
+    if (typeof pushMemoryLog === "function") {
+      pushMemoryLog("info", "main", {
+        // Track
+        title: song.title,
+        artist: song.artist,
+        source: song.source ?? null,
+        // Playback state
+        status: statusLabel,
+        paused: isPaused,
+        seeking: isSeeking,
+        changed: isChanged,
+        playing: playerPlaying,
+        audible: isAudible,
+        // Position
+        position: isValidNumber(song.position) ? song.position : null,
+        duration: isValidNumber(song.duration) ? song.duration : null,
+        progress: isValidNumber(progress) ? +progress.toFixed(2) : null,
+        positionDiff: +rawPositionDiff.toFixed(3),
+        // Timing
+        timeSinceUpdate: +(timeSinceLastUpdate / 1000).toFixed(2),
+        lastSeekAgo: state.lastSeekDetected ? +((Date.now() - state.lastSeekDetected) / 1000).toFixed(1) : null,
+        // Update decision
+        shouldUpdate,
+        updateReason: updateReason || null,
+        pendingReason: state.pendingUpdateReason ?? null,
+        updateStatus: state.lastUpdateStatus ?? null,
+        // RPC
+        connected: !!state.isConnected,
+        // Stats
+        failedUpdates: state.debugStats.failedUpdates,
+        connectionLost: state.debugStats.connectionLost,
+      });
+    }
+
     const stored = await browser.storage.local.get("debugMode");
     const debugMode = stored.debugMode === 1 ? true : CONFIG.debugMode;
     if (!debugMode || state.lastUpdateStatus === "skipped") return;
@@ -347,7 +377,7 @@ async function mainLoop() {
     });
 
     console.groupCollapsed(
-      `%c[DISCORD-MUSIC-RPC - INFO] %c${statusLabel}%c | %c${song.title.substring(0, 120)}${song.title.length > 120 ? "..." : ""}%c | %c${song.artist.substring(0, 120)}${
+      `%c[DISCORD-MUSIC-RPC - INFO] [main]: %c${statusLabel}%c | %c${song.title.substring(0, 120)}${song.title.length > 120 ? "..." : ""}%c | %c${song.artist.substring(0, 120)}${
         song.artist.length > 120 ? "..." : ""
       }%c | Paused: %c${isPaused}%c | Seek: %c${isSeeking}%c | Δ: %c${rawPositionDiff}s`,
       "color:#2196f3; font-weight:bold;",
@@ -361,14 +391,13 @@ async function mainLoop() {
       "",
       isSeeking ? "color:#ff9800" : "color:#666",
       "",
-      rawPositionDiff > 5 ? "color:#f44336" : "color:#4caf50",
-      "",
+      rawPositionDiff > (updateReason === "Normal Progress" ? 8 : 4) ? "color:#f44336" : "color:#4caf50",
     );
     console.log(logMessage, ...styles);
     console.groupEnd();
   } catch (e) {
-    logError("mainLoop error:", e);
-    logError("Stack trace:", e.stack);
+    logError("[main]: mainLoop error:", e);
+    logError("[main]: Stack trace:", e.stack);
   } finally {
     state.isUpdating = false;
     scheduleNextUpdate(CONSTANTS.ACTIVE_INTERVAL, hostMatch);
@@ -381,16 +410,16 @@ async function processRPCUpdate(song, progress) {
   if (!rpcHealth?.ok) {
     if (state.isConnected) {
       state.debugStats.connectionLost++;
-      logInfo(rpcHealth?.reason ? `RPC health check failed: ${rpcHealth.reason}` : "🔌 RPC CONNECTION LOST!");
+      logInfo(rpcHealth?.reason ? `[main]: RPC health check failed: ${rpcHealth.reason}` : "[main]: 🔌 RPC CONNECTION LOST!");
     } else if (state.isConnected === null) {
-      logInfo(rpcHealth?.reason ? `RPC health check failed: ${rpcHealth.reason}` : "processRPCUpdate: RPC not connected");
+      logInfo(rpcHealth?.reason ? `[main]: RPC health check failed: ${rpcHealth.reason}` : "[main]: RPC not connected");
     }
     state.isConnected = false;
     return false;
   }
 
   if (!state.isConnected) {
-    logInfo("🔌 RPC CONNECTION ESTABLISHED!");
+    logInfo("[main]: RPC CONNECTION ESTABLISHED!");
   }
   state.isConnected = true;
 
@@ -408,20 +437,20 @@ async function processRPCUpdate(song, progress) {
         keepAliveManager.init();
       }
       rpcState.updateLastActivity(song, progress);
-      logInfo("✅ RPC Updated Successfully!");
+      logInfo("[main]: RPC Updated Successfully!");
       return true;
     } else if (res?.waiting) {
-      logInfo("processRPCUpdate: RPC waiting (tab not audible yet)");
+      logInfo("[main]: RPC waiting (tab not audible yet)");
       if (keepAliveManager.initialized) keepAliveManager.destroy();
       return false;
     } else {
-      logInfo("processRPCUpdate: unexpected response state:", res);
+      logInfo("[main]: unexpected response state:", res);
       if (keepAliveManager.initialized) keepAliveManager.destroy();
       return false;
     }
   } catch (e) {
-    logError("processRPCUpdate: RPC update failed:", e);
-    logError("Stack trace:", e.stack);
+    logError("[main]: RPC update failed:", e);
+    logError("[main]: Stack trace:", e.stack);
     state.debugStats.failedUpdates++;
     return false;
   }
@@ -444,14 +473,14 @@ async function handleNoSong() {
   clearingRpc = true;
 
   try {
-    logInfo(`%c⏹️  No song is currently playing - clearing RPC...`, "color:#ff9800; font-weight:bold;");
+    logInfo(`[main]:%c No song is currently playing - clearing RPC...`, "color:#ff9800; font-weight:bold;");
     await browser.runtime.sendMessage({ type: "CLEAR_RPC" });
     rpcState.reset();
     keepAliveManager.destroy();
     window._lastParsedSong = null;
-    logInfo("handleNoSong: RPC cleared successfully");
+    logInfo("[main]: RPC cleared successfully");
   } catch (e) {
-    logError("handleNoSong: failed to clear RPC:", e);
+    logError("[main:handleNoSong]: failed to clear RPC:", e);
     rpcState.reset();
     keepAliveManager.destroy();
   } finally {
@@ -467,12 +496,12 @@ async function safeGetSongInfo(maxRetries = 10, retryDelay = 500) {
         return await window.getSongInfo();
       }
     } catch (e) {
-      logError(`safeGetSongInfo: attempt ${i + 1} failed:`, e);
+      logError(`[main:safeGetSongInfo]: attempt ${i + 1} failed:`, e);
     }
     await delay(retryDelay);
   }
 
-  logInfo("safeGetSongInfo: all retries exhausted, returning null");
+  logInfo("[main:safeGetSongInfo]: all retries exhausted, returning null");
   return null;
 }
 
@@ -490,13 +519,13 @@ async function waitForHostname() {
         type: "IS_HOSTNAME_MATCH",
       });
       if (res?.ok) {
-        logOnce(res?.match || "✅ Hostname Match!");
+        logOnce(res?.match || "[main]: Hostname Match!");
         return true;
       }
-      logOnce(`❌ ${res?.error?.message || "Hostname mismatch"}`);
+      logOnce(`${res?.error?.message || "[main]: Hostname mismatch"}`);
       return false;
     } catch (e) {
-      logError("waitForHostname error:", e);
+      logError("[main]: waitForHostname error:", e);
       await delay(CONSTANTS.ACTIVE_INTERVAL);
     }
   }
@@ -541,13 +570,13 @@ function init() {
     let tries = 0;
     const maxTries = 30;
     while (typeof window.getSongInfo !== "function" && tries < maxTries) {
-      logInfo(`init: getSongInfo not available (attempt ${tries + 1}/${maxTries})`);
+      logInfo(`[main:init]: getSongInfo not available (attempt ${tries + 1}/${maxTries})`);
       await delay(2000);
       tries++;
     }
 
     if (typeof window.getSongInfo !== "function") {
-      logError("init: getSongInfo not available after retries, aborting");
+      logError("[main:init]: getSongInfo not available after retries, aborting");
       return;
     } else {
       let warmupTries = 0;
@@ -573,7 +602,7 @@ function init() {
   else document.addEventListener("DOMContentLoaded", start, { once: true });
 
   window.addEventListener("beforeunload", () => {
-    logInfo("init: beforeunload event - stopping");
+    if (state.lastUpdateStatus) logInfo("[main:beforeunload]: beforeunload triggered - stopping...");
     stopWatching();
   });
 }
@@ -592,25 +621,18 @@ function messageHandler(message, sender, sendResponse) {
     scheduleNextUpdate(CONSTANTS.ACTIVE_INTERVAL, true);
   }
 
-  if (message.action === "reloadPage") {
-    logInfo("messageHandler: reloading page as requested");
-    location.reload();
-  }
+  if (message.action === "reloadPage") location.reload();
 }
 
 function registerRuntimeMessageListener() {
-  logInfo("registerRuntimeMessageListener: registering listener...");
-
   try {
     browser.runtime.onMessage.removeListener(messageHandler);
-  } catch (e) {
-    logInfo("registerRuntimeMessageListener: no old listener to remove");
-  }
+  } catch (_) {}
 
   try {
     browser.runtime.onMessage.addListener(messageHandler);
   } catch (e) {
-    logError("registerRuntimeMessageListener: failed to add listener:", e);
+    logError("[main:registerRuntimeMessageListener]: failed to add listener:", e);
     return;
   }
 }

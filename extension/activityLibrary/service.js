@@ -147,7 +147,7 @@ class GitHubStoreService {
           tx.onerror = () => rej(tx.error);
         });
       } catch (err) {
-        console.error("[GitHubStore] saveRepos IDB error:", err);
+        logError("[GitHubStore] saveRepos IDB error:", err);
       }
       this._saveReposTimer = null;
     }, 100);
@@ -172,7 +172,7 @@ class GitHubStoreService {
       try {
         await browser.storage.local.set({ [STORE_ETAG_KEY]: this._etagCache });
       } catch (err) {
-        console.error("[GitHubStore] saveETags error:", err);
+        logError("[GitHubStore] saveETags error:", err);
       }
       this._saveETagsTimer = null;
     }, 100);
@@ -304,7 +304,7 @@ class GitHubStoreService {
 
       return { ok: true, repo };
     } catch (err) {
-      console.error("[GitHubStore] addRepo error:", err);
+      logError("[GitHubStore]: addRepo error:", err);
       return { ok: false, error: err.message };
     }
   }
@@ -333,7 +333,7 @@ class GitHubStoreService {
       await this._saveRepos(repos);
       return { ok: true };
     } catch (err) {
-      console.error("[GitHubStore] removeRepo error:", err);
+      logError("[GitHubStore]: removeRepo error:", err);
       return { ok: false, error: err.message };
     }
   }
@@ -359,12 +359,12 @@ class GitHubStoreService {
               }
             }
             if (updates.length) await handleStoreBatchUpdate({ updates });
-            logInfo(`[GitHubStore] Updated ${totalUpdates} scripts`);
+            logInfo(`[GitHubStore]: Updated ${totalUpdates} scripts`);
           } else {
-            logInfo("[GitHubStore] No updates found");
+            logInfo("[GitHubStore]: No updates found");
           }
         })
-        .catch(console.error);
+        .catch((err) => logError("[GitHubStore]: ", err));
     }
   }
 
@@ -435,9 +435,9 @@ class GitHubStoreService {
             list.splice(idx, 1);
             await scriptManager.storage.saveScripts(list);
           }
-          console.log(`[GitHubStore] Auto-removed: ${script.title} (${script.id}) — no longer in repo`);
+          logInfo(`[GitHubStore]: Auto-removed: ${script.title} (${script.id}) - no longer in repo`);
         } catch (err) {
-          console.error(`[GitHubStore] Auto-remove failed: ${script.id}`, err);
+          logError(`[GitHubStore]: Auto-remove failed: ${script.id}`, err);
         }
       }
 
@@ -446,7 +446,7 @@ class GitHubStoreService {
       repo.lastChecked = Date.now();
       repos[repoId] = repo;
       await this._saveRepos(repos).catch(() => {});
-      console.error(`[GitHubStore] checkRepoForUpdates [${repoId}]:`, err);
+      logError(`[GitHubStore]: checkRepoForUpdates [${repoId}]:`, err);
       return { ok: false, repoId, error: err.message };
     }
   }
@@ -490,12 +490,12 @@ class GitHubStoreService {
 
     try {
       const repos = await this._loadRepos();
-      if (Object.keys(repos).length === 0) {
-        logInfo("[Store] No repository found, adding default repository...");
+      if (Object.keys(refopos).length === 0) {
+        logInfo("[GitHubStore]: No repository found, adding default repository...");
         await this.addRepo(defaultUrl);
       }
     } catch (err) {
-      console.error("[GitHubStore] addDefaultRepoIfNeeded error:", err);
+      logError("[GitHubStore]: addDefaultRepoIfNeeded error:", err);
     }
   }
 
@@ -517,7 +517,7 @@ class GitHubStoreService {
 
       return { ok: true, scriptObj };
     } catch (err) {
-      console.error("[GitHubStore] installScript error:", err);
+      logError("[GitHubStore]: installScript error:", err);
       return { ok: false, error: err.message };
     }
   }
@@ -544,7 +544,7 @@ class GitHubStoreService {
 
       return { ok: true, scriptObj, previousId: localScript?.id ?? null };
     } catch (err) {
-      console.error("[GitHubStore] updateScript error:", err);
+      logError("[GitHubStore]: updateScript error:", err);
       return { ok: false, error: err.message };
     }
   }
@@ -576,7 +576,7 @@ class GitHubStoreService {
   async setupUpdateAlarm() {
     try {
       if (!this._alarmsApi) {
-        console.error("[GitHubStore] alarms API not found");
+        logError("[GitHubStore]: alarms API not found");
         return;
       }
 
@@ -592,36 +592,36 @@ class GitHubStoreService {
       const remaining = INTERVAL_MS - (now - oldestCheck);
 
       if (remaining <= 0) {
-        logInfo("[GitHubStore] Overdue check, running immediately");
-        this.checkAllReposForUpdates().catch(console.error);
+        logInfo("[GitHubStore]: Overdue check, running immediately");
+        this.checkAllReposForUpdates().catch((err) => logError("[GitHubStore]: ", err));
       }
 
       const existing = await this._alarmsApi.get(STORE_ALARM_NAME);
       if (existing) {
-        logInfo(`[GitHubStore] Alarm already set, skipping create`);
+        logInfo(`[GitHubStore]: Alarm already set, skipping create`);
         return;
       }
 
       const delayMins = remaining > 0 ? Math.ceil(remaining / 60000) : INTERVAL_MINS;
-      logInfo(`[GitHubStore] Creating alarm, first fire in ${delayMins} minutes`);
+      logInfo(`[GitHubStore]: Creating alarm, first fire in ${delayMins} minutes`);
       await this._alarmsApi.create(STORE_ALARM_NAME, {
         delayInMinutes: delayMins,
         periodInMinutes: INTERVAL_MINS,
       });
     } catch (err) {
-      console.error("[GitHubStore] alarm setup error:", err);
+      logError("[GitHubStore]: alarm setup error:", err);
     }
   }
 
   async onAlarm(alarm) {
     if (alarm?.name !== STORE_ALARM_NAME) return;
-    logInfo("[GitHubStore] Automatic update check is starting...");
+    logInfo("[GitHubStore]: Automatic update check is starting...");
 
     try {
       const { storeAutoUpdate = true } = await browser.storage.local.get("storeAutoUpdate");
 
       const { totalUpdates, totalNew, results } = await this.checkAllReposForUpdates();
-      logInfo("[onAlarm] totalUpdates:", totalUpdates, "totalNew:", totalNew);
+      logInfo("[GitHubStore]: totalUpdates:", totalUpdates, "totalNew:", totalNew);
 
       if (storeAutoUpdate && totalUpdates > 0) {
         const updates = [];
@@ -630,13 +630,13 @@ class GitHubStoreService {
             updates.push({ repoId: result.repoId, scriptMeta: script });
           }
         }
-        logInfo("[onAlarm] updates to apply:", JSON.stringify(updates));
+        logInfo("[GitHubStore]: updates to apply:", JSON.stringify(updates));
         if (updates.length) await handleStoreBatchUpdate({ updates });
       } else {
-        logInfo("[onAlarm] skipped -", !storeAutoUpdate ? "autoUpdate off" : "no updates found");
+        logInfo("[GitHubStore]: alarm skipped -", !storeAutoUpdate ? "autoUpdate off" : "no updates found");
       }
     } catch (err) {
-      console.error("[GitHubStore] onAlarm error:", err);
+      logError("[GitHubStore]: onAlarm error:", err);
     }
   }
 
@@ -969,7 +969,7 @@ class GitHubStoreService {
           await browser.tabs.create({ url });
         }
       } catch (err) {
-        logError("Open store failed:", err);
+        logError("[GitHubStore]: Open store failed:", err);
       }
     }
   }

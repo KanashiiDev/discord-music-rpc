@@ -9,7 +9,7 @@ async function openSettingsPage(section) {
       await browser.tabs.create({ url });
     }
   } catch (err) {
-    logError("Open settings failed:", err);
+    logError("[popup]: Open settings failed:", err);
   }
   window.close();
 }
@@ -25,7 +25,7 @@ async function openStorePage() {
       await browser.tabs.create({ url });
     }
   } catch (err) {
-    logError("Open store failed:", err);
+    logError("[popup]: Open store failed:", err);
   }
   window.close();
 }
@@ -45,7 +45,7 @@ async function openDashboardPage() {
       await browser.tabs.create({ url });
     }
   } catch (err) {
-    logError("Open dashboard failed:", err);
+    logError("[popup]: Open dashboard failed:", err);
   }
   window.close();
 }

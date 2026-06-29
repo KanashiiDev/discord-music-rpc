@@ -29,6 +29,7 @@ function startSettings() {
   initFilter();
   initHistoryModal();
   initBackupButtons();
+  initDebug();
 }
 
 window.addEventListener("load", async () => {

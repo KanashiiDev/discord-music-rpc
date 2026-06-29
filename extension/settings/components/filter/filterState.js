@@ -31,7 +31,7 @@ const FilterStorage = {
       const { parserList } = await browser.storage.local.get("parserList");
       FilterState.parserList = parserList || [];
     } catch (error) {
-      console.error("Failed to load parsers:", error);
+      logError("[FilterStorage:loadParsers]: Failed to load parsers:", error);
       FilterState.parserList = [];
     }
   },
@@ -41,7 +41,7 @@ const FilterStorage = {
       const { parserFilters } = await browser.storage.local.get("parserFilters");
       FilterState.parserFilters = parserFilters || [];
     } catch (error) {
-      console.error("Failed to load filters:", error);
+      logError("[FilterStorage:loadFilters]: Failed to load filters:", error);
       FilterState.parserFilters = [];
     }
   },
@@ -50,7 +50,7 @@ const FilterStorage = {
     try {
       await browser.storage.local.set({ parserFilters: FilterState.parserFilters });
     } catch (error) {
-      console.error("Failed to save filters:", error);
+      logError("[FilterStorage:saveFilters]: Failed to save filters:", error);
       showAlert(i18n.t("filter.saveFailed"), "", "warn");
       throw error;
     }

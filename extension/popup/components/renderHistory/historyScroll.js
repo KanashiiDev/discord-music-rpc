@@ -66,7 +66,7 @@ async function activateHistoryScroll() {
         query: document.getElementById("historySearchBox")?.value ?? "",
       });
     } catch (e) {
-      console.error("renderHistory error:", e);
+      logError("[popup:history]: renderHistory error:", e);
     } finally {
       setTimeout(() => {
         isLoading = false;

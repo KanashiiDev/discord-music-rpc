@@ -44,7 +44,7 @@ async function buildPortButtons(container) {
 
       restartExtension(activeTab);
     } catch (err) {
-      console.error("Port update failed:", err);
+      logError("[Port]: Port update failed:", err);
     } finally {
       btnApply.classList.toggle("spinner");
     }
@@ -100,7 +100,7 @@ async function buildPortButtons(container) {
 
       restartExtension(activeTab);
     } catch (err) {
-      console.error("Web Bridge Port update failed:", err);
+      logError("[Web Bridge]: Port update failed:", err);
     } finally {
       btnWebBridgeApply.classList.toggle("spinner");
     }
@@ -125,12 +125,21 @@ async function buildPortButtons(container) {
   let debugState = storedDebug ?? CONFIG.debugMode;
 
   const btnParserManager = createBtn(i18n.t("settings.selectorParserManager"), "selectorParserManager");
+  const btnWiki = createBtn("Wiki", "wiki");
   const btnRestart = createBtn(i18n.t("settings.restart"), "restart");
   const btnDebug = createBtn(i18n.t(debugState ? "settings.debug.disable" : "settings.debug.enable"), "debugMode");
+  const btnDebugSection = createBtn(i18n.t("settings.debugSection"), "debugSection");
   const btnFactory = createBtn(i18n.t("settings.factory"), "factoryReset");
   const btnBackup = createBtn(i18n.t("settings.backup"), "backupSettings");
 
-  if (debugState === 1) btnDebug.classList.add("active");
+  const wikiWrap = document.createElement("div");
+  wikiWrap.className = "wiki-wrap";
+  wikiWrap.append(btnWiki, btnRestart);
+
+  if (debugState === 1) {
+    btnDebug.classList.add("active");
+    btnDebugSection.classList.add("active");
+  }
 
   // Event listeners
   btnBackup.onclick = () => openSettingsPage("backup");
@@ -139,10 +148,17 @@ async function buildPortButtons(container) {
     openselectorParserManager();
   };
 
+  btnWiki.onclick = async () => {
+    await browser.tabs.create({ url: "https://github.com/KanashiiDev/discord-music-rpc/wiki" });
+  };
+
   btnRestart.onclick = async () => {
     const [activeTab] = await browser.tabs.query({ active: true, currentWindow: true });
     restartExtension(activeTab);
   };
+
+  const debugWrap = document.createElement("div");
+  debugWrap.className = "debug-wrap";
 
   btnDebug.onclick = async () => {
     const [activeTab] = await browser.tabs.query({ active: true, currentWindow: true });
@@ -153,8 +169,14 @@ async function buildPortButtons(container) {
 
     const isActive = debugState === 1;
     btnDebug.classList.toggle("active", isActive);
+    btnDebugSection.classList.toggle("active", isActive);
     btnDebug.textContent = i18n.t(isActive ? "settings.debug.disable" : "settings.debug.enable");
+    restartExtension(activeTab);
   };
+
+  btnDebugSection.onclick = () => openSettingsPage("debug");
+
+  debugWrap.append(btnDebug, btnDebugSection);
 
   let factoryTimer = null;
 
@@ -174,6 +196,6 @@ async function buildPortButtons(container) {
     }
   };
 
-  buttonsWrapper.append(btnParserManager, btnBackup, btnRestart, btnDebug, btnFactory);
+  buttonsWrapper.append(btnParserManager, btnBackup, wikiWrap, debugWrap, btnFactory);
   container.append(buttonsWrapper);
 }

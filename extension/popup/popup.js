@@ -263,7 +263,7 @@ const popupModule = {
 
         window.close();
       } catch (err) {
-        logError("Error injecting selector:", err);
+        logError("[popup]: Error injecting selector:", err);
         showPopupMessage(i18n.t("popupMessage.notSupported"), "error", 2000);
         enableButton();
       }
@@ -444,7 +444,7 @@ domLoadedListener = async () => {
     popupModule.init();
     applyTranslations();
   } catch (error) {
-    logError("Error loading settings:", error);
+    logError("[popup]: Error loading settings:", error);
   }
 
   // Apply Custom Colors
