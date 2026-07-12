@@ -44,7 +44,7 @@ let
   sources = {
     x86_64-linux = fetchurl {
       url = "https://github.com/KanashiiDev/discord-music-rpc/releases/download/${version}/discord-music-rpc-${version}-x86_64.AppImage";
-      sha256 = "sha256-14EaIwRcthp3v6+MjJFmrVG6YySmFpHPjZfnl4tbGJM=";
+      sha256 = "sha256-P1g984YB9iKMkv0upthzRV80JzNJqfnie0VKSJi+O7k=";
     };
   };
 
