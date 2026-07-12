@@ -3,7 +3,7 @@ const express = require("express");
 const cors = require("cors");
 const { WebSocketServer } = require("ws");
 
-const { detectElectronMode } = require("./utils.js");
+const { detectElectronMode, notifyRpcStatus } = require("./utils.js");
 const IS_ELECTRON = detectElectronMode();
 process.env.ELECTRON_MODE = IS_ELECTRON ? "true" : "false";
 
@@ -274,6 +274,7 @@ state.serverInstance = app.listen(PORT, () => {
         if (msg.type === "INIT_BRIDGE" && msg.origin === "https://discord.com") {
           console.log("[BRIDGE] Discord Web connected");
           state.bridgeClients.add(ws);
+          notifyRpcStatus(true);
 
           // If Discord App RPC is active, hand control over to the bridge
           if (state.isRpcConnected || state.rpcClient) {
@@ -292,6 +293,7 @@ state.serverInstance = app.listen(PORT, () => {
         if (wasRegistered && !isBridgeConnected()) {
           state.bridgeTakeover = false;
           scheduleReconnect(1000, "bridge: all clients disconnected");
+          notifyRpcStatus(false);
         }
       });
 

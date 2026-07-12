@@ -40,6 +40,7 @@ Required to communicate with Discord and display your music status.
     <img src="https://img.shields.io/badge/Linux-AppImage%20(x64)-FCC624?logo=linux&logoColor=black&style=for-the-badge" alt="Linux AppImage x86_64"></a>
   <a href="https://github.com/KanashiiDev/discord-music-rpc/releases/latest/download/discord-music-rpc-2.0.0-amd64.deb"><img src="https://img.shields.io/badge/%20-DEB%20(x64)-A81D33?logo=debian&logoColor=white&style=for-the-badge" alt="Linux DEB x64"></a>
   <a href="https://github.com/KanashiiDev/discord-music-rpc/releases/latest/download/discord-music-rpc-2.0.0-x86_64.rpm"><img src="https://img.shields.io/badge/%20-RPM%20(x64)-d12626?logo=redhat&logoColor=white&style=for-the-badge" alt="Linux RPM x64"></a>
+  <a href="https://github.com/KanashiiDev/discord-music-rpc/releases/latest/download/discord-music-rpc-2.0.0-x64.pkg.tar.zst"><img src="https://img.shields.io/badge/%20-Pacman%20(x64)-1793D1?logo=arch-linux&logoColor=white&style=for-the-badge" alt="Linux Pacman x64"></a>
   <br>
   <a href="https://github.com/KanashiiDev/discord-music-rpc/releases/latest/download/Discord-Music-RPC-2.0.0-universal.dmg">
     <img src="https://img.shields.io/badge/macOS-DMG (Universal)-161616?logo=apple&logoColor=white&style=for-the-badge" alt="macOS DMG (Universal)"></a>
@@ -150,11 +151,12 @@ Chrome, Firefox, and Chromium-based browsers (Opera, Brave, Edge, etc.)
 
 ### Desktop App
 
-| Platform          | Support          | Notes                                           |
-| ----------------- | ---------------- | ----------------------------------------------- |
-| **Windows 10/11** | Full support     | -                                               |
-| **macOS 11+**     | Full support     | Drag app to `/Applications` before first launch |
-| **Linux**         | AppImage/DEB/RPM | See Linux-specific notes below                  |
+| Platform          | Support                 | Notes                                           |
+| ----------------- | ----------------------- | ----------------------------------------------- |
+| **Windows 10/11** | Full support            | -                                               |
+| **macOS 11+**     | Full support            | Drag app to `/Applications` before first launch |
+| **Linux**         | AppImage/DEB/RPM/Pacman | See Linux-specific notes below                  |
+| **Nix/NixOS**     | Nix package             | `nix profile add` or flake input                |
 
 <details>
 <summary><strong>Linux Installation Notes</strong></summary>
@@ -175,6 +177,32 @@ sudo apt install libayatana-appindicator3-1  # Debian/Ubuntu
 
 **Auto-start note:**  
 Moving the AppImage after first launch requires re-enabling "Run at Startup" in tray menu.
+
+**Arch Linux:**  
+Install via the one-shot installer script:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/KanashiiDev/discord-music-rpc/main/scripts/install-arch.sh | bash
+```
+
+Or install the `.pkg.tar.zst` package directly from [GitHub Releases](https://github.com/KanashiiDev/discord-music-rpc/releases/latest):
+
+```bash
+sudo pacman -U discord-music-rpc-<version>-x64.pkg.tar.zst
+```
+
+**NixOS / Nix:**  
+Quick install without modifying your configuration:
+
+```bash
+nix profile add github:KanashiiDev/discord-music-rpc
+```
+
+Or add as a flake input for NixOS module / home-manager support:
+
+```nix
+inputs.discord-music-rpc.url = "github:KanashiiDev/discord-music-rpc";
+```
 
 </details>
 

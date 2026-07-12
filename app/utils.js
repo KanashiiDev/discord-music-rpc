@@ -1,4 +1,5 @@
 const { dialog, shell } = require("electron");
+const { spawn } = require("child_process");
 const path = require("path");
 const fs = require("fs");
 
@@ -60,6 +61,7 @@ function safeConsoleWrap(log) {
 
 // Paths
 const isPackaged = require("electron").app.isPackaged;
+const RESOURCE_ROOT = process.env.DISCORD_MUSIC_RPC_NIX === "true" ? path.dirname(process.argv[1]) : process.resourcesPath;
 
 function getAppPath(...p) {
   return path.join(__dirname, ...p);
@@ -70,7 +72,7 @@ function getServerPath(...p) {
 }
 
 function getResourcePath(...p) {
-  return isPackaged ? path.join(process.resourcesPath, ...p) : path.join(__dirname, "..", ...p);
+  return isPackaged ? path.join(RESOURCE_ROOT, ...p) : path.join(__dirname, "..", ...p);
 }
 
 function getIconPath(size = null) {
@@ -123,9 +125,49 @@ function logToFile(error, type = "UnknownError") {
   fs.writeFileSync(_logFilePath, JSON.stringify(entries, null, 2));
 }
 
+async function openUrl(url) {
+  if (process.platform === "linux" && process.env.DISCORD_MUSIC_RPC_NIX === "true") {
+    const uid = process.getuid();
+    const env = { ...process.env };
+
+    // XDG_RUNTIME_DIR
+    if (!env.XDG_RUNTIME_DIR) {
+      env.XDG_RUNTIME_DIR = `/run/user/${uid}`;
+    }
+
+    // DBus session
+    if (!env.DBUS_SESSION_BUS_ADDRESS) {
+      env.DBUS_SESSION_BUS_ADDRESS = `unix:path=/run/user/${uid}/bus`;
+    }
+
+    // NixOS library conflict fixes
+    delete env.LD_LIBRARY_PATH;
+    delete env.GIO_EXTRA_MODULES;
+    delete env.GDK_PIXBUF_MODULE_FILE;
+    delete env.GTK_PATH;
+
+    // Spawn xdg-open with the modified environment
+    const child = spawn("xdg-open", [url], {
+      env,
+      detached: true,
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+
+    if (child.stdout) child.stdout.unref();
+    if (child.stderr) child.stderr.unref();
+
+    child.on("error", (err) => _log.error("[openUrl] xdg-open error:", err.message));
+    child.unref();
+    return;
+  }
+
+  await shell.openExternal(url);
+}
+
 // Shell Helpers
 function openStatus() {
-  shell.openExternal(`http://localhost:${_config.PORT}`);
+  const url = `http://localhost:${_config?.PORT}`;
+  openUrl(url);
 }
 
 function openLogs() {

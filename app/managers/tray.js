@@ -234,8 +234,11 @@ function _buildLinuxDiagnosticItem() {
             icon: icons.message,
             defaultId: 0,
           })
-          .then(({ response }) => {
-            if (response === 0) shell.openPath(outputFile);
+          .then(async ({ response }) => {
+            if (response === 0) {
+              const result = await shell.openPath(outputFile);
+              if (result) dialog.showErrorBox("Open Path Failed", result);
+            }
           });
       });
     },

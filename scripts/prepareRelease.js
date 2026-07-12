@@ -13,154 +13,111 @@ const releaseDir = path.join(projectRoot, "release");
 const winUnpackedDir = path.join(distDir, "win32", "win-unpacked");
 
 // Clean or create release folder
-if (fs.existsSync(releaseDir)) {
-  fs.rmSync(releaseDir, { recursive: true, force: true });
-}
+if (fs.existsSync(releaseDir)) fs.rmSync(releaseDir, { recursive: true, force: true });
 fs.mkdirSync(releaseDir, { recursive: true });
 
 // Update readme.md version
 function updateReadmeVersion() {
   const readmePath = path.join(projectRoot, "readme.md");
-
   if (!fs.existsSync(readmePath)) {
-    console.log("⚠️  readme.md not found, skipping version update");
+    console.log("⚠️  readme.md not found, skipping");
     return;
   }
-
-  const readmeContent = fs.readFileSync(readmePath, "utf8");
-  const releaseUrlPattern = /(\/releases\/latest\/download\/[a-zA-Z-]+-)(\d+\.\d+\.\d+)(-[a-zA-Z0-9._-]+)/g;
-
-  let changeCount = 0;
-  let oldVersion = null;
-  let isSameVersion = true;
-
-  const updatedContent = readmeContent.replace(releaseUrlPattern, (match, prefix, version, suffix) => {
-    if (!oldVersion) {
-      oldVersion = version;
-    }
-    if (version !== releaseVersion) {
-      isSameVersion = false;
-    }
-    changeCount++;
-    return `${prefix}${releaseVersion}${suffix}`;
+  const content = fs.readFileSync(readmePath, "utf8");
+  const pattern = /(\/releases\/latest\/download\/[a-zA-Z-]+-)(\d+\.\d+\.\d+)(-[a-zA-Z0-9._-]+)/g;
+  let count = 0,
+    oldVer = null,
+    same = true;
+  const updated = content.replace(pattern, (_, pre, ver, suf) => {
+    oldVer ??= ver;
+    if (ver !== releaseVersion) same = false;
+    count++;
+    return `${pre}${releaseVersion}${suf}`;
   });
-
-  if (changeCount === 0) {
-    console.log("⚠️  No version patterns found in readme.md release URLs");
-  } else if (isSameVersion) {
-    console.log(`ℹ️  readme.md already uses version ${releaseVersion}, no update needed`);
-  } else {
-    fs.writeFileSync(readmePath, updatedContent, "utf8");
-    console.log(`📝  Updated readme.md: ${oldVersion} → ${releaseVersion} (${changeCount} occurrences)`);
-  }
+  if (!count) return console.log("⚠️  No version patterns found in readme.md");
+  if (same) return console.log(`ℹ️  readme.md already at ${releaseVersion}`);
+  fs.writeFileSync(readmePath, updated, "utf8");
+  console.log(`📝 readme.md: ${oldVer} → ${releaseVersion} (${count} occurrences)`);
 }
 updateReadmeVersion();
 
-// File tracking
-const debFiles = [];
-const rpmFiles = [];
-const appImages = [];
-
 // Helper: recursively collect files from dist
 function getAllFiles(dir) {
-  let files = [];
-  fs.readdirSync(dir, { withFileTypes: true }).forEach((entry) => {
-    const fullPath = path.join(dir, entry.name);
-    if (entry.isDirectory()) {
-      files = files.concat(getAllFiles(fullPath));
-    } else {
-      files.push(fullPath);
-    }
-  });
-  return files;
+  let out = [];
+  for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+    const full = path.join(dir, e.name);
+    out = e.isDirectory() ? out.concat(getAllFiles(full)) : [...out, full];
+  }
+  return out;
 }
 
-const distFiles = getAllFiles(distDir);
+// Collect & copy dist files
+for (const full of getAllFiles(distDir)) {
+  const f = path.basename(full);
+  const dest = path.join(releaseDir, f);
 
-// Copy relevant build outputs
-for (const fullPath of distFiles) {
-  const file = path.basename(fullPath);
-
-  // Copy update metadata (latest.yml)
-  if (file.startsWith("latest") && file.endsWith(".yml")) {
-    fs.copyFileSync(fullPath, path.join(releaseDir, file));
-    console.log(`📄 Copied ${file}`);
+  if (f.startsWith("latest") && f.endsWith(".yml")) {
+    fs.copyFileSync(full, dest);
+    console.log(`📄 Copied ${f}`);
   }
-
-  // Windows EXE
-  if (file.endsWith(".exe") && file.startsWith("Discord-Music-RPC-")) {
-    fs.copyFileSync(fullPath, path.join(releaseDir, file));
-    console.log(`📦 Copied Windows installer: ${file}`);
+  if (f.startsWith("Discord-Music-RPC-") && f.endsWith(".exe")) {
+    fs.copyFileSync(full, dest);
+    console.log(`📦 Windows installer: ${f}`);
   }
-
-  // Linux AppImage
-  if (file.endsWith(".AppImage") && file.startsWith("discord-music-rpc-")) {
-    appImages.push(fullPath);
-    fs.copyFileSync(fullPath, path.join(releaseDir, file));
-    console.log(`📦 Copied Linux AppImage: ${file}`);
+  if (f.startsWith("discord-music-rpc-") && f.endsWith(".AppImage")) {
+    fs.copyFileSync(full, dest);
+    const arch = f.includes("aarch64") ? "aarch64" : "x86_64";
+    console.log(`📦 AppImage (${arch}): ${f}`);
   }
-
-  // Linux DEB
-  if (file.endsWith(".deb") && file.startsWith("discord-music-rpc-")) {
-    debFiles.push(fullPath);
-    fs.copyFileSync(fullPath, path.join(releaseDir, file));
-    console.log(`📦 Copied Linux DEB: ${file}`);
+  if (f.startsWith("discord-music-rpc-") && f.endsWith(".deb")) {
+    fs.copyFileSync(full, dest);
+    console.log(`📦 DEB: ${f}`);
   }
-
-  // Linux RPM
-  if (file.endsWith(".rpm") && file.startsWith("discord-music-rpc-")) {
-    rpmFiles.push(fullPath);
-    fs.copyFileSync(fullPath, path.join(releaseDir, file));
-    console.log(`📦 Copied Linux RPM: ${file}`);
+  if (f.startsWith("discord-music-rpc-") && f.endsWith(".rpm")) {
+    fs.copyFileSync(full, dest);
+    console.log(`📦 RPM: ${f}`);
   }
-
-  // Mac package
-  if (file.endsWith(".dmg") && file.startsWith("Discord-Music-RPC-")) {
-    fs.copyFileSync(fullPath, path.join(releaseDir, file));
-    console.log(`📦 Copied Mac package: ${file}`);
+  if (f.startsWith("Discord-Music-RPC-") && f.endsWith(".dmg")) {
+    fs.copyFileSync(full, dest);
+    console.log(`📦 Mac DMG: ${f}`);
+  }
+  if (f.startsWith("discord-music-rpc-") && f.endsWith(".pacman")) {
+    fs.copyFileSync(full, dest);
+    console.log(`📦 Pacman: ${f}`);
   }
 }
 
-// Find the unpacked Windows directory and ZIP it
-function zipFile(sourcePath, zipName) {
-  const zipPath = path.join(releaseDir, zipName);
-  const output = fs.createWriteStream(zipPath);
-  const archive = new ZipArchive({ zlib: { level: 9 } });
-
+// ZIP Windows unpacked
+function zipDir(src, zipName) {
   return new Promise((resolve, reject) => {
-    output.on("close", () => {
-      console.log(`✅ Zipped ${path.basename(sourcePath)} → ${path.basename(zipPath)} (${archive.pointer()} bytes)`);
+    const out = fs.createWriteStream(path.join(releaseDir, zipName));
+    const arc = new ZipArchive({ zlib: { level: 9 } });
+    out.on("close", () => {
+      console.log(`✅ Zipped → ${zipName}`);
       resolve();
     });
-    archive.on("error", reject);
-    archive.pipe(output);
-
-    if (fs.statSync(sourcePath).isDirectory()) {
-      archive.directory(sourcePath, false);
-    } else {
-      archive.file(sourcePath, { name: path.basename(sourcePath) });
-    }
-
-    archive.finalize();
+    arc.on("error", reject);
+    arc.pipe(out);
+    arc.directory(src, false);
+    arc.finalize();
   });
 }
 
+// Main
 checkMissingTranslations(LOCALES_DIR);
 
 (async () => {
-  if (winUnpackedDir) await zipFile(winUnpackedDir, `Discord-Music-RPC-${releaseVersion}-x64.zip`);
+  if (fs.existsSync(winUnpackedDir)) {
+    await zipDir(winUnpackedDir, `Discord-Music-RPC-${releaseVersion}-x64.zip`);
+  }
+
+  if (fs.existsSync(extensionBuildsDir)) {
+    for (const f of fs.readdirSync(extensionBuildsDir).filter((f) => f.endsWith(".zip"))) {
+      const dest = path.join(releaseDir, f);
+      fs.copyFileSync(path.join(extensionBuildsDir, f), dest);
+      console.log(`🧩 Extension: ${f}`);
+    }
+  }
+
+  console.log(`\n✅ Release files ready in: release/\n`);
 })();
-
-// Copy browser extensions
-if (fs.existsSync(extensionBuildsDir)) {
-  fs.readdirSync(extensionBuildsDir)
-    .filter((file) => file.endsWith(".zip"))
-    .forEach((file) => {
-      const src = path.join(extensionBuildsDir, file);
-      const dest = path.join(releaseDir, file);
-      fs.copyFileSync(src, dest);
-      console.log(`🧩 Copied extension: ${file}`);
-    });
-}
-
-console.log(`\n✅ All release files prepared in: ${path.relative(projectRoot, releaseDir)} folder\n`);

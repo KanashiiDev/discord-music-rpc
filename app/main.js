@@ -1,5 +1,5 @@
 // CLI FLAGS
-const { app, Menu, powerSaveBlocker } = require("electron");
+const { app, Menu } = require("electron");
 
 app.commandLine.appendSwitch("lang", "en-US");
 app.disableHardwareAcceleration();
@@ -66,7 +66,6 @@ app.whenReady().then(async () => {
   }
   isAppInitialized = true;
   log.info("App initialization started");
-  powerSaveBlocker.start("prevent-app-suspension");
 
   try {
     await initializeApp();

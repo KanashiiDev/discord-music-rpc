@@ -53,6 +53,9 @@
     "build:deb": "npm run clean && electron-builder --publish=never --linux deb --x64",
     "build:deb:arm64": "npm run clean && electron-builder --publish=never --linux deb --arm64",
     "build:deb:all": "npm run clean && electron-builder --publish=never --linux deb --x64 --arm64",
+    "build:pacman": "npm run clean && electron-builder --publish=never --linux pacman --x64",
+    "build:pacman:arm64": "npm run clean && electron-builder --publish=never --linux pacman --arm64",
+    "build:pacman:all": "npm run clean && electron-builder --publish=never --linux pacman  --x64 --arm64",
     "build:ubuntu": "npm run build:deb",
     "build:debian": "npm run build:deb",
     "build:fedora": "npm run build:rpm",
@@ -120,7 +123,8 @@
       "target": [
         "AppImage",
         "rpm",
-        "deb"
+        "deb",
+        "pacman"
       ],
       "artifactName": "discord-music-rpc-${version}-${arch}.${ext}",
       "executableName": "discord-music-rpc",
@@ -128,7 +132,7 @@
       "icon": "app/assets/icon",
       "maintainer": "KanashiiDev <kanashiidev0@gmail.com>",
       "synopsis": "Show music from ANY website on your Discord!",
-      "description": "Discord Music RPC Application - Show music from ANY website on your Discord!",
+      "description": "Show music from ANY website on your Discord!",
       "desktop": {
         "entry": {
           "Name": "Discord Music RPC",

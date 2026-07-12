@@ -42,7 +42,7 @@ function setAutoStart(enable) {
   if (process.platform === "linux") {
     const autostartDir = path.join(os.homedir(), ".config", "autostart");
     const desktopFile = path.join(autostartDir, getDesktopFileName());
-    const execPath = process.env.APPIMAGE ?? process.execPath;
+    const execPath = process.env.APPIMAGE ?? process.env.DISCORD_MUSIC_RPC_BIN ?? (process.env.DISCORD_MUSIC_RPC_NIX === "true" ? "discord-music-rpc" : process.execPath);
     const isAppImage = process.env.APPIMAGE !== undefined;
 
     if (enable) {
@@ -64,14 +64,16 @@ function setAutoStart(enable) {
         }
       }
 
-      const iconPath = getIconPath() ?? "";
+      const iconPath = process.env.DISCORD_MUSIC_RPC_NIX === "true" ? "discord-music-rpc" : (getIconPath() ?? "");
+      const isNix = process.env.DISCORD_MUSIC_RPC_NIX === "true";
+      const execCommand = isNix ? `${execPath} --no-sandbox` : `"${execPath}"${isAppImage ? " --no-sandbox" : ""}`;
       const desktopEntry =
         [
           "[Desktop Entry]",
           "Type=Application",
           `Name=${app.getName()}`,
           `Comment=Show what you're listening to on Discord from ANY music website`,
-          `Exec="${execPath}"${isAppImage ? " --no-sandbox" : ""}`,
+          `Exec=${execCommand}`,
           "Terminal=false",
           "Hidden=false",
           "NoDisplay=false",
