@@ -49,6 +49,7 @@ function drawHistoryChart(mode, range) {
     if (loadingEl) {
       loadingEl.style.display = "flex";
       loadingEl.textContent = i18n.t("chart.summary.empty");
+      loadingEl.dataset.i18n = "chart.summary.empty";
       loadingEl.classList.remove("error");
     }
     canvas.style.display = "none";
@@ -343,6 +344,7 @@ export async function updateHistoryChart() {
 
   loadingEl.style.display = "flex";
   loadingEl.textContent = i18n.t("chart.loading");
+  loadingEl.dataset.i18n = "chart.loading";
   loadingEl.classList.remove("error");
   canvas.style.display = "none";
   hc_hideDetails();
@@ -392,6 +394,7 @@ export async function updateHistoryChart() {
   } else {
     loadingEl.style.display = "flex";
     loadingEl.textContent = i18n.t("chart.loading");
+    loadingEl.dataset.i18n = "chart.loading";
   }
 
   // Update the chart when the history data changes (subscribe only once)
