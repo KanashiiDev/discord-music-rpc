@@ -120,7 +120,7 @@ jobs:
         id: get_version
         run: |
           if [[ $GITHUB_REF == refs/tags/* ]]; then
-            VERSION="${GITHUB_REF_NAME#v}"
+            VERSION="$GITHUB_REF_NAME"
           else
             VERSION=$(node -p "require('./package.json').version")
           fi
@@ -183,9 +183,9 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v${{ steps.get_version.outputs.version }}
-          target_commitish: ${{ github.sha }}
-          files: release/**/*
+          tag_name: ${{ steps.get_version.outputs.version }}
+          files: |
+            release/**/*
           draft: false
           prerelease: false
           generate_release_notes: true
@@ -223,5 +223,5 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git diff --quiet nix/package.nix && echo "nothing to commit" && exit 0
           git add nix/package.nix
-          git commit -m "chore(nix): update hashes for v${VERSION} [skip ci]"
+          git commit -m "chore(nix): update hashes for ${VERSION} [skip ci]"
           git push origin main

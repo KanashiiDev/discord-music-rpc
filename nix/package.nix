@@ -37,14 +37,14 @@
 }:
 
 let
-  version = "2.0.0";
+  version = "2.1.0";
   # Source URLs & hashes 
   # Update these when releasing a new version.
   # Get hash with: nix-prefetch-url <url>
   sources = {
     x86_64-linux = fetchurl {
-      url = "https://github.com/KanashiiDev/discord-music-rpc/releases/download/v${version}/discord-music-rpc-${version}-x86_64.AppImage";
-      sha256 = "sha256-oiItieQ0A0FV/5o1gvxo3ZJ1sPy2Cy/6W6bdcv4orGc=";
+      url = "https://github.com/KanashiiDev/discord-music-rpc/releases/download/${version}/discord-music-rpc-${version}-x86_64.AppImage";
+      sha256 = "sha256-14EaIwRcthp3v6+MjJFmrVG6YySmFpHPjZfnl4tbGJM=";
     };
   };
 
