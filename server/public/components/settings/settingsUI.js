@@ -86,7 +86,9 @@ export const createSettingOption = (key, def, allSettings) => {
     title: note || "",
     "data-i18n": `settings.${key.toLowerCase()}`,
   });
-  const noteElement = createElement("span", "option-note");
+  const noteElement = createElement("span", "option-note", {
+    "data-i18n": `settings.${key.toLowerCase()}.note`,
+  });
   noteElement.textContent = `${note || ""}${display ? ` (${display})` : ""}`;
   labelWrapper.append(title, noteElement);
 
