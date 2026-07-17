@@ -119,21 +119,14 @@ function startPreviewLoop(shadow, editMode) {
 // Preview Update
 async function updatePreview(shadow, editMode) {
   const getValue = (id) => shadow.getElementById(id)?.value?.trim();
-  const getElement = (selector) => {
-    if (!selector) return null;
+  const getElement = (rawSelector) => {
+    if (!rawSelector) return null;
+    const { cleanSelector } = parseIgnoreSelector(rawSelector);
     try {
-      return querySelectorDeep(selector);
+      return querySelectorDeep(cleanSelector);
     } catch {
       return null;
     }
-  };
-
-  const getImageSrc = (el) => {
-    if (!el) return null;
-    if (el.src) return el.src;
-    const bgImage = window.getComputedStyle(el).backgroundImage;
-    const match = bgImage?.match(/url\(["']?(.*?)["']?\)/);
-    return match?.[1] || null;
   };
 
   const isValidUrl = (url) => {
@@ -162,31 +155,22 @@ async function updatePreview(shadow, editMode) {
 
   // Get elements
   const elements = {
-    name: getElement(selectors.name),
-    image: getElement(selectors.image),
-    title: getElement(selectors.title),
-    artist: getElement(selectors.artist),
-    timePassed: getElement(selectors.timePassed),
-    duration: getElement(selectors.duration),
     link: getElement(selectors.link),
-    buttonText: getElement(selectors.buttonText),
     buttonLink: getElement(selectors.buttonLink),
-    buttonText2: getElement(selectors.buttonText2),
     buttonLink2: getElement(selectors.buttonLink2),
-    source: getElement(selectors.source),
     isPlaying: getElement(selectors.isPlaying),
   };
 
   // Text Values
   let texts = {
     name: selectors.name || getCleanHostname() || "name",
-    title: elements.title?.textContent || getPlainText(selectors.title) || (selectors.title ? "" : t("selector.editor.title.label")),
-    artist: elements.artist?.textContent || getPlainText(selectors.artist) || (selectors.artist ? "" : "-1"),
-    source: elements.source?.textContent || getPlainText(selectors.source) || getCleanHostname() || t("selector.editor.source.label") || "source",
-    timePassed: elements.timePassed?.textContent,
-    duration: elements.duration?.textContent || undefined,
-    buttonText: elements.buttonText?.textContent || getPlainText(selectors.buttonText) || "Custom Action",
-    buttonText2: elements.buttonText2?.textContent || getPlainText(selectors.buttonText2) || "Custom Action",
+    title: getText(selectors.title) || getPlainText(selectors.title) || (selectors.title ? "" : t("selector.editor.title.label")),
+    artist: getText(selectors.artist) || getPlainText(selectors.artist) || (selectors.artist ? "" : "-1"),
+    source: getText(selectors.source) || getPlainText(selectors.source) || getCleanHostname() || t("selector.editor.source.label") || "source",
+    timePassed: getText(selectors.timePassed) || undefined,
+    duration: getText(selectors.duration) || undefined,
+    buttonText: getText(selectors.buttonText) || getPlainText(selectors.buttonText) || "Custom Action",
+    buttonText2: getText(selectors.buttonText2) || getPlainText(selectors.buttonText2) || "Custom Action",
     mode: selectors.mode === "watch" ? t("selector.preview.watchTo") : t("selector.preview.listenTo"),
   };
 
@@ -226,7 +210,7 @@ async function updatePreview(shadow, editMode) {
 
   const setImage = () => {
     const img = previewRoot.querySelector(".imageContainer img");
-    const imageSrc = getImageSrc(elements.image) || browser.runtime.getURL("icons/128x128.png");
+    const imageSrc = getImage(selectors.image) || browser.runtime.getURL("icons/128x128.png");
     const prevImg = img.getAttribute("data-prev-image");
     if (imageSrc !== prevImg) {
       img.setAttribute("data-prev-image", imageSrc);

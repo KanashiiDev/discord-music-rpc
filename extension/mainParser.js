@@ -1075,7 +1075,9 @@ async function loadAllSavedUserParsers() {
     const get = (key) => {
       try {
         const sel = data.selectors[key];
-        return sel ? querySelectorDeep(sel) : null;
+        if (!sel) return null;
+        const { cleanSelector } = parseIgnoreSelector(sel);
+        return querySelectorDeep(cleanSelector);
       } catch (e) {
         logError(`[mainParser:loadAllSavedUserParsers]: Selector error for key "${key}" in domain "${data.domain}":`, e);
         return null;
@@ -1101,26 +1103,11 @@ async function loadAllSavedUserParsers() {
           const videoData = autoDetectEnabled ? getBestVideo(document.querySelectorAll("video")) : null;
           const { duration, currentTime, playing } = iframeData || videoData ? getBestData(iframeData, videoData) : {};
 
-          const title = get("title")?.textContent?.trim() ?? getPlainText(data.selectors["title"]) ?? "";
-          const artistIsEmpty = !get("artist") && !getPlainText(data.selectors["artist"]);
-          const artist = artistIsEmpty ? "-1" : (get("artist")?.textContent?.trim() ?? getPlainText(data.selectors["artist"]) ?? "");
-          const source = get("source")?.textContent?.trim() ?? getPlainText(data.selectors["source"]) ?? "";
-
-          const imageElement = get("image");
-          let image = null;
-
-          if (imageElement) {
-            if (imageElement.src) {
-              image = imageElement.src;
-            } else {
-              const backgroundImage = window.getComputedStyle(imageElement).backgroundImage;
-              if (backgroundImage && backgroundImage !== "none") {
-                const match = backgroundImage.match(/url\(["']?(.*?)["']?\)/);
-                image = match ? match[1] : null;
-              }
-            }
-          }
-
+          const title = getText(data.selectors["title"]) || getPlainText(data.selectors["title"]) || "";
+          const artistRaw = getText(data.selectors["artist"]) || getPlainText(data.selectors["artist"]);
+          const artist = artistRaw ? artistRaw : "-1";
+          const source = getText(data.selectors["source"]) || getPlainText(data.selectors["source"]) || "";
+          const image = getImage(data.selectors["image"]);
           const link = getSafeHref(get, "link", data.link || location.href);
           const buttonLink = getSafeHref(get, "buttonLink", data.selectors.buttonLink);
           const buttonText = getSafeText(get, "buttonText", data.selectors.buttonText);
@@ -1133,8 +1120,8 @@ async function loadAllSavedUserParsers() {
             image,
             source: artist === source ? data.title : source || location.hostname.replace(/^www\./i, ""),
             songUrl: link || location.href,
-            timePassed: currentTime || get("timePassed")?.textContent || "",
-            duration: duration || get("duration")?.textContent || "",
+            timePassed: currentTime || getText(data.selectors["timePassed"]) || "",
+            duration: duration || getText(data.selectors["duration"]) || "",
             isPlaying: Boolean(get("isPlaying") || playing),
             mode: data.selectors.mode || "listen",
             buttons: [

@@ -90,6 +90,8 @@ module.exports = function registerInlines(inlineUtilsFunctions) {
     "getImage",
     "getImageAll",
     "querySelectorDeep",
+    "parseIgnoreSelector",
+    "cloneWithoutIgnored",
     "generateParserKey",
     "getPlainText",
     "isValidUrl",
@@ -131,7 +133,7 @@ module.exports = function registerInlines(inlineUtilsFunctions) {
   inlineUtilsFunctions(
     "manager/userScriptWorker.js",
     "common/utils.js",
-    ["getText", "getTextAll", "getImage", "getImageAll", "queryWithPartialClass", "querySelectorDeep", "generateParserKey"],
+    ["getText", "getTextAll", "getImage", "getImageAll", "queryWithPartialClass", "querySelectorDeep", "parseIgnoreSelector", "cloneWithoutIgnored", "generateParserKey"],
     "_INLINE_UTILS",
   );
   inlineUtilsFunctions("background.js", ["manager/userScriptWorker.js"], []);

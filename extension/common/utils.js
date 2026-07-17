@@ -1271,6 +1271,29 @@ function processPlaybackInfo(timePassed = "", durationElem = "") {
   return { currentPosition, totalDuration, currentProgress, timestamps };
 }
 
+const parseIgnoreSelector = (selector) => {
+  const ignoreMatches = [...selector.matchAll(/\[ignore=['"]([^'"]+)['"]\]/g)];
+  const onlyMatch = selector.match(/\[only=['"]([^'"]+)['"]\]/);
+
+  let cleanSelector = selector;
+  ignoreMatches.forEach((m) => (cleanSelector = cleanSelector.replace(m[0], "")));
+  if (onlyMatch) cleanSelector = cleanSelector.replace(onlyMatch[0], "").trim();
+
+  return {
+    cleanSelector: cleanSelector.trim(),
+    ignoreSelector: ignoreMatches.length ? ignoreMatches.map((m) => m[1]).join(",") : null,
+    onlySelector: onlyMatch?.[1] ?? null,
+  };
+};
+
+function cloneWithoutIgnored(elem, ignoreSelector) {
+  const clone = elem.cloneNode(true);
+  try {
+    clone.querySelectorAll(ignoreSelector).forEach((el) => el.remove());
+  } catch (_) {}
+  return clone;
+}
+
 /**
  *Selects the element, takes the desired Attribute (or TextContent), then applies optional operations.
  * @param {string} selector - CSS selector
@@ -1281,20 +1304,30 @@ function processPlaybackInfo(timePassed = "", durationElem = "") {
  * @returns {string} - processed string or empty string
  */
 function getText(selector, options = {}) {
+  if (!selector) return "";
   const { attr = null, transform = null, root = document } = options;
+  const { cleanSelector, ignoreSelector, onlySelector } = parseIgnoreSelector(selector);
 
   let elem = null;
   try {
-    elem = querySelectorDeep(selector, root);
+    elem = querySelectorDeep(cleanSelector, root);
   } catch (_) {}
-
-  if (!elem) {
-    elem = queryWithPartialClass(selector, root)[0] ?? null;
-  }
-
+  if (!elem) elem = queryWithPartialClass(cleanSelector, root)[0] ?? null;
   if (!elem) return "";
 
-  let val = attr ? elem.getAttribute(attr) : elem.textContent;
+  // only selector
+  if (onlySelector) {
+    const onlyEl = elem.querySelector(onlySelector);
+    if (onlyEl) elem = onlyEl;
+  }
+
+  // ignore selector
+  let target = elem;
+  if (ignoreSelector && !attr) {
+    target = cloneWithoutIgnored(elem, ignoreSelector);
+  }
+
+  let val = attr ? elem.getAttribute(attr) : target.textContent;
   if (!val) return "";
 
   val = val.trim();
@@ -1334,28 +1367,36 @@ function getTextAll(selector, options = {}) {
  * @returns {string|null} Image URL or null if not found.
  */
 function getImage(selector, root = document) {
+  if (!selector) return null;
+  const { cleanSelector, ignoreSelector, onlySelector } = parseIgnoreSelector(selector);
+
   let elem = null;
   try {
-    elem = querySelectorDeep(selector, root);
+    elem = querySelectorDeep(cleanSelector, root);
   } catch (_) {}
 
   if (!elem) return null;
 
-  // Priority: element directly <img>
-  if (elem.tagName.toLowerCase() === "img" && elem.src) {
-    return elem.src;
+  // Only selector
+  if (onlySelector) {
+    const onlyEl = elem.querySelector(onlySelector);
+    if (onlyEl) elem = onlyEl;
   }
+
+  // Priority: element directly <img>
+  if (elem.tagName.toLowerCase() === "img" && elem.src) return elem.src;
 
   // Alternative: background-image
   const bgImage = getComputedStyle(elem).backgroundImage;
   if (bgImage && bgImage !== "none") {
     const match = bgImage.match(/url\(["']?(https?[^"')]+)["']?\)/);
-    return match ? match[1] : null;
+    if (match) return match[1];
   }
 
   // Alternative: check for <img> inside
-  const childImg = elem.querySelector("img");
-  return childImg?.src || null;
+  const childImgs = Array.from(elem.querySelectorAll("img[src]"));
+  const filtered = ignoreSelector ? childImgs.filter((img) => !img.matches(ignoreSelector) && !img.closest(ignoreSelector)) : childImgs;
+  return filtered[0]?.src || null;
 }
 
 /**
