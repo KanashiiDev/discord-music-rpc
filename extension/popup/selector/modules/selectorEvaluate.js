@@ -146,9 +146,18 @@ function isSimilarSelector(selA, selB, threshold = 70) {
   return score >= threshold;
 }
 
-function filterAndSortSelectors(selectors, targetElement, maxResults = SELECTOR_CONSTANTS.MAX_RESULTS) {
+function filterAndSortSelectors(selectors, targetElement, maxResults = SELECTOR_CONSTANTS.MAX_RESULTS, field = null) {
   const evaluated = selectors
-    .map((selector) => ({ selector, ...evaluateSelector(selector, targetElement) }))
+    .map((selector) => {
+      const result = { selector, ...evaluateSelector(selector, targetElement) };
+
+      if (field === "image" && result.isUnique) {
+        const src = getImage(selector);
+        if (!src) result.score = 0;
+      }
+
+      return result;
+    })
     .filter((item) => item.isUnique && item.score > 10)
     .sort((a, b) => b.score - a.score);
 

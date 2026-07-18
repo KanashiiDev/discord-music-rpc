@@ -876,22 +876,6 @@ footer {
   pointer-events: none;
 }
 
-.settings-option-tip {
-  pointer-events: all;
-  margin: 6px;
-  font-family: monospace;
-  font-size: 8px;
-  font-weight: 400;
-  background: var(--foreground-color-300);
-  border-radius: 50%;
-  display: inline-block;
-  width: 10px;
-  height: 10px;
-  text-align: center;
-  padding: 2px;
-  cursor: pointer;
-}
-
 .settings-option input,
 .settings-option select,
 .parser-option input,

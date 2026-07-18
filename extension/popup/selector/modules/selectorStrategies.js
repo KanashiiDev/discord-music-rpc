@@ -2,7 +2,7 @@
  * Main Selector Production Function.
  * Generates unique selectors with a multi-layered strategy.
  */
-function generateSelectorOptions(element) {
+function generateSelectorOptions(element, field = null) {
   if (!isValidElement(element)) return [];
 
   const allSelectors = new Set();
@@ -27,7 +27,7 @@ function generateSelectorOptions(element) {
   const rewriteCandidates = [...allSelectors];
   generatePartialClassVariants(element, rewriteCandidates).forEach((v) => evaluateAndAddSelector(v, element, allSelectors));
 
-  return filterAndSortSelectors([...allSelectors], element);
+  return filterAndSortSelectors([...allSelectors], element, undefined, field);
 }
 
 /* ──────────────────────────────── */

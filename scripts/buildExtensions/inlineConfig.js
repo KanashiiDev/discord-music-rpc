@@ -11,14 +11,11 @@ module.exports = function registerInlines(inlineUtilsFunctions) {
   inlineUtilsFunctions(["background.js"], "activityLibrary/service.js", [], "start", true);
   inlineUtilsFunctions(["background.js", "common/utils.js", "main.js"], "common/debugLogger.js", [], "start");
 
-  // Localization
-  inlineUtilsFunctions(["common/utils.js"], "../shared/i18n.js", [], [], "start");
+  // Shared
+  inlineUtilsFunctions(["common/utils.js", "popup/selector/selector.js"], ["../shared/dialog.js", "../shared/i18n.js"], [], [], "start");
 
   // Tom Select Plugins
   inlineUtilsFunctions(["popup/popup.js"], "../shared/tom-select-plugins.js", [], [], "end");
-
-  // Dialog
-  inlineUtilsFunctions(["common/utils.js"], "../shared/dialog.js", [], [], "start");
 
   // Truncate
   inlineUtilsFunctions(["common/utils.js", "popup/selector/selector.js", "background.js"], "../shared/utils.js", ["truncate"]);

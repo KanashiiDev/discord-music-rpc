@@ -5,9 +5,9 @@ function _dialog_overlay() {
   return ov;
 }
 
-function _dialog_open(ov, box, focusEl) {
+function _dialog_open(ov, box, focusEl, target = document.body) {
   ov.appendChild(box);
-  document.body.appendChild(ov);
+  target.appendChild(ov);
   ov.classList.add("active");
   focusEl?.focus();
 }
@@ -73,10 +73,11 @@ function appendFormattedText(el, text) {
  * @param {Array}    cfg.buttons       - [{ label, cls, value?, handler? }]
  * @param {Array}    [cfg.extraButtons] - [{ label, cls, value }]
  * @param {object}   [cfg.keys]        - { Enter: value, Escape: value }
+ * @param {HTMLElement} [cfg.target]   - element to append the overlay to
  * @param {function} [cfg.mount]       - callback(box, done)
  * @returns {Promise<any>}
  */
-function _dialog_create({ titleId, type, heading, body, buttons, extraButtons = [], keys = {}, mount } = {}) {
+function _dialog_create({ titleId, type, heading, body, buttons, extraButtons = [], keys = {}, target, mount } = {}) {
   return new Promise((resolve) => {
     const ov = _dialog_overlay();
 
@@ -154,14 +155,14 @@ function _dialog_create({ titleId, type, heading, body, buttons, extraButtons = 
       _dialog_bindKeys(ov, Object.fromEntries(Object.entries(keys).map(([k, v]) => [k, () => done(v)])));
     }
 
-    _dialog_open(ov, box, actions.firstChild);
+    _dialog_open(ov, box, actions.firstChild, target);
   });
 }
 
 // Public API
 
 // Alert
-async function showAlert(title, body, type = "info", { labelOk = i18n.t("common.ok") } = {}) {
+async function showAlert(title, body, type = "info", { labelOk = i18n.t("common.ok"), target } = {}) {
   return _dialog_create({
     titleId: "dlg-a-title",
     type,
@@ -169,11 +170,12 @@ async function showAlert(title, body, type = "info", { labelOk = i18n.t("common.
     body,
     buttons: [{ label: labelOk, cls: "primary", value: null }],
     keys: { Enter: null, Escape: null },
+    target,
   });
 }
 
 // Confirm
-async function showConfirm(title, { type = "danger", heading, body, labelOk, labelCancel = i18n.t("common.cancel") } = {}) {
+async function showConfirm(title, { type = "danger", heading, body, labelOk, labelCancel = i18n.t("common.cancel"), target } = {}) {
   heading ??= type === "danger" ? i18n.t("dialog.confirmDelete") : "";
   body ??= type === "danger" ? i18n.t("dialog.warnDelete") : "";
   labelOk ??= type === "danger" ? i18n.t("common.delete") : i18n.t("common.confirm");
@@ -200,6 +202,7 @@ async function showConfirm(title, { type = "danger", heading, body, labelOk, lab
       { label: labelOk, cls: type, value: true },
     ],
     keys: { Enter: true, Escape: false },
+    target,
   });
 }
 
@@ -207,7 +210,7 @@ async function showConfirm(title, { type = "danger", heading, body, labelOk, lab
 async function showPrompt(
   label,
   defaultValue = "",
-  { placeholder = "", type = "edit", labelOk = i18n.t("common.save"), labelCancel = i18n.t("common.cancel"), validator = null, extraButtons = [] } = {},
+  { placeholder = "", type = "edit", labelOk = i18n.t("common.save"), labelCancel = i18n.t("common.cancel"), validator = null, extraButtons = [], target } = {},
 ) {
   return _dialog_create({
     titleId: "dlg-p-title",
@@ -219,6 +222,7 @@ async function showPrompt(
       { label: labelOk, cls: "primary", handler: null },
     ],
     keys: { Escape: null },
+    target,
     mount(box, done) {
       const input = document.createElement("input");
       input.className = "dlg-input";

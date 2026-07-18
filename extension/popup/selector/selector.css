@@ -96,6 +96,8 @@ a {
   position: fixed;
   top: 20px;
   left: 50%;
+  min-height: 170px;
+  max-height: calc(100dvh - 40px);
   -webkit-transform: translateX(-50%);
   -ms-transform: translateX(-50%);
   transform: translateX(-50%);
@@ -110,6 +112,14 @@ a {
   color: var(--text-color-primary);
   border-radius: var(--radius-default);
   border: 1px solid var(--border-color);
+  overflow: hidden;
+  display: -webkit-box;
+  display: -ms-flexbox;
+  display: flex;
+  -webkit-box-orient: vertical;
+  -webkit-box-direction: normal;
+  -ms-flex-direction: column;
+  flex-direction: column;
 }
 
 .userRpc-h3 {
@@ -126,6 +136,32 @@ a {
   margin-top: 0;
   font-weight: 400;
   color: var(--text-color-primary) !important;
+}
+
+.userRpc-h4-wrapper {
+  display: -webkit-box;
+  display: -ms-flexbox;
+  display: flex;
+  -webkit-box-pack: center;
+  -ms-flex-pack: center;
+  justify-content: center;
+  -webkit-box-orient: horizontal;
+  -webkit-box-direction: normal;
+  -ms-flex-direction: row;
+  flex-direction: row;
+  -webkit-box-align: center;
+  -ms-flex-align: center;
+  align-items: center;
+  gap: 5px;
+}
+
+#userRpc-selectorRoot .settings-option-tip {
+  padding: 1px;
+  font-size: 8px;
+  display: block;
+  width: 12px;
+  height: 12px;
+  margin: 0 0 8px;
 }
 
 h1,
@@ -285,11 +321,13 @@ br[id*="buttonLink"] {
 }
 
 #userRpc-selectorChooser-container-list {
-  max-height: 85vh !important;
   gap: 4px;
   display: grid;
+  padding: 0 8px;
 }
 
+.dlg-body::-webkit-scrollbar-thumb,
+.dlg-body::-webkit-scrollbar,
 #userRpc-selectorRoot::-webkit-scrollbar-thumb,
 #userRpc-selectorRoot::-webkit-scrollbar,
 #userRpc-selectorChooser-container-list::-webkit-scrollbar-thumb,
@@ -305,6 +343,12 @@ br[id*="buttonLink"] {
   background: var(--background-color) !important;
 }
 
+.dlg-body::-webkit-scrollbar-corner,
+.dlg-body::-webkit-scrollbar-track {
+  background: var(--foreground-color-100);
+}
+
+.dlg-body::-webkit-scrollbar-thumb,
 #userRpc-selectorRoot::-webkit-scrollbar-thumb,
 #userRpc-selectorChooser-container-list::-webkit-scrollbar-thumb {
   background: var(--scrollbar-color) !important;
@@ -320,27 +364,53 @@ br[id*="buttonLink"] {
   -webkit-box-align: center;
   -ms-flex-align: center;
   align-items: center;
+  gap: 10px;
+  margin-top: 4px;
+  font-size: 10.5px;
+  opacity: 0.6;
 }
 
 #userRpc-selectorChooser-container-list .selector {
   word-break: break-all;
+  -webkit-box-flex: 1;
+  -ms-flex: 1;
+  flex: 1;
 }
 
 #userRpc-selectorChooser-container-list .score {
   margin-left: 8px;
-  font-size: 12px;
 }
 
+.userRpc-selectorChooser-preview-text.playing,
 #userRpc-selectorChooser-container-list .score.green {
   color: var(--green-color);
 }
 
+.userRpc-selectorChooser-preview-text.paused,
 #userRpc-selectorChooser-container-list .score.orange {
   color: var(--yellow-color);
 }
 
 #userRpc-selectorChooser-container-list .score.red {
   color: var(--red-color);
+}
+
+.userRpc-selectorChooser-preview-container {
+  display: block;
+}
+
+.userRpc-selectorChooser-preview-img {
+  max-width: 36px;
+  max-height: 36px;
+  border-radius: 4px;
+  overflow: hidden;
+  background: var(--foreground-color-200);
+  border: 1px solid var(--border-color);
+  padding: 4px;
+}
+
+.userRpc-selectorChooser-preview-text {
+  font-size: 13.5px;
 }
 
 #userRpc-selectorChooser-button {

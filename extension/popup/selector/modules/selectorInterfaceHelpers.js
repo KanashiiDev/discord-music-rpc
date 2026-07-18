@@ -143,6 +143,12 @@ let FIELDS_CONFIG = {
     desc: "selector.editor.isPlaying.desc",
     type: "text",
   },
+  regex: {
+    label: "selector.editor.regex.label",
+    placeholder: "playlist.*",
+    desc: "selector.editor.regex.desc",
+    type: "text",
+  },
   mode: {
     label: "selector.editor.activityMode.label",
     type: "select",
@@ -163,12 +169,6 @@ let FIELDS_CONFIG = {
       { value: "disable", label: "common.disable" },
     ],
     defaultValue: "enable",
-  },
-  regex: {
-    label: "selector.editor.regex.label",
-    placeholder: "playlist.*",
-    desc: "selector.editor.regex.desc",
-    type: "text",
   },
   buttonText: {
     label: "selector.editor.buttonText.label",
@@ -311,10 +311,37 @@ function createTitleElements(root, editMode) {
   heading.textContent = t("header.title");
   root.appendChild(heading);
 
+  const editTitleWrapper = document.createElement("div");
+  editTitleWrapper.className = "userRpc-h4-wrapper";
+
   const editTitle = document.createElement("h4");
   editTitle.className = "userRpc-h4";
   editTitle.textContent = editMode ? "" : t("selector.editor.addNew");
-  root.appendChild(editTitle);
+  editTitleWrapper.appendChild(editTitle);
+
+  const selectorTip = document.createElement("span");
+  selectorTip.className = "settings-option-tip";
+  selectorTip.textContent = "i";
+
+  selectorTip.addEventListener("click", async () => {
+    const fields = Object.entries(FIELDS_CONFIG)
+      .filter(([, field]) => field.desc)
+      .map(([key, field]) => {
+        const ignoreType = ["name", "domain"].includes(key);
+
+        const type = !ignoreType && typeof field.placeholder === "string" ? ` - <i>${field.placeholder}</i>` : "";
+        return `<b>${t(field.label)}</b>${type}\n${t(field.desc)}`;
+      });
+
+    const bodyText = fields.join("\n\n");
+
+    await showAlert(t("selector.editor.addNew"), bodyText, "tip", {
+      target: root,
+      labelOk: t("common.ok"),
+    });
+  });
+  editTitleWrapper.appendChild(selectorTip);
+  root.appendChild(editTitleWrapper);
 }
 
 function createFieldInputs(placeholderMap = getPlaceholderMap()) {
@@ -801,7 +828,7 @@ function handleElementClick(e, field, shadowDoc, cleanup) {
   }
 
   try {
-    const selectors = generateSelectorOptions(targetEl);
+    const selectors = generateSelectorOptions(targetEl, field);
     showSelectorChooser(selectors, field, shadowDoc);
   } catch (error) {
     showStatusMsg(t("selector.generateError"), 1, 1, shadowDoc);
