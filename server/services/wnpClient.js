@@ -16,9 +16,9 @@ const FIELD_MAP = {
 };
 
 const PLAYER_CONTROLS = JSON.stringify({
-  supports_play_pause: false,
-  supports_skip_previous: false,
-  supports_skip_next: false,
+  supports_play_pause: true,
+  supports_skip_previous: true,
+  supports_skip_next: true,
   supports_set_position: false,
   supports_set_volume: false,
   supports_toggle_repeat_mode: false,
@@ -34,6 +34,39 @@ class WNPConnection {
     this.cache = new Map();
     this.stopped = false;
     this._hasHadActivity = false;
+    this._lastCommandAt = 0;
+  }
+
+  _handleWnpCommand(msg) {
+    const commandMap = {
+      "TRY_SET_STATE PLAYING": "TOGGLE_PLAYING",
+      "TRY_SET_STATE PAUSED": "TOGGLE_PLAYING",
+      TRY_SKIP_NEXT: "SKIP_NEXT",
+      TRY_SKIP_PREVIOUS: "SKIP_PREVIOUS",
+    };
+
+    const action = commandMap[msg];
+    if (!action) return;
+
+    const now = Date.now();
+    if (now - this._lastCommandAt < 500) return;
+    this._lastCommandAt = now;
+
+    this._triggerOsMediaKey(action);
+  }
+
+  _triggerOsMediaKey(action) {
+    if (process.platform !== "win32") return;
+
+    const { execFile } = require("child_process");
+    const keyCodes = { TOGGLE_PLAYING: "0xB3", SKIP_NEXT: "0xB0", SKIP_PREVIOUS: "0xB1" };
+    const code = keyCodes[action];
+    if (!code) return;
+
+    const script = `$t = Add-Type -MemberDefinition '[DllImport("user32.dll")] public static extern void keybd_event(byte v, byte s, uint f, int e);' -Name K -PassThru; $t::keybd_event(${code},0,0,0); $t::keybd_event(${code},0,2,0)`;
+    execFile("powershell", ["-NoProfile", "-NonInteractive", "-Command", script], (err) => {
+      if (err) console.error(`[WNP] OS key error:`, err.message);
+    });
   }
 
   connect() {
@@ -48,6 +81,11 @@ class WNPConnection {
 
     this.ws.on("open", () => {
       this.sendUpdate();
+    });
+
+    this.ws.on("message", (data) => {
+      const msg = data.toString().trim();
+      this._handleWnpCommand(msg);
     });
 
     this.ws.on("close", () => {
