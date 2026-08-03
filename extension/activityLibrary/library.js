@@ -95,6 +95,18 @@ const init = async () => {
 
   await i18n.load("extension").catch(() => {});
 
+  // Initial Setup
+  const setup = await browser.storage.local.get("initialSetupDone");
+  if (!setup.initialSetupDone) {
+    await showInitialSetupDialog(1);
+  }
+
+  // Host Permission Check
+  const hasPermission = await browser.permissions.contains({
+    origins: ["*://*/*"],
+  });
+  if (!hasPermission) await showHostPermissionDialog(1);
+
   try {
     const { appearanceSettings = {} } = await browser.storage.local.get("appearanceSettings");
     if (appearanceSettings.theme) document.body.setAttribute("data-theme", appearanceSettings.theme);

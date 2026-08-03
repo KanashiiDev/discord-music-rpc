@@ -214,7 +214,7 @@ function openConfig() {
 
 // Error Handling
 function handleCriticalError(message, error) {
-  _log.error(message, error);
+  (_log ?? console).error(message, error);
   dialog
     .showMessageBox({
       type: "error",
@@ -228,6 +228,83 @@ function handleCriticalError(message, error) {
       if (response === 1) openLogs();
       require("electron").app.quit();
     });
+}
+
+function preemptiveMigrate(app, log) {
+  const currentUserData = app.getPath("userData");
+  const NEW_APP_FOLDER = "web-presence-bridge";
+  const newDataPath = path.join(app.getPath("userData"), "..", NEW_APP_FOLDER);
+  const MIGRATE_FILES = ["config.json", "logs.json", "history.json"];
+
+  log.info(`[Rebrand] Pre-migration: ${currentUserData} -> ${newDataPath}`);
+  fs.mkdirSync(newDataPath, { recursive: true });
+
+  for (const file of MIGRATE_FILES) {
+    const src = path.join(currentUserData, file);
+    const dst = path.join(newDataPath, file);
+
+    if (!fs.existsSync(src)) {
+      log.info(`[Rebrand] Skipped: ${file}  (not found)`);
+      continue;
+    }
+
+    try {
+      if (fs.existsSync(dst)) {
+        const srcMtime = fs.statSync(src).mtimeMs;
+        const dstMtime = fs.statSync(dst).mtimeMs;
+        if (srcMtime <= dstMtime) {
+          log.info(`[Rebrand] Skipped: ${file} (already up-to-date)`);
+          continue;
+        }
+      }
+      fs.copyFileSync(src, dst);
+      log.info(`[Rebrand] Copied: ${file}`);
+    } catch (err) {
+      log.warn(`[Rebrand] Error (${file}): ${err.message}`);
+    }
+  }
+
+  log.info("[Rebrand] Pre-migration completed.");
+}
+
+async function showRebrandingNotice(app, log, showAlways) {
+  const GITHUB_RELEASES_URL = "https://github.com/KanashiiDev/web-presence#download";
+  const FLAG_FILE = "rebrand_notice_shown";
+  const currentUserData = app.getPath("userData");
+  const flagPath = path.join(currentUserData, FLAG_FILE);
+
+  if (!showAlways && fs.existsSync(flagPath)) return;
+
+  const { response } = await dialog.showMessageBox({
+    type: "info",
+    title: "Discord Music RPC - Important Announcement",
+    message: "This application will soon be discontinued",
+    detail: [
+      'Discord Music RPC is being restructured under the name "Web Presence" for broader usage purposes.',
+      "",
+      "You can continue to use this version, but it will not receive any updates from now on.",
+      "",
+      "• We recommend that you uninstall this application after installing the new application.",
+      "• After installation, all application data will be automatically transferred to the new application.',",
+    ].join("\n"),
+    buttons: ["Download the New Version", "Ignore"],
+    icon: icons.message,
+    defaultId: 0,
+    cancelId: 1,
+  });
+
+  if (response === 0) {
+    shell.openExternal(GITHUB_RELEASES_URL);
+  }
+
+  if (!fs.existsSync(flagPath)) {
+    try {
+      fs.writeFileSync(flagPath, new Date().toISOString());
+      log.info("[Rebrand] Flag has been set, it will not be shown again.");
+    } catch (err) {
+      log.warn(`[Rebrand] Flag could not be written: ${err.message}`);
+    }
+  }
 }
 
 module.exports = {
@@ -248,4 +325,6 @@ module.exports = {
   openLogs,
   openConfig,
   handleCriticalError,
+  preemptiveMigrate,
+  showRebrandingNotice,
 };

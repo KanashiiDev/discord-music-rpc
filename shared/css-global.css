@@ -373,6 +373,7 @@ svg:not(.flatpickr-calendar svg):not(.IroHandle) {
 }
 
 /* MV3 Alert */
+#setupAlert,
 #mv3Alert {
   width: 100vw;
   position: fixed;
@@ -390,6 +391,7 @@ svg:not(.flatpickr-calendar svg):not(.IroHandle) {
   overflow: auto;
 }
 
+#setupAlert .setup-dialog,
 #mv3Alert .box {
   background: var(--foreground-color-300);
   padding: 20px;
@@ -402,8 +404,172 @@ svg:not(.flatpickr-calendar svg):not(.IroHandle) {
   color: var(--text-color-primary);
 }
 
+#setupAlert p,
 #mv3Alert p {
   color: var(--text-color-secondary);
+}
+
+.setup-dialog {
+  top: 0;
+  left: 0;
+  background: var(--foreground-color-200);
+  padding: 20px;
+  border-radius: var(--radius-md);
+  -webkit-box-shadow: 0 4px 8px var(--shadow-color);
+  box-shadow: 0 4px 8px var(--shadow-color);
+  z-index: 1000;
+}
+
+.setup-dialog-content {
+  text-align: center;
+}
+
+.setup-dialog-buttons {
+  gap: 5px;
+  display: -webkit-inline-box;
+  display: -ms-inline-flexbox;
+  display: inline-flex;
+}
+
+.setup-dialog h2,
+.tutorial-dialog h2 {
+  margin-top: 0;
+  color: var(--text-color-primary);
+  font-size: 1rem;
+}
+.setup-dialog p,
+.tutorial-dialog p {
+  color: var(--text-color-secondary);
+  font-size: 0.8rem;
+}
+.setup-dialog button,
+.tutorial-dialog button {
+  background: var(--accent-color);
+  color: var(--text-color-primary);
+  border: none;
+  padding: 10px 15px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  -webkit-transition: background-color var(--transition-normal) ease;
+  transition: background-color var(--transition-normal) ease;
+}
+
+.setup-dialog button:hover,
+.tutorial-dialog button:hover {
+  background: var(--accent-color-bright);
+}
+
+.setup-dialog .setup-link-container {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  border-radius: var(--radius-default);
+  padding: 6px;
+  background: var(--foreground-color-100);
+  margin: 6px 0;
+}
+
+.setup-list-message .setup-link,
+.setup-dialog .setup-link,
+.setup-dialog .setup-link-github {
+  display: inline-block;
+  color: var(--link-color);
+  text-decoration: none;
+  font-weight: bold;
+  width: 100%;
+  font-size: 0.8rem;
+}
+
+.setup-dialog .setup-link-github {
+  margin-top: 6px;
+}
+
+.setup-list-message .setup-link:hover,
+.setup-dialog .setup-link:hover,
+.setup-dialog .setup-link-github:hover {
+  color: var(--link-color-bright);
+}
+
+.setup-dialog .setup-note {
+  font-size: 10px;
+  color: var(--text-color-muted) !important;
+  margin-bottom: 22px;
+}
+
+.setup-dialog .setup-note-link {
+  margin-bottom: 10px;
+}
+
+html.setup-dialog-open .search-controls,
+html.setup-dialog-open #siteList,
+html.setup-dialog-open #mainFooterButtons {
+  display: none !important;
+}
+
+.setup-list-message,
+.setup-options-message {
+  padding: 12px 16px;
+  margin: 10px 0;
+  background: var(--foreground-color-100);
+  border-radius: var(--radius-md);
+  width: auto;
+  color: var(--text-color-primary);
+  font-weight: 500;
+  text-align: center;
+  font-size: var(--font-lg);
+  -webkit-box-shadow: 0 1px 5px var(--shadow-color);
+  box-shadow: 0 1px 5px var(--shadow-color);
+}
+
+.setup-link-dropdown-container {
+  position: relative;
+  display: inline-block;
+  padding: 0 12px;
+  border-width: 0 2px;
+  font-size: 0.6rem;
+}
+
+.setup-link-dropdown-toggle {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font: inherit;
+}
+
+.setup-dropdown {
+  display: none;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  background: var(--foreground-color-300);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  -webkit-box-shadow: 0 4px 6px var(--shadow-color);
+  box-shadow: 0 4px 6px var(--shadow-color);
+  min-width: 120px;
+  z-index: 1000;
+  margin-top: 4px;
+  padding: 4px 0;
+  width: 100%;
+}
+
+.setup-dropdown.show {
+  display: block;
+}
+
+.setup-dropdown-item {
+  display: block;
+  padding: 6px 10px;
+  text-decoration: none;
+  color: var(--text-color-primary);
+  -webkit-transition: background-color var(--transition-normal) ease;
+  transition: background-color var(--transition-normal) ease;
+  white-space: nowrap;
+  text-align: start;
+  font-size: 0.75rem;
+}
+
+.setup-dropdown-item:hover {
+  background-color: var(--foreground-color-400);
 }
 
 .settings-option-tip {

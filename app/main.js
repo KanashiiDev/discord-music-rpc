@@ -34,7 +34,7 @@ if (process.platform === "linux") {
 }
 
 // IMPORTS
-const { autoUpdater } = require("electron-updater");
+// const { autoUpdater } = require("electron-updater");
 const path = require("path");
 const fs = require("fs");
 
@@ -69,15 +69,15 @@ app.whenReady().then(async () => {
 
   try {
     await initializeApp();
-
+    /* 
     if (app.isPackaged && ConfigManager.config.AUTO_UPDATE_CHECK) {
-      setInterval(() => {
+ setInterval(() => {
         autoUpdater.checkForUpdates().catch((err) => {
           const msg = typeof err?.message === "string" ? err.message.split("\n")[0].trim() : String(err);
           log.error("Background update check failed: " + msg);
         });
       }, ConfigManager.config.UPDATE_CHECK_INTERVAL);
-    }
+    }*/
   } catch (err) {
     Utils.handleCriticalError("App initialization failed", err);
   }
@@ -92,6 +92,7 @@ async function initializeApp() {
     const historyFilePath = path.join(userDataPath, "history.json");
 
     ConfigManager.initialize(userDataPath, log);
+    await Utils.showRebrandingNotice(app, log);
 
     configureLogging({
       logDir: path.join(userDataPath, "logs"),
@@ -100,6 +101,7 @@ async function initializeApp() {
     });
 
     Utils.init({ userDataPath, log, logFilePath, historyFilePath, dbPath, config: ConfigManager.config });
+    Utils.preemptiveMigrate(app, log);
 
     app.setAppUserModelId?.("com.kanashiidev.discord.music.rpc");
     if (process.platform === "linux") app.setName("Discord Music RPC");

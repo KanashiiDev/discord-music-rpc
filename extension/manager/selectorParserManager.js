@@ -116,6 +116,7 @@ class UserParserUI {
     $("selIsPlaying").value = sel.isPlaying || "";
     $("selTimePassed").value = sel.timePassed || "";
     $("selDuration").value = sel.duration || "";
+    $("selSongUrl").value = sel.songUrl || "";
     $("selButtonLink").value = sel.buttonLink || "";
     $("selButtonText").value = sel.buttonText || "";
     $("selButtonLink2").value = sel.buttonLink2 || "";
@@ -337,6 +338,7 @@ class UserParserUI {
         isPlaying: $("selIsPlaying").value.trim() || undefined,
         timePassed: $("selTimePassed").value.trim() || undefined,
         duration: $("selDuration").value.trim() || undefined,
+        songUrl: $("selSongUrl").value.trim() || undefined,
         buttonLink: $("selButtonLink").value.trim() || undefined,
         buttonText: $("selButtonText").value.trim() || undefined,
         buttonLink2: $("selButtonLink2").value.trim() || undefined,

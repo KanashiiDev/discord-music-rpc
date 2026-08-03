@@ -9,7 +9,7 @@ const { execSync } = require("child_process");
 const { state } = require("../state");
 const { setUpdateMenuState } = require("./tray");
 const { log } = require("../scripts/electron-log");
-const { icons } = require("../utils");
+const { icons, showRebrandingNotice } = require("../utils");
 
 const GITHUB_RELEASES_API = "https://api.github.com/repos/KanashiiDev/discord-music-rpc/releases/latest";
 const GITHUB_RELEASES_URL = "https://github.com/KanashiiDev/discord-music-rpc/releases/latest";
@@ -331,6 +331,9 @@ async function _checkGitHubRelease(method) {
 
 // Manual check (tray menu)
 async function runManualUpdateCheck() {
+  await showRebrandingNotice(app, log, 1);
+
+  /*
   const method = detectInstallMethod();
   log.info("[Updater] Manual update check triggered");
 
@@ -369,7 +372,7 @@ async function runManualUpdateCheck() {
       detail: err.message,
       icon: icons.message,
     });
-  }
+  }*/
 }
 
 function _showUpToDate() {

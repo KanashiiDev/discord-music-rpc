@@ -1551,8 +1551,11 @@ function createPlatformDropdown(label, options, manifestVersion) {
 }
 
 // Show initial setup dialog
-function showInitialSetupDialog() {
+async function showInitialSetupDialog(appendBody) {
   return new Promise((resolve) => {
+    const wrapper = document.createElement("div");
+    wrapper.id = "setupAlert";
+
     const dialog = document.createElement("div");
     dialog.className = "setup-dialog";
 
@@ -1600,6 +1603,14 @@ function showInitialSetupDialog() {
         label: "RPM (x64)",
         url: `https://github.com/KanashiiDev/discord-music-rpc/releases/download/{version}/discord-music-rpc-{version}-x86_64.rpm`,
       },
+      {
+        label: "TAR.ZST (x64)",
+        url: `https://github.com/KanashiiDev/discord-music-rpc/releases/download/{version}/discord-music-rpc-{version}-x64.pkg.tar.zst`,
+      },
+      {
+        label: "More",
+        url: `https://github.com/KanashiiDev/discord-music-rpc#desktop-app`,
+      },
     ];
     contentLinkContainer.appendChild(createPlatformDropdown("Linux", linuxOptions, manifestVersion));
 
@@ -1635,14 +1646,16 @@ function showInitialSetupDialog() {
     confirmButton.id = "confirmSetup";
     confirmButton.textContent = i18n.t("setup.companion.installed");
     content.appendChild(confirmButton);
-
     dialog.appendChild(content);
-    const contentDiv = document.querySelector(".content");
-    contentDiv.appendChild(dialog);
+
+    if (appendBody) wrapper.appendChild(dialog);
+    const appendTarget = appendBody ? wrapper : dialog;
+    const contentDiv = appendBody ? document.body : document.querySelector(".content");
+    contentDiv.appendChild(appendTarget);
     document.documentElement.classList.add("setup-dialog-open");
 
     const cleanup = () => {
-      contentDiv.removeChild(dialog);
+      contentDiv.removeChild(appendTarget);
       document.documentElement.classList.remove("setup-dialog-open");
     };
 
@@ -1655,8 +1668,11 @@ function showInitialSetupDialog() {
 }
 
 // Show host permission dialog
-async function showHostPermissionDialog() {
+async function showHostPermissionDialog(appendBody) {
   return new Promise((resolve) => {
+    const wrapper = document.createElement("div");
+    wrapper.id = "setupAlert";
+
     const dialog = document.createElement("div");
     dialog.className = "setup-dialog";
 
@@ -1695,8 +1711,10 @@ async function showHostPermissionDialog() {
 
     dialog.appendChild(content);
 
-    const contentDiv = document.querySelector(".content");
-    contentDiv.appendChild(dialog);
+    if (appendBody) wrapper.appendChild(dialog);
+    const appendTarget = appendBody ? wrapper : dialog;
+    const contentDiv = appendBody ? document.body : document.querySelector(".content");
+    contentDiv.appendChild(appendTarget);
 
     document.documentElement.classList.add("setup-dialog-open", "permission");
 
@@ -1711,18 +1729,22 @@ async function showHostPermissionDialog() {
           origins: ["*://*/*"],
         });
 
-        resolve(granted);
+        if (granted) {
+          resolve(granted);
+          if (!appendBody) window.close();
+        }
       } catch (err) {
+        console.error("Permission request failed:", err);
         resolve(false);
+        if (!appendBody) window.close();
       } finally {
-        window.close();
+        if (appendBody) location.reload();
       }
     });
 
     ignoreButton.addEventListener("click", () => {
       resolve(false);
-      dialog.remove();
-
+      contentDiv.removeChild(appendTarget);
       document.documentElement.classList.remove("setup-dialog-open", "permission");
     });
   });
