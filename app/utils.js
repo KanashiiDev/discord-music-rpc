@@ -267,6 +267,34 @@ function preemptiveMigrate(app, log) {
   log.info("[Rebrand] Pre-migration completed.");
 }
 
+async function checkRebrandingUrl(log) {
+  return new Promise((resolve) => {
+    const { net } = require("electron");
+
+    const request = net.request({
+      method: "HEAD",
+      url: "https://github.com/KanashiiDev/web-presence/releases/download/2.1.0/latest.yml",
+    });
+
+    request.on("response", (response) => {
+      if (!response || response.statusCode == null) {
+        log.warn("Rebranding URL check: No Response");
+        resolve(false);
+        return;
+      }
+      log.warn("Rebranding URL check:", response.statusCode);
+      resolve(response.statusCode >= 200 && response.statusCode < 300);
+    });
+
+    request.on("error", (err) => {
+      log.warn("Rebranding URL check error:", err);
+      resolve(false);
+    });
+
+    request.end();
+  });
+}
+
 async function showRebrandingNotice(app, log, showAlways) {
   const GITHUB_RELEASES_URL = "https://github.com/KanashiiDev/web-presence#download";
   const FLAG_FILE = "rebrand_notice_shown";
@@ -326,5 +354,6 @@ module.exports = {
   openConfig,
   handleCriticalError,
   preemptiveMigrate,
+  checkRebrandingUrl,
   showRebrandingNotice,
 };
