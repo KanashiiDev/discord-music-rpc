@@ -1,5 +1,5 @@
 {
-  description = "Web Presence - Show music from ANY website on your Discord";
+  description = "Web Presence Bridge for Discord";
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
   };

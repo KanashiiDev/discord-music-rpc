@@ -62,7 +62,7 @@ in
         [Desktop Entry]
         Type=Application
         Name=Web Presence
-        Comment=Show music from ANY website on your Discord
+        Comment=Web Presence Bridge for Discord
         Exec=web-presence${lib.optionalString (cfg.extraArgs != []) (" " + lib.escapeShellArgs cfg.extraArgs)}
         Icon=web-presence
         Terminal=false

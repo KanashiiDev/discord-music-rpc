@@ -122,7 +122,7 @@ stdenv.mkDerivation rec {
     [Desktop Entry]
     Type=Application
     Name=Web Presence
-    Comment=Show music from ANY website on your Discord
+    Comment=Web Presence Bridge for Discord
     Exec=web-presence
     Icon=web-presence
     Terminal=false
@@ -135,7 +135,7 @@ stdenv.mkDerivation rec {
     runHook postInstall
   '';
   meta = with lib; {
-    description = "Show music from ANY website on your Discord";
+    description = "Web Presence Bridge for Discord";
     longDescription = ''
       Web Presence is an Electron application that tracks media playback
       across streaming websites and displays it as Discord Rich Presence.
