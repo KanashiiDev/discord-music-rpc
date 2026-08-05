@@ -210,7 +210,49 @@ const injectHeaderIcons = () => {
   }
 };
 
+const LEGACY_REPO_IDS = ["KanashiiDev__discord-music-rpc-activities__main"];
+
 const ensureMainRepo = async () => {
+  const { legacyRepoMerged_v1 } = await browser.storage.local.get("legacyRepoMerged_v1");
+
+  if (!legacyRepoMerged_v1) {
+    const repos = await listRepos().catch(() => ({ ok: true, list: [] }));
+    const repoList = repos.list ?? [];
+
+    const legacyRepos = repoList.filter((r) => LEGACY_REPO_IDS.includes(r.id));
+
+    if (legacyRepos.length) {
+      // If there is no new repo, add it first
+      let mainRepo = repoList.find((r) => r.id === MAIN_REPO_ID);
+      if (!mainRepo) {
+        const result = await addRepo(MAIN_REPO_URL).catch(() => null);
+        if (result?.ok) {
+          const fresh = await listRepos().catch(() => ({ ok: true, list: [] }));
+          mainRepo = (fresh.list ?? []).find((r) => r.id === MAIN_REPO_ID);
+        }
+      }
+
+      // Update the repository references of the installed scripts
+      const installed = await getInstalledScripts();
+      const needsUpdate = installed.some((s) => LEGACY_REPO_IDS.includes(s.storeRepoId));
+      if (needsUpdate) {
+        const updated = installed.map((s) => (LEGACY_REPO_IDS.includes(s.storeRepoId) ? { ...s, storeRepoId: MAIN_REPO_ID, storeRepoUrl: MAIN_REPO_URL } : s));
+        await browser.storage.local.set({ userScriptsList: updated });
+      }
+
+      // Delete legacy repositories
+      for (const legacy of legacyRepos) {
+        await removeRepo(legacy.id).catch(() => {});
+      }
+    }
+
+    await browser.storage.local.set({ legacyRepoMerged_v1: true });
+  }
+
+  const currentRepos = await listRepos().catch(() => ({ ok: true, list: [] }));
+  state.repos = currentRepos.list ?? [];
+  state.installed = await getInstalledScripts();
+
   if (state.repos.some((r) => r.id === MAIN_REPO_ID)) return;
 
   const result = await addRepo(MAIN_REPO_URL).catch(() => null);
