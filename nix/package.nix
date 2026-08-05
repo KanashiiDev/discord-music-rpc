@@ -37,7 +37,7 @@
 }:
 
 let
-  version = "2.2.0";
+  version = "3.0.0";
   # Source URLs & hashes 
   # Update these when releasing a new version.
   # Get hash with: nix-prefetch-url <url>
