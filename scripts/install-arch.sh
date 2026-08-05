@@ -47,7 +47,10 @@ header "Checking latest release..."
 RELEASE_JSON="$(curl -fsSL "$API_URL")" || error "Failed to reach GitHub API."
 
 DOWNLOAD_URL="$(printf '%s' "$RELEASE_JSON" \
-  | grep -oP '"browser_download_url":\s*"\K[^"]*'"${ARCH}"'\.pkg\.tar\.zst')"
+  | grep -o '"browser_download_url": *"[^"]*"' \
+  | grep "web-presence[^\"]*${ARCH}\.pkg\.tar\.zst" \
+  | grep -oP '(?<=")[^"]+(?=")' \
+  | tail -n1)"
 
 [[ -n "$DOWNLOAD_URL" ]] || error "No package found for architecture '${ARCH}' in the latest release."
 
