@@ -1,6 +1,7 @@
 // CLI FLAGS
 const { app, Menu } = require("electron");
 
+app.setName("web-presence-bridge");
 app.commandLine.appendSwitch("lang", "en-US");
 app.disableHardwareAcceleration();
 
@@ -101,8 +102,7 @@ async function initializeApp() {
 
     Utils.init({ userDataPath, log, logFilePath, historyFilePath, dbPath, config: ConfigManager.config });
 
-    app.setAppUserModelId?.("com.kanashiidev.discord.music.rpc");
-    if (process.platform === "linux") app.setName("Web Presence");
+    app.setAppUserModelId?.("com.kanashiidev.web.presence");
     if (process.platform === "darwin") app.dock.hide();
     Menu.setApplicationMenu(null);
 

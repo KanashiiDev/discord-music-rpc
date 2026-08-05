@@ -42,7 +42,7 @@ function setAutoStart(enable) {
   if (process.platform === "linux") {
     const autostartDir = path.join(os.homedir(), ".config", "autostart");
     const desktopFile = path.join(autostartDir, getDesktopFileName());
-    const execPath = process.env.APPIMAGE ?? process.env.DISCORD_MUSIC_RPC_BIN ?? (process.env.WEB_PRESENCE_NIX === "true" ? "web-presence" : process.execPath);
+    const execPath = process.env.APPIMAGE ?? process.env.WEB_PRESENCE_BRIDGE_BIN ?? (process.env.WEB_PRESENCE_NIX === "true" ? "web-presence-bridge" : process.execPath);
     const isAppImage = process.env.APPIMAGE !== undefined;
 
     if (enable) {
@@ -64,7 +64,7 @@ function setAutoStart(enable) {
         }
       }
 
-      const iconPath = process.env.WEB_PRESENCE_NIX === "true" ? "web-presence" : (getIconPath() ?? "");
+      const iconPath = process.env.WEB_PRESENCE_NIX === "true" ? "web-presence-bridge" : (getIconPath() ?? "");
       const isNix = process.env.WEB_PRESENCE_NIX === "true";
       const execCommand = isNix ? `${execPath} --no-sandbox` : `"${execPath}"${isAppImage ? " --no-sandbox" : ""}`;
       const desktopEntry =
@@ -72,7 +72,7 @@ function setAutoStart(enable) {
           "[Desktop Entry]",
           "Type=Application",
           `Name=${app.getName()}`,
-          `Comment=Show what you're listening to on Discord from ANY music website`,
+          `Comment=Web Presence Bridge for Discord`,
           `Exec=${execCommand}`,
           "Terminal=false",
           "Hidden=false",

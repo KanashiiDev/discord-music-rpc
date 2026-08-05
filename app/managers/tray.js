@@ -46,7 +46,7 @@ function createTray() {
   }
 
   state.tray = new Tray(trayIcon);
-  state.tray.setToolTip("Web Presence");
+  state.tray.setToolTip("Web Presence Bridge");
 
   const openMenu = () => state.tray.popUpContextMenu();
   state.tray.on("click", openMenu);
@@ -173,7 +173,7 @@ function updateTrayMenu() {
 
     currentMenu = Menu.buildFromTemplate(menuTemplate);
     state.tray.setContextMenu(currentMenu);
-    state.tray.setToolTip(`Web Presence\nServer: ${state.isServerRunning ? "Running" : "Stopped"}\nRPC: ${state.isRpcConnected ? "Connected" : "Disconnected"}`);
+    state.tray.setToolTip(`Web Presence Bridge\nServer: ${state.isServerRunning ? "Running" : "Stopped"}\nRPC: ${state.isRpcConnected ? "Connected" : "Disconnected"}`);
   } catch (err) {
     log.error("Error updating tray menu:", err);
   }
@@ -247,7 +247,7 @@ function _buildLinuxDiagnosticItem() {
 
 function showTrayFallbackNotification() {
   new Notification({
-    title: "Web Presence - Running in Background",
+    title: "Web Presence Bridge - Running in Background",
     body: "The app is running but system tray is not available. Use app indicator or check system settings.",
     icon: icons.notification,
   }).show();
@@ -255,7 +255,7 @@ function showTrayFallbackNotification() {
   dialog.showMessageBox({
     type: "info",
     title: "System Tray Not Available",
-    message: "Web Presence is running in background mode",
+    message: "Web Presence Bridge is running in background mode",
     detail:
       "Your desktop environment may not support system tray icons. The application will continue to run. You can access it through application indicators or system menu.",
     buttons: ["OK"],

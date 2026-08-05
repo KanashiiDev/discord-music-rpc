@@ -6,31 +6,31 @@
 #  inputs.web-presence.url = "github:KanashiiDev/web-presence";
 #
 #  { inputs, ... }: {
-#    imports = [ inputs.web-presence.nixosModules.default ];
-#    programs.web-presence.enable = true;
+#    imports = [ inputs.web-presence-bridge.nixosModules.default ];
+#    programs.web-presence-bridge.enable = true;
 #  }
 #
 { config, lib, pkgs, ... }:
 
 let
-  cfg = config.programs.web-presence;
+  cfg = config.programs.web-presence-bridge;
 in
 {
-  options.programs.web-presence = {
-    enable = lib.mkEnableOption "Web Presence";
+  options.programs.web-presence-bridge = {
+    enable = lib.mkEnableOption "Web Presence Bridge";
 
     package = lib.mkOption {
       type = lib.types.package;
       default = pkgs.callPackage ./package.nix { };
-      defaultText = lib.literalExpression "web-presence from flake";
-      description = "The web-presence package to use.";
+      defaultText = lib.literalExpression "web-presence-bridge from flake";
+      description = "The web-presence-bridge package to use.";
     };
 
     autoStart = lib.mkOption {
       type = lib.types.bool;
       default = false;
       description = ''
-        Whether to start Web Presence automatically on login
+        Whether to start Web Presence Bridge automatically on login
         for all users who have it enabled.
         Note: per-user autostart is handled by home-manager module.
       '';
@@ -48,7 +48,7 @@ in
     port = lib.mkOption {
       type = lib.types.port;
       default = 3000;
-      description = "Port the Web Presence server listens on.";
+      description = "Port the Web Presence Bridge Bridge server listens on.";
     };
   };
 

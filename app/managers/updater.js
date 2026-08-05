@@ -43,15 +43,15 @@ function detectInstallMethod() {
   } catch (_) {}
 
   try {
-    execSync("pacman -Q web-presence 2>/dev/null", { stdio: "pipe" });
+    execSync("pacman -Q web-presence-bridge 2>/dev/null", { stdio: "pipe" });
     return "pacman";
   } catch (_) {}
   try {
-    execSync("dpkg -s web-presence 2>/dev/null", { stdio: "pipe" });
+    execSync("dpkg -s web-presence-bridge 2>/dev/null", { stdio: "pipe" });
     return "deb";
   } catch (_) {}
   try {
-    execSync("rpm -q web-presence 2>/dev/null", { stdio: "pipe" });
+    execSync("rpm -q web-presence-bridge 2>/dev/null", { stdio: "pipe" });
     return "rpm";
   } catch (_) {}
 
@@ -78,7 +78,7 @@ async function fetchLatestVersion() {
   const res = await fetch(GITHUB_RELEASES_API, {
     headers: {
       Accept: "application/vnd.github+json",
-      "User-Agent": `web-presence/${app.getVersion()}`,
+      "User-Agent": `web-presence-bridge/${app.getVersion()}`,
     },
   });
   if (!res.ok) throw new Error(`GitHub API ${res.status}`);
@@ -126,12 +126,12 @@ function getUpdateInstructions(method, version, assets = []) {
           "",
           "Option 1 - Update your flake input and rebuild:",
           "",
-          "  nix flake update web-presence",
+          "  nix flake update web-presence-bridge",
           "  nixos-rebuild switch --flake .",
           "",
           "Option 2 - If you use home-manager:",
           "",
-          "  nix flake update web-presence",
+          "  nix flake update web-presence-bridge",
           "  home-manager switch --flake .",
           "",
           "Option 3 - Download the AppImage directly from GitHub Releases",
@@ -140,7 +140,7 @@ function getUpdateInstructions(method, version, assets = []) {
         primaryBtn: "Open Releases",
         primaryFn: () => shell.openExternal(GITHUB_RELEASES_URL),
         secondaryBtn: "Copy flake update command",
-        secondaryFn: () => require("electron").clipboard.writeText("nix flake update web-presence"),
+        secondaryFn: () => require("electron").clipboard.writeText("nix flake update web-presence-bridge"),
       };
 
     case "deb": {
@@ -205,7 +205,7 @@ function showUpdateDialog(version, method, instructions) {
   dialog
     .showMessageBox({
       type: "info",
-      title: `Web Presence - ${instructions.title}`,
+      title: `Web Presence Bridge - ${instructions.title}`,
       message: `Version ${version} is available`,
       detail: instructions.detail,
       buttons,
@@ -223,7 +223,7 @@ function showUpdateDialog(version, method, instructions) {
 function showManualUpdateNotification(version, method, instructions) {
   const bodies = {
     pacman: `${version} available - run the installer script to update`,
-    nixos: `${version} available - nix flake update web-presence`,
+    nixos: `${version} available - nix flake update web-presence-bridge`,
     deb: `${version} available - download new .deb`,
     rpm: `${version} available - download new .rpm`,
   };
@@ -232,7 +232,7 @@ function showManualUpdateNotification(version, method, instructions) {
   if (icon) icon = path.resolve(icon);
 
   const n = new Notification({
-    title: "Web Presence - Update Available",
+    title: "Web Presence Bridge - Update Available",
     body: bodies[method] ?? `${version} available`,
     icon,
   });
@@ -343,7 +343,7 @@ async function runManualUpdateCheck() {
         dialog.showMessageBox({
           type: "info",
           buttons: ["OK"],
-          title: "Web Presence - Update Available",
+          title: "Web Presence Bridge - Update Available",
           message: `Version ${remote} is available.`,
           detail: "Downloading automatically. Install from the tray menu when ready.",
           icon: icons.message,
@@ -364,7 +364,7 @@ async function runManualUpdateCheck() {
     dialog.showMessageBox({
       type: "error",
       buttons: ["OK"],
-      title: "Web Presence - Update Check Failed",
+      title: "Web Presence Bridge - Update Check Failed",
       message: "Could not check for updates.",
       detail: err.message,
       icon: icons.message,
@@ -376,7 +376,7 @@ function _showUpToDate() {
   dialog.showMessageBox({
     type: "info",
     buttons: ["OK"],
-    title: "Web Presence - Up to Date",
+    title: "Web Presence Bridge - Up to Date",
     message: "You're using the latest version.",
     detail: `Version: ${app.getVersion()}`,
     icon: icons.message,

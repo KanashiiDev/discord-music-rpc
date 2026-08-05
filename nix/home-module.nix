@@ -3,11 +3,11 @@
 # home-manager module for per-user Web Presence setup.
 # Add to home.nix:
 #
-# inputs.web-presence.url = "github:KanashiiDev/web-presence";
+# inputs.web-presence-bridge.url = "github:KanashiiDev/web-presence";
 #
 # { inputs, ... }: {
-# imports = [ inputs.web-presence.homeManagerModules.default ];
-# programs.web-presence = {
+# imports = [ inputs.web-presence-bridge.homeManagerModules.default ];
+# programs.web-presence-bridge = {
 # enable = true;
 # autoStart = true;
 # };
@@ -16,24 +16,24 @@
 { config, lib, pkgs, ... }:
 
 let
-  cfg = config.programs.web-presence;
+  cfg = config.programs.web-presence-bridge;
 in
 {
-  options.programs.web-presence = {
-    enable = lib.mkEnableOption "Web Presence";
+  options.programs.web-presence-bridge = {
+    enable = lib.mkEnableOption "Web Presence Bridge";
 
     package = lib.mkOption {
       type = lib.types.package;
       default = pkgs.callPackage ./package.nix { };
-      defaultText = lib.literalExpression "web-presence from flake";
-      description = "The web-presence package to use.";
+      defaultText = lib.literalExpression "web-presence-bridge from flake";
+      description = "The web-presence-bridge package to use.";
     };
 
     autoStart = lib.mkOption {
       type = lib.types.bool;
       default = false;
       description = ''
-        Whether to create an XDG autostart entry so Web Presence
+        Whether to create an XDG autostart entry so Web Presence Bridge
         launches automatically when you log into your desktop session.
       '';
     };
@@ -41,7 +41,7 @@ in
     port = lib.mkOption {
       type = lib.types.port;
       default = 3000;
-      description = "Port the Web Presence server listens on.";
+      description = "Port the Web Presence Bridge server listens on.";
     };
 
     extraArgs = lib.mkOption {
@@ -57,14 +57,14 @@ in
     home.packages = [ cfg.package ];
 
     # XDG autostart entry 
-    xdg.configFile."autostart/web-presence.desktop" = lib.mkIf cfg.autoStart {
+    xdg.configFile."autostart/web-presence-bridge.desktop" = lib.mkIf cfg.autoStart {
       text = ''
         [Desktop Entry]
         Type=Application
-        Name=Web Presence
+        Name=Web Presence Bridge
         Comment=Web Presence Bridge for Discord
-        Exec=web-presence${lib.optionalString (cfg.extraArgs != []) (" " + lib.escapeShellArgs cfg.extraArgs)}
-        Icon=web-presence
+        Exec=web-presence-bridge${lib.optionalString (cfg.extraArgs != []) (" " + lib.escapeShellArgs cfg.extraArgs)}
+        Icon=web-presence-bridge
         Terminal=false
         Hidden=false
         NoDisplay=false
@@ -84,10 +84,10 @@ in
 
     # Systemd user service
     # Disabled by default; XDG autostart is more compatible across DEs.
-    # To enable: set systemd.user.services.web-presence.enable = true;
-    systemd.user.services.web-presence = lib.mkIf cfg.autoStart {
+    # To enable: set systemd.user.services.web-presence-bridge.enable = true;
+    systemd.user.services.web-presence-bridge = lib.mkIf cfg.autoStart {
       Unit = {
-        Description = "Web Presence";
+        Description = "Web Presence Bridge";
         After = [ "graphical-session.target" "tray.target" ];
         PartOf = [ "graphical-session.target" ];
         # Wait for Discord's IPC socket to potentially exist
@@ -95,7 +95,7 @@ in
       };
       Service = {
         Type = "simple";
-        ExecStart = "${cfg.package}/bin/web-presence ${lib.escapeShellArgs cfg.extraArgs}";
+        ExecStart = "${cfg.package}/bin/web-presence-bridge ${lib.escapeShellArgs cfg.extraArgs}";
         Restart = "on-failure";
         RestartSec = "5s";
         Environment = [

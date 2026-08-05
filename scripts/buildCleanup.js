@@ -37,18 +37,16 @@ module.exports = async function (context) {
       "libEGL.dll",
     ];
   } else if (platform === "linux") {
-    if (platform === "linux") {
-      toRemove = [
-        "LICENSES.chromium.html",
-        "vk_swiftshader_icd.json",
-        "swiftshader",
-        "chrome-sandbox",
-        "libEGL.so",
-        "libGLESv2.so",
-        "libvk_swiftshader.so",
-        "libvulkan.so.1",
-      ];
-    }
+    toRemove = [
+      "LICENSES.chromium.html",
+      "vk_swiftshader_icd.json",
+      "swiftshader",
+      "chrome-sandbox",
+      "libEGL.so",
+      "libGLESv2.so",
+      "libvk_swiftshader.so",
+      "libvulkan.so.1",
+    ];
   }
 
   toRemove.forEach(tryRemove);
@@ -63,6 +61,7 @@ module.exports = async function (context) {
       }
     });
   }
+
   if (platform === "linux") {
     try {
       const iconsSrcDir = path.join(__dirname, "..", "app", "assets", "icon");
@@ -71,7 +70,10 @@ module.exports = async function (context) {
         { size: "24x24", file: "24x24.png" },
         { size: "32x32", file: "32x32.png" },
         { size: "48x48", file: "48x48.png" },
-        { size: "256x256", file: "icon.png" },
+        { size: "64x64", file: "64x64.png" },
+        { size: "128x128", file: "128x128.png" },
+        { size: "256x256", file: "256x256.png" },
+        { size: "512x512", file: "512x512.png" },
       ];
 
       iconSizes.forEach(({ size, file }) => {
@@ -79,7 +81,7 @@ module.exports = async function (context) {
         try {
           fs.mkdirSync(destDir, { recursive: true });
           const src = path.join(iconsSrcDir, file);
-          const dest = path.join(destDir, "web-presence.png");
+          const dest = path.join(destDir, "web-presence-bridge.png");
           if (fs.existsSync(src)) {
             fs.copyFileSync(src, dest);
           } else {
@@ -96,7 +98,7 @@ module.exports = async function (context) {
         }
       });
     } catch (err) {
-      console.warn(`  • warning preparing icons for RPM: ${err.message}`);
+      console.warn(`  • warning preparing linux icons: ${err.message}`);
     }
   }
 };

@@ -1,6 +1,6 @@
 # nix/package.nix
 #
-# Packages web-presence by unpacking the upstream AppImage.
+# Packages web-presence-bridge by unpacking the upstream AppImage.
 # This is the standard NixOS approach for Electron apps distributed
 # as AppImages — avoids rebuilding from source (which requires
 # matching the exact electron version and all node_modules).
@@ -50,10 +50,10 @@ let
 
   src = sources.${stdenv.hostPlatform.system} or (throw "Unsupported system: ${stdenv.hostPlatform.system}");
   # Unpack the AppImage 
-  appimageContents = appimageTools.extractType2 { pname = "web-presence"; inherit version src; };
+  appimageContents = appimageTools.extractType2 { pname = "web-presence-bridge"; inherit version src; };
 in
 stdenv.mkDerivation rec {
-  pname = "web-presence";
+  pname = "web-presence-bridge";
   inherit version;
 
   # We're packaging a pre-built binary, not building from source
@@ -88,20 +88,20 @@ stdenv.mkDerivation rec {
 
     # Directories 
     mkdir -p $out/bin
-    mkdir -p $out/share/web-presence
+    mkdir -p $out/share/web-presence-bridge
     mkdir -p $out/share/applications
     mkdir -p $out/share/icons/hicolor
 
     # Copy app contents from unpacked AppImage 
-    cp -r ${appimageContents}/resources $out/share/web-presence/
-    cp -r ${appimageContents}/locales    $out/share/web-presence/ 2>/dev/null || true
+    cp -r ${appimageContents}/resources $out/share/web-presence-bridge/
+    cp -r ${appimageContents}/locales    $out/share/web-presence-bridge/ 2>/dev/null || true
 
     # Icons 
     for size in 16 24 32 48 64 128 256 512; do
-      iconSrc="${appimageContents}/usr/share/icons/hicolor/''${size}x''${size}/apps/web-presence.png"
+      iconSrc="${appimageContents}/usr/share/icons/hicolor/''${size}x''${size}/apps/web-presence-bridge.png"
       if [ -f "$iconSrc" ]; then
         mkdir -p $out/share/icons/hicolor/''${size}x''${size}/apps
-        cp "$iconSrc" $out/share/icons/hicolor/''${size}x''${size}/apps/web-presence.png
+        cp "$iconSrc" $out/share/icons/hicolor/''${size}x''${size}/apps/web-presence-bridge.png
       fi
     done
 
@@ -109,22 +109,22 @@ stdenv.mkDerivation rec {
     # We use electron from nixpkgs instead of the bundled one to:
     # 1. Avoid shipping a second copy of electron
     # 2. Get proper NixOS library path patching automatically
-    makeWrapper ${electron}/bin/electron $out/bin/web-presence \
-      --add-flags "$out/share/web-presence/resources/app.asar" \
+    makeWrapper ${electron}/bin/electron $out/bin/web-presence-bridge \
+      --add-flags "$out/share/web-presence-bridge/resources/app.asar" \
       --add-flags "--no-sandbox" \
       --set ELECTRON_FORCE_IS_PACKAGED "true" \
       --set WEB_PRESENCE_NIX "true" \
-      --set DISCORD_MUSIC_RPC_BIN "$out/bin/web-presence" \
+      --set WEB_PRESENCE_BRIDGE_BIN "$out/bin/web-presence-bridge" \
       --prefix PATH : "${lib.makeBinPath [libnotify glib xdg-utils systemd]}"
 
     # .desktop file 
-    cat > $out/share/applications/web-presence.desktop << EOF
+    cat > $out/share/applications/web-presence-bridge.desktop << EOF
     [Desktop Entry]
     Type=Application
-    Name=Web Presence
+    Name=Web Presence Bridge
     Comment=Web Presence Bridge for Discord
-    Exec=web-presence
-    Icon=web-presence
+    Exec=web-presence-bridge
+    Icon=web-presence-bridge
     Terminal=false
     Categories=Audio;Music;Utility;
     Keywords=discord;music;rpc;rich presence;
@@ -141,10 +141,10 @@ stdenv.mkDerivation rec {
       across streaming websites and displays it as Discord Rich Presence.
       Works with a companion browser extension (Chrome/Firefox).
     '';
-    homepage = "https://github.com/KanashiiDev/web-presence";
+    homepage = "https://github.com/KanashiiDev/web-presence-bridge";
     license = licenses.mit;
     maintainers = [ ];
     platforms = [ "x86_64-linux" ];
-    mainProgram = "web-presence";
+    mainProgram = "web-presence-bridge";
   };
 }
