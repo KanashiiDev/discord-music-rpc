@@ -130,7 +130,7 @@ async function buildPortButtons(container) {
   const btnDebug = createBtn(i18n.t(debugState ? "settings.debug.disable" : "settings.debug.enable"), "debugMode");
   const btnDebugSection = createBtn(i18n.t("settings.debugSection"), "debugSection");
   const btnFactory = createBtn(i18n.t("settings.factory"), "factoryReset");
-  const btnBackup = createBtn(i18n.t("settings.backup"), "backupSettings");
+  const btnBackup = createBtn(i18n.t("settings.backup.title"), "backupSettings");
 
   const wikiWrap = document.createElement("div");
   wikiWrap.className = "wiki-wrap";
@@ -149,7 +149,7 @@ async function buildPortButtons(container) {
   };
 
   btnWiki.onclick = async () => {
-    await browser.tabs.create({ url: "https://github.com/KanashiiDev/discord-music-rpc/wiki" });
+    await browser.tabs.create({ url: "https://github.com/KanashiiDev/web-presence/wiki" });
   };
 
   btnRestart.onclick = async () => {

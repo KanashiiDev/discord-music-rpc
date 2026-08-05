@@ -6,9 +6,9 @@ import { initSettingsUI } from "./components/settings/settings.js";
 import { initializeHistory } from "./components/history/history.js";
 import { initializeLogs } from "./components/logs/logs.js";
 import { initDashboard } from "./components/dashboard/dashboard.js";
-import { initMusicCard } from "./components/musicCard/musicCard.js";
-import { updateHistoryChart } from "./components/chart/chartRenderer.js";
+import { initactivityCard } from "./components/activityCard/activityCard.js";
 import { FetchManager } from "./core/fetchManager.js";
+import { ChartRenderer } from "./components/chart/chartRenderer.js";
 import { initVisibilityRefresh } from "./utils.js";
 
 // EVENT DELEGATION
@@ -49,9 +49,11 @@ window.onload = async () => {
   initVisibilityRefresh();
   initSettingsUI();
   await initDashboard();
-  initMusicCard();
-  await Promise.allSettled([initializeHistory().catch(console.error), initializeLogs().catch(console.error)]);
-  await updateHistoryChart();
-  applyTranslations();
+  initactivityCard();
+  await Promise.allSettled([initializeHistory("listen").catch(console.error), initializeHistory("watch").catch(console.error), initializeLogs().catch(console.error)]);
+
+  await ChartRenderer.listen.init();
+  await ChartRenderer.watch.init();
+  await applyTranslations();
   startAutoUpdate();
 };

@@ -113,7 +113,9 @@ class WNPConnection {
   sendUpdate() {
     const activity = state.currentActivity;
 
-    if (!activity?.details || (activity && activity.type === 3)) {
+    if (activity?.type !== 2) return;
+
+    if (!activity?.details) {
       // No activity - if connected, send STATE STOPPED and disconnect
       if (this.ws && this.ws.readyState === WebSocket.OPEN) {
         this.clearActivity();
@@ -146,7 +148,7 @@ class WNPConnection {
     const cover = this._resolveCover(activity.largeImageKey, activity._cover);
 
     const fields = {
-      name: "Discord Music RPC",
+      name: "Web Presence",
       state: "PLAYING",
       title: activity.details ?? "",
       artist: activity._artist ?? activity.state ?? "",

@@ -1,8 +1,8 @@
-import { HC_RANGES, chartState } from "../chart.js";
+import { HC_RANGES } from "../chart.js";
 import { HistoryState } from "../../history/history.js";
 
 /** Returns { start, end } Date objects for the current period. */
-export function getPeriodBounds(range) {
+export function getPeriodBounds(range, chartState) {
   const cfg = HC_RANGES[range];
   const start = cfg.getStart(chartState.offset);
   const end = new Date(start);
@@ -16,11 +16,11 @@ export function getPeriodBounds(range) {
 }
 
 /** Returns history items that fall within the current period. */
-function filterItems(range) {
-  const items = HistoryState?.fullData;
+function filterItems(range, chartState, historyMode = "listen") {
+  const items = HistoryState[historyMode]?.fullData;
   if (!Array.isArray(items) || !items.length) return [];
 
-  const { start, end } = getPeriodBounds(range);
+  const { start, end } = getPeriodBounds(range, chartState);
   const lo = start.getTime();
   const hi = end.getTime();
 
@@ -32,13 +32,11 @@ function filterItems(range) {
 
 /**
  * Picks the best display name for a normalized artist key.
- * Prefers capitalized names; breaks ties by frequency.
- * Mirrors the artistNameFreq logic in getTopSongs().
- * @param {Record<string, number>} freqMap  raw name -> occurrence count
- * @returns {string}
  */
 function resolveBestName(freqMap) {
-  return Object.entries(freqMap).sort((a, b) => {
+  const entries = Object.entries(freqMap);
+  if (!entries.length) return "Unknown";
+  return entries.sort((a, b) => {
     const aCap = /^[A-Z]/.test(a[0]);
     const bCap = /^[A-Z]/.test(b[0]);
     if (aCap !== bCap) return aCap ? -1 : 1;
@@ -48,11 +46,9 @@ function resolveBestName(freqMap) {
 
 /**
  * Aggregates history items into summary stats.
- * @param {string} range
- * @returns {{ topSongs, topArtists, totalMinutes, totalSongs }}
  */
-export function buildSummaryData(range) {
-  const items = filterItems(range);
+export function buildSummaryData(range, chartState, historyMode = "listen") {
+  const items = filterItems(range, chartState, historyMode);
 
   if (!items.length) {
     return { topSongs: [], topArtists: [], totalMinutes: 0, totalSongs: 0 };
@@ -112,13 +108,13 @@ export function buildSummaryData(range) {
       song.count++;
       song.ms += ms;
       song.image ??= item.image || null;
-      song.songUrl ??= item.songUrl || null;
+      song.link ??= item.link || null;
     } else {
       songMap.set(songKey, {
         title: rawTitle,
         artist: rawArtist,
         image: item.image || null,
-        songUrl: item.songUrl || null,
+        link: item.link || null,
         count: 1,
         ms,
       });

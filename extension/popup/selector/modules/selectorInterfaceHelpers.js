@@ -797,7 +797,7 @@ function handleElementClick(e, field, shadowDoc, cleanup) {
   }
 
   if (!isValidElement(targetEl)) {
-    showStatusMsg(t("selecor.warn.notValid"), 1, 1, shadowDoc);
+    showStatusMsg(t("selector.warn.notValid"), 1, 1, shadowDoc);
     return;
   }
 
@@ -816,7 +816,7 @@ function handleElementClick(e, field, shadowDoc, cleanup) {
   } else if (field === "isPlaying") {
     targetEl = findElement(el);
     if (!targetEl) {
-      showStatusMsg(t("selecor.warn.notValid"), 1, 1, shadowDoc);
+      showStatusMsg(t("selector.warn.notValid"), 1, 1, shadowDoc);
       return;
     }
   } else {

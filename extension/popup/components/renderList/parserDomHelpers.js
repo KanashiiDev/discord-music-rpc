@@ -233,7 +233,7 @@ function createEditScriptButton(id, addListener) {
 
 async function resolveLabel(label) {
   if (!label || typeof label === "string") return label;
-  const browserLang = navigator.language.split("-")[0];
+  const browserLang = navigator.languages?.[0] || navigator.language;
   const { lang } = await browser.storage.local.get("lang");
   const currentLang = lang || browserLang || "en";
   return label[currentLang] ?? label["en"] ?? Object.values(label)[0] ?? "";

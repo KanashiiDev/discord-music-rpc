@@ -1,16 +1,16 @@
 #!/usr/bin/env bash
 # scripts/install-arch.sh
 #
-# Discord Music RPC - Arch Linux Installer
-# https://github.com/KanashiiDev/discord-music-rpc
+# Web Presence - Arch Linux Installer
+# https://github.com/KanashiiDev/web-presence
 #
 # Usage:
-# curl -fsSL https://raw.githubusercontent.com/KanashiiDev/discord-music-rpc/main/scripts/install-arch.sh | bash
+# curl -fsSL https://raw.githubusercontent.com/KanashiiDev/web-presence/main/scripts/install-arch.sh | bash
 
 set -euo pipefail
 
-REPO="KanashiiDev/discord-music-rpc"
-PKG_NAME="discord-music-rpc"
+REPO="KanashiiDev/web-presence"
+PKG_NAME="web-presence"
 API_URL="https://api.github.com/repos/${REPO}/releases/latest"
 
 # Colors
@@ -28,7 +28,7 @@ error()   { echo -e "${RED}✗${RESET}  $*" >&2; exit 1; }
 header()  { echo -e "\n${BOLD}$*${RESET}"; }
 
 # Checks
-header "Discord Music RPC - Arch Linux Installer"
+header "Web Presence - Arch Linux Installer"
 
 [[ "$OSTYPE" == "linux"* ]] || error "This script is for Linux only."
 command -v pacman &>/dev/null || error "pacman not found. This script requires Arch Linux."
@@ -74,7 +74,7 @@ sudo pacman -U --noconfirm "$PKG_FILE"
 header "Done!"
 success "${PKG_NAME} installed successfully."
 echo
-echo -e "  ${BOLD}Start:${RESET}   discord-music-rpc"
+echo -e "  ${BOLD}Start:${RESET}   web-presence-bridge"
 echo -e "  ${BOLD}Remove:${RESET}  sudo pacman -Rns ${PKG_NAME}"
 echo
 warn "Automatic updates are not supported on this OS. To install new versions, run this script again."

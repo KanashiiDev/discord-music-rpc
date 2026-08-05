@@ -114,7 +114,7 @@ async function renderTopStats(history, range = "day", topN = 5, customStart = nu
   // Top Tracks
   const trackHeader = document.createElement("h3");
   trackHeader.textContent = "Top Tracks";
-  trackHeader.dataset.i18n = "stats.topTracks";
+  trackHeader.dataset.i18n = "stats.topTracks.title";
   container.appendChild(trackHeader);
 
   if (stats.topSongs.length) {

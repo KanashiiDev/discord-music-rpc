@@ -126,7 +126,7 @@ const logInfo = async (...args) => {
     _writeDebugLog("info", _stripConsoleFormatting(args));
   }
 
-  const prefix = "[DISCORD-MUSIC-RPC - INFO]";
+  const prefix = "[WEB-PRESENCE - INFO]";
   if (typeof args[0] === "string" && args[0].includes("%c")) {
     console.info(`%c${prefix}%c ${args[0]}`, "color:#2196f3; font-weight:bold;", "color:#fff;", ...args.slice(1));
   } else {
@@ -139,7 +139,7 @@ const logWarn = async (...args) => {
 
   _writeDebugLog("warn", args);
 
-  const prefix = "%c[DISCORD-MUSIC-RPC - WARN]%c";
+  const prefix = "%c[WEB-PRESENCE - WARN]%c";
   const prefixCSS = ["color:#ff9800; font-weight:bold;", "color:#fff;"];
   console.log(prefix, ...prefixCSS, ...args);
 };
@@ -191,7 +191,7 @@ const logError = (...a) => {
     _writeDebugLog("error", a);
 
     console.error(
-      "[DISCORD-MUSIC-RPC - ERROR]",
+      "[web-presence - ERROR]",
       ...a.map((arg) => {
         if (arg instanceof Error) {
           return `${arg.name || ""} ${arg.message || ""} ${arg.stack || ""}`;

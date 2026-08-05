@@ -1,17 +1,16 @@
 async function renderOptions(mode, container, parserOptions, settingKey, addListener) {
   const allDefaultKeys = Object.keys(DEFAULT_PARSER_OPTIONS);
-  const visibleDefaultKeys = allDefaultKeys.filter((k) => mode === "listen" || k !== "saveHistory");
 
   const sections = [
     {
       title: i18n.t("common.settings"),
-      keys: visibleDefaultKeys.filter((k) => !k.startsWith("custom")),
+      keys: allDefaultKeys.filter((k) => !k.startsWith("custom")),
       prefix: "",
       collapsible: true,
     },
     {
       title: i18n.t("parserOptions.customSettings"),
-      keys: visibleDefaultKeys.filter((k) => k.startsWith("custom")),
+      keys: allDefaultKeys.filter((k) => k.startsWith("custom")),
       prefix: "custom",
       collapsible: true,
     },
@@ -64,8 +63,6 @@ async function renderOptions(mode, container, parserOptions, settingKey, addList
 }
 
 async function renderOption(key, mode, data, container, settingKey, addListener) {
-  if (mode !== "listen" && key === "saveHistory") return;
-
   const optionSpan = Object.assign(document.createElement("span"), { className: "parser-option" });
   const defaultMeta = DEFAULT_PARSER_OPTIONS[key];
 

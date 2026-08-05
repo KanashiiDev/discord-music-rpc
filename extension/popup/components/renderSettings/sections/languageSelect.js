@@ -8,7 +8,9 @@ const initLanguageSelect = async (container) => {
 
     const extensionLanguages = Object.fromEntries(Object.entries(data).filter(([key, lang]) => key && lang.extension === true));
 
-    const { lang } = (await browser.storage.local.get("lang")) || Object.keys(extensionLanguages)[0];
+    const { lang } = (await browser.storage.local.get("lang")) || {};
+    const locales = [lang, navigator.languages?.[0] || navigator.language, "en"].filter(Boolean);
+    const displayNames = new Intl.DisplayNames(locales, { type: "language" });
 
     const wrapper = document.createElement("div");
     wrapper.className = "settings-option";
@@ -24,7 +26,7 @@ const initLanguageSelect = async (container) => {
     Object.entries(extensionLanguages).forEach(([key, value]) => {
       const option = document.createElement("option");
       option.value = key;
-      option.textContent = value.label;
+      option.textContent = displayNames.of(key) ?? value.label;
       select.appendChild(option);
     });
 

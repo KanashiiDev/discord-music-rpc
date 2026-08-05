@@ -859,6 +859,19 @@ input[type="text"] {
   min-width: 80px;
 }
 
+#filtersList.grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+#btnToggleView {
+  max-height: 36px;
+  -ms-flex-item-align: center;
+  align-self: center;
+  max-width: 36px;
+}
+
 .filter-item {
   background: var(--foreground-color-200);
   border: 0.5px solid var(--border-color);

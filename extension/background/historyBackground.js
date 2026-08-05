@@ -39,7 +39,7 @@ async function loadHistory() {
   });
 }
 
-async function addToHistory({ image, title, artist, source, songUrl, date = Date.now() }) {
+async function addToHistory({ image, title, artist, source, link, date = Date.now(), mode }) {
   if (!title || !artist) return;
 
   const history = await loadHistory();
@@ -52,8 +52,9 @@ async function addToHistory({ image, title, artist, source, songUrl, date = Date
     t: title,
     a: artist,
     s: source,
-    u: songUrl,
+    u: link,
     p: date,
+    m: mode,
   };
 
   if (sameAsLast) {
@@ -63,7 +64,7 @@ async function addToHistory({ image, title, artist, source, songUrl, date = Date
   }
 
   if (state.serverPort) {
-    await handleAddHistoryToServer({ title, artist, source, image, songUrl, date });
+    await handleAddHistoryToServer({ title, artist, source, image, link, date, mode });
   }
 
   await saveHistory(history);

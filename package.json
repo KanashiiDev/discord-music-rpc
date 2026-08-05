@@ -1,10 +1,11 @@
 {
-  "name": "discord-music-rpc",
-  "version": "2.2.0",
-  "description": "Discord Music RPC Application",
-  "homepage": "https://github.com/KanashiiDev/discord-music-rpc",
+  "name": "web-presence",
+  "version": "3.0.0",
+  "description": "Web Presence Bridge for Discord",
+  "homepage": "https://github.com/KanashiiDev/web-presence",
   "main": "app/main.js",
   "keywords": [
+    "web",
     "discord",
     "electron",
     "rpc",
@@ -96,8 +97,8 @@
     "rimraf": "^6.1.3"
   },
   "build": {
-    "appId": "com.kanashiidev.discord.music.rpc",
-    "productName": "Discord Music RPC",
+    "appId": "com.kanashiidev.web.presence",
+    "productName": "Web Presence Bridge",
     "copyright": "Copyright © 2025 KanashiiDev",
     "electronLanguages": [
       "en-US"
@@ -106,7 +107,7 @@
       {
         "provider": "github",
         "owner": "KanashiiDev",
-        "repo": "discord-music-rpc"
+        "repo": "web-presence"
       }
     ],
     "asar": true,
@@ -115,7 +116,7 @@
       "output": "dist/${platform}"
     },
     "win": {
-      "artifactName": "Discord-Music-RPC-${version}-${arch}-installer.exe",
+      "artifactName": "web-presence-bridge-${version}-${arch}-installer.exe",
       "target": "nsis",
       "icon": "app/assets/icon/icon.ico"
     },
@@ -126,20 +127,20 @@
         "deb",
         "pacman"
       ],
-      "artifactName": "discord-music-rpc-${version}-${arch}.${ext}",
-      "executableName": "discord-music-rpc",
+      "artifactName": "web-presence-bridge-${version}-${arch}.${ext}",
+      "executableName": "web-presence-bridge",
       "category": "Audio",
       "icon": "app/assets/icon",
       "maintainer": "KanashiiDev <kanashiidev0@gmail.com>",
-      "synopsis": "Show music from ANY website on your Discord!",
-      "description": "Show music from ANY website on your Discord!",
+      "synopsis": "Show your web presence on Discord!",
+      "description": "Show your web presence on Discord!",
       "desktop": {
         "entry": {
-          "Name": "Discord Music RPC",
-          "Comment": "Show music from ANY website on your Discord!",
-          "Keywords": "discord;music;rpc;presence;",
+          "Name": "Web Presence Bridge",
+          "Comment": "Show your web presence on Discord!",
+          "Keywords": "discord;web;presence;",
           "Categories": "Audio;Music;",
-          "Icon": "discord-music-rpc"
+          "Icon": "web-presence"
         }
       }
     },
@@ -167,7 +168,7 @@
           "target": "dmg"
         }
       ],
-      "artifactName": "Discord-Music-RPC-${version}-${arch}.${ext}",
+      "artifactName": "web-presence-bridge-${version}-${arch}.${ext}",
       "icon": "app/assets/icon/icon.icns",
       "darkModeSupport": true,
       "extendInfo": {

@@ -61,7 +61,7 @@ function safeConsoleWrap(log) {
 
 // Paths
 const isPackaged = require("electron").app.isPackaged;
-const RESOURCE_ROOT = process.env.DISCORD_MUSIC_RPC_NIX === "true" ? path.dirname(process.argv[1]) : process.resourcesPath;
+const RESOURCE_ROOT = process.env.WEB_PRESENCE_NIX === "true" ? path.dirname(process.argv[1]) : process.resourcesPath;
 
 function getAppPath(...p) {
   return path.join(__dirname, ...p);
@@ -126,7 +126,7 @@ function logToFile(error, type = "UnknownError") {
 }
 
 async function openUrl(url) {
-  if (process.platform === "linux" && process.env.DISCORD_MUSIC_RPC_NIX === "true") {
+  if (process.platform === "linux" && process.env.WEB_PRESENCE_NIX === "true") {
     const uid = process.getuid();
     const env = { ...process.env };
 
@@ -214,7 +214,7 @@ function openConfig() {
 
 // Error Handling
 function handleCriticalError(message, error) {
-  (_log ?? console).error(message, error);
+  _log.error(message, error);
   dialog
     .showMessageBox({
       type: "error",
@@ -228,111 +228,6 @@ function handleCriticalError(message, error) {
       if (response === 1) openLogs();
       require("electron").app.quit();
     });
-}
-
-function preemptiveMigrate(app, log) {
-  const currentUserData = app.getPath("userData");
-  const NEW_APP_FOLDER = "web-presence-bridge";
-  const newDataPath = path.join(app.getPath("userData"), "..", NEW_APP_FOLDER);
-  const MIGRATE_FILES = ["config.json", "logs.json", "history.json"];
-
-  log.info(`[Rebrand] Pre-migration: ${currentUserData} -> ${newDataPath}`);
-  fs.mkdirSync(newDataPath, { recursive: true });
-
-  for (const file of MIGRATE_FILES) {
-    const src = path.join(currentUserData, file);
-    const dst = path.join(newDataPath, file);
-
-    if (!fs.existsSync(src)) {
-      log.info(`[Rebrand] Skipped: ${file}  (not found)`);
-      continue;
-    }
-
-    try {
-      if (fs.existsSync(dst)) {
-        const srcMtime = fs.statSync(src).mtimeMs;
-        const dstMtime = fs.statSync(dst).mtimeMs;
-        if (srcMtime <= dstMtime) {
-          log.info(`[Rebrand] Skipped: ${file} (already up-to-date)`);
-          continue;
-        }
-      }
-      fs.copyFileSync(src, dst);
-      log.info(`[Rebrand] Copied: ${file}`);
-    } catch (err) {
-      log.warn(`[Rebrand] Error (${file}): ${err.message}`);
-    }
-  }
-
-  log.info("[Rebrand] Pre-migration completed.");
-}
-
-async function checkRebrandingUrl(log) {
-  return new Promise((resolve) => {
-    const { net } = require("electron");
-
-    const request = net.request({
-      method: "HEAD",
-      url: "https://github.com/KanashiiDev/web-presence/releases/download/2.1.0/latest.yml",
-    });
-
-    request.on("response", (response) => {
-      if (!response || response.statusCode == null) {
-        log.warn("Rebranding URL check: No Response");
-        resolve(false);
-        return;
-      }
-      log.warn("Rebranding URL check:", response.statusCode);
-      resolve(response.statusCode >= 200 && response.statusCode < 300);
-    });
-
-    request.on("error", (err) => {
-      log.warn("Rebranding URL check error:", err);
-      resolve(false);
-    });
-
-    request.end();
-  });
-}
-
-async function showRebrandingNotice(app, log, showAlways) {
-  const GITHUB_RELEASES_URL = "https://github.com/KanashiiDev/web-presence#download";
-  const FLAG_FILE = "rebrand_notice_shown";
-  const currentUserData = app.getPath("userData");
-  const flagPath = path.join(currentUserData, FLAG_FILE);
-
-  if (!showAlways && fs.existsSync(flagPath)) return;
-
-  const { response } = await dialog.showMessageBox({
-    type: "info",
-    title: "Discord Music RPC - Important Announcement",
-    message: "This application will soon be discontinued",
-    detail: [
-      'Discord Music RPC is being restructured under the name "Web Presence" for broader usage purposes.',
-      "",
-      "You can continue to use this version, but it will not receive any updates from now on.",
-      "",
-      "• We recommend that you uninstall this application after installing the new application.",
-      "• After installation, all application data will be automatically transferred to the new application.',",
-    ].join("\n"),
-    buttons: ["Download the New Version", "Ignore"],
-    icon: icons.message,
-    defaultId: 0,
-    cancelId: 1,
-  });
-
-  if (response === 0) {
-    shell.openExternal(GITHUB_RELEASES_URL);
-  }
-
-  if (!fs.existsSync(flagPath)) {
-    try {
-      fs.writeFileSync(flagPath, new Date().toISOString());
-      log.info("[Rebrand] Flag has been set, it will not be shown again.");
-    } catch (err) {
-      log.warn(`[Rebrand] Flag could not be written: ${err.message}`);
-    }
-  }
 }
 
 module.exports = {
@@ -353,7 +248,4 @@ module.exports = {
   openLogs,
   openConfig,
   handleCriticalError,
-  preemptiveMigrate,
-  checkRebrandingUrl,
-  showRebrandingNotice,
 };

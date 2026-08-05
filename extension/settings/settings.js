@@ -5,35 +5,44 @@ function applySectionFromUrl() {
   const sections = document.querySelectorAll("[data-section]");
   const activeSection = document.querySelector(`[data-section="${sectionParam}"]`);
 
+  // Update section visibility
   sections.forEach((el) => {
     el.style.display = el === activeSection ? "" : "none";
   });
 
-  if (activeSection) {
-    const currentSection = activeSection?.getAttribute("data-section");
-    const currentSectionHeader = `settings.${currentSection}.title`;
-    const currentSectionDesc = `settings.${currentSection}.desc`;
+  if (!activeSection) return null;
 
-    document.querySelector(".header h3").textContent = i18n.t("header.title") + " - " + i18n.t(currentSectionHeader);
-    document.title = i18n.t("header.title") + " - " + i18n.t(currentSectionHeader);
-    document.querySelector(".header-desc").textContent = i18n.t(currentSectionDesc);
-  }
+  // Title and description updates
+  const sectionKey = activeSection.getAttribute("data-section");
+  const mainTitle = i18n.t("header.title");
+  const sectionTitle = i18n.t(`settings.${sectionKey}.title`);
+  const fullTitle = `${mainTitle} - ${sectionTitle}`;
+
+  document.querySelector(".header h3").textContent = fullTitle;
+  document.title = fullTitle;
+  document.querySelector(".header-desc").textContent = i18n.t(`settings.${sectionKey}.desc`);
+
+  return sectionKey;
 }
 
 function startSettings() {
+  // General launches
   applyTranslations();
   initMotionPreference();
   initApplyAttrs();
   initStorageListener();
-  applySectionFromUrl();
-  initFilter();
-  initHistoryModal();
-  initBackupButtons();
-  initDebug();
+
+  // Apply the active section and run the modules
+  const currentSection = applySectionFromUrl();
+  if (currentSection === "filter") {
+    initFilter();
+    initHistoryModal();
+  }
+  if (currentSection === "debug") initDebug();
+  if (currentSection === "backup") initBackupButtons();
 }
 
 window.addEventListener("load", async () => {
   await i18n.load("extension");
-
   startSettings();
 });

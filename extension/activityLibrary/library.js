@@ -87,8 +87,8 @@ const hideStatus = () => {
 };
 
 // Init
-const MAIN_REPO_ID = "KanashiiDev__discord-music-rpc-activities__main";
-const MAIN_REPO_URL = "https://github.com/KanashiiDev/discord-music-rpc-activities";
+const MAIN_REPO_ID = "KanashiiDev__web-presence-activities__main";
+const MAIN_REPO_URL = "https://github.com/KanashiiDev/web-presence-activities";
 
 const init = async () => {
   if (state._initialized) return;
@@ -652,7 +652,7 @@ const renderRepoBlock = (block, repo, precomputedUpdateCount) => {
     const actions = document.createElement("div");
     actions.className = "repo-block-actions";
     const removeBtn = document.createElement("button");
-    removeBtn.className = "store-btn danger small";
+    removeBtn.className = "library-btn danger small";
     removeBtn.dataset.action = "removeRepo";
     removeBtn.dataset.repoId = repo.id;
     removeBtn.title = i18n.t("library.repo.removeTitle");
@@ -1187,25 +1187,28 @@ function relativeTime(dateValue) {
 
   const s = Math.floor((Date.now() - past) / 1000);
   if (s < 0 || s < 45) return i18n.t("time.just_now");
-  if (s < 90) return i18n.t("time.minute_ago", [1]);
-  if (s < 3600) return i18n.t("time.minutes_ago", [Math.floor(s / 60)]);
+  if (s < 90) return i18n.t("time.minute_ago.one", [1]);
+  if (s < 3600) return i18n.t("time.minute_ago.other", [Math.floor(s / 60)]);
 
   const mins = Math.floor(s / 60);
-  if (mins < 90) return i18n.t("time.hour_ago", [1]);
-  if (mins < 1440) return i18n.t("time.hours_ago", [Math.floor(mins / 60)]);
+  if (mins < 90) return i18n.t("time.hour_ago.one", [1]);
+  if (mins < 1440) return i18n.t("time.hour_ago.other", [Math.floor(mins / 60)]);
 
   const days = Math.floor(mins / 1440);
   if (days === 1) return i18n.t("time.yesterday");
   if (days < 7) return i18n.t("time.days_ago", [days]);
 
   const weeks = Math.floor(days / 7);
-  if (weeks === 1) return i18n.t("time.week_ago", [1]);
-  if (weeks < 5) return i18n.t("time.weeks_ago", [weeks]);
+  if (weeks === 1) return i18n.t("time.week_ago.one", [1]);
+  if (weeks < 5) return i18n.t("time.week_ago.other", [weeks]);
 
   const months = Math.floor(days / 30.4);
-  if (months < 12) return i18n.t("time.months_ago", [months]);
+  if (months === 1) return i18n.t("time.month_ago.one", [1]);
+  if (months < 12) return i18n.t("time.month_ago.other", [months]);
 
-  return i18n.t("time.years_ago", [Math.floor(months / 12)]);
+  const years = Math.floor(months / 12);
+  if (years === 1) return i18n.t("time.year_ago.one", [1]);
+  return i18n.t("time.year_ago.other", [years]);
 }
 
 if (document.readyState === "loading") {
@@ -1298,7 +1301,7 @@ const autoInstallMatchedScripts = async (matchedDomains) => {
     const { ok, list: repos } = await listRepos();
     if (!ok || !repos?.length) return;
 
-    const mainRepo = repos.find((r) => r.id === "KanashiiDev__discord-music-rpc-activities__main");
+    const mainRepo = repos.find((r) => r.id === "KanashiiDev__web-presence-activities__main");
     if (!mainRepo?.scripts?.length) return;
 
     const installed = await getInstalledScripts();

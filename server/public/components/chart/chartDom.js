@@ -1,6 +1,37 @@
-function buildRangeToggle() {
+// mode: "listen" | "watch"
+export function renderChartContainer(containerId, mode = "listen") {
+  const section = document.getElementById(containerId);
+  if (!section) return;
+
+  while (section.firstChild) section.removeChild(section.firstChild);
+
+  const isWatch = mode === "watch";
+  const p = isWatch ? "watch_" : "";
+
+  const heading = document.createElement("h2");
+  heading.id = `${p}chartHeader`;
+  heading.dataset.i18n = isWatch ? "chart.title.watch" : "chart.title";
+  heading.textContent = isWatch ? i18n.t("chart.title.watch") : i18n.t("chart.title");
+
+  const controls = document.createElement("div");
+  controls.className = "chart-controls";
+  controls.appendChild(_buildRangeToggle(p, isWatch));
+  controls.appendChild(_buildPeriodNav(p));
+  controls.appendChild(_buildModeToggle(p, isWatch));
+
+  const container = document.createElement("div");
+  container.className = "chart-container";
+  container.appendChild(controls);
+  container.appendChild(_buildCanvasWrap(p));
+  container.appendChild(_buildDetails(p));
+
+  section.appendChild(heading);
+  section.appendChild(container);
+}
+
+function _buildRangeToggle(p) {
   const group = document.createElement("div");
-  group.id = "chartRangeToggle";
+  group.id = `${p}chartRangeToggle`;
   group.className = "btn-group";
   group.setAttribute("role", "group");
 
@@ -16,8 +47,8 @@ function buildRangeToggle() {
     btn.className = active ? "chart-range-btn active" : "chart-range-btn";
     btn.dataset.range = range;
     btn.type = "button";
-    btn.textContent = label;
     btn.dataset.i18n = `chart.range.${range}`;
+    btn.textContent = label;
     if (summaryOnly) {
       btn.dataset.summaryOnly = "true";
       btn.style.display = "none";
@@ -28,135 +59,102 @@ function buildRangeToggle() {
   return group;
 }
 
-function buildPeriodNav() {
+function _buildPeriodNav(p) {
   const nav = document.createElement("div");
-  nav.className = "chart-period-nav";
+  nav.className = `chart-period-nav`;
+  nav.id = `${p}chartPeriodNav`;
 
   const prev = document.createElement("button");
-  prev.id = "chartPeriodPrev";
+  prev.id = `${p}chartPeriodPrev`;
   prev.className = "chart-period-nav-btn";
 
   const label = document.createElement("span");
-  label.id = "chartPeriodLabel";
+  label.id = `${p}chartPeriodLabel`;
   label.className = "chart-period-nav-label";
 
   const next = document.createElement("button");
-  next.id = "chartPeriodNext";
+  next.id = `${p}chartPeriodNext`;
   next.className = "chart-period-nav-btn";
 
-  nav.appendChild(prev);
-  nav.appendChild(label);
-  nav.appendChild(next);
-
+  nav.append(prev, label, next);
   return nav;
 }
 
-function buildModeToggle() {
+function _buildModeToggle(p, isWatch) {
   const group = document.createElement("div");
-  group.id = "chartModeToggle";
+  group.id = `${p}chartModeToggle`;
   group.className = "btn-group";
   group.setAttribute("role", "group");
 
   const summaryBtn = document.createElement("button");
-  summaryBtn.id = "chartSummaryToggle";
+  summaryBtn.id = `${p}chartSummaryToggle`;
   summaryBtn.className = "chart-mode-btn";
   summaryBtn.dataset.mode = "summary";
   summaryBtn.type = "button";
   summaryBtn.dataset.i18n = "chart.tab.summary";
   summaryBtn.textContent = "Summary";
+  summaryBtn.style.visibility = isWatch ? "hidden" : "";
+  group.appendChild(summaryBtn);
 
   const minutesBtn = document.createElement("button");
   minutesBtn.className = "chart-mode-btn active";
-  minutesBtn.dataset.mode = "minutes";
+  minutesBtn.dataset.mode = !isWatch ? "minutes" : "minutes_watch";
   minutesBtn.type = "button";
   minutesBtn.dataset.i18n = "chart.tab.time";
   minutesBtn.textContent = "Time";
+  group.appendChild(minutesBtn);
 
   const songsBtn = document.createElement("button");
   songsBtn.className = "chart-mode-btn";
-  songsBtn.dataset.mode = "songs";
+  songsBtn.dataset.mode = !isWatch ? "songs" : "videos";
   songsBtn.type = "button";
-  songsBtn.dataset.i18n = "chart.tab.songs";
-  songsBtn.textContent = "Songs";
-
-  group.appendChild(summaryBtn);
-  group.appendChild(minutesBtn);
+  songsBtn.dataset.i18n = !isWatch ? "chart.tab.songs" : "chart.tab.videos";
+  songsBtn.textContent = !isWatch ? "Songs" : "Videos";
   group.appendChild(songsBtn);
 
   return group;
 }
 
-function buildCanvasWrap() {
+function _buildCanvasWrap(p) {
   const wrap = document.createElement("div");
   wrap.className = "chart-canvas-wrap";
 
   const loading = document.createElement("div");
-  loading.id = "historyChartLoading";
+  loading.id = `${p}historyChartLoading`;
+  loading.className = `chart-data-status`;
   loading.dataset.i18n = "chart.loading";
   loading.textContent = "Loading stats...";
 
   const canvas = document.createElement("canvas");
-  canvas.id = "listeningWaveform";
+  canvas.id = `${p}listeningWaveform`;
   canvas.setAttribute("role", "img");
 
-  wrap.appendChild(loading);
-  wrap.appendChild(canvas);
-
+  wrap.append(loading, canvas);
   return wrap;
 }
 
-function buildDetails() {
+function _buildDetails(p) {
   const details = document.createElement("div");
-  details.id = "chartDetails";
+  details.id = `${p}chartDetails`;
   details.className = "chart-details hidden";
 
   const header = document.createElement("div");
   header.className = "chart-details-header";
 
   const title = document.createElement("span");
-  title.id = "chartDetailsTitle";
+  title.id = `${p}chartDetailsTitle`;
   title.className = "chart-details-date";
 
   const total = document.createElement("span");
-  total.id = "chartDetailsTotal";
+  total.id = `${p}chartDetailsTotal`;
   total.className = "chart-details-total";
 
-  header.appendChild(title);
-  header.appendChild(total);
+  header.append(title, total);
 
   const platforms = document.createElement("div");
-  platforms.id = "chartDetailsPlatforms";
+  platforms.id = `${p}chartDetailsPlatforms`;
   platforms.className = "chart-details-platforms";
 
-  details.appendChild(header);
-  details.appendChild(platforms);
-
+  details.append(header, platforms);
   return details;
-}
-
-export function renderChartContainer() {
-  const section = document.getElementById("chartContainer");
-  if (!section) return;
-
-  while (section.firstChild) section.removeChild(section.firstChild);
-
-  const heading = document.createElement("h2");
-  heading.id = "chartHeader";
-  heading.dataset.i18n = "chart.title";
-  heading.textContent = "Stats";
-
-  const controls = document.createElement("div");
-  controls.className = "chart-controls";
-  controls.appendChild(buildRangeToggle());
-  controls.appendChild(buildPeriodNav());
-  controls.appendChild(buildModeToggle());
-
-  const container = document.createElement("div");
-  container.className = "chart-container";
-  container.appendChild(controls);
-  container.appendChild(buildCanvasWrap());
-  container.appendChild(buildDetails());
-
-  section.appendChild(heading);
-  section.appendChild(container);
 }

@@ -1,5 +1,5 @@
 {
-  description = "Discord Music RPC - Show music from ANY website on your Discord";
+  description = "Web Presence - Show music from ANY website on your Discord";
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
   };
@@ -12,32 +12,32 @@
       });
     in
     {
-      # nix profile install github:KanashiiDev/discord-music-rpc 
+      # nix profile install github:KanashiiDev/web-presence 
       packages = forEachSystem ({ pkgs, system, ... }: {
-        discord-music-rpc = pkgs.callPackage ./nix/package.nix { };
-        default           = self.packages.${system}.discord-music-rpc;
+        web-presence = pkgs.callPackage ./nix/package.nix { };
+        default           = self.packages.${system}.web-presence;
       });
       # nix develop 
       devShells = forEachSystem ({ pkgs, ... }: {
         default = pkgs.mkShell {
           buildInputs = with pkgs; [ nodejs_24 nodePackages.npm ];
           shellHook = ''
-            echo "Discord Music RPC dev shell"
+            echo "Web Presence dev shell"
             echo "Node: $(node --version) | npm: $(npm --version)"
           '';
         };
       });
       # NixOS module (configuration.nix) 
-      # inputs.discord-music-rpc.nixosModules.default
+      # inputs.web-presence.nixosModules.default
       nixosModules = {
-        discord-music-rpc = import ./nix/module.nix;
-        default           = self.nixosModules.discord-music-rpc;
+        web-presence = import ./nix/module.nix;
+        default           = self.nixosModules.web-presence;
       };
       # home-manager module 
-      # inputs.discord-music-rpc.homeManagerModules.default
+      # inputs.web-presence.homeManagerModules.default
       homeManagerModules = {
-        discord-music-rpc = import ./nix/home-module.nix;
-        default           = self.homeManagerModules.discord-music-rpc;
+        web-presence = import ./nix/home-module.nix;
+        default           = self.homeManagerModules.web-presence;
       };
     };
 }

@@ -1,13 +1,13 @@
 # nix/home-module.nix
 #
-# home-manager module for per-user Discord Music RPC setup.
+# home-manager module for per-user Web Presence setup.
 # Add to home.nix:
 #
-# inputs.discord-music-rpc.url = "github:KanashiiDev/discord-music-rpc";
+# inputs.web-presence.url = "github:KanashiiDev/web-presence";
 #
 # { inputs, ... }: {
-# imports = [ inputs.discord-music-rpc.homeManagerModules.default ];
-# programs.discord-music-rpc = {
+# imports = [ inputs.web-presence.homeManagerModules.default ];
+# programs.web-presence = {
 # enable = true;
 # autoStart = true;
 # };
@@ -16,24 +16,24 @@
 { config, lib, pkgs, ... }:
 
 let
-  cfg = config.programs.discord-music-rpc;
+  cfg = config.programs.web-presence;
 in
 {
-  options.programs.discord-music-rpc = {
-    enable = lib.mkEnableOption "Discord Music RPC";
+  options.programs.web-presence = {
+    enable = lib.mkEnableOption "Web Presence";
 
     package = lib.mkOption {
       type = lib.types.package;
       default = pkgs.callPackage ./package.nix { };
-      defaultText = lib.literalExpression "discord-music-rpc from flake";
-      description = "The discord-music-rpc package to use.";
+      defaultText = lib.literalExpression "web-presence from flake";
+      description = "The web-presence package to use.";
     };
 
     autoStart = lib.mkOption {
       type = lib.types.bool;
       default = false;
       description = ''
-        Whether to create an XDG autostart entry so Discord Music RPC
+        Whether to create an XDG autostart entry so Web Presence
         launches automatically when you log into your desktop session.
       '';
     };
@@ -41,7 +41,7 @@ in
     port = lib.mkOption {
       type = lib.types.port;
       default = 3000;
-      description = "Port the Discord Music RPC server listens on.";
+      description = "Port the Web Presence server listens on.";
     };
 
     extraArgs = lib.mkOption {
@@ -57,14 +57,14 @@ in
     home.packages = [ cfg.package ];
 
     # XDG autostart entry 
-    xdg.configFile."autostart/discord-music-rpc.desktop" = lib.mkIf cfg.autoStart {
+    xdg.configFile."autostart/web-presence.desktop" = lib.mkIf cfg.autoStart {
       text = ''
         [Desktop Entry]
         Type=Application
-        Name=Discord Music RPC
+        Name=Web Presence
         Comment=Show music from ANY website on your Discord
-        Exec=discord-music-rpc${lib.optionalString (cfg.extraArgs != []) (" " + lib.escapeShellArgs cfg.extraArgs)}
-        Icon=discord-music-rpc
+        Exec=web-presence${lib.optionalString (cfg.extraArgs != []) (" " + lib.escapeShellArgs cfg.extraArgs)}
+        Icon=web-presence
         Terminal=false
         Hidden=false
         NoDisplay=false
@@ -77,17 +77,17 @@ in
 
     # Environment variables for this user's session 
     home.sessionVariables = {
-      DISCORD_MUSIC_RPC_NIX = "true";
+      WEB_PRESENCE_NIX = "true";
       # Ensure XDG_RUNTIME_DIR is set (usually done by PAM/logind, but be explicit)
       XDG_RUNTIME_DIR = lib.mkDefault "/run/user/\${UID}";
     };
 
     # Systemd user service
     # Disabled by default; XDG autostart is more compatible across DEs.
-    # To enable: set systemd.user.services.discord-music-rpc.enable = true;
-    systemd.user.services.discord-music-rpc = lib.mkIf cfg.autoStart {
+    # To enable: set systemd.user.services.web-presence.enable = true;
+    systemd.user.services.web-presence = lib.mkIf cfg.autoStart {
       Unit = {
-        Description = "Discord Music RPC";
+        Description = "Web Presence";
         After = [ "graphical-session.target" "tray.target" ];
         PartOf = [ "graphical-session.target" ];
         # Wait for Discord's IPC socket to potentially exist
@@ -95,11 +95,11 @@ in
       };
       Service = {
         Type = "simple";
-        ExecStart = "${cfg.package}/bin/discord-music-rpc ${lib.escapeShellArgs cfg.extraArgs}";
+        ExecStart = "${cfg.package}/bin/web-presence ${lib.escapeShellArgs cfg.extraArgs}";
         Restart = "on-failure";
         RestartSec = "5s";
         Environment = [
-          "DISCORD_MUSIC_RPC_NIX=true"
+          "WEB_PRESENCE_NIX=true"
         ];
       };
       # If you want the systemd service instead of XDG autostart, add:

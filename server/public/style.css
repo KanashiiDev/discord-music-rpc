@@ -77,7 +77,7 @@ header {
 
 .container.grid {
   max-width: 90%;
-  min-width: 865px;
+  min-width: 1200px;
 }
 
 .theme {
@@ -182,6 +182,32 @@ select {
   min-height: 125px;
 }
 
+.grid .last-activity.activity-box {
+  min-height: 218px;
+}
+
+.grid .history.activity-box,
+.grid .history.activity-box #historyWrapper,
+.grid .watch.activity-box,
+.grid .watch.activity-box #watchWrapper {
+  max-height: 278px;
+}
+
+.grid .history.activity-box.open #historyWrapper,
+.grid .watch.activity-box #watchWrapper {
+  max-height: 400px;
+}
+
+.grid.chart-summary-open {
+  .theme {
+    grid-template-columns: 0px 1fr;
+  }
+  .left {
+    opacity: 0;
+    pointer-events: none;
+  }
+}
+
 .logs.activity-box {
   max-height: 225px;
 }
@@ -280,7 +306,7 @@ footer a:hover {
   color: var(--accent-color-bright);
 }
 
-.music-card {
+.activity-card {
   background: var(--foreground-color-200);
   border-radius: var(--radius-lg);
   padding: 18px;
@@ -295,7 +321,7 @@ footer a:hover {
   color: var(--text-color-primary);
 }
 
-.music-body {
+.activity-body {
   display: flex;
   gap: 20px;
   flex-wrap: wrap;
@@ -303,7 +329,7 @@ footer a:hover {
   flex-direction: row;
 }
 
-.music-cover img,
+.activity-cover img,
 .song img {
   width: 100px;
   height: 100px;
@@ -331,12 +357,12 @@ img:not(.summary-img)[src*="assets/icon-dark.png"] {
   padding: 10px;
 }
 
-.music-info {
+.activity-info {
   flex: 1;
   min-width: 200px;
 }
 
-.music-info h2,
+.activity-info h2,
 .song-info .title {
   margin: 0;
   font-size: 18px;
@@ -414,12 +440,17 @@ img:not(.summary-img)[src*="assets/icon-dark.png"] {
 }
 
 #historyWrapper,
+#watchWrapper,
 #logsWrapper {
   max-height: 195px;
-  transition: max-height 0.25s ease;
+  transition:
+    padding 0.25s ease,
+    min-height 0.25s ease,
+    max-height 0.25s ease;
 }
 
-.open #historyWrapper {
+.open #historyWrapper,
+.open #watchWrapper {
   max-height: 400px;
 }
 
@@ -461,7 +492,8 @@ img:not(.summary-img)[src*="assets/icon-dark.png"] {
   margin: 6px 0;
 }
 
-#historyContainer {
+#historyContainer,
+#watchContainer {
   display: flex;
   flex-direction: column;
   align-items: stretch;
@@ -729,7 +761,7 @@ input[type="number"] {
   transition: max-height 0.3s ease;
 }
 
-#historyChartLoading {
+.chart-data-status {
   position: absolute;
   inset: 0;
   display: flex;
@@ -739,7 +771,7 @@ input[type="number"] {
   color: var(--text-color-secondary);
 }
 
-#historyChartLoading.error {
+.chart-data-status.error {
   color: var(--red-color);
 }
 
@@ -757,13 +789,12 @@ input[type="number"] {
   margin-bottom: 10px;
 }
 
-#chartPeriodLabel {
+.chart-period-nav-label {
   font-size: 13px;
 }
 
 .summary-back-btn,
-#chartPeriodNext,
-#chartPeriodPrev {
+.chart-period-nav-btn {
   cursor: pointer;
   background: 0;
   border: 0;
@@ -774,13 +805,11 @@ input[type="number"] {
   height: 15px;
 }
 
-#chartPeriodNext:hover,
-#chartPeriodPrev:hover {
+.chart-period-nav-btn:hover {
   opacity: 1;
 }
 
-#chartPeriodNext[disabled],
-#chartPeriodPrev[disabled] {
+.chart-period-nav-btn[disabled] {
   cursor: default;
 }
 
@@ -792,7 +821,9 @@ input[type="number"] {
 }
 
 #chartRangeToggle,
-#chartModeToggle {
+#chartModeToggle,
+#watch_chartRangeToggle,
+#watch_chartModeToggle {
   display: flex;
   gap: 4px;
 }
@@ -830,11 +861,13 @@ input[type="number"] {
   color: var(--text-color-primary);
 }
 
-.chart-mode-btn.active:not(.summary-active)[data-mode="minutes"] {
+.chart-mode-btn.active:not(.summary-active)[data-mode="minutes"],
+.chart-mode-btn.active:not(.summary-active)[data-mode="minutes_watch"] {
   background: var(--chart-time-btn);
 }
 
-.chart-mode-btn.active:not(.summary-active)[data-mode="songs"] {
+.chart-mode-btn.active:not(.summary-active)[data-mode="songs"],
+.chart-mode-btn.active:not(.summary-active)[data-mode="videos"] {
   background: var(--chart-songs-btn);
 }
 
@@ -931,8 +964,9 @@ input[type="number"] {
 .hc-song-list {
   max-height: 0;
   opacity: 0;
-  padding: 0 10px;
+  padding: 0;
   transition:
+    padding 0.25s ease,
     max-height 0.3s ease,
     opacity 0.25s ease;
 }

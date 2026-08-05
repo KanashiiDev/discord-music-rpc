@@ -35,7 +35,7 @@
     return str;
   }
 
-  const LOG_PREFIX = "[DISCORD MUSIC RPC - i18n]";
+  const LOG_PREFIX = "[WEB PRESENCE - i18n]";
 
   // Class
 
@@ -119,7 +119,7 @@
         console.warn(`${LOG_PREFIX} Could not read persisted language:`, e);
       }
 
-      const browserLang = typeof navigator !== "undefined" && navigator.language ? navigator.language.split("-")[0] : null;
+      const browserLang = navigator.languages?.[0] || navigator.language;
 
       return stored || browserLang || hint || "en";
     }
@@ -169,8 +169,22 @@
       const lang = await this._detectLang(namespace, langHint);
       const base = this._resolveBase(namespace);
       const ns = namespace ?? "__default__";
+      const shortLang = lang.split("-")[0];
+      const sharedBase = this._isExtension() ? browser.runtime.getURL("locales") : "/locales";
 
-      let main = await this._fetch(`${base}/${lang}/${ns}.json`);
+      const fetchWithFallback = async (base, file) => {
+        let data = await this._fetch(`${base}/${lang}/${file}`);
+        if (data == null && shortLang !== lang) data = await this._fetch(`${base}/${shortLang}/${file}`);
+        return data;
+      };
+
+      const [sharedMain, sharedFallback, fetchedMain] = await Promise.all([
+        fetchWithFallback(sharedBase, "shared.json"),
+        this._fetch(`${sharedBase}/${this.fallbackLang}/shared.json`),
+        fetchWithFallback(base, `${ns}.json`),
+      ]);
+
+      let main = fetchedMain;
 
       if (main == null) {
         if (lang !== this.fallbackLang) {
@@ -182,18 +196,16 @@
           main = {};
           this.lang = lang;
         }
-      } else {
+      } else if (!this.lang) {
         this.lang = lang;
       }
 
-      // Only fetch a separate fallback bundle when it differs from main
       const fallback = this.lang !== this.fallbackLang ? ((await this._fetch(`${base}/${this.fallbackLang}/${ns}.json`)) ?? main) : main;
 
-      this._translations[ns] = main;
-      this._fallback[ns] = fallback;
+      this._translations[ns] = { ...(sharedMain ?? {}), ...main };
+      this._fallback[ns] = { ...(sharedFallback ?? {}), ...fallback };
       this.activeNamespace = ns;
 
-      // Invalidate the cache for this namespace only (other namespaces stay warm)
       this._evictNamespace(ns);
 
       if (!this._ready) {

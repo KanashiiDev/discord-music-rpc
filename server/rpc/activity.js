@@ -24,7 +24,7 @@ function buildActivity(data, now) {
   let dataArtist = artistIsIntentionallyEmpty ? "" : rawArtist;
   const dataImage = String(data.image ?? "").trim();
   const dataSource = String(data.source ?? "").trim();
-  const dataSongUrl = String(data.songUrl ?? "").trim();
+  const dataLink = String(data.link ?? "").trim();
 
   if (!dataArtist && dataSource) dataArtist = dataSource;
 
@@ -37,9 +37,9 @@ function buildActivity(data, now) {
 
   // FavIcon
   let favIcon = null;
-  if (activitySettings.showFavIcon && dataSongUrl) {
+  if (activitySettings.showFavIcon && dataLink) {
     try {
-      const { hostname } = new URL(dataSongUrl);
+      const { hostname } = new URL(dataLink);
       favIcon = `https://www.google.com/s2/favicons?domain=${encodeURIComponent(hostname)}&sz=64`;
     } catch {
       // invalid URL - favIcon stays null
@@ -125,7 +125,7 @@ function buildActivity(data, now) {
       .slice(0, 2)
       .map((btn) => ({ label: truncate(btn.text, 32), url: String(btn.link) }));
 
-    const sourceButton = isValidUrl(dataSongUrl) ? { label: truncate(`Open on ${dataSource || "Source"}`, 32), url: dataSongUrl } : null;
+    const sourceButton = isValidUrl(dataLink) ? { label: truncate(`Open on ${dataSource || "Source"}`, 32), url: dataLink } : null;
 
     if (validButtons.length === 2) {
       activity.buttons = validButtons;
@@ -137,9 +137,9 @@ function buildActivity(data, now) {
       activity.buttons = [sourceButton];
     }
 
-    if (isValidUrl(dataSongUrl)) {
-      activity.detailsUrl = dataSongUrl;
-      activity.largeImageUrl = dataSongUrl;
+    if (isValidUrl(dataLink)) {
+      activity.detailsUrl = dataLink;
+      activity.largeImageUrl = dataLink;
     }
   }
 
@@ -270,7 +270,7 @@ async function setRpcActivity(activity) {
   try {
     await client.user.setActivity(activity);
     // Write currentActivity files
-    if (localActivitySave && activity.type !== 3) {
+    if (localActivitySave) {
       activityWriter.writeActivityFiles(activity).catch((err) => {
         console.log("[ACTIVITY] Error writing activity files: " + err);
       });

@@ -79,7 +79,7 @@ module.exports = async function (context) {
         try {
           fs.mkdirSync(destDir, { recursive: true });
           const src = path.join(iconsSrcDir, file);
-          const dest = path.join(destDir, "discord-music-rpc.png");
+          const dest = path.join(destDir, "web-presence.png");
           if (fs.existsSync(src)) {
             fs.copyFileSync(src, dest);
           } else {

@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Discord Music RPC",
-  "description": "Show music from any website on your Discord!",
-  "homepage_url": "https://github.com/KanashiiDev/discord-music-rpc",
+  "name": "Web Presence for Discord",
+  "description": "Show your web presence on Discord!",
+  "homepage_url": "https://github.com/KanashiiDev/web-presence",
 
   "background": {
     "service_worker": "background.js",

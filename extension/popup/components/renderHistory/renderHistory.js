@@ -11,6 +11,7 @@ const historyState = {
   activeScrollCleanup: null,
   selectedSources: new Set(),
   sourceMenuBuilt: false,
+  activeMode: "all",
 };
 
 async function renderHistory({ reset = true, query = "" } = {}) {
@@ -48,14 +49,16 @@ async function renderHistory({ reset = true, query = "" } = {}) {
   target.querySelector(".history-spinner.spinner")?.remove();
 
   const searchQuery = query.trim();
-  const hasFilter = searchQuery || selectedSources.size > 0;
+  const modeFiltered = historyState.activeMode !== "all";
+  const hasFilter = searchQuery || selectedSources.size > 0 || modeFiltered;
 
   if (hasFilter) {
     const lq = searchQuery.toLowerCase();
     historyState.filteredHistory = historyState.fullHistory.filter((entry) => {
       const matchesText = !searchQuery || `${entry.t} ${entry.a}`.toLowerCase().includes(lq);
       const matchesSource = selectedSources.size === 0 || selectedSources.has(entry.s);
-      return matchesText && matchesSource;
+      const matchesMode = historyState.activeMode === "all" || entry.m === historyState.activeMode || (!entry.m && historyState.activeMode === "listen");
+      return matchesText && matchesSource && matchesMode;
     });
     historyState.isFiltering = true;
   } else {

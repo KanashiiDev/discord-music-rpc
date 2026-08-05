@@ -2,7 +2,7 @@ import { dom, simpleBars } from "../../core/dom.js";
 import { SettingsManager } from "./settingsManager.js";
 import { formatKeyName, displayValue, getDisplayMinMax, hasChanges } from "./settingsHelpers.js";
 import { startAutoUpdate, stopAutoUpdate } from "../../index.js";
-import { initMusicCard, destroyMusicCard } from "../musicCard/musicCard.js";
+import { initactivityCard, destroyactivityCard } from "../activityCard/activityCard.js";
 
 const createElement = (tag, className = "", attributes = {}) => {
   const element = document.createElement(tag);
@@ -189,7 +189,7 @@ export const toggleSettings = (show) => {
   setTimeout(() => {
     if (show) {
       stopAutoUpdate();
-      destroyMusicCard();
+      destroyactivityCard();
       dom.main.style.display = "none";
       dom.settings.container.style.display = "block";
       dom.settings.toggle.style.display = "none";
@@ -203,7 +203,7 @@ export const toggleSettings = (show) => {
       dom.settings.toggle.style.display = "block";
       dom.containerToggle.style.display = "block";
       startAutoUpdate();
-      initMusicCard();
+      initactivityCard();
     }
     setTimeout(() => {
       dom.container.classList.remove("switch");
@@ -227,9 +227,15 @@ export const initLanguageSelect = async (container) => {
     const data = await response.json();
 
     // Filter only those with "server": true
-    const serverLanguages = Object.fromEntries(Object.entries(data).filter(([key, lang]) => key && lang.server === true));
+    const savedLang = localStorage.getItem("lang") || "en";
+    const locales = [savedLang, navigator.languages?.[0] || navigator.language, "en"].filter(Boolean);
+    const displayNames = new Intl.DisplayNames(locales, { type: "language" });
 
-    const savedLang = localStorage.getItem("lang") || Object.keys(serverLanguages)[0];
+    const serverLanguages = Object.fromEntries(
+      Object.entries(data)
+        .filter(([key, lang]) => key && lang.server === true)
+        .map(([key, lang]) => [key, { ...lang, label: displayNames.of(key) ?? lang.label }]),
+    );
 
     const wrapper = createElement("div", "settings-option");
     const label = createElement("div", "setting-label", {

@@ -109,20 +109,16 @@ export function buildMinutesView(data) {
  * @param {object} artist  - item from topArtists
  * @param {object} summaryData  - full data returned by buildSummaryData (with _songMap)
  */
-export function buildArtistDrillDown(artist, summaryData) {
-  const panel = document.getElementById("chartSummaryPanel");
+export function buildArtistDrillDown(artist, summaryData, panel) {
   if (!panel) return;
 
   const content = panel.querySelector(".summary-content");
   if (!content) return;
 
-  // Header: inject back button + artist title
   const periodLabel = panel.querySelector(".summary-period-label");
   if (periodLabel) {
-    // Save original label text so we can restore it on back
-    periodLabel.dataset.savedLabel ??= periodLabel.textContent;
+    periodLabel.dataset.savedLabel ??= periodLabel.textContent || "";
 
-    // Replace period label with back button + artist name
     const backBtn = document.createElement("button");
     backBtn.className = "summary-back-btn";
     backBtn.type = "button";
@@ -134,7 +130,7 @@ export function buildArtistDrillDown(artist, summaryData) {
 
     periodLabel.replaceChildren(backBtn, artistTitle);
 
-    backBtn.addEventListener("click", () => _closeDrillDown(panel, summaryData));
+    backBtn.addEventListener("click", () => _closeDrillDown(panel));
   }
 
   // Content: artist hero + song list
@@ -181,7 +177,7 @@ export function buildRankedList(items, type) {
   }
 
   const maxCount = items[0].count;
-  const isSongs = type === "songs";
+  const isSongs = type === "songs" || type === "videos";
 
   for (const [idx, item] of items.entries()) {
     const row = document.createElement("div");
@@ -208,7 +204,6 @@ export function buildRankedList(items, type) {
     overlay.dataset.itemType = type;
 
     overlay.appendChild(createSVG(svg_paths.pen));
-
     imgWrap.appendChild(overlay);
 
     const info = document.createElement("div");
@@ -221,7 +216,7 @@ export function buildRankedList(items, type) {
     const sub = document.createElement("div");
     sub.className = "summary-sub";
     if ((isSongs && !item.artist) || !isSongs) {
-      sub.dataset.i18n = `${item.uniqueSongs !== 1 ? "chart.summary.uniqueTracks" : "chart.summary.uniqueTrack"}`;
+      sub.dataset.i18n = `${item.uniqueSongs !== 1 ? "chart.summary.uniqueTrack.other" : "chart.summary.uniqueTrack.one"}`;
       sub.dataset.i18nParams = JSON.stringify([item.uniqueSongs]);
     }
     sub.textContent = isSongs ? item.artist || "" : `${item.uniqueSongs} unique track${item.uniqueSongs !== 1 ? "s" : ""}`;
@@ -252,12 +247,10 @@ export function buildRankedList(items, type) {
     row.appendChild(info);
     row.appendChild(right);
 
-    if (isSongs && item.songUrl) {
+    if (isSongs && item.link) {
       row.addEventListener("click", (e) => {
-        if (e.target.closest(".summary-img-overlay")) {
-          return;
-        }
-        window.open(item.songUrl, "_blank", "noopener,noreferrer");
+        if (e.target.closest(".summary-img-overlay")) return;
+        window.open(item.link, "_blank", "noopener,noreferrer");
       });
     }
 

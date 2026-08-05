@@ -2,7 +2,7 @@ const fs = require("fs");
 const path = require("path");
 const { ZipArchive } = require("archiver");
 const { version } = require("../package.json");
-const { checkMissingTranslations } = require("./checkMissingTranslations");
+const { checkMissingTranslations, generateLanguages } = require("./checkMissingTranslations");
 const inputVersion = process.argv[2];
 const releaseVersion = inputVersion || version;
 const projectRoot = path.join(__dirname, "..");
@@ -60,28 +60,28 @@ for (const full of getAllFiles(distDir)) {
     fs.copyFileSync(full, dest);
     console.log(`📄 Copied ${f}`);
   }
-  if (f.startsWith("Discord-Music-RPC-") && f.endsWith(".exe")) {
+  if (f.startsWith("web-presence-") && f.endsWith(".exe")) {
     fs.copyFileSync(full, dest);
     console.log(`📦 Windows installer: ${f}`);
   }
-  if (f.startsWith("discord-music-rpc-") && f.endsWith(".AppImage")) {
+  if (f.startsWith("web-presence-") && f.endsWith(".AppImage")) {
     fs.copyFileSync(full, dest);
     const arch = f.includes("aarch64") ? "aarch64" : "x86_64";
     console.log(`📦 AppImage (${arch}): ${f}`);
   }
-  if (f.startsWith("discord-music-rpc-") && f.endsWith(".deb")) {
+  if (f.startsWith("web-presence-") && f.endsWith(".deb")) {
     fs.copyFileSync(full, dest);
     console.log(`📦 DEB: ${f}`);
   }
-  if (f.startsWith("discord-music-rpc-") && f.endsWith(".rpm")) {
+  if (f.startsWith("web-presence-") && f.endsWith(".rpm")) {
     fs.copyFileSync(full, dest);
     console.log(`📦 RPM: ${f}`);
   }
-  if (f.startsWith("Discord-Music-RPC-") && f.endsWith(".dmg")) {
+  if (f.startsWith("web-presence-") && f.endsWith(".dmg")) {
     fs.copyFileSync(full, dest);
     console.log(`📦 Mac DMG: ${f}`);
   }
-  if (f.startsWith("discord-music-rpc-") && f.endsWith(".pacman")) {
+  if (f.startsWith("web-presence-") && f.endsWith(".pacman")) {
     fs.copyFileSync(full, dest);
     console.log(`📦 Pacman: ${f}`);
   }
@@ -105,10 +105,11 @@ function zipDir(src, zipName) {
 
 // Main
 checkMissingTranslations(LOCALES_DIR);
+generateLanguages(LOCALES_DIR);
 
 (async () => {
   if (fs.existsSync(winUnpackedDir)) {
-    await zipDir(winUnpackedDir, `Discord-Music-RPC-${releaseVersion}-x64.zip`);
+    await zipDir(winUnpackedDir, `web-presence-${releaseVersion}-x64.zip`);
   }
 
   if (fs.existsSync(extensionBuildsDir)) {

@@ -225,6 +225,7 @@ class UserScriptManager {
             trackState.image = typeof image === "string" ? image : (image == null ? null : String(image));
             trackState.source = typeof source === "string" ? source : (source == null ? null : String(source));
             trackState.songUrl = typeof songUrl === "string" ? songUrl : (songUrl == null ? null : String(songUrl));
+            trackState.link = trackState.songUrl ?? (typeof link === "undefined" ? null : (typeof link === "string" ? link : String(link)));
             trackState.timePassed = typeof timePassed === "number" || typeof timePassed === "string" ? timePassed : null;
             trackState.duration = typeof duration === "number" || typeof duration === "string" ? duration : null;
             trackState.buttons = typeof buttons !== "undefined" && Array.isArray(buttons) ? buttons : null;
@@ -253,7 +254,7 @@ class UserScriptManager {
             if (${script.debug} && trackData) {
               const now = new Date();
               const timeString = \`\${String(now.getHours()).padStart(2,'0')}:\${String(now.getMinutes()).padStart(2,'0')}:\${String(now.getSeconds()).padStart(2,'0')}\`;
-              console.groupCollapsed(\`%c DISCORD MUSIC RPC - USERSCRIPT DEBUG [%c\${timeString}%c]: %c\${trackData.title}\`,
+              console.groupCollapsed(\`%c Web Presence - USERSCRIPT DEBUG [%c\${timeString}%c]: %c\${trackData.title}\`,
                 "color: #7bd583ff; font-weight: bold; font-size: 14px;",
                 "color: #cfa600ff; font-weight: bold; font-size: 14px;",
                 "color: #7bd583ff; font-weight: bold; font-size: 14px;",
@@ -269,7 +270,7 @@ class UserScriptManager {
               console.log("  • Title:      ", song.title || "Unknown");
               console.log("  • Artist:     ", song.artist || "Unknown");
               console.log("  • Source:     ", song.source || "Unknown");
-              console.log("  • Song URL:   ", song.songUrl || "N/A");
+              console.log("  • Song URL:   ", song.link || "N/A");
               console.log("  • Image:      ", song.image || "Default Image");
               console.log("  • Duration:   ", "${script.watchAutoDetect}" === "enable" ? "Auto-Detect" : song.duration ?? "N/A");
               console.log("  • Time Passed:", "${script.watchAutoDetect}" === "enable" ? "Auto-Detect" : song.timePassed ?? "N/A");
@@ -282,7 +283,7 @@ class UserScriptManager {
           } catch (error) {
             const now = new Date();
             const timeString = \`\${String(now.getHours()).padStart(2,'0')}:\${String(now.getMinutes()).padStart(2,'0')}:\${String(now.getSeconds()).padStart(2,'0')}\`;
-            console.groupCollapsed(\`%c DISCORD MUSIC RPC - USERSCRIPT ERROR [%c\${timeString}%c]: %cTracking Failed\`,
+            console.groupCollapsed(\`%c Web Presence - USERSCRIPT ERROR [%c\${timeString}%c]: %cTracking Failed\`,
               "color: #ff5555ff; font-weight: bold; font-size: 14px;",
               "color: #cfa600ff; font-weight: bold; font-size: 14px;",
               "color: #ff5555ff; font-weight: bold; font-size: 14px;",

@@ -46,7 +46,7 @@ function createTray() {
   }
 
   state.tray = new Tray(trayIcon);
-  state.tray.setToolTip("Discord Music RPC");
+  state.tray.setToolTip("Web Presence");
 
   const openMenu = () => state.tray.popUpContextMenu();
   state.tray.on("click", openMenu);
@@ -140,10 +140,10 @@ function updateTrayMenu() {
           {
             label: "Log Song Updates",
             type: "checkbox",
-            checked: config?.LOG_SONG_UPDATE,
+            checked: config?.LOG_MEDIA_UPDATE,
             click: (item) => {
-              ConfigManager.updateConfigValue("LOG_SONG_UPDATE", !!item.checked);
-              log.info(`Log Song Updates ${config.LOG_SONG_UPDATE ? "enabled" : "disabled"} successfully.`);
+              ConfigManager.updateConfigValue("LOG_MEDIA_UPDATE", !!item.checked);
+              log.info(`Log Song Updates ${config.LOG_MEDIA_UPDATE ? "enabled" : "disabled"} successfully.`);
               sm.updateServerSettings();
               updateTrayMenu();
             },
@@ -173,7 +173,7 @@ function updateTrayMenu() {
 
     currentMenu = Menu.buildFromTemplate(menuTemplate);
     state.tray.setContextMenu(currentMenu);
-    state.tray.setToolTip(`Discord Music RPC\nServer: ${state.isServerRunning ? "Running" : "Stopped"}\nRPC: ${state.isRpcConnected ? "Connected" : "Disconnected"}`);
+    state.tray.setToolTip(`Web Presence\nServer: ${state.isServerRunning ? "Running" : "Stopped"}\nRPC: ${state.isRpcConnected ? "Connected" : "Disconnected"}`);
   } catch (err) {
     log.error("Error updating tray menu:", err);
   }
@@ -247,7 +247,7 @@ function _buildLinuxDiagnosticItem() {
 
 function showTrayFallbackNotification() {
   new Notification({
-    title: "Discord Music RPC - Running in Background",
+    title: "Web Presence - Running in Background",
     body: "The app is running but system tray is not available. Use app indicator or check system settings.",
     icon: icons.notification,
   }).show();
@@ -255,7 +255,7 @@ function showTrayFallbackNotification() {
   dialog.showMessageBox({
     type: "info",
     title: "System Tray Not Available",
-    message: "Discord Music RPC is running in background mode",
+    message: "Web Presence is running in background mode",
     detail:
       "Your desktop environment may not support system tray icons. The application will continue to run. You can access it through application indicators or system menu.",
     buttons: ["OK"],

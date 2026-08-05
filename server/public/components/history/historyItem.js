@@ -5,11 +5,11 @@ export function createHistoryItem(entry) {
   songDiv.classList.add("song");
 
   const imageLink = document.createElement("a");
-  if (entry.songUrl) {
-    imageLink.href = entry.songUrl;
+  if (entry.link) {
+    imageLink.href = entry.link;
     imageLink.target = "_blank";
     imageLink.rel = "noopener noreferrer";
-    imageLink.title = i18n.t("history.goToSong");
+    imageLink.title = i18n.t("history.goToLink");
   }
 
   const imgContainer = document.createElement("div");

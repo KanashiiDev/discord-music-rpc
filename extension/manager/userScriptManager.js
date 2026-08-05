@@ -606,7 +606,7 @@ class UserScriptUI {
          let artist = "";
          let image = "";
          let source = "";
-         let songUrl = "";
+         let link = "";
          let timePassed = null;
          let duration = null;
          let buttons = [{link: "", text: ""}, {link: "",text: "",}];
@@ -1425,9 +1425,9 @@ ${codeIndented}
     const dataStr = this.exportToRegisterParser(scripts);
     const blob = new Blob([dataStr], { type: "text/javascript" });
     if (options.type === "single") {
-      fileName = `discord-music-rpc-userScript-${scripts[0].title || "script"}.js`;
+      fileName = `web-presence-userScript-${scripts[0].title || "script"}.js`;
     } else {
-      fileName = `discord-music-rpc-userScripts-${new Date().toISOString().split("T")[0]}.js`;
+      fileName = `web-presence-userScripts-${new Date().toISOString().split("T")[0]}.js`;
     }
 
     const url = URL.createObjectURL(blob);

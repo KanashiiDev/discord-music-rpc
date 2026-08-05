@@ -172,7 +172,7 @@ jobs:
         env:
           VERSION: ${{ steps.get_version.outputs.version }}
         run: |
-          X64="release/discord-music-rpc-${VERSION}-x86_64.AppImage"
+          X64="release/web-presence-${VERSION}-x86_64.AppImage"
           if [ -f "$X64" ]; then
             SRI_HASH="sha256-$(openssl dgst -binary -sha256 "$X64" | base64)"
             echo "x64_sha256=$SRI_HASH" >> "$GITHUB_OUTPUT"

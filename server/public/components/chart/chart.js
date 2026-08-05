@@ -1,19 +1,22 @@
 import { getCSS } from "../../utils.js";
 
-// Chart state
-export const chartState = {
-  mode: "minutes",
-  range: "month",
-  offset: 0,
-  instance: null,
-  lastClickedBarIndex: null,
-  expandedPlatform: null,
-  summaryRowCount: 5,
-};
+// Chart state factory
+export function chartState(historyMode = "listen") {
+  return {
+    mode: historyMode === "watch" ? "minutes_watch" : "minutes",
+    range: "month",
+    offset: 0,
+    instance: null,
+    lastClickedBarIndex: null,
+    expandedPlatform: null,
+    summaryRowCount: 5,
+  };
+}
 
 export const HC_COLORS = {
   minutes: { label: "Listening time", cssVar: "--chart-time", fallback: "#4a6a94" },
   songs: { label: "Songs", cssVar: "--chart-songs", fallback: "#44864e" },
+  videos: { label: "Songs", cssVar: "--chart-songs", fallback: "#44864e" },
 };
 
 export function getHcColor(mode) {
@@ -45,7 +48,7 @@ export const HC_RANGES = {
       const start = HC_RANGES.week.getStart(offset);
       const end = new Date(start);
       end.setDate(end.getDate() + 6);
-      const fmt = (d) => d.toLocaleString(navigator.language || "en-US", { day: "numeric", month: "short" });
+      const fmt = (d) => d.toLocaleString(navigator.languages?.[0] || navigator.language || "en-US", { day: "numeric", month: "short" });
       return `${fmt(start)} – ${fmt(end)}`;
     },
   },
@@ -69,7 +72,7 @@ export const HC_RANGES = {
     getLabel(offset = 0) {
       const d = new Date();
       const target = new Date(d.getFullYear(), d.getMonth() + offset, 1);
-      return target.toLocaleString(navigator.language || "en-US", { month: "long", year: "numeric" });
+      return target.toLocaleString(navigator.languages?.[0] || navigator.language || "en-US", { month: "long", year: "numeric" });
     },
   },
 

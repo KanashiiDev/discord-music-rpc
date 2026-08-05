@@ -42,7 +42,7 @@ function setAutoStart(enable) {
   if (process.platform === "linux") {
     const autostartDir = path.join(os.homedir(), ".config", "autostart");
     const desktopFile = path.join(autostartDir, getDesktopFileName());
-    const execPath = process.env.APPIMAGE ?? process.env.DISCORD_MUSIC_RPC_BIN ?? (process.env.DISCORD_MUSIC_RPC_NIX === "true" ? "discord-music-rpc" : process.execPath);
+    const execPath = process.env.APPIMAGE ?? process.env.DISCORD_MUSIC_RPC_BIN ?? (process.env.WEB_PRESENCE_NIX === "true" ? "web-presence" : process.execPath);
     const isAppImage = process.env.APPIMAGE !== undefined;
 
     if (enable) {
@@ -64,8 +64,8 @@ function setAutoStart(enable) {
         }
       }
 
-      const iconPath = process.env.DISCORD_MUSIC_RPC_NIX === "true" ? "discord-music-rpc" : (getIconPath() ?? "");
-      const isNix = process.env.DISCORD_MUSIC_RPC_NIX === "true";
+      const iconPath = process.env.WEB_PRESENCE_NIX === "true" ? "web-presence" : (getIconPath() ?? "");
+      const isNix = process.env.WEB_PRESENCE_NIX === "true";
       const execCommand = isNix ? `${execPath} --no-sandbox` : `"${execPath}"${isAppImage ? " --no-sandbox" : ""}`;
       const desktopEntry =
         [

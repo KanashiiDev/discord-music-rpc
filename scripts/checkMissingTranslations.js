@@ -91,18 +91,57 @@ function printReport(report) {
   }
 }
 
-module.exports = { checkMissingTranslations };
+/**
+ * Auto-generates locales/languages.json by scanning the locales directory.
+ * - extension: true  → locales/{lang}/extension.json exists
+ * - server: true     → locales/{lang}/server.json exists
+ * - label            → derived from Intl.DisplayNames (no manual mapping needed)
+ *
+ * @param {string} sourceDir - Root directory (the "locales" folder)
+ */
+function generateLanguages(sourceDir) {
+  const outputPath = path.join(sourceDir, "languages.json");
+  const displayNames = new Intl.DisplayNames(["en"], { type: "language" });
+
+  const langDirs = fs
+    .readdirSync(sourceDir, { withFileTypes: true })
+    .filter((item) => item.isDirectory())
+    .map((item) => item.name)
+    .sort();
+
+  const output = {};
+
+  for (const lang of langDirs) {
+    const hasExtension = fs.existsSync(path.join(sourceDir, lang, "extension.json"));
+    const hasServer = fs.existsSync(path.join(sourceDir, lang, "server.json"));
+
+    if (!hasExtension && !hasServer) continue;
+
+    let label;
+    try {
+      label = displayNames.of(lang);
+    } catch {
+      label = lang;
+    }
+
+    output[lang] = {
+      label: label ?? lang,
+      extension: hasExtension,
+      server: hasServer,
+    };
+  }
+
+  fs.writeJsonSync(outputPath, output, { spaces: 2 });
+  console.log(`✅ Locales metadata generated!`);
+}
+
+module.exports = { checkMissingTranslations, generateLanguages };
 
 if (require.main === module) {
   const sourceDir = path.resolve(__dirname, "..", "locales");
   const arg = process.argv[2];
 
-  let targets;
-
-  if (arg === "all" || !arg) {
-    targets = ["server", "extension"];
-  } else {
-    targets = [arg];
-  }
+  const targets = !arg || arg === "all" ? ["server", "extension"] : [arg];
   checkMissingTranslations(sourceDir, targets);
+  generateLanguages(sourceDir);
 }

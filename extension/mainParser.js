@@ -109,7 +109,7 @@ async function accessWindow(path, options = {}) {
 
 async function resolveLabel(label) {
   if (!label || typeof label === "string") return label;
-  const browserLang = navigator.language.split("-")[0];
+  const browserLang = navigator.languages?.[0] || navigator.language;
   const { lang } = await browser.storage.local.get("lang");
   const currentLang = lang || browserLang || "en";
   return label[currentLang] ?? label["en"] ?? Object.values(label)[0] ?? "";
@@ -1039,7 +1039,7 @@ window.addEventListener("message", async (event) => {
               artist: song.artist,
               image: song.image,
               source: song.source,
-              songUrl: song.songUrl,
+              link: song.link || song.songUrl,
               timePassed: currentTime || song.timePassed,
               duration: duration || song.duration,
               buttons: song.buttons,
@@ -1108,7 +1108,7 @@ async function loadAllSavedUserParsers() {
           const artist = artistRaw ? artistRaw : "-1";
           const source = getText(data.selectors["source"]) || getPlainText(data.selectors["source"]) || "";
           const image = getImage(data.selectors["image"]);
-          const link = getSafeHref(get, "link", data.link || location.href);
+          const link = getSafeHref(get, "link", data.link || data.songUrl || location.href);
           const buttonLink = getSafeHref(get, "buttonLink", data.selectors.buttonLink);
           const buttonText = getSafeText(get, "buttonText", data.selectors.buttonText);
           const buttonLink2 = getSafeHref(get, "buttonLink2", data.selectors.buttonLink2);
@@ -1119,7 +1119,7 @@ async function loadAllSavedUserParsers() {
             artist,
             image,
             source: artist === source ? data.title : source || location.hostname.replace(/^www\./i, ""),
-            songUrl: link || location.href,
+            link,
             timePassed: currentTime || getText(data.selectors["timePassed"]) || "",
             duration: duration || getText(data.selectors["duration"]) || "",
             isPlaying: Boolean(get("isPlaying") || playing),

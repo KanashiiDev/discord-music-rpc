@@ -1454,6 +1454,46 @@ footer a:hover,
   border-radius: var(--radius-sm);
 }
 
+.history-mode-switch {
+  display: -webkit-box;
+  display: -ms-flexbox;
+  display: flex;
+  gap: 4px;
+  margin-top: 6px;
+}
+.history-mode-switch button {
+  -webkit-box-flex: 1;
+  -ms-flex: 1;
+  flex: 1;
+  padding: 3px 8px;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-color-btn);
+  cursor: pointer;
+  font-size: 12px;
+  width: calc(100% / 3);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  opacity: 0.6;
+  -webkit-transition:
+    opacity 0.15s,
+    background 0.15s;
+  transition:
+    opacity 0.15s,
+    background 0.15s;
+}
+.history-mode-switch button.active {
+  background: var(--accent-color);
+  border-color: var(--accent-color);
+  opacity: 1;
+}
+
+.history-search-controls {
+  position: relative;
+}
+
 .history-entry,
 .history-stats-artist-entry {
   display: -webkit-box;

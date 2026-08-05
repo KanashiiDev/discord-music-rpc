@@ -129,6 +129,8 @@ const sectionManager = {
         historyState.isFiltering = false;
         historyState.selectedSources.clear();
         historyState.sourceMenuBuilt = false;
+        historyState.activeMode = "all";
+        document.querySelectorAll("#historyModeSwitch button").forEach((b) => b.classList.toggle("active", b.dataset.mode === "all"));
         parserFilterState.selectedCategories.clear();
         parserFilterState.selectedTags.clear();
         parserTagFilterResetBtn?.classList.remove("filter-active");

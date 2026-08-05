@@ -330,11 +330,11 @@ async function _exportLogs() {
   if (typeof pako !== "undefined" && typeof uint8ToBase64 === "function") {
     // Compressed export → .gz
     blob = new Blob([pako.gzip(payload)], { type: "application/gzip" });
-    filename = `discord-music-rpc-debug-${Date.now()}.json.gz`;
+    filename = `web-presence-debug-${Date.now()}.json.gz`;
   } else {
     // Plain JSON fallback
     blob = new Blob([payload], { type: "application/json" });
-    filename = `discord-music-rpc-debug-${Date.now()}.json`;
+    filename = `web-presence-debug-${Date.now()}.json`;
   }
 
   const url = URL.createObjectURL(blob);

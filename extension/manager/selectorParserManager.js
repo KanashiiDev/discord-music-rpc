@@ -116,7 +116,7 @@ class UserParserUI {
     $("selIsPlaying").value = sel.isPlaying || "";
     $("selTimePassed").value = sel.timePassed || "";
     $("selDuration").value = sel.duration || "";
-    $("selSongUrl").value = sel.songUrl || "";
+    $("selLink").value = sel.link || "";
     $("selButtonLink").value = sel.buttonLink || "";
     $("selButtonText").value = sel.buttonText || "";
     $("selButtonLink2").value = sel.buttonLink2 || "";
@@ -338,7 +338,6 @@ class UserParserUI {
         isPlaying: $("selIsPlaying").value.trim() || undefined,
         timePassed: $("selTimePassed").value.trim() || undefined,
         duration: $("selDuration").value.trim() || undefined,
-        songUrl: $("selSongUrl").value.trim() || undefined,
         buttonLink: $("selButtonLink").value.trim() || undefined,
         buttonText: $("selButtonText").value.trim() || undefined,
         buttonLink2: $("selButtonLink2").value.trim() || undefined,
@@ -384,7 +383,7 @@ class UserParserUI {
 
   exportSingleParser(parser) {
     const jsContent = `const userParserSelectors = ${JSON.stringify([parser], null, 4)};\n\nexport default userParserSelectors;`;
-    this.downloadFile(jsContent, `discord-music-rpc-user-parser-${parser.title || parser.domain}-${new Date().toISOString().split("T")[0]}.js`, "application/javascript");
+    this.downloadFile(jsContent, `web-presence-user-parser-${parser.title || parser.domain}-${new Date().toISOString().split("T")[0]}.js`, "application/javascript");
   }
 
   exportAllParsers() {
@@ -394,7 +393,7 @@ class UserParserUI {
     }
     const jsonStr = JSON.stringify(this.parsers, null, 4);
     const jsContent = `const userParserSelectors = ${jsonStr};\n\nexport default userParserSelectors;`;
-    this.downloadFile(jsContent, `discord-music-rpc-user-parsers-${new Date().toISOString().split("T")[0]}.js`, "application/javascript");
+    this.downloadFile(jsContent, `web-presence-user-parsers-${new Date().toISOString().split("T")[0]}.js`, "application/javascript");
   }
 
   downloadFile(content, name, mime) {

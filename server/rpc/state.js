@@ -86,7 +86,7 @@ const state = {
   lastClearRpcResult: null,
   serverSettings: {
     showSmallIcon: false,
-    logSongUpdate: false,
+    logMediaUpdate: false,
   },
   bridgeClients: new Set(),
   bridgeServer: null,

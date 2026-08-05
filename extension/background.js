@@ -75,7 +75,8 @@ async function scheduleHistoryAdd(tabId, songData) {
             title: songData.title,
             artist: songData.artist,
             source: songData.source,
-            songUrl: songData.songUrl,
+            link: songData.link || songData.songUrl,
+            mode: songData.mode,
             date: tracker.startTime || now,
           });
         } else {
@@ -274,7 +275,7 @@ const clearRpcForTab = async (tabId, reason = "Tab closed") => {
         const debugMode = stored.debugMode === 1 ? true : CONFIG.debugMode;
         if (debugMode && state.lastUpdateStatus !== "skipped") {
           console.groupCollapsed(
-            `%c[DISCORD-MUSIC-RPC - INFO] Clearing RPC for tab ${tabId}%c ${url ? "| " + url : ""}`,
+            `%c[WEB-PRESENCE - INFO] Clearing RPC for tab ${tabId}%c ${url ? "| " + url : ""}`,
             "color: ddd; background-color: #2a4645ff; padding: 2px 4px; border-radius: 3px;",
             "color: #5bc0de; font-weight: bold;",
           );

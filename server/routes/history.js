@@ -9,7 +9,7 @@ function createHistoryRouter(historyFilePath, logFilePath) {
   // Called by the extension to add a new history entry.
   // The server only appends the entry; listening time is tracked separately.
   router.post("/add-history", (req, res) => {
-    const { title, artist, image, source, songUrl, date } = req.body ?? {};
+    const { title, artist, image, source, link, date, mode } = req.body ?? {};
 
     if (!title || typeof title !== "string" || !artist || typeof artist !== "string") {
       return res.status(400).json({ error: "title and artist are required strings" });
@@ -37,8 +37,9 @@ function createHistoryRouter(historyFilePath, logFilePath) {
         artist: artist.trim(),
         image: typeof image === "string" ? image.trim() : "",
         source: typeof source === "string" ? source.trim() : "",
-        songUrl: typeof songUrl === "string" ? songUrl.trim() : "",
+        link: typeof link === "string" ? link.trim() : "",
         date,
+        mode: typeof mode === "string" ? mode.trim() : "listen",
         total_listened_ms: 0,
       };
 

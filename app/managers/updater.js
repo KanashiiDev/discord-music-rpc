@@ -9,11 +9,11 @@ const { execSync } = require("child_process");
 const { state } = require("../state");
 const { setUpdateMenuState } = require("./tray");
 const { log } = require("../scripts/electron-log");
-const { icons, checkRebrandingUrl, showRebrandingNotice } = require("../utils");
+const { icons } = require("../utils");
 
-const GITHUB_RELEASES_API = "https://api.github.com/repos/KanashiiDev/discord-music-rpc/releases/latest";
-const GITHUB_RELEASES_URL = "https://github.com/KanashiiDev/discord-music-rpc/releases/latest";
-const INSTALL_ARCH_SCRIPT_URL = "https://raw.githubusercontent.com/KanashiiDev/discord-music-rpc/main/scripts/install-arch.sh";
+const GITHUB_RELEASES_API = "https://api.github.com/repos/KanashiiDev/web-presence/releases/latest";
+const GITHUB_RELEASES_URL = "https://github.com/KanashiiDev/web-presence/releases/latest";
+const INSTALL_ARCH_SCRIPT_URL = "https://raw.githubusercontent.com/KanashiiDev/web-presence/main/scripts/install-arch.sh";
 const INSTALL_ARCH_CMD = `curl -fsSL ${INSTALL_ARCH_SCRIPT_URL} | bash`;
 
 // Install method detection
@@ -36,22 +36,22 @@ function detectInstallMethod() {
   if (process.env.APPIMAGE) return "appimage";
 
   // NixOS: check wrapper env first (most reliable), then /etc/os-release as fallback
-  if (process.env.DISCORD_MUSIC_RPC_NIX === "true") return "nixos";
+  if (process.env.WEB_PRESENCE_NIX === "true") return "nixos";
   try {
     const osRelease = fs.readFileSync("/etc/os-release", "utf8");
     if (/^ID=nixos/im.test(osRelease)) return "nixos";
   } catch (_) {}
 
   try {
-    execSync("pacman -Q discord-music-rpc 2>/dev/null", { stdio: "pipe" });
+    execSync("pacman -Q web-presence 2>/dev/null", { stdio: "pipe" });
     return "pacman";
   } catch (_) {}
   try {
-    execSync("dpkg -s discord-music-rpc 2>/dev/null", { stdio: "pipe" });
+    execSync("dpkg -s web-presence 2>/dev/null", { stdio: "pipe" });
     return "deb";
   } catch (_) {}
   try {
-    execSync("rpm -q discord-music-rpc 2>/dev/null", { stdio: "pipe" });
+    execSync("rpm -q web-presence 2>/dev/null", { stdio: "pipe" });
     return "rpm";
   } catch (_) {}
 
@@ -78,7 +78,7 @@ async function fetchLatestVersion() {
   const res = await fetch(GITHUB_RELEASES_API, {
     headers: {
       Accept: "application/vnd.github+json",
-      "User-Agent": `discord-music-rpc/${app.getVersion()}`,
+      "User-Agent": `web-presence/${app.getVersion()}`,
     },
   });
   if (!res.ok) throw new Error(`GitHub API ${res.status}`);
@@ -95,7 +95,7 @@ async function fetchLatestVersion() {
 function getUpdateInstructions(method, version, assets = []) {
   switch (method) {
     case "pacman": {
-      // Asset naming: discord-music-rpc-{version}-{arch}.pkg.tar.zst
+      // Asset naming: web-presence-{version}-{arch}.pkg.tar.zst
       // currentPkgArch() returns "x86_64" or "aarch64" - matches build-release.yml rename step
       const pkgArch = currentPkgArch();
       const asset = assets.find((a) => a.name.endsWith(`${pkgArch}.pkg.tar.zst`));
@@ -126,12 +126,12 @@ function getUpdateInstructions(method, version, assets = []) {
           "",
           "Option 1 - Update your flake input and rebuild:",
           "",
-          "  nix flake update discord-music-rpc",
+          "  nix flake update web-presence",
           "  nixos-rebuild switch --flake .",
           "",
           "Option 2 - If you use home-manager:",
           "",
-          "  nix flake update discord-music-rpc",
+          "  nix flake update web-presence",
           "  home-manager switch --flake .",
           "",
           "Option 3 - Download the AppImage directly from GitHub Releases",
@@ -140,7 +140,7 @@ function getUpdateInstructions(method, version, assets = []) {
         primaryBtn: "Open Releases",
         primaryFn: () => shell.openExternal(GITHUB_RELEASES_URL),
         secondaryBtn: "Copy flake update command",
-        secondaryFn: () => require("electron").clipboard.writeText("nix flake update discord-music-rpc"),
+        secondaryFn: () => require("electron").clipboard.writeText("nix flake update web-presence"),
       };
 
     case "deb": {
@@ -153,7 +153,7 @@ function getUpdateInstructions(method, version, assets = []) {
           "",
           asset
             ? `Download and install the new .deb:\n\n  curl -LO ${asset.url}\n  sudo dpkg -i ${asset.name}`
-            : `Download the new .deb from GitHub Releases and install:\n\n  sudo dpkg -i discord-music-rpc-${version}-${pkgArch}.deb`,
+            : `Download the new .deb from GitHub Releases and install:\n\n  sudo dpkg -i web-presence-${version}-${pkgArch}.deb`,
         ].join("\n"),
         primaryBtn: "Download .deb",
         primaryFn: () => shell.openExternal(GITHUB_RELEASES_URL),
@@ -170,7 +170,7 @@ function getUpdateInstructions(method, version, assets = []) {
           "",
           asset
             ? `Download and install the new .rpm:\n\n  curl -LO ${asset.url}\n  sudo rpm -Uvh ${asset.name}`
-            : `Download the new .rpm from GitHub Releases and install:\n\n  sudo rpm -Uvh discord-music-rpc-${version}-${pkgArch}.rpm`,
+            : `Download the new .rpm from GitHub Releases and install:\n\n  sudo rpm -Uvh web-presence-${version}-${pkgArch}.rpm`,
         ].join("\n"),
         primaryBtn: "Download .rpm",
         primaryFn: () => shell.openExternal(GITHUB_RELEASES_URL),
@@ -205,7 +205,7 @@ function showUpdateDialog(version, method, instructions) {
   dialog
     .showMessageBox({
       type: "info",
-      title: `Discord Music RPC - ${instructions.title}`,
+      title: `Web Presence - ${instructions.title}`,
       message: `Version ${version} is available`,
       detail: instructions.detail,
       buttons,
@@ -223,7 +223,7 @@ function showUpdateDialog(version, method, instructions) {
 function showManualUpdateNotification(version, method, instructions) {
   const bodies = {
     pacman: `${version} available - run the installer script to update`,
-    nixos: `${version} available - nix flake update discord-music-rpc`,
+    nixos: `${version} available - nix flake update web-presence`,
     deb: `${version} available - download new .deb`,
     rpm: `${version} available - download new .rpm`,
   };
@@ -232,7 +232,7 @@ function showManualUpdateNotification(version, method, instructions) {
   if (icon) icon = path.resolve(icon);
 
   const n = new Notification({
-    title: "Discord Music RPC - Update Available",
+    title: "Web Presence - Update Available",
     body: bodies[method] ?? `${version} available`,
     icon,
   });
@@ -331,11 +331,6 @@ async function _checkGitHubRelease(method) {
 
 // Manual check (tray menu)
 async function runManualUpdateCheck() {
-  const isRebranded = await checkRebrandingUrl(log);
-  if (!isRebranded) return _showUpToDate();
-  await showRebrandingNotice(app, log, 1);
-
-  /*
   const method = detectInstallMethod();
   log.info("[Updater] Manual update check triggered");
 
@@ -348,7 +343,7 @@ async function runManualUpdateCheck() {
         dialog.showMessageBox({
           type: "info",
           buttons: ["OK"],
-          title: "Discord Music RPC - Update Available",
+          title: "Web Presence - Update Available",
           message: `Version ${remote} is available.`,
           detail: "Downloading automatically. Install from the tray menu when ready.",
           icon: icons.message,
@@ -369,19 +364,19 @@ async function runManualUpdateCheck() {
     dialog.showMessageBox({
       type: "error",
       buttons: ["OK"],
-      title: "Discord Music RPC - Update Check Failed",
+      title: "Web Presence - Update Check Failed",
       message: "Could not check for updates.",
       detail: err.message,
       icon: icons.message,
     });
-  }*/
+  }
 }
 
 function _showUpToDate() {
   dialog.showMessageBox({
     type: "info",
     buttons: ["OK"],
-    title: "Discord Music RPC - Up to Date",
+    title: "Web Presence - Up to Date",
     message: "You're using the latest version.",
     detail: `Version: ${app.getVersion()}`,
     icon: icons.message,

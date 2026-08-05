@@ -1,16 +1,16 @@
-# <img align="center" src="app/assets/icon/icon.png" alt="Extension Icon" width="48" height="48"> Discord Music RPC
+# <img align="center" src="app/assets/icon/icon.png" alt="Extension Icon" width="48" height="48"> Web Presence
 
 <p align="center">
-  <strong>🎵 Show what you're listening to on Discord — from ANY music website 🎵 </strong>
+  <strong>Show what you're listening to or watching on Discord — from ANY music or video website</strong>
 </p>
 <p align="center">
-   <a href="https://www.star-history.com/#kanashiiDev/discord-music-rpc&type=date&legend=top-left" target="_blank"><img src="https://img.shields.io/github/stars/KanashiiDev/discord-music-rpc?style=for-the-badge&logo=github&color=yellow&cacheSeconds=3600" alt="GitHub Stars"></a>
-  <a href="https://github.com/KanashiiDev/discord-music-rpc/releases" target="_blank"><img src="https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fgist.githubusercontent.com%2FKanashiiDev%2Faf52962d2844e33de8e0bbbb11040b54%2Fraw%2Fdiscord-music-rpc-stats.json&query=%24.total&style=for-the-badge&label=Downloads&color=blue&cacheSeconds=3600" alt="Total Downloads"></a>
-  <a href="https://github.com/KanashiiDev/discord-music-rpc/releases/latest" target="_blank"><img src="https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fgist.githubusercontent.com%2FKanashiiDev%2Faf52962d2844e33de8e0bbbb11040b54%2Fraw%2Fdiscord-music-rpc-stats.json&query=%24.latest&style=for-the-badge&label=Downloads%40Latest&color=green&cacheSeconds=3600" alt="Latest Release"></a>
+   <a href="https://www.star-history.com/#kanashiiDev/web-presence&type=date&legend=top-left" target="_blank"><img src="https://img.shields.io/github/stars/KanashiiDev/web-presence?style=for-the-badge&logo=github&color=yellow&cacheSeconds=3600" alt="GitHub Stars"></a>
+  <a href="https://github.com/KanashiiDev/web-presence/releases" target="_blank"><img src="https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fgist.githubusercontent.com%2FKanashiiDev%2Faf52962d2844e33de8e0bbbb11040b54%2Fraw%2Fweb-presence-stats.json&query=%24.total&style=for-the-badge&label=Downloads&color=blue&cacheSeconds=3600" alt="Total Downloads"></a>
+  <a href="https://github.com/KanashiiDev/web-presence/releases/latest" target="_blank"><img src="https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fgist.githubusercontent.com%2FKanashiiDev%2Faf52962d2844e33de8e0bbbb11040b54%2Fraw%2Fweb-presence-stats.json&query=%24.latest&style=for-the-badge&label=Downloads%40Latest&color=green&cacheSeconds=3600" alt="Latest Release"></a>
 </p>
 <p align="center">
 
-**Discord Music RPC** is an <ins>open-source</ins> project that combines a browser extension with a lightweight desktop application to display what you’re listening to on websites directly in your Discord Rich Presence. What makes it unique is its **fully customizable selector system**, which allows anyone to add support for almost any music site without coding, along with an advanced userscript engine for more complex integrations.
+**Web Presence** is an <ins>open-source</ins> project that combines a browser extension with a lightweight desktop application to display what you’re listening to or watching on websites directly in your Discord Rich Presence. What makes it unique is its **fully customizable selector system**, which allows anyone to add support for almost any music or video site without coding, along with an advanced userscript engine for more complex integrations.
 
 ## Download
 
@@ -18,31 +18,31 @@ _You must install both the **browser extension** and the **desktop application**
 
 **Browser Extension**
 
-Required to detect music on supported websites and send playback data to the desktop app.
+Required to detect music and video on supported websites and send playback data to the desktop app.
 
 <p>
-  <a href="https://chromewebstore.google.com/detail/discord-music-rpc-control/mpnijlpiepmpgoamimfmbdmglpdjmoic" target="_blank"><img src="https://img.shields.io/badge/-Chrome%20Web%20Store-555?logo=googlechrome&logoColor=white&style=for-the-badge&label=%20&labelColor=4285F4" alt="Get it on Chrome Web Store"></a>
-  <a href="https://addons.mozilla.org/en-US/firefox/addon/discord-music-rpc/" target="_blank"><img src="https://img.shields.io/badge/-Firefox%20Addons-555?logo=firefox-browser&logoColor=white&style=for-the-badge&label=%20&labelColor=orange" alt="Get it on Firefox Add-ons"></a>
+  <a href="https://chromewebstore.google.com/detail/mpnijlpiepmpgoamimfmbdmglpdjmoic" target="_blank"><img src="https://img.shields.io/badge/-Chrome%20Web%20Store-555?logo=googlechrome&logoColor=white&style=for-the-badge&label=%20&labelColor=4285F4" alt="Get it on Chrome Web Store"></a>
+  <a href="https://addons.mozilla.org/en-US/firefox/addon/web-presence-for-discord/" target="_blank"><img src="https://img.shields.io/badge/-Firefox%20Addons-555?logo=firefox-browser&logoColor=white&style=for-the-badge&label=%20&labelColor=orange" alt="Get it on Firefox Add-ons"></a>
 </p>
 
 **Desktop App**
 
-Required to communicate with Discord and display your music status.
+Required to communicate with Discord and display your music and video status.
 
 <p>
-  <a href="https://github.com/KanashiiDev/discord-music-rpc/releases/latest/download/Discord-Music-RPC-2.2.0-x64-installer.exe">
+  <a href="https://github.com/KanashiiDev/web-presence/releases/latest/download/web-presence-3.0.0-x64-installer.exe">
     <img src="https://img.shields.io/badge/Windows-Installer (x64)-0078D6?logo=windows11&logoColor=white&style=for-the-badge" alt="Windows Installer (x64)"></a>
-    <a href="https://github.com/KanashiiDev/discord-music-rpc/releases/latest/download/Discord-Music-RPC-2.2.0-x64.zip">
+    <a href="https://github.com/KanashiiDev/web-presence/releases/latest/download/web-presence-3.0.0-x64.zip">
     <img src="https://img.shields.io/badge/%20-ZIP (x64)-0078D6?logo=windows11&logoColor=white&style=for-the-badge" alt="Windows ZIP (x64)">
   </a>
   <br>
-  <a href="https://github.com/KanashiiDev/discord-music-rpc/releases/latest/download/discord-music-rpc-2.2.0-x86_64.AppImage">
+  <a href="https://github.com/KanashiiDev/web-presence/releases/latest/download/web-presence-3.0.0-x86_64.AppImage">
     <img src="https://img.shields.io/badge/Linux-AppImage%20(x64)-FCC624?logo=linux&logoColor=black&style=for-the-badge" alt="Linux AppImage x86_64"></a>
-  <a href="https://github.com/KanashiiDev/discord-music-rpc/releases/latest/download/discord-music-rpc-2.2.0-amd64.deb"><img src="https://img.shields.io/badge/%20-DEB%20(x64)-A81D33?logo=debian&logoColor=white&style=for-the-badge" alt="Linux DEB x64"></a>
-  <a href="https://github.com/KanashiiDev/discord-music-rpc/releases/latest/download/discord-music-rpc-2.2.0-x86_64.rpm"><img src="https://img.shields.io/badge/%20-RPM%20(x64)-d12626?logo=redhat&logoColor=white&style=for-the-badge" alt="Linux RPM x64"></a>
-  <a href="https://github.com/KanashiiDev/discord-music-rpc/releases/latest/download/discord-music-rpc-2.2.0-x64.pkg.tar.zst"><img src="https://img.shields.io/badge/%20-Pacman%20(x64)-1793D1?logo=arch-linux&logoColor=white&style=for-the-badge" alt="Linux Pacman x64"></a>
+  <a href="https://github.com/KanashiiDev/web-presence/releases/latest/download/web-presence-3.0.0-amd64.deb"><img src="https://img.shields.io/badge/%20-DEB%20(x64)-A81D33?logo=debian&logoColor=white&style=for-the-badge" alt="Linux DEB x64"></a>
+  <a href="https://github.com/KanashiiDev/web-presence/releases/latest/download/web-presence-3.0.0-x86_64.rpm"><img src="https://img.shields.io/badge/%20-RPM%20(x64)-d12626?logo=redhat&logoColor=white&style=for-the-badge" alt="Linux RPM x64"></a>
+  <a href="https://github.com/KanashiiDev/web-presence/releases/latest/download/web-presence-3.0.0-x64.pkg.tar.zst"><img src="https://img.shields.io/badge/%20-Pacman%20(x64)-1793D1?logo=arch-linux&logoColor=white&style=for-the-badge" alt="Linux Pacman x64"></a>
   <br>
-  <a href="https://github.com/KanashiiDev/discord-music-rpc/releases/latest/download/Discord-Music-RPC-2.2.0-universal.dmg">
+  <a href="https://github.com/KanashiiDev/web-presence/releases/latest/download/web-presence-3.0.0-universal.dmg">
     <img src="https://img.shields.io/badge/macOS-DMG (Universal)-161616?logo=apple&logoColor=white&style=for-the-badge" alt="macOS DMG (Universal)"></a>
 </p>
 
@@ -53,7 +53,7 @@ Required to communicate with Discord and display your music status.
 - [Compatibility](#-compatibility)
 - [Setup](#-setup)
 - [Troubleshooting](#-troubleshooting)
-- [How to Add a New Music Site](#-how-to-add-a-new-music-site)
+- [How to Add a New Site](#-how-to-add-a-new-site)
 - [Filter Management](#-filter-management)
 - [Live Activity Output](#-live-activity-output)
 - [Developer Setup](#-developer-setup)
@@ -64,7 +64,7 @@ Required to communicate with Discord and display your music status.
 
 - No login required, works entirely locally
 - Discord Web support
-- Over 20 community-supported music, video, and radio integrations via the [Activity Library](https://github.com/KanashiiDev/discord-music-rpc-activities).
+- Over 20 community-supported music, video, and radio integrations via the [Activity Library](https://github.com/KanashiiDev/web-presence-activities).
 - Easy to extend - add support for almost any music and video site using the built-in selector system or userscripts
 - Filter system - block or replace songs by artist/title, per-site or globally
 - Both listening and watching activity support
@@ -76,9 +76,9 @@ Required to communicate with Discord and display your music status.
 
 ---
 
-## 🎵 Supported Websites
+## 🎵 Supported Websites & Platforms
 
-These are the integrations available in the activity library. Additional sites can be easily added using the built-in selector system or the UserScript manager - see the [How to Add a New Music Site](#-how-to-add-a-new-music-site) section.
+These are the integrations available in the activity library. Additional sites can be easily added using the built-in selector system or the UserScript manager - see the [How to Add a New Site](#-how-to-add-a-new-site) section.
 
 <table>
   <tr>
@@ -128,10 +128,10 @@ These are the integrations available in the activity library. Additional sites c
 2. **Install the Desktop App**  
    Install and run the app - it will appear in your system tray.
 
-   **Important:** If Discord runs as administrator, Discord Music RPC must also run as administrator.
+   **Important:** If Discord runs as administrator, Web Presence must also run as administrator.
 
-3. **Play Music**  
-   Go to a supported music site (YouTube Music, Deezer, SoundCloud, etc.) and start playing.
+3. **Play Music or Video**  
+   Go to a supported music or video site (YouTube, YouTube Music, Twitch, Deezer, SoundCloud, etc.) and start playing.
 
 4. **Check Your Discord Status**  
    Open Discord and look at your status - it should now show what you're listening to!
@@ -182,26 +182,26 @@ Moving the AppImage after first launch requires re-enabling "Run at Startup" in 
 Install via the one-shot installer script:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/KanashiiDev/discord-music-rpc/main/scripts/install-arch.sh | bash
+curl -fsSL https://raw.githubusercontent.com/KanashiiDev/web-presence/main/scripts/install-arch.sh | bash
 ```
 
-Or install the `.pkg.tar.zst` package directly from [GitHub Releases](https://github.com/KanashiiDev/discord-music-rpc/releases/latest):
+Or install the `.pkg.tar.zst` package directly from [GitHub Releases](https://github.com/KanashiiDev/web-presence/releases/latest):
 
 ```bash
-sudo pacman -U discord-music-rpc-<version>-x64.pkg.tar.zst
+sudo pacman -U web-presence-<version>-x64.pkg.tar.zst
 ```
 
 **NixOS / Nix:**  
 Quick install without modifying your configuration:
 
 ```bash
-nix profile add github:KanashiiDev/discord-music-rpc
+nix profile add github:KanashiiDev/web-presence
 ```
 
 Or add as a flake input for NixOS module / home-manager support:
 
 ```nix
-inputs.discord-music-rpc.url = "github:KanashiiDev/discord-music-rpc";
+inputs.web-presence.url = "github:KanashiiDev/web-presence";
 ```
 
 </details>
@@ -210,31 +210,31 @@ inputs.discord-music-rpc.url = "github:KanashiiDev/discord-music-rpc";
 
 ## 🐞 Troubleshooting
 
-Having issues? Check the [Troubleshooting Guide](https://github.com/KanashiiDev/discord-music-rpc/wiki/Troubleshooting) on the Wiki.
+Having issues? Check the [Troubleshooting Guide](https://github.com/KanashiiDev/web-presence/wiki/Troubleshooting) on the Wiki.
 
 ---
 
-## 🧩 How to Add a New Music Site
+## 🧩 How to Add a New Site
 
-Want to add support for a new site? See the [Adding a New Music Site](https://github.com/KanashiiDev/discord-music-rpc/wiki/Adding-a-New-Music-Site) guide on the Wiki.
+Want to add support for a new music or video site? See the [Adding a New Site](https://github.com/KanashiiDev/web-presence/wiki/Adding-a-New-Site) guide on the Wiki.
 
 ---
 
 ## 📚 Filter Management
 
-Learn how to block or replace songs in the [Filter Management](https://github.com/KanashiiDev/discord-music-rpc/wiki/Filter-Management) guide on the Wiki.
+Learn how to block or replace activity in the [Filter Management](https://github.com/KanashiiDev/web-presence/wiki/Filter-Management) guide on the Wiki.
 
 ---
 
 ## 📤 Live Activity Output
 
-Rainmeter, OBS, and file output setup is covered in the [Live Activity Output](https://github.com/KanashiiDev/discord-music-rpc/wiki/Live-Activity-Output) guide on the Wiki.
+Rainmeter, OBS, and file output setup is covered in the [Live Activity Output](https://github.com/KanashiiDev/web-presence/wiki/Live-Activity-Output) guide on the Wiki.
 
 ---
 
 ## 💻 Developer Setup
 
-For build instructions and NPM scripts, see the [Developer Setup](https://github.com/KanashiiDev/discord-music-rpc/wiki/Developer-Setup) guide on the Wiki.
+For build instructions and NPM scripts, see the [Developer Setup](https://github.com/KanashiiDev/web-presence/wiki/Developer-Setup) guide on the Wiki.
 
 ---
 
@@ -277,9 +277,9 @@ For build instructions and NPM scripts, see the [Developer Setup](https://github
 
 You can contribute in several ways:
 
-- **Create new Activities** - [Activity Library](https://github.com/KanashiiDev/discord-music-rpc-activities)
-- **Help translate** the project on [Crowdin](https://crowdin.com/project/discord-music-rpc)
-- **Report bugs or request features** via [GitHub Issues](https://github.com/kanashiiDev/discord-music-rpc/issues)
+- **Create new Activities** - [Activity Library](https://github.com/KanashiiDev/web-presence-activities)
+- **Help translate** the project on [Crowdin](https://crowdin.com/project/web-presence)
+- **Report bugs or request features** via [GitHub Issues](https://github.com/kanashiiDev/web-presence/issues)
 - **Support the project** by sharing it and helping others discover it
 
 ---

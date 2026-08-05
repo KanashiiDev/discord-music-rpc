@@ -408,7 +408,7 @@ function scheduleActualRestart() {
 // Settings Sync
 function updateServerSettings() {
   const config = getConfig();
-  state.serverProcess?.send({ type: "UPDATE_SETTINGS", value: { logSongUpdate: config.LOG_SONG_UPDATE } });
+  state.serverProcess?.send({ type: "UPDATE_SETTINGS", value: { logMediaUpdate: config.LOG_MEDIA_UPDATE } });
 }
 
 module.exports = { startServer, stopServer, restartServer, scheduleServerRestart, updateServerSettings };

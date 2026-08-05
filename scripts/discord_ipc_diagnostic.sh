@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # ===============================================
-# Discord MUSIC RPC - IPC Diagnostic Tool (Linux)
+# Web Presence - IPC Diagnostic Tool (Linux)
 # ===============================================
 
 # --- Message storage ---
@@ -22,7 +22,7 @@ add_info() {
 }
 
 echo "==============================================="
-echo "  Discord RPC IPC Diagnostic Results"
+echo "  Web Presence IPC Diagnostic Results"
 echo "==============================================="
 
 USER_ID=$(id -u)
@@ -393,6 +393,6 @@ elif (( ${#WARNING_LIST[@]} > 0 )); then
     echo "Status: RPC may work with issues - check warnings"
     exit 2
 else
-    echo "Status: System ready for Discord RPC"
+    echo "Status: System ready for Web Presence"
     exit 0
 fi

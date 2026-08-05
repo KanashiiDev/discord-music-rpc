@@ -70,12 +70,12 @@ async function buildParserEntry({ entry, parserEnabledState, parserSettings, con
       const hasMatch = urlPatterns.map(parseUrlPattern).some((re) => re.test(tabPath));
 
       if (hasMatch) {
-        document.getElementById("openSelector").textContent = i18n.t("button.edit_music_site");
-        document.getElementById("openSelector").dataset.i18n = "button.edit_music_site";
+        document.getElementById("openSelector").textContent = i18n.t("button.edit_site");
+        document.getElementById("openSelector").dataset.i18n = "button.edit_site";
         document.getElementById("openSelector").setAttribute("editMode", true);
       } else {
-        document.getElementById("openSelector").textContent = i18n.t("button.add_music_site");
-        document.getElementById("openSelector").dataset.i18n = "button.add_music_site";
+        document.getElementById("openSelector").textContent = i18n.t("button.add_site");
+        document.getElementById("openSelector").dataset.i18n = "button.add_site";
       }
     }
   }

@@ -1,5 +1,4 @@
 import { createSVG } from "../../../utils.js";
-import { chartState } from "../chart.js";
 
 export const CAPTURE_PRESETS = [
   { id: "summary-small", label: "Small", i18n: "chart.capture.small", width: 1080, widthVertical: 560, maxLengthWide: 56, maxLengthTall: 57 },
@@ -22,16 +21,16 @@ export function isCaptureMenuVisible() {
   return _visible;
 }
 
-export function toggleCaptureMenu(anchorEl) {
-  _visible ? closeCaptureMenu() : openCaptureMenu(anchorEl);
+export function toggleCaptureMenu(anchorEl, chartState) {
+  _visible ? closeCaptureMenu(chartState) : openCaptureMenu(anchorEl, chartState);
 }
 
-export function openCaptureMenu(anchorEl) {
+export function openCaptureMenu(anchorEl, chartState) {
   _visible = true;
-  _buildMenu(anchorEl);
+  _buildMenu(anchorEl, chartState);
 }
 
-export function closeCaptureMenu() {
+export function closeCaptureMenu(chartState) {
   _visible = false;
   document.getElementById("captureMenu")?.remove();
   if (_outsideListenerActive) {
@@ -40,12 +39,11 @@ export function closeCaptureMenu() {
   }
   _applyLayoutPreview();
   // Always reset row count to 5 when menu closes
-  if (chartState.summaryRowCount !== 5) {
+  if (chartState && chartState.summaryRowCount !== 5) {
     chartState.summaryRowCount = 5;
     _onRowCountChange?.(5);
   }
 }
-
 // Private
 function _applyLayoutPreview(layout) {
   const twoCol = document.querySelector(".summary-two-column-layout");
@@ -65,7 +63,7 @@ function _getActiveWidth(preset, layout) {
   return layout === "tall" ? (preset.widthVertical ?? preset.width) : preset.width;
 }
 
-function _buildMenu(anchorEl) {
+function _buildMenu(anchorEl, chartState) {
   document.getElementById("captureMenu")?.remove();
 
   const menu = document.createElement("div");
@@ -123,7 +121,7 @@ function _buildMenu(anchorEl) {
   layoutSection.appendChild(layoutRow);
 
   // Rows section
-  let selectedRows = chartState.summaryRowCount ?? 5;
+  let selectedRows = chartState?.summaryRowCount ?? 5;
 
   const rowsSection = _makeSection(i18n.t("chart.capture.rows") || "Rows");
   const rowsBtnGroup = document.createElement("div");
@@ -141,7 +139,7 @@ function _buildMenu(anchorEl) {
       selectedRows = n;
       rowsBtnGroup.querySelector(".capture-rows-btn.active")?.classList.remove("active");
       btn.classList.add("active");
-      chartState.summaryRowCount = n;
+      if (chartState) chartState.summaryRowCount = n;
       _onRowCountChange?.(n);
     });
 
@@ -194,12 +192,13 @@ function _buildMenu(anchorEl) {
   saveBtn.textContent = i18n.t("common.save");
   saveBtn.addEventListener("click", () => {
     const preset = CAPTURE_PRESETS.find((p) => p.id === selectedPreset) ?? CAPTURE_PRESETS[0];
+    const panel = anchorEl.closest(".summary-panel");
     if (_onCapture) {
       _onCapture({ layout: selectedLayout, preset });
-    } else {
-      captureSummaryPanel({ layout: selectedLayout, preset });
+    } else if (panel) {
+      captureSummaryPanel(panel, { layout: selectedLayout, preset });
     }
-    closeCaptureMenu();
+    closeCaptureMenu(chartState);
   });
 
   footer.appendChild(saveBtn);
@@ -211,7 +210,7 @@ function _buildMenu(anchorEl) {
     document.addEventListener("pointerdown", _onOutsidePointer, true);
     _outsideListenerActive = true;
     _applyLayoutPreview("wide");
-    applyTranslations();
+    if (typeof applyTranslations === "function") applyTranslations();
   });
 }
 
@@ -227,14 +226,13 @@ function _makeSection(title) {
   return section;
 }
 
-export async function captureSummaryPanel({ layout = "wide", preset = CAPTURE_PRESETS[0] } = {}) {
-  const panel = document.getElementById("chartSummaryPanel");
-  if (!panel) return;
+export async function captureSummaryPanel(panelElement, { layout = "wide", preset = CAPTURE_PRESETS[0] } = {}) {
+  if (!panelElement) return;
 
   try {
     const activeWidth = _getActiveWidth(preset, layout);
 
-    const canvas = await html2canvas(panel, {
+    const canvas = await html2canvas(panelElement, {
       backgroundColor: "null",
       width: activeWidth,
       scale: 1,
@@ -245,14 +243,14 @@ export async function captureSummaryPanel({ layout = "wide", preset = CAPTURE_PR
       ignoreElements: (e) => e.classList.contains("summary-capture") || e.classList.contains("summary-back-btn") || e.id === "captureMenu",
 
       onclone: (doc) => {
-        const original = doc.getElementById("chartSummaryPanel");
-        if (!original) return;
+        const clonedPanel = doc.getElementById(panelElement.id);
+        if (!clonedPanel) return;
 
-        doc.querySelector(".summary-two-column-layout")?.style.setProperty("display", layout === "tall" ? "block" : "");
-        doc.querySelector(".summary-two-column-layout")?.classList.toggle("capture-grid", layout === "wide");
+        clonedPanel.querySelector(".summary-two-column-layout")?.style.setProperty("display", layout === "tall" ? "block" : "");
+        clonedPanel.querySelector(".summary-two-column-layout")?.classList.toggle("capture-grid", layout === "wide");
 
         const maxLength = layout === "tall" ? preset.maxLengthTall : preset.maxLengthWide;
-        for (const el of doc.querySelectorAll(".summary-title")) {
+        for (const el of clonedPanel.querySelectorAll(".summary-title")) {
           const text = el.textContent?.trim() ?? "";
           if (text.length > maxLength) {
             el.textContent = text.slice(0, maxLength) + "…";
@@ -261,8 +259,8 @@ export async function captureSummaryPanel({ layout = "wide", preset = CAPTURE_PR
 
         const wrapper = doc.createElement("div");
         wrapper.style.width = activeWidth + "px";
-        original.parentNode.insertBefore(wrapper, original);
-        wrapper.appendChild(original);
+        clonedPanel.parentNode.insertBefore(wrapper, clonedPanel);
+        wrapper.appendChild(clonedPanel);
       },
     });
 
@@ -272,7 +270,7 @@ export async function captureSummaryPanel({ layout = "wide", preset = CAPTURE_PR
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `music-rpc-${preset.id}.png`;
+    a.download = `web-presence-music-summary-${preset.id}.png`;
     a.click();
     URL.revokeObjectURL(url);
   } catch (err) {

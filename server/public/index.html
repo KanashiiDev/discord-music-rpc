@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <title>Discord Music RPC Server Dashboard</title>
+    <title>Web Presence Server Dashboard</title>
     <link rel="shortcut icon" href="/favicon.ico" />
     <link rel="stylesheet" href="libs/simplebar.css" />
     <link rel="stylesheet" href="libs/tom-select.css" />
@@ -13,7 +13,7 @@
 
   <div id="bg-layer"></div>
   <body data-theme="dark">
-    <header data-i18n="app.title">Discord Music RPC Server Dashboard</header>
+    <header data-i18n="app.title">Web Presence Server Dashboard</header>
 
     <div class="container">
       <!-- Navigation -->
@@ -48,19 +48,6 @@
               </div>
             </section>
 
-            <!-- Current Activity -->
-            <section>
-              <h2 class="collapsible" role="button">
-                <span data-i18n="activity.current">Current Activity</span>
-                <span class="arrow"></span>
-              </h2>
-              <div class="activity activity-box">
-                <div id="activityWrapper" data-simplebar>
-                  <pre id="activityJson">{ }</pre>
-                </div>
-              </div>
-            </section>
-
             <!-- Last Update -->
             <section>
               <h2 class="collapsible" role="button">
@@ -73,19 +60,52 @@
                 </div>
               </div>
             </section>
+            <!-- Recent Songs -->
+            <section>
+              <h2 class="collapsible history" role="button">
+                <span data-i18n="history.title">Recent Songs</span>
+
+                <select id="historyFilter">
+                  <option value="all" data-i18n="common.all">All</option>
+                </select>
+
+                <span class="arrow"></span>
+              </h2>
+              <div class="history activity-box">
+                <div id="historyWrapper" data-simplebar>
+                  <div id="historyContainer" role="log" aria-live="polite"></div>
+                </div>
+              </div>
+            </section>
+
+            <!-- Recent Videos -->
+            <section>
+              <h2 class="collapsible history watch" role="button">
+                <span data-i18n="history.title.watch">Recent Videos</span>
+                <select id="watchFilter">
+                  <option value="all" data-i18n="common.all">All</option>
+                </select>
+                <span class="arrow"></span>
+              </h2>
+              <div class="watch activity-box">
+                <div id="watchWrapper" data-simplebar>
+                  <div id="watchContainer" role="log" aria-live="polite"></div>
+                </div>
+              </div>
+            </section>
           </div>
 
           <div class="right">
-            <!-- Music Card -->
-            <section id="musicCardContainer">
-              <h2 id="musicCardHeader" data-i18n="music.title">Now Listening</h2>
-              <div class="music-card" id="musicCard">
-                <div class="music-body">
-                  <div class="music-cover">
+            <!-- Activity Card -->
+            <section id="activityCardContainer">
+              <h2 id="activityCardHeader" data-i18n="activity.title">Now Listening</h2>
+              <div class="activity-card" id="activityCard">
+                <div class="activity-body">
+                  <div class="activity-cover">
                     <img id="coverImage" src="assets/icon-dark.png" alt="Cover" loading="lazy" />
                   </div>
 
-                  <div class="music-info">
+                  <div class="activity-info">
                     <h2 id="trackTitle">Title</h2>
                     <p id="trackArtist" class="artist">Artist</p>
                     <p id="trackSource" class="source">Source</p>
@@ -107,28 +127,24 @@
               </div>
             </section>
 
-            <!-- Recent Songs -->
+            <!-- Current Activity -->
             <section>
-              <h2 class="collapsible history" role="button">
-                <span data-i18n="history.title">Recent Songs</span>
-
-                <select id="historyFilter" data-i18n-attr="aria-label" data-i18n="history.filter">
-                  <option value="all" data-i18n="common.all">All</option>
-                </select>
-
+              <h2 class="collapsible" role="button">
+                <span data-i18n="activity.current">Current Activity</span>
                 <span class="arrow"></span>
               </h2>
-              <div class="history activity-box">
-                <div id="historyWrapper" data-simplebar>
-                  <div id="historyContainer" role="log" aria-live="polite"></div>
+              <div class="activity activity-box">
+                <div id="activityWrapper" data-simplebar>
+                  <pre id="activityJson">{ }</pre>
                 </div>
               </div>
             </section>
+
+            <!-- Stats -->
+            <div id="listenChartContainer"></div>
+            <div id="watchChartContainer"></div>
           </div>
         </div>
-
-        <!-- Stats -->
-        <section id="chartContainer"></section>
 
         <!-- Logs -->
         <section id="LogsContainer">
@@ -155,8 +171,8 @@
     </div>
 
     <footer>
-      <a href="https://github.com/KanashiiDev/discord-music-rpc">
-        <span data-i18n="footer.text">Discord Music RPC by KanashiiDev</span>
+      <a href="https://github.com/KanashiiDev/web-presence">
+        <span data-i18n="footer.text">Web Presence by KanashiiDev</span>
       </a>
     </footer>
 

@@ -62,7 +62,7 @@ const HistoryActions = {
     FilterTabsController.render();
     FilterListController.render();
 
-    showPopupMessage(i18n.t(`popupMessage.song.${action}.ActionSuccess`, { action }), "success", 3000, 0, "#historyFooter");
+    showPopupMessage(i18n.t(`popupMessage.activity.${action}.ActionSuccess`, { action }), "success", 3000, 0, "#historyFooter");
     this.syncBlockUI(entry, action);
     return true;
   },

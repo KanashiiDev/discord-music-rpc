@@ -43,7 +43,7 @@ const defaultConfig = {
       note: "Prevent the server log from being deleted when the server is launched.",
     },
 
-    LOG_SONG_UPDATE: {
+    LOG_MEDIA_UPDATE: {
       value: false,
       type: "boolean",
       note: "Save song change events in the log.",

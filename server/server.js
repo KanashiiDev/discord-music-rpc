@@ -41,7 +41,7 @@ const activeWnpSupports = Object.entries(settings)
   .filter(([key, val]) => wnpAdapters.includes(key) && val.value === true)
   .map(([key]) => key);
 
-console.log("[SERVER] Starting Discord MUSIC RPC Server");
+console.log("[SERVER] Starting Web Presence Server");
 console.log(`[SERVER] Port: ${PORT} | Electron: ${process.env.ELECTRON_MODE} | ` + `Platform: ${process.platform} | Node: ${process.version}`);
 
 // Express App

@@ -8,7 +8,7 @@ const { createInlineUtils } = require("./steps/inlineUtils");
 const { applyCssConfig } = require("./steps/applyCssConfig");
 const registerInlines = require("./inlineConfig");
 const { copyLocales } = require("./steps/copyLocales");
-const { checkMissingTranslations } = require("../checkMissingTranslations");
+const { checkMissingTranslations, generateLanguages } = require("../checkMissingTranslations");
 
 const ROOT_DIR = path.join(__dirname, "..", "..");
 const TARGET = process.env.TARGET || "chrome";
@@ -49,6 +49,8 @@ const CSS_TARGETS = ["popup/popup.css", "popup/selector/selector.css", "manager/
 
   // 8. Copy locales
   checkMissingTranslations(LOCALES_DIR, ["extension"]);
+  generateLanguages(LOCALES_DIR);
+
   fs.mkdirSync(DIST_LOCALES_DIR, { recursive: true });
   copyLocales(LOCALES_DIR, DIST_LOCALES_DIR);
 

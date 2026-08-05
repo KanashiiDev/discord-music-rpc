@@ -26,6 +26,51 @@ function initHistoryHandlers() {
       await activateHistoryScroll();
     });
   }
+
+  initHistoryModeSwitch();
+}
+
+function initHistoryModeSwitch() {
+  const existing = document.getElementById("historyModeSwitch");
+  if (existing) return;
+
+  const wrapper = document.createElement("div");
+  wrapper.id = "historyModeSwitch";
+  wrapper.className = "history-mode-switch";
+
+  const modes = [
+    { value: "listen", i18n: "history.mode.music" },
+    { value: "watch", i18n: "history.mode.video" },
+    { value: "all", i18n: "common.all" },
+  ];
+
+  modes.forEach(({ value, i18n: key }) => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.dataset.mode = value;
+    btn.dataset.i18n = key;
+    btn.textContent = i18n.t(key);
+    if (value === historyState.activeMode) btn.classList.add("active");
+
+    btn.addEventListener("click", async () => {
+      if (historyState.activeMode === value) return;
+      historyState.activeMode = value;
+
+      wrapper.querySelectorAll("button").forEach((b) => b.classList.toggle("active", b.dataset.mode === value));
+
+      historyState.activeScrollCleanup?.();
+      historyState.activeScrollCleanup = null;
+
+      await renderHistory({ reset: true, query: document.getElementById("historySearchBox")?.value ?? "" });
+      await activateSimpleBar("historyPanel");
+      await activateHistoryScroll();
+    });
+
+    wrapper.appendChild(btn);
+  });
+
+  const historyControls = document.querySelector(".history-controls");
+  if (historyControls) historyControls.appendChild(wrapper);
 }
 
 function attachCheckboxListeners() {

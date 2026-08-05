@@ -34,9 +34,9 @@ function startWatching() {
     return;
   }
 
-  logInfo("%c╔══════════════════════════════════════╗", "color:#4caf50; font-weight:bold;");
-  logInfo("%c║    MUSIC RPC STARTED WATCHING        ║", "color:#4caf50; font-weight:bold;");
-  logInfo("%c╚══════════════════════════════════════╝", "color:#4caf50; font-weight:bold;");
+  logInfo("%c╔═════════════════════════════════════════╗", "color:#4caf50; font-weight:bold;");
+  logInfo("%c║      WEB PRESENCE STARTED WATCHING      ║", "color:#4caf50; font-weight:bold;");
+  logInfo("%c╚═════════════════════════════════════════╝", "color:#4caf50; font-weight:bold;");
 
   state.activeTab = true;
   state.lastRawPosition = null;
@@ -46,9 +46,9 @@ function startWatching() {
 
 // Stop watching tab activity and song changes
 function stopWatching() {
-  logInfo("%c╔══════════════════════════════════════╗", "color:#ff5252; font-weight:bold;");
-  logInfo("%c║    MUSIC RPC STOPPED WATCHING        ║", "color:#ff5252; font-weight:bold;");
-  logInfo("%c╚══════════════════════════════════════╝", "color:#ff5252; font-weight:bold;");
+  logInfo("%c╔═════════════════════════════════════════╗", "color:#ff5252; font-weight:bold;");
+  logInfo("%c║      WEB PRESENCE STOPPED WATCHING      ║", "color:#ff5252; font-weight:bold;");
+  logInfo("%c╚═════════════════════════════════════════╝", "color:#ff5252; font-weight:bold;");
 
   clearTimeout(state.updateTimer);
   state.updateTimer = null;
@@ -377,7 +377,7 @@ async function mainLoop() {
     });
 
     console.groupCollapsed(
-      `%c[DISCORD-MUSIC-RPC - INFO] [main]: %c${statusLabel}%c | %c${song.title.substring(0, 120)}${song.title.length > 120 ? "..." : ""}%c | %c${song.artist.substring(0, 120)}${
+      `%c[WEB-PRESENCE - INFO] [main]: %c${statusLabel}%c | %c${song.title.substring(0, 120)}${song.title.length > 120 ? "..." : ""}%c | %c${song.artist.substring(0, 120)}${
         song.artist.length > 120 ? "..." : ""
       }%c | Paused: %c${isPaused}%c | Seek: %c${isSeeking}%c | Δ: %c${rawPositionDiff}s`,
       "color:#2196f3; font-weight:bold;",
@@ -562,9 +562,9 @@ function init() {
   if (window._MUSIC_RPC_LOADED_ || window.top !== window.self) return;
   window._MUSIC_RPC_LOADED_ = true;
 
-  logInfo("%c╔════════════════════════════════════════════════╗", "color:#2196f3; font-weight:bold;");
-  logInfo("%c║       MUSIC RPC EXTENSION INITIALIZING         ║", "color:#2196f3; font-weight:bold;");
-  logInfo("%c╚════════════════════════════════════════════════╝", "color:#2196f3; font-weight:bold;");
+  logInfo("%c╔═════════════════════════════════════════════════╗", "color:#2196f3; font-weight:bold;");
+  logInfo("%c║            WEB PRESENCE INITIALIZING            ║", "color:#2196f3; font-weight:bold;");
+  logInfo("%c╚═════════════════════════════════════════════════╝", "color:#2196f3; font-weight:bold;");
 
   const start = async () => {
     let tries = 0;

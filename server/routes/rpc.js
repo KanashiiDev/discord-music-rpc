@@ -64,12 +64,12 @@ function createRpcRouter(historyFilePath) {
 
       state.serverSettings.showSmallIcon = Boolean(activitySettings.showFavIcon);
 
-      if (state.serverSettings.logSongUpdate && !isSameActivity(activity, state.currentActivity)) {
+      if (state.serverSettings.logMediaUpdate && !isSameActivity(activity, state.currentActivity)) {
         console.log(`[RPC] Updated: ${activity.details} - ${getCurrentTime()}`);
       }
 
-      // Listening time tracking only for music (not "watch" / type 3)
-      if (activity.type !== 3) handleListeningTimeUpdate(activity, historyFilePath);
+      // Listening time tracking
+      handleListeningTimeUpdate(activity, historyFilePath);
 
       // Deduplicate identical consecutive activities
       const isSame = isSameActivity(activity, state.currentActivity);

@@ -50,15 +50,19 @@ export async function initDashboard() {
       if (!dom.main || dom.main.offsetParent === null) return;
 
       const curHistoryHash = history.length > 0 ? history[history.length - 1]?.date : "";
-      if (HistoryState.previousHash === "" || (curHistoryHash && HistoryState.previousHash !== curHistoryHash)) {
-        const isFirstLoad = HistoryState.previousHash === "";
-        HistoryState.previousHash = curHistoryHash;
+      const isFirstLoad = HistoryState.listen.previousHash === "" && HistoryState.watch.previousHash === "";
 
-        if (isFirstLoad) {
-          HistoryRenderer.destroy();
-          await HistoryRenderer.render({ reset: true });
+      if (isFirstLoad || (curHistoryHash && HistoryState.listen.previousHash !== curHistoryHash)) {
+        const prevHash = HistoryState.listen.previousHash;
+        HistoryState.listen.previousHash = curHistoryHash;
+        HistoryState.watch.previousHash = curHistoryHash;
+
+        if (prevHash === "") {
+          HistoryRenderer.listen.destroy();
+          HistoryRenderer.watch.destroy();
+          await Promise.all([HistoryRenderer.listen.render({ reset: true }), HistoryRenderer.watch.render({ reset: true })]);
         } else {
-          await HistoryRenderer.prependNewHistory(history);
+          await Promise.all([HistoryRenderer.listen.prependNewHistory(history), HistoryRenderer.watch.prependNewHistory(history)]);
         }
       }
     }),

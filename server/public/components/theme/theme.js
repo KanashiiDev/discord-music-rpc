@@ -8,9 +8,9 @@ export function initTheme() {
   dom.containerToggle.replaceChildren(isGrid ? icons.single : icons.dual);
 
   if (isGrid) {
-    dom.rightContainer.insertAdjacentElement("afterbegin", dom.musicCard.container);
+    dom.rightContainer.insertAdjacentElement("afterbegin", dom.activityCard.container);
   } else {
-    dom.statusBox.insertAdjacentElement("afterend", dom.musicCard.container);
+    dom.statusBox.insertAdjacentElement("afterend", dom.activityCard.container);
   }
 
   // Add Expand SVG
@@ -34,9 +34,9 @@ export function handleThemeToggle() {
     dom.containerToggle.replaceChildren(isNowGrid ? icons.single : icons.dual);
     localStorage.setItem("theme-switch", isNowGrid);
     if (isNowGrid) {
-      dom.rightContainer.insertAdjacentElement("afterbegin", dom.musicCard.container);
+      dom.rightContainer.insertAdjacentElement("afterbegin", dom.activityCard.container);
     } else {
-      dom.statusBox.insertAdjacentElement("afterend", dom.musicCard.container);
+      dom.statusBox.insertAdjacentElement("afterend", dom.activityCard.container);
     }
     dom.container.classList.remove("switch");
     AppState.toggleTimeout = null;

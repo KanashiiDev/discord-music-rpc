@@ -2,7 +2,7 @@
 <html>
   <head>
     <meta charset="utf-8" />
-    <title data-i18n="header.title | userparser.header.title" data-i18n-sep=" - ">Discord Music RPC - Selector Parser Manager</title>
+    <title data-i18n="header.title | userparser.header.title" data-i18n-sep=" - ">Web Presence - Selector Parser Manager</title>
     <link rel="stylesheet" href="userScriptManager.css" />
     <link rel="stylesheet" href="../libs/simplebar.css" />
   </head>
@@ -11,11 +11,11 @@
 
     <div class="header">
       <div>
-        <h3 data-i18n="header.title | userparser.header.title" data-i18n-sep=" - ">Discord Music RPC - Selector Parser Manager</h3>
-        <p class="header-desc" data-i18n="userparser.header.description">Add standard music websites using CSS Selectors.</p>
+        <h3 data-i18n="header.title | userparser.header.title" data-i18n-sep=" - ">Web Presence - Selector Parser Manager</h3>
+        <p class="header-desc" data-i18n="userparser.header.description">Add standard websites using CSS Selectors.</p>
       </div>
       <div id="listControls">
-        <button id="btnNew" class="btn-primary" data-i18n="button.add_music_site">+ New Parser</button>
+        <button id="btnNew" class="btn-primary" data-i18n="button.add_site">+ New Parser</button>
         <button id="btnImport" data-i18n="userscript.listControls.import">Import</button>
         <button id="btnExport" data-i18n="userscript.listControls.export">Export</button>
       </div>
@@ -30,7 +30,7 @@
         <div id="editor-left">
           <div class="container">
             <p data-i18n="userscript.editor.scriptName.label">Title (Name):</p>
-            <input type="text" id="inTitle" data-i18n="userscript.editor.scriptName.placeholder" placeholder="Music Website" />
+            <input type="text" id="inTitle" data-i18n="userscript.editor.scriptName.placeholder" placeholder="Website" />
           </div>
 
           <div class="container">
@@ -121,7 +121,7 @@
 
               <div class="form-group">
                 <label data-i18n="selector.editor.link.label">Link</label>
-                <input type="text" id="selSongUrl" data-i18n="selector.editor.type.selectorUrl" />
+                <input type="text" id="selLink" data-i18n="selector.editor.type.selectorUrl" />
               </div>
 
               <div class="form-group">

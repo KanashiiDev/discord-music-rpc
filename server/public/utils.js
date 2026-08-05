@@ -35,25 +35,25 @@ export function relativeTime(dateValue) {
   if (s < 0) return t("time.just_now");
 
   if (s < 45) return t("time.just_now");
-  if (s < 90) return t("time.minute_ago", [1]);
-  if (s < 3600) return t("time.minutes_ago", [Math.floor(s / 60)]);
+  if (s < 90) return t("time.minute_ago.one", [1]);
+  if (s < 3600) return t("time.minute_ago.other", [Math.floor(s / 60)]);
 
   const mins = Math.floor(s / 60);
-  if (mins < 90) return t("time.hour_ago", [1]);
-  if (mins < 1440) return t("time.hours_ago", [Math.floor(mins / 60)]);
+  if (mins < 90) return t("time.hour_ago.one", [1]);
+  if (mins < 1440) return t("time.hour_ago.other", [Math.floor(mins / 60)]);
 
   const days = Math.floor(mins / 1440);
   if (days === 1) return t("time.yesterday");
   if (days < 7) return t("time.days_ago", [days]);
 
   const weeks = Math.floor(days / 7);
-  if (weeks === 1) return t("time.week_ago", [1]);
-  if (weeks < 5) return t("time.weeks_ago", [weeks]);
+  if (weeks === 1) return t("time.week_ago.one", [1]);
+  if (weeks < 5) return t("time.week_ago.other", [weeks]);
 
   const months = Math.floor(days / 30.4);
-  if (months < 12) return t("time.months_ago", [months]);
+  if (months < 12) return t("time.month_ago.other", [months]);
 
-  return t("time.years_ago", [Math.floor(months / 12)]);
+  return t("time.year_ago.other", [Math.floor(months / 12)]);
 }
 
 // Full Date Time
@@ -69,7 +69,7 @@ export function fullDateTime(dateValue, fallbackLocale = "en-US") {
   }
   if (isNaN(timestamp)) return "Invalid date";
 
-  return new Date(timestamp).toLocaleString(navigator.language || fallbackLocale, {
+  return new Date(timestamp).toLocaleString(navigator.languages?.[0] || navigator.language || fallbackLocale, {
     day: "2-digit",
     month: "2-digit",
     year: "numeric",
@@ -189,9 +189,7 @@ export function getTotalHeight(element, elementParent) {
 export function updateSimpleBarPadding(containerId) {
   const container = document.getElementById(containerId);
   if (!container || document.querySelector(".main").style.display === "none") return;
-
   const hasVisibleScrollbar = document.querySelector(`#${containerId} .simplebar-track[style*="visibility: visible"]`);
-
   container.style.paddingRight = hasVisibleScrollbar ? "22px" : "0";
 }
 
@@ -256,14 +254,49 @@ export function getCSS(variable, fallback = null, format = "hex", el = document.
       return raw;
   }
 }
+function getTransitionDuration(el, property) {
+  const style = getComputedStyle(el);
+  const props = style.transitionProperty.split(", ");
+  const durations = style.transitionDuration.split(", ");
+  const index = props.indexOf(property);
+  const raw = index !== -1 ? (durations[index] ?? durations[0]) : null;
+  if (!raw) return 0;
+  return parseFloat(raw) * (raw.includes("ms") ? 1 : 1000);
+}
 
-export function handleCollapsible(header, AppState, simpleBars) {
-  if (AppState.expandTimeout) clearTimeout(AppState.expandTimeout);
+export function waitForTransitionEnd(el, property) {
+  const duration = getTransitionDuration(el, property);
+  if (duration === 0) return Promise.resolve();
+
+  const adaptive = Math.max(duration * 1.3, 300);
+
+  return new Promise((resolve) => {
+    let resolved = false;
+
+    const finish = () => {
+      if (resolved) return;
+      resolved = true;
+      clearTimeout(timer);
+      el.removeEventListener("transitionend", handler);
+      resolve();
+    };
+
+    const handler = ({ target, propertyName }) => {
+      if (target === el && propertyName === property) finish();
+    };
+
+    el.addEventListener("transitionend", handler);
+    const timer = setTimeout(finish, adaptive);
+  });
+}
+
+export async function handleCollapsible(header, AppState, simpleBars) {
   const box = header.nextElementSibling;
   if (!box) return;
 
-  const isOpen = box.classList.contains("open");
   const heightBefore = box.offsetHeight;
+  const isOpen = box.classList.contains("open");
+  header.style.pointerEvents = "none";
 
   if (isOpen) {
     box.style.maxHeight = box.scrollHeight + "px";
@@ -272,34 +305,33 @@ export function handleCollapsible(header, AppState, simpleBars) {
       header.classList.remove("open");
       box.style.maxHeight = "";
     });
+    await waitForTransitionEnd(box, "max-height");
+    const wrapperId = box.querySelector("[data-simplebar]")?.id;
+    if (wrapperId) updateSimpleBarPadding(wrapperId);
   } else {
     box.classList.add("open");
     header.classList.add("open");
     const targetH = getTotalHeight(box, box);
     const maxH = parseInt(box.dataset.maxHeight) || 0;
     const finalH = maxH && targetH > maxH ? maxH : targetH;
-
     box.style.maxHeight = finalH + "px";
     Object.values(simpleBars).forEach((sb) => sb?.recalculate());
+
+    await waitForTransitionEnd(box, "max-height");
+
+    const heightAfter = box.offsetHeight;
+    if (heightAfter - heightBefore <= 2) {
+      box.classList.remove("open");
+      header.classList.remove("open");
+      box.style.maxHeight = "";
+    } else {
+      if (!box.dataset.maxHeight) box.style.maxHeight = "100vh";
+    }
+    const wrapperId = box.querySelector("[data-simplebar]")?.id;
+    if (wrapperId) updateSimpleBarPadding(wrapperId);
   }
 
-  header.style.pointerEvents = "none";
-
-  AppState.expandTimeout = setTimeout(() => {
-    header.style.pointerEvents = "";
-
-    if (!isOpen) {
-      const heightAfter = box.offsetHeight;
-
-      if (heightAfter <= heightBefore + 2) {
-        box.classList.remove("open");
-        header.classList.remove("open");
-        box.style.maxHeight = "";
-      } else {
-        if (!box.dataset.maxHeight) box.style.maxHeight = "100vh";
-      }
-    }
-  }, 355);
+  header.style.pointerEvents = "";
 }
 
 export function loadImage({ target, src, fallback = "assets/icon-dark.png" } = {}) {

@@ -294,7 +294,7 @@ const handleStoreAddRepo = async (req) => {
 const handleStoreRemoveRepo = async (req) => {
   if (!req.repoId) return { ok: false, error: "repoId required" };
 
-  if (req.repoId === "KanashiiDev__discord-music-rpc-activities__main") {
+  if (req.repoId === "KanashiiDev__web-presence-activities__main") {
     return { ok: false, error: "[background:githubStore]: The default main repository cannot be deleted from the system!" };
   }
 
@@ -675,7 +675,7 @@ const handleFilterHistoryReplace = async (request) => {
   };
 };
 
-const handleAddHistoryToServer = async ({ image, title, artist, source, songUrl, date }) => {
+const handleAddHistoryToServer = async ({ image, title, artist, source, link, date, mode }) => {
   try {
     const response = await fetchWithTimeout(
       `http://localhost:${state.serverPort}/add-history`,
@@ -687,8 +687,9 @@ const handleAddHistoryToServer = async ({ image, title, artist, source, songUrl,
           artist,
           image: image || "",
           source: source || "",
-          songUrl: songUrl || "",
+          link: link || "",
           date,
+          mode,
         }),
       },
       CONFIG.requestTimeout,
@@ -715,8 +716,9 @@ const handleSyncHistory = async () => {
       artist: entry.a || "",
       image: entry.i || "",
       source: entry.s || "",
-      songUrl: entry.u || "",
+      link: entry.u || "",
       date: entry.p,
+      mode: entry.m,
       total_listened_ms: entry.ms || 0,
     }));
 
@@ -749,7 +751,7 @@ const handleSyncHistory = async () => {
               a: artist,
               i: entry.image || "",
               s: source,
-              u: entry.songUrl || "",
+              u: entry.link || "",
               p: entry.date,
               ms: entry.total_listened_ms || 0,
             });
@@ -905,13 +907,14 @@ const handleUpdateRpc = async (req, sender) => {
   scheduleRpcUpdate(req.data, tabId)?.catch((err) => logError("[background:scheduleRpcUpdate]: RPC schedule failed", err));
 
   // 4️) Add History
-  if (req.data.mode !== "watch" && req.data.title !== "Unknown Song" && req.data.artist !== "Unknown Artist" && req.data.artist !== "-1") {
+  if (req.data.title !== "Unknown Song" && req.data.artist !== "Unknown Artist" && req.data.artist !== "-1") {
     scheduleHistoryAdd(tabId, {
       title: req.data.title,
       artist: req.data.artist,
       image: req.data.image,
       source: req.data.source || "",
-      songUrl: req.data.songUrl || "",
+      link: req.data.link || req.data.songUrl || "",
+      mode: req.data.mode || "listen",
     });
   }
 

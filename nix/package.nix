@@ -1,6 +1,6 @@
 # nix/package.nix
 #
-# Packages discord-music-rpc by unpacking the upstream AppImage.
+# Packages web-presence by unpacking the upstream AppImage.
 # This is the standard NixOS approach for Electron apps distributed
 # as AppImages — avoids rebuilding from source (which requires
 # matching the exact electron version and all node_modules).
@@ -43,17 +43,17 @@ let
   # Get hash with: nix-prefetch-url <url>
   sources = {
     x86_64-linux = fetchurl {
-      url = "https://github.com/KanashiiDev/discord-music-rpc/releases/download/${version}/discord-music-rpc-${version}-x86_64.AppImage";
+      url = "https://github.com/KanashiiDev/web-presence/releases/download/${version}/web-presence-${version}-x86_64.AppImage";
       sha256 = "sha256-C3PDLetQGmPhUc+u4SGFXduk0+iAtUYy7aV+AroWGno=";
     };
   };
 
   src = sources.${stdenv.hostPlatform.system} or (throw "Unsupported system: ${stdenv.hostPlatform.system}");
   # Unpack the AppImage 
-  appimageContents = appimageTools.extractType2 { pname = "discord-music-rpc"; inherit version src; };
+  appimageContents = appimageTools.extractType2 { pname = "web-presence"; inherit version src; };
 in
 stdenv.mkDerivation rec {
-  pname = "discord-music-rpc";
+  pname = "web-presence";
   inherit version;
 
   # We're packaging a pre-built binary, not building from source
@@ -88,20 +88,20 @@ stdenv.mkDerivation rec {
 
     # Directories 
     mkdir -p $out/bin
-    mkdir -p $out/share/discord-music-rpc
+    mkdir -p $out/share/web-presence
     mkdir -p $out/share/applications
     mkdir -p $out/share/icons/hicolor
 
     # Copy app contents from unpacked AppImage 
-    cp -r ${appimageContents}/resources $out/share/discord-music-rpc/
-    cp -r ${appimageContents}/locales    $out/share/discord-music-rpc/ 2>/dev/null || true
+    cp -r ${appimageContents}/resources $out/share/web-presence/
+    cp -r ${appimageContents}/locales    $out/share/web-presence/ 2>/dev/null || true
 
     # Icons 
     for size in 16 24 32 48 64 128 256 512; do
-      iconSrc="${appimageContents}/usr/share/icons/hicolor/''${size}x''${size}/apps/discord-music-rpc.png"
+      iconSrc="${appimageContents}/usr/share/icons/hicolor/''${size}x''${size}/apps/web-presence.png"
       if [ -f "$iconSrc" ]; then
         mkdir -p $out/share/icons/hicolor/''${size}x''${size}/apps
-        cp "$iconSrc" $out/share/icons/hicolor/''${size}x''${size}/apps/discord-music-rpc.png
+        cp "$iconSrc" $out/share/icons/hicolor/''${size}x''${size}/apps/web-presence.png
       fi
     done
 
@@ -109,22 +109,22 @@ stdenv.mkDerivation rec {
     # We use electron from nixpkgs instead of the bundled one to:
     # 1. Avoid shipping a second copy of electron
     # 2. Get proper NixOS library path patching automatically
-    makeWrapper ${electron}/bin/electron $out/bin/discord-music-rpc \
-      --add-flags "$out/share/discord-music-rpc/resources/app.asar" \
+    makeWrapper ${electron}/bin/electron $out/bin/web-presence \
+      --add-flags "$out/share/web-presence/resources/app.asar" \
       --add-flags "--no-sandbox" \
       --set ELECTRON_FORCE_IS_PACKAGED "true" \
-      --set DISCORD_MUSIC_RPC_NIX "true" \
-      --set DISCORD_MUSIC_RPC_BIN "$out/bin/discord-music-rpc" \
+      --set WEB_PRESENCE_NIX "true" \
+      --set DISCORD_MUSIC_RPC_BIN "$out/bin/web-presence" \
       --prefix PATH : "${lib.makeBinPath [libnotify glib xdg-utils systemd]}"
 
     # .desktop file 
-    cat > $out/share/applications/discord-music-rpc.desktop << EOF
+    cat > $out/share/applications/web-presence.desktop << EOF
     [Desktop Entry]
     Type=Application
-    Name=Discord Music RPC
+    Name=Web Presence
     Comment=Show music from ANY website on your Discord
-    Exec=discord-music-rpc
-    Icon=discord-music-rpc
+    Exec=web-presence
+    Icon=web-presence
     Terminal=false
     Categories=Audio;Music;Utility;
     Keywords=discord;music;rpc;rich presence;
@@ -137,14 +137,14 @@ stdenv.mkDerivation rec {
   meta = with lib; {
     description = "Show music from ANY website on your Discord";
     longDescription = ''
-      Discord Music RPC is an Electron application that tracks music playback
+      Web Presence is an Electron application that tracks media playback
       across streaming websites and displays it as Discord Rich Presence.
       Works with a companion browser extension (Chrome/Firefox).
     '';
-    homepage = "https://github.com/KanashiiDev/discord-music-rpc";
+    homepage = "https://github.com/KanashiiDev/web-presence";
     license = licenses.mit;
     maintainers = [ ];
     platforms = [ "x86_64-linux" ];
-    mainProgram = "discord-music-rpc";
+    mainProgram = "web-presence";
   };
 }

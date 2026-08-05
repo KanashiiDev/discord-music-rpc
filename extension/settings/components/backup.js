@@ -23,7 +23,7 @@ function initBackupButtons() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `discord-music-rpc-backup-${dateString}.json`;
+      a.download = `web-presence-backup-${dateString}.json`;
       a.click();
       URL.revokeObjectURL(url);
       showAlert(i18n.t("backup.export.complete"));

@@ -19,8 +19,8 @@ export const dom = {
 
   footer: document.querySelector("body > footer"),
 
-  musicCard: {
-    container: document.getElementById("musicCardContainer"),
+  activityCard: {
+    container: document.getElementById("activityCardContainer"),
     trackTitle: document.getElementById("trackTitle"),
     trackArtist: document.getElementById("trackArtist"),
     trackSource: document.getElementById("trackSource"),
@@ -52,5 +52,6 @@ export const simpleBars = {
   lastActivity: new SimpleBar(document.getElementById("lastActivityWrapper")),
   logs: new SimpleBar(document.getElementById("logsWrapper")),
   history: new SimpleBar(document.getElementById("historyWrapper")),
+  watch: new SimpleBar(document.getElementById("watchWrapper")),
   historyFilter: null,
 };

@@ -21,7 +21,7 @@ class KeepAliveManager {
 
     if (!debugMode) return;
 
-    const prefix = "[DISCORD-MUSIC-RPC - Keep Alive Manager]";
+    const prefix = "[WEB-PRESENCE - Keep Alive Manager]";
     if (typeof args[0] === "string" && args[0].includes("%c")) {
       console.info(`%c${prefix}%c ${args[0]}`, "color:#2196f3; font-weight:bold;", "color:#fff;", ...args.slice(1));
     } else {
