@@ -44,7 +44,7 @@ let
   sources = {
     x86_64-linux = fetchurl {
       url = "https://github.com/KanashiiDev/web-presence/releases/download/${version}/web-presence-${version}-x86_64.AppImage";
-      sha256 = "sha256-siUjkwhNQpKGa0q82Qi/XJWxi4qAOHb6tIG29x4kn6o=";
+      sha256 = "sha256-/06I61qrnjypa5I3T4XQfH93TrtfPXs94WGETN5g++I=";
     };
   };
 
