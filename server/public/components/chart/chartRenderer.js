@@ -352,8 +352,17 @@ function createChartRenderer(historyMode = "listen") {
       _updateModeButtonsState();
 
       const historyData = DataStore.get("history");
+      _updateNavLabel();
+
       if (historyData && Array.isArray(historyData) && historyData.length > 0) {
         drawChart(state.mode, state.range);
+      } else {
+        if (loadingEl) {
+          loadingEl.style.display = "flex";
+          loadingEl.textContent = i18n.t("chart.summary.empty");
+          loadingEl.dataset.i18n = "chart.summary.empty";
+          loadingEl.classList.remove("error");
+        }
       }
 
       if (!historyUnsubscribe) {
