@@ -1580,11 +1580,11 @@ async function showInitialSetupDialog(appendBody) {
     const windowsOptions = [
       {
         label: "Installer (EXE)",
-        url: `https://github.com/KanashiiDev/discord-music-rpc/releases/download/{version}/Discord-Music-RPC-{version}-x64-installer.exe`,
+        url: `https://github.com/KanashiiDev/web-presence/releases/download/{version}/web-presence-{version}-x64-installer.exe`,
       },
       {
         label: "Portable (ZIP)",
-        url: `https://github.com/KanashiiDev/discord-music-rpc/releases/download/{version}/Discord-Music-RPC-{version}-x64.zip`,
+        url: `https://github.com/KanashiiDev/web-presence/releases/download/{version}/web-presence-{version}-x64.zip`,
       },
     ];
     contentLinkContainer.appendChild(createPlatformDropdown("Windows", windowsOptions, manifestVersion));
@@ -1593,23 +1593,23 @@ async function showInitialSetupDialog(appendBody) {
     const linuxOptions = [
       {
         label: "AppImage (x64)",
-        url: `https://github.com/KanashiiDev/discord-music-rpc/releases/download/{version}/discord-music-rpc-{version}-x86_64.AppImage`,
+        url: `https://github.com/KanashiiDev/web-presence/releases/download/{version}/web-presence-{version}-x86_64.AppImage`,
       },
       {
         label: "DEB (x64)",
-        url: `https://github.com/KanashiiDev/discord-music-rpc/releases/download/{version}/discord-music-rpc-{version}-amd64.deb`,
+        url: `https://github.com/KanashiiDev/web-presence/releases/download/{version}/web-presence-{version}-amd64.deb`,
       },
       {
         label: "RPM (x64)",
-        url: `https://github.com/KanashiiDev/discord-music-rpc/releases/download/{version}/discord-music-rpc-{version}-x86_64.rpm`,
+        url: `https://github.com/KanashiiDev/web-presence/releases/download/{version}/web-presence-{version}-x86_64.rpm`,
       },
       {
         label: "TAR.ZST (x64)",
-        url: `https://github.com/KanashiiDev/discord-music-rpc/releases/download/{version}/discord-music-rpc-{version}-x64.pkg.tar.zst`,
+        url: `https://github.com/KanashiiDev/web-presence/releases/download/{version}/web-presence-{version}-x64.pkg.tar.zst`,
       },
       {
         label: "More",
-        url: `https://github.com/KanashiiDev/discord-music-rpc#desktop-app`,
+        url: `https://github.com/KanashiiDev/web-presence#desktop-app`,
       },
     ];
     contentLinkContainer.appendChild(createPlatformDropdown("Linux", linuxOptions, manifestVersion));
@@ -1618,7 +1618,7 @@ async function showInitialSetupDialog(appendBody) {
     const macOptions = [
       {
         label: "Universal",
-        url: `https://github.com/KanashiiDev/discord-music-rpc/releases/download/{version}/Discord-Music-RPC-{version}-universal.dmg`,
+        url: `https://github.com/KanashiiDev/web-presence/releases/download/{version}/web-presence-{version}-universal.dmg`,
       },
     ];
     contentLinkContainer.appendChild(createPlatformDropdown("MacOS", macOptions, manifestVersion));
@@ -1631,7 +1631,7 @@ async function showInitialSetupDialog(appendBody) {
     const contentNote2 = document.createElement("p");
     const noteText = document.createTextNode(i18n.t("setup.companion.provider.link"));
     const noteLink = document.createElement("a");
-    noteLink.href = "https://github.com/KanashiiDev/discord-music-rpc/releases/latest";
+    noteLink.href = "https://github.com/KanashiiDev/web-presence/releases/latest";
     noteLink.target = "_blank";
     noteLink.rel = "noopener noreferrer";
     noteLink.textContent = "GitHub Releases";

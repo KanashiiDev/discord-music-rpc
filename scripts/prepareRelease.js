@@ -51,37 +51,43 @@ function getAllFiles(dir) {
   return out;
 }
 
+// Helper: rename "web-presence-bridge-" prefix to "web-presence-" in filename
+function resolvedName(f) {
+  return f.startsWith("web-presence-bridge-") ? f.replace("web-presence-bridge-", "web-presence-") : f;
+}
+
 // Collect & copy dist files
 for (const full of getAllFiles(distDir)) {
   const f = path.basename(full);
-  const dest = path.join(releaseDir, f);
+  const renamed = resolvedName(f);
+  const dest = path.join(releaseDir, renamed);
 
   if (f.startsWith("latest") && f.endsWith(".yml")) {
     fs.copyFileSync(full, dest);
     console.log(`📄 Copied ${f}`);
   }
-  if (f.startsWith("web-presence-") && f.endsWith(".exe")) {
+  if ((f.startsWith("web-presence-bridge-") || f.startsWith("web-presence-")) && f.endsWith(".exe")) {
     fs.copyFileSync(full, dest);
     console.log(`📦 Windows installer: ${f}`);
   }
-  if (f.startsWith("web-presence-") && f.endsWith(".AppImage")) {
+  if ((f.startsWith("web-presence-bridge-") || f.startsWith("web-presence-")) && f.endsWith(".AppImage")) {
     fs.copyFileSync(full, dest);
     const arch = f.includes("aarch64") ? "aarch64" : "x86_64";
     console.log(`📦 AppImage (${arch}): ${f}`);
   }
-  if (f.startsWith("web-presence-") && f.endsWith(".deb")) {
+  if ((f.startsWith("web-presence-bridge-") || f.startsWith("web-presence-")) && f.endsWith(".deb")) {
     fs.copyFileSync(full, dest);
     console.log(`📦 DEB: ${f}`);
   }
-  if (f.startsWith("web-presence-") && f.endsWith(".rpm")) {
+  if ((f.startsWith("web-presence-bridge-") || f.startsWith("web-presence-")) && f.endsWith(".rpm")) {
     fs.copyFileSync(full, dest);
     console.log(`📦 RPM: ${f}`);
   }
-  if (f.startsWith("web-presence-") && f.endsWith(".dmg")) {
+  if ((f.startsWith("web-presence-bridge-") || f.startsWith("web-presence-")) && f.endsWith(".dmg")) {
     fs.copyFileSync(full, dest);
     console.log(`📦 Mac DMG: ${f}`);
   }
-  if (f.startsWith("web-presence-") && f.endsWith(".pacman")) {
+  if ((f.startsWith("web-presence-bridge-") || f.startsWith("web-presence-")) && f.endsWith(".pacman")) {
     fs.copyFileSync(full, dest);
     console.log(`📦 Pacman: ${f}`);
   }

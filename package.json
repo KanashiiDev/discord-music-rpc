@@ -116,7 +116,7 @@
       "output": "dist/${platform}"
     },
     "win": {
-      "artifactName": "web-presence-bridge-${version}-${arch}-installer.exe",
+      "artifactName": "web-presence-${version}-${arch}-installer.exe",
       "target": "nsis",
       "icon": "app/assets/icon/icon.ico"
     },
@@ -127,7 +127,7 @@
         "deb",
         "pacman"
       ],
-      "artifactName": "web-presence-bridge-${version}-${arch}.${ext}",
+      "artifactName": "web-presence-${version}-${arch}.${ext}",
       "executableName": "web-presence-bridge",
       "category": "Audio",
       "icon": "app/assets/icon",
@@ -168,7 +168,7 @@
           "target": "dmg"
         }
       ],
-      "artifactName": "web-presence-bridge-${version}-${arch}.${ext}",
+      "artifactName": "web-presence-${version}-${arch}.${ext}",
       "icon": "app/assets/icon/icon.icns",
       "darkModeSupport": true,
       "extendInfo": {
